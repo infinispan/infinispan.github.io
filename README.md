@@ -21,7 +21,7 @@ System Requirements
 --------------------
 Run Awestruct in development mode from the top-level directory to build the website and host it using a local web server:
 
-`bundle exec awestruct -d --force`
+`bin/run_dev.sh`
 
 **Note:** The first time the site is built common JavaScript, font and image files will be downloaded from [http://static.jboss.org](http://static.jboss.org) and cached into a local *cache/* directory using wget. This then allows you to run the site locally rather than relying on a network connection. Since the cache download takes a considerable amount of time by default the `wget` command will run only once a day to prevent unrequired delays in build times. The time interval and other settings of this process can be configured in site.yml.
 
@@ -47,4 +47,4 @@ Once you're happy with your website in development mode update the `profiles: st
 
 6. Publish the website
 ----------------------
-If everyone is happy with staging then update the `profiles: production: base_url:` property in *_config/site.yml* to point to your production domain and run the `bundle exec awestruct -P production` command to produce a version that can be uploaded for the public to view.
+If everyone is happy with staging then update the `profiles: production: base_url:` property in *_config/site.yml* to point to your production domain and run the `bin/publish_production.sh` command to produce a version that will be published to `http://infinispan.github.io` and `http://www.infinispan.org`. 
