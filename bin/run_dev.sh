@@ -1,3 +1,3 @@
-#!/usr/bin/bash
+#!/bin/sh
 
 bundle exec awestruct --force -d
