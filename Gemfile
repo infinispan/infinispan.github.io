@@ -13,4 +13,5 @@ gem 'htmlcompressor', '~> 0.0.3' # Adds in HTML minification, helps remove the w
 gem 'json', '~> 1.7.7'
 gem 'asciidoctor', '~> 0.1.4'
 gem 'git', '~> 1.2.6'
+gem 'trollop', '~> 2.0'
 
