@@ -14,4 +14,4 @@ gem 'json', '~> 1.7.7'
 gem 'asciidoctor', '~> 0.1.4'
 gem 'git', '~> 1.2.6'
 gem 'trollop', '~> 2.0'
-
+gem 'coderay', '~> 1.1.0'
