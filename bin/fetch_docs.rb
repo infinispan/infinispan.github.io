@@ -18,10 +18,12 @@ EOS
 
   opt :force_clone, "Force re-clone of documentation repos", :default => false
   opt :verbose, "Be verbose", :default => false
+  opt :git_update, "Will update documentation from git, if force-clone is not set", :default => false
 end
 
 verbose = opts.verbose == true
 force_clone = opts.force_clone == true
+git_update = opts.git_update == true
 
 cwd = File.expand_path File.dirname(__FILE__)
 site_home = cwd + "/../"
@@ -41,11 +43,23 @@ end
 
 puts "Preparing to generate documentation for #{cfg["docs"].size} versions of Infinispan"
 if force_clone
-  puts "Cloning #{git_repos.size} git repositories"
+  puts "Cloning #{git_repos.size} git repositories" if verbose
   ## Let's clone some repos!
   git_repos.each do |remote, local| 
     puts "Cloning https://github.com/#{remote}.git into infinispan_srcs/#{local}" if verbose 
     Git.clone("https://github.com/" + remote + ".git", "infinispan_srcs/" + local)
+  end
+end
+
+if git_update and not force_clone
+  puts "Updating git repositories" if verbose
+  ## Let's update some repos!
+  cfg["docs"].each do |ver, ver_cfg|
+    repo = git_repos[ver_cfg["github_repo"]]
+    branch = ver_cfg["branch"]
+    g = Git.open("infinispan_srcs/" + repo)
+    g.checkout branch    
+    g.pull
   end
 end
 
