@@ -1,4 +1,3 @@
 #!/bin/sh
 
-
-bundle exec awestruct -d
+bundle exec awestruct -d --force
