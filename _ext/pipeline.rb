@@ -14,5 +14,6 @@ Awestruct::Extensions::Pipeline.new do
   extension Awestruct::Extensions::FileMerger.new
   extension Awestruct::Extensions::LessConfig.new
   helper Awestruct::Extensions::GoogleAnalytics  
+  extension Awestruct::Extensions::Indexifier.new  
 end
 
