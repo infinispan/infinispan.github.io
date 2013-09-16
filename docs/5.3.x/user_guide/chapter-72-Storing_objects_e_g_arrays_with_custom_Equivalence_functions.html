@@ -439,48 +439,46 @@ span.line-numbers { border-right: 1px solid #E5E5E5; color: #999; display: inlin
 .CodeRay .change .change { color: #66f; }
 .CodeRay .head .head { color: #f4f; }
 
-</style> </head> <body class="book"> <div id="header"> </div> <div id="content"> <div class="sect1"> <h2 id="sid-68355127"><a class="anchor" href="#sid-68355127"></a>1. Storing objects (e.g. arrays) with custom Equivalence functions</h2> <div class="sectionbody"> <div class="sect2"> <h3 id="sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-TheProblemofCachingArrays"><a class="anchor" href="#sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-TheProblemofCachingArrays"></a>1.1. The Problem of Caching Arrays</h3> <div class="literalblock"> <div class="content"> <pre>There are times when users want to store data into Infinispan caches whose default equals() and/or hashCode() implementations produce undesirable results. One of those data types are arrays. When users want to store arrays into Infinispan caches, the big majority of users want equals() function to be calculated based on the contents of the arrays as opposed to comparing the object reference, so if we take byte arrays are example, users would like to call up the static java.util.Arrays.equals(byte[], byte[]) method instead of Object.equals() . The same thing happens with hashCode() . The default implementation of Object.hashCode() for arrays suffers from the same issue, because the result is not produced based on the contents of the array, but rather based on the object reference to the array.</pre> </div> </div> </div> <div class="sect2"> <h3 id="sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-Oldworkaround%3AWrapperClasses"><a class="anchor" href="#sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-Oldworkaround%3AWrapperClasses"></a>1.2. Old workaround: Wrapper Classes</h3> <div class="literalblock"> <div class="content"> <pre>Until Infinispan 5.2, the way to get around these issues was by wrapping arrays, or any other object whose equals()/hashCode() implementations are not best suited for being stored in Infinispan caches, around another object which would override Object.equals() and Object.hashCode() to do the correct calculations. This is where classes such as link:$$https://github.com/infinispan/infinispan/blob/master/core/src/main/java/org/infinispan/util/ByteArrayKey.java$$[ByteArrayKey] originate:</pre> </div> </div> <div class="listingblock"> <div class="content"> <pre>
-public final class ByteArrayKey implements Serializable {
+</style> </head> <body class="book"> <div id="header"> </div> <div id="content"> <div class="sect1"> <h2 id="_storing_objects_e_g_arrays_with_custom_equivalence_functions"><a class="anchor" href="#_storing_objects_e_g_arrays_with_custom_equivalence_functions"></a>1. Storing objects (e.g. arrays) with custom Equivalence functions</h2> <div class="sectionbody"> <div class="sect2"> <h3 id="_the_problem_of_caching_arrays"><a class="anchor" href="#_the_problem_of_caching_arrays"></a>1.1. The Problem of Caching Arrays</h3> <div class="paragraph"> <p>There are times when users want to store data into Infinispan caches whose default equals() and/or hashCode() implementations produce undesirable results. One of those data types are arrays. When users want to store arrays into Infinispan caches, the big majority of users want equals() function to be calculated based on the contents of the arrays as opposed to comparing the object reference, so if we take byte arrays are example, users would like to call up the static java.util.Arrays.equals(byte[], byte[]) method instead of Object.equals() . The same thing happens with hashCode() . The default implementation of Object.hashCode() for arrays suffers from the same issue, because the result is not produced based on the contents of the array, but rather based on the object reference to the array.</p> </div> </div> <div class="sect2"> <h3 id="_old_workaround_wrapper_classes"><a class="anchor" href="#_old_workaround_wrapper_classes"></a>1.2. Old workaround: Wrapper Classes</h3> <div class="paragraph"> <p>Until Infinispan 5.2, the way to get around these issues was by wrapping arrays, or any other object whose equals()/hashCode() implementations are not best suited for being stored in Infinispan caches, around another object which would override Object.equals() and Object.hashCode() to do the correct calculations. This is where classes such as <a href="https://github.com/infinispan/infinispan/blob/master/core/src/main/java/org/infinispan/util/ByteArrayKey.java">ByteArrayKey</a> originate:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay"><code class="java language-java">
+<span class="directive">public</span> <span class="directive">final</span> <span class="type">class</span> <span class="class">ByteArrayKey</span> <span class="directive">implements</span> <span class="predefined-type">Serializable</span> {
 
-   private final byte[] data;
-   private final int hashCode;
+   <span class="directive">private</span> <span class="directive">final</span> <span class="type">byte</span><span class="type">[]</span> data;
+   <span class="directive">private</span> <span class="directive">final</span> <span class="type">int</span> hashCode;
 
-   public ByteArrayKey(byte[] data) {
-      this.data = data;
-      this.hashCode = 41 + Arrays.hashCode(data);
+   <span class="directive">public</span> ByteArrayKey(<span class="type">byte</span><span class="type">[]</span> data) {
+      <span class="local-variable">this</span>.data = data;
+      <span class="local-variable">this</span>.hashCode = <span class="integer">41</span> + <span class="predefined-type">Arrays</span>.hashCode(data);
    }
 
-   public byte[] getData() {
-      return data;
+   <span class="directive">public</span> <span class="type">byte</span><span class="type">[]</span> getData() {
+      <span class="keyword">return</span> data;
    }
 
-   @Override
-   public boolean equals(Object obj) {
-      if (this == obj) return true;
-      if (obj == null || ByteArrayKey.class != obj.getClass()) return false;
+   <span class="annotation">@Override</span>
+   <span class="directive">public</span> <span class="type">boolean</span> equals(<span class="predefined-type">Object</span> obj) {
+      <span class="keyword">if</span> (<span class="local-variable">this</span> == obj) <span class="keyword">return</span> <span class="predefined-constant">true</span>;
+      <span class="keyword">if</span> (obj == <span class="predefined-constant">null</span> || ByteArrayKey.class != obj.getClass()) <span class="keyword">return</span> <span class="predefined-constant">false</span>;
       ByteArrayKey key = (ByteArrayKey) obj;
-      return Arrays.equals(key.data, this.data);
+      <span class="keyword">return</span> <span class="predefined-type">Arrays</span>.equals(key.data, <span class="local-variable">this</span>.data);
    }
 
-   @Override
-   public int hashCode() {
-      return hashCode;
+   <span class="annotation">@Override</span>
+   <span class="directive">public</span> <span class="type">int</span> hashCode() {
+      <span class="keyword">return</span> hashCode;
    }
 
-   @Override
-   public String toString() {
-      return new StringBuilder().append("ByteArrayKey").append("{")
-         .append("data=").append(Util.printArray(data, true))
-         .append("}").toString();
+   <span class="annotation">@Override</span>
+   <span class="directive">public</span> <span class="predefined-type">String</span> toString() {
+      <span class="keyword">return</span> <span class="keyword">new</span> <span class="predefined-type">StringBuilder</span>().append(<span class="string"><span class="delimiter">&quot;</span><span class="content">ByteArrayKey</span><span class="delimiter">&quot;</span></span>).append(<span class="string"><span class="delimiter">&quot;</span><span class="content">{</span><span class="delimiter">&quot;</span></span>)
+         .append(<span class="string"><span class="delimiter">&quot;</span><span class="content">data=</span><span class="delimiter">&quot;</span></span>).append(<span class="predefined-type">Util</span>.printArray(data, <span class="predefined-constant">true</span>))
+         .append(<span class="string"><span class="delimiter">&quot;</span><span class="content">}</span><span class="delimiter">&quot;</span></span>).toString();
    }
 
 }
-</pre> </div> </div> <div class="paragraph"> <p>The problem with these classes is that they result in extra memory consumption due to the extra objects required to support data types such as arrays and really, these classes just a workaround for the lack of ability to provide a way to pass in a function that specifies how two byte arrays are are compared, or how to calculate the hash code of a given array.</p> </div> </div> <div class="sect2"> <h3 id="sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-Newsolution%3APluggingEquivalencefunctions"><a class="anchor" href="#sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-Newsolution%3APluggingEquivalencefunctions"></a>1.3. New solution: Plugging Equivalence functions</h3> <div class="literalblock"> <div class="content"> <pre>Starting with Infinispan 5.3, Infinispan users can provide these functions for both keys and values implementing the new
-           link:$$https://github.com/infinispan/infinispan/blob/master/core/src/main/java/org/infinispan/util/Equivalence.java$$[Equivalence&amp;lt;T&amp;gt; interface]
-          :</pre> </div> </div> <div class="listingblock"> <div class="content"> <pre>
-public interface Equivalence&lt;T&gt; extends Serializable {
+</code></pre> </div> </div> <div class="paragraph"> <p>The problem with these classes is that they result in extra memory consumption due to the extra objects required to support data types such as arrays and really, these classes just a workaround for the lack of ability to provide a way to pass in a function that specifies how two byte arrays are are compared, or how to calculate the hash code of a given array.</p> </div> </div> <div class="sect2"> <h3 id="_new_solution_plugging_equivalence_functions"><a class="anchor" href="#_new_solution_plugging_equivalence_functions"></a>1.3. New solution: Plugging Equivalence functions</h3> <div class="paragraph"> <p>Starting with Infinispan 5.3, Infinispan users can provide these functions for both keys and values implementing the new <a href="https://github.com/infinispan/infinispan/blob/master/core/src/main/java/org/infinispan/util/Equivalence.java"><code>Equivalence&lt;T&gt;</code></a> interface:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay"><code class="java language-java">
+<span class="directive">public</span> <span class="type">interface</span> <span class="class">Equivalence</span>&lt;T&gt; <span class="directive">extends</span> <span class="predefined-type">Serializable</span> {
 
-   /**
+   <span class="comment">/**
     * Returns a hash code value for the object passed.
     *
     * As an example, implementors can provide an alternative implementation
@@ -489,11 +487,11 @@ public interface Equivalence&lt;T&gt; extends Serializable {
     *
     * @param obj instance to calculate hash code for
     * @return a hash code value for the object passed as parameter
-    */
-   int hashCode(Object obj);
+    */</span>
+   <span class="type">int</span> hashCode(<span class="predefined-type">Object</span> obj);
 
-   /**
-    * Indicates whether the objects passed are "equal to" each other.
+   <span class="comment">/**
+    * Indicates whether the objects passed are &quot;equal to&quot; each other.
     *
     * As an example, implementors can provide an alternative implementation
     * for the equals for arrays. So, instead of relying on
@@ -503,18 +501,18 @@ public interface Equivalence&lt;T&gt; extends Serializable {
     * @param otherObj to be compared with first parameter
     * @return &lt;code&gt;true&lt;/code&gt; if both objects are the same;
     *         &lt;code&gt;false&lt;/code&gt; otherwise
-    */
-   boolean equals(T obj, Object otherObj);
+    */</span>
+   <span class="type">boolean</span> equals(T obj, <span class="predefined-type">Object</span> otherObj);
 
-   /**
+   <span class="comment">/**
     * Returns a string representation of the given object.
     *
     * @param obj whose string representation is to be returned
     * @return a string representation of the passed object
-    */
-   String toString(Object obj);
+    */</span>
+   <span class="predefined-type">String</span> toString(<span class="predefined-type">Object</span> obj);
 
-   /**
+   <span class="comment">/**
     * Returns whether the given object is comparable. In other words, if
     * given an instance of the object, a sensible comparison can be computed
     * using {@link #compare(Object, Object)} method.
@@ -522,10 +520,10 @@ public interface Equivalence&lt;T&gt; extends Serializable {
     * @param obj instance to check if it's comparable
     * @return &lt;code&gt;true&lt;/code&gt; if the object is comparable;
     *         &lt;code&gt;false&lt;/code&gt; otherwise
-    */
-   boolean isComparable(Object obj); // For future support for objects that are not comparable, i.e. arrays
+    */</span>
+   <span class="type">boolean</span> isComparable(<span class="predefined-type">Object</span> obj); <span class="comment">// For future support for objects that are not comparable, i.e. arrays</span>
 
-   /**
+   <span class="comment">/**
     * Compares the two given objects for order. Returns a negative integer,
     * zero, or a positive integer as the first object is less than, equal to,
     * or greater than the second object.
@@ -535,114 +533,112 @@ public interface Equivalence&lt;T&gt; extends Serializable {
     * @return a negative integer, zero, or a positive integer as the
     *         first object is less than, equal to, or greater than the
     *         second object
-    */
-   int compare(Object obj, Object otherObj); // For future support for objects that are not comparable, i.e. arrays
+    */</span>
+   <span class="type">int</span> compare(<span class="predefined-type">Object</span> obj, <span class="predefined-type">Object</span> otherObj); <span class="comment">// For future support for objects that are not comparable, i.e. arrays</span>
 
 }
-</pre> </div> </div> <div class="literalblock"> <div class="content"> <pre>Implementations of these function can be pretty flexible. On one side, they could focus on a single, particular type, such as ByteArrayEquivalence below which expects nothing else other than byte arrays, such as in the case of Hot Rod based Infinispan remote caches:</pre> </div> </div> <div class="listingblock"> <div class="content"> <pre>
-package com.acme;
+</code></pre> </div> </div> <div class="paragraph"> <p>Implementations of these function can be pretty flexible. On one side, they could focus on a single, particular type, such as ByteArrayEquivalence below which expects nothing else other than byte arrays, such as in the case of Hot Rod based Infinispan remote caches:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay"><code class="java language-java">
+<span class="keyword">package</span> <span class="namespace">com.acme</span>;
 
-public class ByteArrayEquivalence implements Equivalence&lt;byte[]&gt; {
+<span class="directive">public</span> <span class="type">class</span> <span class="class">ByteArrayEquivalence</span> <span class="directive">implements</span> Equivalence&lt;<span class="type">byte</span><span class="type">[]</span>&gt; {
 
-   public static final Equivalence&lt;byte[]&gt; INSTANCE = new ByteArrayEquivalence();
+   <span class="directive">public</span> <span class="directive">static</span> <span class="directive">final</span> Equivalence&lt;<span class="type">byte</span><span class="type">[]</span>&gt; INSTANCE = <span class="keyword">new</span> ByteArrayEquivalence();
 
-   @Override
-   public int hashCode(Object obj) {
-      return 41 + Arrays.hashCode((byte[]) obj);
+   <span class="annotation">@Override</span>
+   <span class="directive">public</span> <span class="type">int</span> hashCode(<span class="predefined-type">Object</span> obj) {
+      <span class="keyword">return</span> <span class="integer">41</span> + <span class="predefined-type">Arrays</span>.hashCode((<span class="type">byte</span><span class="type">[]</span>) obj);
    }
 
-   @Override
-   public boolean equals(byte[] obj, Object otherObj) {
-      if (obj == otherObj) return true;
-      if (obj == null) return false;
-      if (otherObj == null || byte[].class != otherObj.getClass()) return false;
-      byte[] otherByteArray = (byte[]) otherObj;
-      return Arrays.equals(obj, otherByteArray);
+   <span class="annotation">@Override</span>
+   <span class="directive">public</span> <span class="type">boolean</span> equals(<span class="type">byte</span><span class="type">[]</span> obj, <span class="predefined-type">Object</span> otherObj) {
+      <span class="keyword">if</span> (obj == otherObj) <span class="keyword">return</span> <span class="predefined-constant">true</span>;
+      <span class="keyword">if</span> (obj == <span class="predefined-constant">null</span>) <span class="keyword">return</span> <span class="predefined-constant">false</span>;
+      <span class="keyword">if</span> (otherObj == <span class="predefined-constant">null</span> || <span class="type">byte</span><span class="type">[]</span>.class != otherObj.getClass()) <span class="keyword">return</span> <span class="predefined-constant">false</span>;
+      <span class="type">byte</span><span class="type">[]</span> otherByteArray = (<span class="type">byte</span><span class="type">[]</span>) otherObj;
+      <span class="keyword">return</span> <span class="predefined-type">Arrays</span>.equals(obj, otherByteArray);
    }
 
-   @Override
-   public String toString(Object obj) {
-      return Arrays.toString((byte[]) obj);
+   <span class="annotation">@Override</span>
+   <span class="directive">public</span> <span class="predefined-type">String</span> toString(<span class="predefined-type">Object</span> obj) {
+      <span class="keyword">return</span> <span class="predefined-type">Arrays</span>.toString((<span class="type">byte</span><span class="type">[]</span>) obj);
    }
 
-   @Override
-   public boolean isComparable(Object obj) {
-      return false;
+   <span class="annotation">@Override</span>
+   <span class="directive">public</span> <span class="type">boolean</span> isComparable(<span class="predefined-type">Object</span> obj) {
+      <span class="keyword">return</span> <span class="predefined-constant">false</span>;
    }
 
-   @Override
-   public int compare(Object obj, Object otherObj) {
-      return 0; // irrelevant
+   <span class="annotation">@Override</span>
+   <span class="directive">public</span> <span class="type">int</span> compare(<span class="predefined-type">Object</span> obj, <span class="predefined-type">Object</span> otherObj) {
+      <span class="keyword">return</span> <span class="integer">0</span>; <span class="comment">// irrelevant</span>
    }
 
 }
-</pre> </div> </div> <div class="literalblock"> <div class="content"> <pre>Or you could have implementations that support multiple different types, in case you store varied information, for example link:$$https://github.com/infinispan/infinispan-server/blob/master/infinispan/src/main/java/org/jboss/as/clustering/infinispan/equivalence/AnyServerEquivalence.java$$[AnyServerEquivalence] which supports both arrays and normal objects:</pre> </div> </div> <div class="listingblock"> <div class="content"> <pre>
-public class AnyServerEquivalence implements Equivalence&lt;Object&gt; {
+</code></pre> </div> </div> <div class="paragraph"> <p>Or you could have implementations that support multiple different types, in case you store varied information, for example <a href="https://github.com/infinispan/infinispan-server/blob/master/infinispan/src/main/java/org/jboss/as/clustering/infinispan/equivalence/AnyServerEquivalence.java">AnyServerEquivalence</a> which supports both arrays and normal objects:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay"><code class="java language-java">
+<span class="directive">public</span> <span class="type">class</span> <span class="class">AnyServerEquivalence</span> <span class="directive">implements</span> Equivalence&lt;<span class="predefined-type">Object</span>&gt; {
 
-    private static boolean isByteArray(Object obj) {
-        return byte[].class == obj.getClass();
+    <span class="directive">private</span> <span class="directive">static</span> <span class="type">boolean</span> isByteArray(<span class="predefined-type">Object</span> obj) {
+        <span class="keyword">return</span> <span class="type">byte</span><span class="type">[]</span>.class == obj.getClass();
     }
 
-    @Override
-    public int hashCode(Object obj) {
-        if (isByteArray(obj)) {
-            return 41 + Arrays.hashCode((byte[]) obj);
-        } else {
-            return obj.hashCode();
+    <span class="annotation">@Override</span>
+    <span class="directive">public</span> <span class="type">int</span> hashCode(<span class="predefined-type">Object</span> obj) {
+        <span class="keyword">if</span> (isByteArray(obj)) {
+            <span class="keyword">return</span> <span class="integer">41</span> + <span class="predefined-type">Arrays</span>.hashCode((<span class="type">byte</span><span class="type">[]</span>) obj);
+        } <span class="keyword">else</span> {
+            <span class="keyword">return</span> obj.hashCode();
         }
     }
 
-    @Override
-    public boolean equals(Object obj, Object otherObj) {
-        if (obj == otherObj)
-            return true;
-        if (obj == null || otherObj == null)
-            return false;
-        if (isByteArray(obj) &amp;&amp; isByteArray(otherObj))
-            return Arrays.equals((byte[]) obj, (byte[]) otherObj);
-        return obj.equals(otherObj);
+    <span class="annotation">@Override</span>
+    <span class="directive">public</span> <span class="type">boolean</span> equals(<span class="predefined-type">Object</span> obj, <span class="predefined-type">Object</span> otherObj) {
+        <span class="keyword">if</span> (obj == otherObj)
+            <span class="keyword">return</span> <span class="predefined-constant">true</span>;
+        <span class="keyword">if</span> (obj == <span class="predefined-constant">null</span> || otherObj == <span class="predefined-constant">null</span>)
+            <span class="keyword">return</span> <span class="predefined-constant">false</span>;
+        <span class="keyword">if</span> (isByteArray(obj) &amp;&amp; isByteArray(otherObj))
+            <span class="keyword">return</span> <span class="predefined-type">Arrays</span>.equals((<span class="type">byte</span><span class="type">[]</span>) obj, (<span class="type">byte</span><span class="type">[]</span>) otherObj);
+        <span class="keyword">return</span> obj.equals(otherObj);
     }
 
-    @Override
-    public String toString(Object obj) {
-        if (isByteArray(obj))
-            return Arrays.toString((byte[]) obj);
-        else
-            return obj.toString();
+    <span class="annotation">@Override</span>
+    <span class="directive">public</span> <span class="predefined-type">String</span> toString(<span class="predefined-type">Object</span> obj) {
+        <span class="keyword">if</span> (isByteArray(obj))
+            <span class="keyword">return</span> <span class="predefined-type">Arrays</span>.toString((<span class="type">byte</span><span class="type">[]</span>) obj);
+        <span class="keyword">else</span>
+            <span class="keyword">return</span> obj.toString();
     }
 
-    @Override
-    public boolean isComparable(Object obj) {
-        return obj instanceof Comparable;
+    <span class="annotation">@Override</span>
+    <span class="directive">public</span> <span class="type">boolean</span> isComparable(<span class="predefined-type">Object</span> obj) {
+        <span class="keyword">return</span> obj <span class="keyword">instanceof</span> <span class="predefined-type">Comparable</span>;
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public int compare(Object obj, Object otherObj) {
-       return ((Comparable&lt;Object&gt;) obj).compareTo(otherObj);
+    <span class="annotation">@Override</span>
+    <span class="annotation">@SuppressWarnings</span>(<span class="string"><span class="delimiter">&quot;</span><span class="content">unchecked</span><span class="delimiter">&quot;</span></span>)
+    <span class="directive">public</span> <span class="type">int</span> compare(<span class="predefined-type">Object</span> obj, <span class="predefined-type">Object</span> otherObj) {
+       <span class="keyword">return</span> ((<span class="predefined-type">Comparable</span>&lt;<span class="predefined-type">Object</span>&gt;) obj).compareTo(otherObj);
     }
 
 }
-</pre> </div> </div> <div class="sect3"> <h4 id="sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-ConfiguringEquivalencefunctions"><a class="anchor" href="#sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-ConfiguringEquivalencefunctions"></a>1.3.1. Configuring Equivalence functions</h4> <div class="sect4"> <h5 id="sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-UsingXML"><a class="anchor" href="#sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-UsingXML"></a>Using XML</h5> <div class="literalblock"> <div class="content"> <pre>The way to configure Infinispan with these Equivalence implementations is by adding them to the &amp;lt;dataContainer&amp;gt; XML element. For example, if we wanted to have byte array based keys, but the values would be normal objects, we'd define:</pre> </div> </div> <div class="listingblock"> <div class="content"> <pre>
-&lt;dataContainer keyEquivalence="com.acme.ByteArrayEquivalence" /&gt;
-</pre> </div> </div> <div class="literalblock"> <div class="content"> <pre>If you were trying to store both byte arrays as keys and values, you'd configure valueEquivalence attribute in &amp;lt;dataContainer&amp;gt; XML element:</pre> </div> </div> <div class="listingblock"> <div class="content"> <pre>
-&lt;dataContainer keyEquivalence="com.acme.ByteArrayEquivalence" valueEquivalence="com.acme.ByteArrayEquivalence" /&gt;
-</pre> </div> </div> <div class="literalblock"> <div class="content"> <pre>If no key or value equivalence is configured, they default to
-               link:$$https://github.com/infinispan/infinispan/blob/master/core/src/main/java/org/infinispan/util/AnyEquivalence.java$$[org.infinispan.util.AnyEquivalence]
-              , which behaves like any standard java object, delegating the equals/hashCode() calls to the objects themselves.</pre> </div> </div> </div> <div class="sect4"> <h5 id="sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-UsingProgrammaticConfiguration"><a class="anchor" href="#sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-UsingProgrammaticConfiguration"></a>Using Programmatic Configuration</h5> <div class="paragraph"> <p>Key and/or value equivalence could also have been configured programmatically, for example:</p> </div> <div class="listingblock"> <div class="content"> <pre>
+</code></pre> </div> </div> <div class="sect3"> <h4 id="_configuring_equivalence_functions"><a class="anchor" href="#_configuring_equivalence_functions"></a>1.3.1. Configuring Equivalence functions</h4> <div class="sect4"> <h5 id="_using_xml"><a class="anchor" href="#_using_xml"></a>Using XML</h5> <div class="paragraph"> <p>The way to configure Infinispan with these Equivalence implementations is by adding them to the <code>&lt;dataContainer /&gt;</code> XML element. For example, if we wanted to have byte array based keys, but the values would be normal objects, we&#8217;d define:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay"><code class="xml language-xml">
+<span class="tag">&lt;dataContainer</span> <span class="attribute-name">keyEquivalence</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.acme.ByteArrayEquivalence</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+</code></pre> </div> </div> <div class="paragraph"> <p>If you were trying to store both byte arrays as keys and values, you&#8217;d configure valueEquivalence attribute in <code>&lt;dataContainer /&gt;</code> XML element:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay"><code class="xml language-xml">
+<span class="tag">&lt;dataContainer</span> <span class="attribute-name">keyEquivalence</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.acme.ByteArrayEquivalence</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">valueEquivalence</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.acme.ByteArrayEquivalence</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+</code></pre> </div> </div> <div class="paragraph"> <p>If no key or value equivalence is configured, they default to <a href="https://github.com/infinispan/infinispan/blob/master/core/src/main/java/org/infinispan/util/AnyEquivalence.java">org.infinispan.util.AnyEquivalence</a>, which behaves like any standard java object, delegating the equals/hashCode() calls to the objects themselves.</p> </div> </div> <div class="sect4"> <h5 id="_using_programmatic_configuration"><a class="anchor" href="#_using_programmatic_configuration"></a>Using Programmatic Configuration</h5> <div class="paragraph"> <p>Key and/or value equivalence could also have been configured programmatically, for example:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay"><code class="java language-java">
 EmbeddedCacheManager cacheManager = ...;
-ConfigurationBuilder builder = new ConfigurationBuilder();
+ConfigurationBuilder builder = <span class="keyword">new</span> ConfigurationBuilder();
 builder.dataContainer()
    .keyEquivalence(com.acme.ByteArrayEquivalence.INSTANCE)
    .valueEquivalence(com.acme.ByteArrayEquivalence.INSTANCE);
-cacheManager.defineConfiguration("myCache", builder.build());
-</pre> </div> </div> </div> </div> <div class="sect3"> <h4 id="sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-Bytearraystorageexample"><a class="anchor" href="#sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-Bytearraystorageexample"></a>1.3.2. Byte array storage example</h4> <div class="literalblock"> <div class="content"> <pre>Assuming you've configured both keyEquivalence (via XML, or programmatically) to be com.acme.ByteArrayEquivalence , you should now be able to write code like this and get the assertion to succeed. If keyEquivalence has not been configured correctly, this test will fail:</pre> </div> </div> <div class="listingblock"> <div class="content"> <pre>
-Cache&lt;byte[], byte[]&gt; cache = ...
-byte[] key = {1, 2, 3};
-byte[] value = {4, 5, 6};
+cacheManager.defineConfiguration(<span class="string"><span class="delimiter">&quot;</span><span class="content">myCache</span><span class="delimiter">&quot;</span></span>, builder.build());
+</code></pre> </div> </div> </div> </div> <div class="sect3"> <h4 id="_byte_array_storage_example"><a class="anchor" href="#_byte_array_storage_example"></a>1.3.2. Byte array storage example</h4> <div class="paragraph"> <p>Assuming you&#8217;ve configured both keyEquivalence (via XML, or programmatically) to be com.acme.ByteArrayEquivalence , you should now be able to write code like this and get the assertion to succeed. If keyEquivalence has not been configured correctly, this test will fail:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay"><code class="java language-java">
+Cache&lt;<span class="type">byte</span><span class="type">[]</span>, <span class="type">byte</span><span class="type">[]</span>&gt; cache = ...
+byte<span class="type">[]</span> key = {<span class="integer">1</span>, <span class="integer">2</span>, <span class="integer">3</span>};
+<span class="type">byte</span><span class="type">[]</span> value = {<span class="integer">4</span>, <span class="integer">5</span>, <span class="integer">6</span>};
 cache.put(key, value);
 
-byte[] expectedValue = {4, 5, 6};
-byte[] lookupKey = {1, 2, 3};
-assert Arrays.equals(expectedValue, cache.get(lookupKey));
-</pre> </div> </div> </div> <div class="sect3"> <h4 id="sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-OthermethodsinEquivalenceinterface"><a class="anchor" href="#sid-68355127_Storingobjects%28e.g.arrays%29withcustomEquivalencefunctions-OthermethodsinEquivalenceinterface"></a>1.3.3. Other methods in Equivalence interface</h4> <div class="literalblock"> <div class="content"> <pre>Finally, Equivalence defines some extra methods, such as toString(Object obj) , isComparable(Object obj) and compare(Object obj, Object otherObj) , which again can be used to provide different implementations to the ones provided for the JDK. For example, the toString() method can be used to provide a different String representation of the object, which is again useful for arrays since the default JDK implementation does not print the array contents. The comparable functions are not yet used by Infinispan but they've been defined in order to help with potential future support of tree-based storage in inner data structures.</pre> </div> </div> </div> </div> </div> </div> </div> <div id="footer"> <div id="footer-text"> Last updated 2013-09-16 15:48:59 BST </div> </div> </body> </html>
+<span class="type">byte</span><span class="type">[]</span> expectedValue = {<span class="integer">4</span>, <span class="integer">5</span>, <span class="integer">6</span>};
+<span class="type">byte</span><span class="type">[]</span> lookupKey = {<span class="integer">1</span>, <span class="integer">2</span>, <span class="integer">3</span>};
+<span class="keyword">assert</span> <span class="predefined-type">Arrays</span>.equals(expectedValue, cache.get(lookupKey));
+</code></pre> </div> </div> </div> <div class="sect3"> <h4 id="_other_methods_in_equivalence_interface"><a class="anchor" href="#_other_methods_in_equivalence_interface"></a>1.3.3. Other methods in Equivalence interface</h4> <div class="paragraph"> <p>Finally, Equivalence defines some extra methods, such as toString(Object obj) , isComparable(Object obj) and compare(Object obj, Object otherObj) , which again can be used to provide different implementations to the ones provided for the JDK. For example, the toString() method can be used to provide a different String representation of the object, which is again useful for arrays since the default JDK implementation does not print the array contents. The comparable functions are not yet used by Infinispan but they&#8217;ve been defined in order to help with potential future support of tree-based storage in inner data structures.</p> </div> </div> </div> </div> </div> </div> <div id="footer"> <div id="footer-text"> Last updated 2013-09-16 20:09:55 BST </div> </div> </body> </html>
