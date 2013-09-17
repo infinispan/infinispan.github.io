@@ -5,7 +5,7 @@ require 'html_minifier'
 require 'file_merger'
 require 'less_config'
 
-Awestruct::Extensions::Pipeline.new do
+Awestruct::Extensions::Pipeline.new do  
   helper Awestruct::Extensions::Partial
   extension Awestruct::Extensions::WgetWrapper.new
   transformer Awestruct::Extensions::JsMinifier.new
