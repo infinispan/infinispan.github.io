@@ -21,6 +21,8 @@ EOS
   opt :git_update, "Will update documentation from git, if force-clone is not set", :default => false
 end
 
+beginning = Time.now
+
 verbose = opts.verbose == true
 force_clone = opts.force_clone == true
 git_update = opts.git_update == true
@@ -32,44 +34,43 @@ cfg = YAML.load_file(site_home + "_config/ispn.yml")
 
 FileUtils.rm_rf site_home + "docs"
 FileUtils.rm_rf site_home + "infinispan_srcs" if force_clone
-FileUtils.mkdir site_home + "docs"
 
-git_repos = {}
+def get_docs(repo, branch, loc, target, verbose)  
+  FileUtils.mkdir_p target
+  puts "    Cloning #{repo}@#{branch}/#{loc} to #{target}" if verbose
+  tmp = "/Volumes/RAMDisk/tmp/fetchdocs"
+  FileUtils.rm_rf tmp
+  Git.clone(repo, tmp)
+  g = Git.open(tmp)
+  g.checkout branch    
 
-cfg["docs"].each do |ver, ver_cfg|
-  FileUtils.mkdir site_home + "docs/" + ver
-  git_repos[ver_cfg["github_repo"]] = ver
-end
-
-puts "Preparing to generate documentation for #{cfg["docs"].size} versions of Infinispan"
-if force_clone
-  puts "Cloning #{git_repos.size} git repositories" if verbose
-  ## Let's clone some repos!
-  git_repos.each do |remote, local| 
-    puts "Cloning https://github.com/#{remote}.git into infinispan_srcs/#{local}" if verbose 
-    Git.clone("https://github.com/" + remote + ".git", "infinispan_srcs/" + local)
-  end
-end
-
-if git_update and not force_clone
-  puts "Updating git repositories" if verbose
-  ## Let's update some repos!
-  cfg["docs"].each do |ver, ver_cfg|
-    repo = git_repos[ver_cfg["github_repo"]]
-    branch = ver_cfg["branch"]
-    g = Git.open("infinispan_srcs/" + repo)
-    g.checkout branch    
-    g.pull
-  end
-end
-
-## Now lets process each version
-cfg["docs"].each do |ver, ver_cfg|
-  git_clone = git_repos[ver_cfg["github_repo"]]
-  git = Git.open(site_home + "infinispan_srcs/" + git_clone)  
-  git.checkout ver_cfg["branch"]
-  docs_src = site_home + "infinispan_srcs/" + git_clone + "/" + ver_cfg["location"]
-  docs_dest = site_home + "docs/" + ver + "/"
+  docs_src = "#{tmp}/#{loc}"
   d = Dir.open docs_src
-  d.each {|f| FileUtils.cp_r("#{docs_src}/#{f}", docs_dest, :verbose => verbose) if f != "." and f != ".." and f != "Guardfile"}
+  d.each {|f| FileUtils.cp_r("#{docs_src}/#{f}", target, :verbose => verbose) if f != "." and f != ".." and f != "Guardfile"}
+  FileUtils.rm_rf tmp
 end
+
+cfg["docs"].each do |type, tcfg|
+  puts "Processing #{type}"
+  tcfg.each do |ver, vcfg|
+    puts "  #{ver}"
+    if type == "infinispan"
+      core = vcfg["core"]
+      server = vcfg["server"]
+
+      get_docs(core["git_repo"], core["branch"], core["location"], "#{site_home}docs/#{ver}", verbose)
+      get_docs(server["git_repo"], server["branch"], server["location"], "#{site_home}docs/#{ver}", verbose) if server != nil
+
+    elsif type == "cachestores"
+      cs_name = ver
+      get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}docs/#{type}/#{cs_name}", verbose)
+
+    elsif type == "hotrod-clients"
+      hrc_name = ver
+      get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}docs/#{type}/#{hrc_name}", verbose)
+
+    end
+  end
+end
+
+puts "Time elapsed #{Time.now - beginning} seconds"
