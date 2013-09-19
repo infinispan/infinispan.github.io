@@ -37,7 +37,7 @@ FileUtils.rm_rf site_home + "docs"
 def get_docs(repo, branch, loc, target, verbose)  
   FileUtils.mkdir_p target
   puts "    Cloning #{repo}@#{branch}/#{loc} to #{target}" if verbose
-  tmp = "/Volumes/RAMDisk/tmp/fetchdocs"
+  tmp = "/tmp/fetchdocs"
   FileUtils.rm_rf tmp
   Git.clone(repo, tmp)
   g = Git.open(tmp)
