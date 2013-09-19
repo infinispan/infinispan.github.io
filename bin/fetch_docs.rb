@@ -33,7 +33,6 @@ puts "Using site home as #{site_home}" if verbose
 cfg = YAML.load_file(site_home + "_config/ispn.yml")
 
 FileUtils.rm_rf site_home + "docs"
-FileUtils.rm_rf site_home + "infinispan_srcs" if force_clone
 
 def get_docs(repo, branch, loc, target, verbose)  
   FileUtils.mkdir_p target
