@@ -34,12 +34,14 @@ Staging is published on OpenShift.  To do this, you *must* have SSH access to In
 To be able to publish to staging, you must:
 * Have the following in your `~/.ssh/config`:
 
+```
     Host *.rhcloud.com
         IdentityFile ~/.ssh/libra_id_rsa
         VerifyHostKeyDNS yes
         StrictHostKeyChecking no
         UserKnownHostsFile ~/.ssh/libra_known_hosts
-        
+```
+
 * Have `libra_id_rsa`, `libra_id_rsa.pub` and `libra_known_hosts` in your `~/.ssh` directory.
 Contact Infinispan project leads for these files.
 
