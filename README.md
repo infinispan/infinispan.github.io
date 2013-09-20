@@ -19,11 +19,7 @@ This is the source code for the [Infinispan.org](http://www.infinispan.org) webs
 ## 1. Build the website
 Run Awestruct in development mode from the top-level directory to build the website and host it using a local web server:
 
-`bin/run_dev.sh`
-
-**Note:** The first time the site is built common JavaScript, font and image files will be downloaded from [http://static.jboss.org](http://static.jboss.org) and cached into a local *cache/* directory using wget. This then allows you to run the site locally rather than relying on a network connection. Since the cache download takes a considerable amount of time by default the `wget` command will run only once a day to prevent unrequired delays in build times. The time interval and other settings of this process can be configured in site.yml.
-
-**Tip:** Use the `--directory-prefix` option of the `wget: urls:` property in *_config/site.yml* if you wish to use a different directory name. A *.gitignore* file is automatically created in this directory containing a * to prevent you adding cached files to GIT by mistake. 
+`$ bin/run_dev.sh`
 
 ## 2. View the website locally
 Use a web browser to visit [http://localhost:4242](http://localhost:4242) where you can see the site.
@@ -43,6 +39,7 @@ To be able to publish to staging, you must:
         VerifyHostKeyDNS yes
         StrictHostKeyChecking no
         UserKnownHostsFile ~/.ssh/libra_known_hosts
+        
 * Have `libra_id_rsa`, `libra_id_rsa.pub` and `libra_known_hosts` in your `~/.ssh` directory.
 Contact Infinispan project leads for these files.
 
