@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-  
+
 require 'yaml'
 require 'fileutils'
 require 'git'
@@ -29,44 +29,67 @@ git_update = opts.git_update == true
 
 cwd = File.expand_path File.dirname(__FILE__)
 site_home = cwd + "/../"
-puts "Using site home as #{site_home}" if verbose 
+puts "Using site home as #{site_home}" if verbose
 cfg = YAML.load_file(site_home + "_config/ispn.yml")
 
 FileUtils.rm_rf site_home + "docs"
 
-def get_docs(repo, branch, loc, target, verbose)  
+def get_docs(repo, branch, loc, target, verbose, attr_header)
   FileUtils.mkdir_p target
   puts "    Cloning #{repo}@#{branch}/#{loc} to #{target}" if verbose
   tmp = "/tmp/fetchdocs"
   FileUtils.rm_rf tmp
   Git.clone(repo, tmp)
   g = Git.open(tmp)
-  g.checkout branch    
+  g.checkout branch
 
   docs_src = "#{tmp}/#{loc}"
   d = Dir.open docs_src
   d.each {|f| FileUtils.cp_r("#{docs_src}/#{f}", target, :verbose => verbose) if f != "." and f != ".." and f != "Guardfile"}
-  FileUtils.rm_rf tmp
-end
 
-cfg["docs"].each do |type, tcfg|
-  puts "Processing #{type}"
-  tcfg.each do |ver, vcfg|
-    puts "  #{ver}"
-    if type == "infinispan"
-      core = vcfg["core"]
-      server = vcfg["server"]
+  if attr_header != "" then
+    puts "Prepending attribute header to .adoc files:\n#{attr_header}"
+    Dir.glob("#{target}/**/*.adoc").each {|f|
+      file_new = File.open("#{f}.new", "w")
+      file_new.puts("#{attr_header}\n")
+      file_old = File.open(f, "r")
+      file_old.each {|line| file_new.puts(line)}
+      file_old.close()
+      file_new.close()
 
-      get_docs(core["git_repo"], core["branch"], core["location"], "#{site_home}docs/#{ver}", verbose)
-      get_docs(server["git_repo"], server["branch"], server["location"], "#{site_home}docs/#{ver}", verbose) if server != nil
+      FileUtils.mv file_new.path, file_old.path
+    }
+  end
+   FileUtils.rm_rf tmp
+ end
 
-    elsif type == "cachestores"
-      cs_name = ver
-      get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}docs/#{type}/#{cs_name}", verbose)
+ cfg["docs"].each do |type, tcfg|
+   puts "Processing #{type}"
+   tcfg.each do |ver, vcfg|
+     puts "  #{ver}"
 
-    elsif type == "hotrod-clients"
-      hrc_name = ver
-      get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}docs/#{type}/#{hrc_name}", verbose)
+    attr_header = ""
+    asciidocattr = vcfg["asciidocattr"]
+    if asciidocattr != nil then
+      asciidocattr.each do |attr_name, attr_value|
+        attr_header = "#{attr_header}:#{attr_name}: #{attr_value.to_s}\n"
+      end
+    end
+
+     if type == "infinispan"
+       core = vcfg["core"]
+       server = vcfg["server"]
+
+       get_docs(core["git_repo"], core["branch"], core["location"], "#{site_home}docs/#{ver}", verbose, attr_header)
+       get_docs(server["git_repo"], server["branch"], server["location"], "#{site_home}docs/#{ver}", verbose, attr_header) if server != nil
+
+     elsif type == "cachestores"
+       cs_name = ver
+       get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}docs/#{type}/#{cs_name}", verbose, attr_header)
+
+     elsif type == "hotrod-clients"
+       hrc_name = ver
+       get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}docs/#{type}/#{hrc_name}", verbose, attr_header)
 
     end
   end
