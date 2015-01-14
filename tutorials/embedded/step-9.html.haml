@@ -1,0 +1,70 @@
+---
+layout: tutorial
+title: Infinispan Embedded Tutorial
+---
+- tutorial_github_url = "https://github.com/infinispan/infinispan-embedded-tutorial"
+- @tutorial_steps = [ "The Weather Application", "Initializing the CacheManager", "Putting stuff in the cache", "Making entries expire", "Configuring the default cache", "Clustering the application", "Listen to changes in the cluster", "Listen to changes in the cache", "Grouping entries together", "A custom externalizer", "Temperature averages with map/reduce", "Declarative configuration" ]
+- tutorial_step = 9
+.row-fluid
+  %ul.breadcrumb
+    %li
+      %a{:href => "/tutorials"} Tutorials
+      %span.divider /
+    %li.active The Weather App
+  #columns
+    #leftcol.span3.well
+      = partial( 'tutorialmenu.html.haml', { "tutorial_steps" => @tutorial_steps, "tutorial_step" => tutorial_step } )
+
+    #maincol.span9
+      = partial( 'tutorialnav.html.haml', { "tutorial_steps" => @tutorial_steps, "tutorial_step" => tutorial_step, "tutorial_github_url" => tutorial_github_url, "header" => true } )
+      %p
+        When we introduced clustering to our application, we pointed out the need for keys and values to be serializable. Infinispan, however, doesn't use standard Java serialization
+        but a much higher performance library called JBoss Marshalling. Usually you don't need to do anything else to your entities, aside implementing
+        %i java.io.Serializable
+        since JBoss Marshalling takes care of everything for you. There are cases, however, where you might want to have full control over the serialization format, for example to support
+        backwards and forwards compatibility of entities which might change during the lifetime of a project. In this case you need to provide a custom 
+        %i Externalizer.
+        An Externalizer is simply a class which knows how to read and write your entities over a stream. Let's write a simple externalizer for our 
+        %i LocationWeather
+        class:
+        %pre
+          %code.java
+            = preserve do
+              :escaped
+                public static class LWExternalizer implements Externalizer<LocationWeather> {
+                  @Override
+                  public void writeObject(ObjectOutput output, LocationWeather object) throws IOException {
+                    output.writeFloat(object.temperature);
+                    output.writeUTF(object.conditions);
+                    output.writeUTF(object.country);
+                  }
+                  @Override
+                  public LocationWeather readObject(ObjectInput input) throws IOException, ClassNotFoundException { 
+                    float temperature = input.readFloat();
+                    String conditions = input.readUTF();
+                    String country = input.readUTF();
+                    return new LocationWeather(temperature, conditions, country);
+                  }
+                }
+        We also need to add a special annotation to our entity, declaring the externalizer that should be used for it:
+        %pre
+          %code.java
+            = preserve do
+              :escaped
+                @SerializeWith(LocationWeather.LWExternalizer.class)
+                public class LocationWeather implements Serializable {
+        That's it. Since we didn't do anything special, running the application won't show any visible differences, but now you have a better idea about what's happening under
+        the hood.
+        %pre
+          %code.nohighlight
+            = preserve do
+              :escaped
+                $ git checkout -f step-9
+                $ mvn clean package exec:exec # on terminal 1
+                $ mvn exec:exec # on terminal 2
+
+      %p
+        Now we are ready to tackle something a bit more interesting: we will use Infinispan to
+        %i do
+        something with the data, instead of just storing and retrieving it.
+      = partial( 'tutorialnav.html.haml', { "tutorial_steps" => @tutorial_steps, "tutorial_step" => tutorial_step, "tutorial_github_url" => tutorial_github_url } )
