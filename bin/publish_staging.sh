@@ -1,7 +1,7 @@
 #!/bin/sh
 
-rm -rf _site
-bin/fetch_docs.rb -f
+#rm -rf _site
+#bin/fetch_docs.rb -f
 bundle exec awestruct -g -Pstaging
 
 git clone ssh://5229a8884382ecc523000001@stg-ispn.rhcloud.com/~/git/stg.git _stg
