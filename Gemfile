@@ -10,7 +10,8 @@ gem 'rb-fsevent', '~> 0.9.3'	# FSEvents API with Signals catching (without RubyC
 gem 'kramdown', '~> 1.0.1' # Kramdown works on all platforms, rdiscount only on mri
 gem 'therubyrhino', '~> 1.73', :platforms => :jruby # JavaScript on JRuby
 gem 'htmlcompressor', '~> 0.0.3' # Adds in HTML minification, helps remove the warning on awestruct startup
-gem 'json', '~> 1.7.7'
+#gem 'json', '~> 1.7.7'
+gem 'json', '~> 1.8.2'
 gem 'asciidoctor', '~> 0.1.4'
 gem 'git', '~> 1.2.6'
 gem 'trollop', '~> 2.0'
