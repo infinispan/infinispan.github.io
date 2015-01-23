@@ -4,9 +4,7 @@ This is the source code for the [Infinispan.org](http://www.infinispan.org) webs
 
 # System Requirements
 * Ruby 1.9.2 or above
-* RubyGems - 1.3.6 or above
-* Bundler - 1.3.5
-   * Try `sudo gem install bundler`
+   * Use the instructions from [Awestruct](http://awestruct.org/getting_started/) to install Ruby, Awestruct and Bundler
 * GNU WGet 1.14
 
 **Note:** If you are using Mac OS X, you need to have the following setup:
