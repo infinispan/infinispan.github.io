@@ -13,6 +13,7 @@ git clone --branch master git@github.com:infinispan/infinispan.github.io.git _ma
 cd _master_branch
 cp -r ../_site/* .
 
-git commit -a -m "Published master to GitHub pages."  || exit 1
+git add -A
+git commit -m "Published master to GitHub pages."  || exit 1
 git push origin master
 cd ..
