@@ -1,0 +1,73 @@
+---
+layout: tutorial
+title: Infinispan Embedded Tutorial
+---
+- tutorial_github_url = "https://github.com/infinispan/infinispan-embedded-tutorial"
+- @tutorial_steps = [ "The Weather Application", "Initializing the CacheManager", "Putting stuff in the cache", "Making entries expire", "Configuring the default cache", "Clustering the application", "Listen to changes in the cluster", "Listen to changes in the cache", "Grouping entries together", "A custom externalizer", "Temperature averages with map/reduce", "Declarative configuration" ]
+- tutorial_step = 11
+.row-fluid
+  %ul.breadcrumb
+    %li
+      %a{:href => "/tutorials"} Tutorials
+      %span.divider /
+    %li.active The Weather App
+  #columns
+    #leftcol.span3.well
+      = partial( 'tutorialmenu.html.haml', { "tutorial_steps" => @tutorial_steps, "tutorial_step" => tutorial_step } )
+
+    #maincol.span9
+      = partial( 'tutorialnav.html.haml', { "tutorial_steps" => @tutorial_steps, "tutorial_step" => tutorial_step, "tutorial_github_url" => tutorial_github_url, "header" => true } )
+      %p
+        Up to now we have been configuring Infinispan through it's programmatic API, but it is also typical for applications to separate code from configuration. For this
+        purpose we can use the declarative configuration, whereby all aspects of Infinispan can be configured using an external XML file. First of all let's convert the configuration
+        into XML format:
+        %pre
+          %code.xml
+            = preserve do
+              :escaped
+                <?xml version="1.0" encoding="UTF-8"?>
+                <infinispan
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="urn:infinispan:config:7.1 http://www.infinispan.org/schemas/infinispan-config-7.1.xsd"
+                      xmlns="urn:infinispan:config:7.1">
+                      
+                      <cache-container default-cache="default">
+                          <transport cluster="WeatherApp"/>
+                          
+                          <distributed-cache name="default" mode="SYNC">
+                            <expiration lifespan="5000"/>
+                            <groups enabled="true">
+                              <grouper class="org.infinispan.tutorial.embedded.LocationWeather$LocationGrouper"/>
+                            </groups>
+                          </distributed-cache>
+                      </cache-container>
+                </infinispan>
+        By placing this file in Maven's
+        %i src/main/resources
+        folder, it will be available in the classpath, so that we can use it to configure the
+        %i DefaultCacheManager
+        as follows:
+        %pre
+          %code.java
+            = preserve do
+              :escaped
+                cacheManager = new DefaultCacheManager(WeatherApp.class.getResourceAsStream("/weatherapp-infinispan.xml"));                
+                
+        You are now ready to run the code:
+        %pre
+          %code.nohighlight
+            = preserve do
+              :escaped
+                $ git checkout -f step-11
+                $ mvn clean package exec:exec # from terminal 1
+                $ mvn exec:exec # from terminal 2
+
+      %p
+        Obviously, the output will be identical to the previous run, which is what we were expecting !
+        
+      %h3 Conclusions
+      %p
+        You have reached the end of this tutorial and, along the way, you have learned how to embed Infinispan in your application, not only to perform simple caching
+        of data, but also for distributed computation and clustering. Infinispan offers many other interesting features, so please head over to our extensive
+        %a{:href => "/documentation"} documentation
+        to learn about them.
