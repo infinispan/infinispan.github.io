@@ -8,7 +8,7 @@ require 'trollop'
 opts = Trollop::options do
   version "fetch_docs 0.0.1 (c) 2013 Manik Surtani"
   banner <<-EOS
-This script pulls AsciiDoc documentation from Infnispan repositories (defined
+This script pulls AsciiDoc documentation from Infinispan repositories (defined
 in _config/ispn.yml) and incorporates them into the Awestruct website.
 
 Usage:
