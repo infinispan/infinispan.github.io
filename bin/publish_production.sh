@@ -7,13 +7,10 @@ bin/fetch_docs.rb -f
 #bundle exec awestruct -gw -Pproduction --deploy
 bundle exec awestruct -gw -Pproduction
 
-rm -rf _master_branch
-git clone --branch master git@github.com:infinispan/infinispan.github.io.git _master_branch || exit 1
+git checkout -f master
+git pull --rebase
 
-cd _master_branch
-cp -r ../_site/* .
-
+cp -r _site/* .
 git add -A
-git commit -m "Published master to GitHub pages."  || exit 1
+git commit -a -m "Published master to GitHub pages."
 git push origin master
-cd ..
