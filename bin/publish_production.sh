@@ -13,4 +13,4 @@ git pull --rebase
 cp -r _site/* .
 git add -A
 git commit -a -m "Published master to GitHub pages."
-git push origin master
+git push origin master && git checkout develop
