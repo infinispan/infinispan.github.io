@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 
-gem 'awestruct', '~> 0.5.6'	# Framework for creating static HTML sites
+gem 'awestruct', '~> 0.5.7.RC2'	# Framework for creating static HTML sites
 #gem 'awestruct', :github => 'mojavelinux/awestruct', :branch => 'integration'
 gem 'uglifier', '~> 2.0.1'	# Ruby wrapper for UglifyJS JavaScript compressor
 gem 'cssminify', '~> 1.0.2'	# CSS compression using YUI compressor
