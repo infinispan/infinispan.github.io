@@ -192,7 +192,14 @@ end
 
 # Execute Awestruct
 def run_awestruct(args)
-  system "#{$use_bundle_exec ? 'bundle exec ' : ''}awestruct #{args}" 
+  # used to bind Awestruct to 0.0.0.0
+  # do export BIND="-b 0.0.0.0"
+  if ENV['BIND'] && ENV['BIND'] != ''
+    augmented_args = "#{ENV['BIND']} #{args}"
+  else
+    augmented_args = "#{args}"
+  end
+  system "#{$use_bundle_exec ? 'bundle exec ' : ''}awestruct #{augmented_args}" 
 end
 
 # A cross-platform means of finding an executable in the $PATH.
