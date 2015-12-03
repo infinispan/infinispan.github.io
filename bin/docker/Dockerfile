@@ -16,6 +16,10 @@ ENV        GEM_PATH $HOME/.gems
 ENV        PATH $PATH:$GEM_HOME/bin
 ENV        LC_ALL en_US.UTF-8
 ENV        LANG en_US.UTF-8
+# Rakefile takes BIND into account
+# used to bind awestruct to 0.0.0.0 instead of localhost
+# otherwise the port is not exposed out of docker
+ENV        BIND "-b 0.0.0.0"
 RUN        mkdir $HOME/.gems
 
 # Install Rake and Bundler for driving the Awestruct build & site
