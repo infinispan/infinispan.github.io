@@ -34,12 +34,13 @@ cfg = YAML.load_file(site_home + "_config/ispn.yml")
 
 FileUtils.rm_rf site_home + "docs"
 
-def get_docs(repo, branch, loc, target, verbose, attr_header)
+def get_docs(repo, branch, loc, docroot, docbase, verbose, attr_header)
+  target = File.expand_path("#{docroot}#{docbase}")
   FileUtils.mkdir_p target
   puts "    Cloning #{repo}@#{branch}/#{loc} to #{target}" if verbose
   tmp = "/tmp/fetchdocs"
   FileUtils.rm_rf tmp
-  Git.clone(repo, tmp)
+  Git.clone(repo, tmp, :depth => 1)
   g = Git.open(tmp)
   g.checkout branch
 
@@ -50,10 +51,19 @@ def get_docs(repo, branch, loc, target, verbose, attr_header)
   if attr_header != "" then
     puts "Prepending attribute header to .adoc files:\n#{attr_header}"
     Dir.glob("#{target}/**/*.adoc").each {|f|
+      basedir = File.dirname(f)
+      chapter = File.basename(f).start_with?("chapter")
+      incbase = basedir[basedir.index(docbase)..-1]
       file_new = File.open("#{f}.new", "w")
       file_new.puts("#{attr_header}\n")
       file_old = File.open(f, "r")
-      file_old.each {|line| file_new.puts(line)}
+      file_old.each {|line|
+        if chapter then
+          file_new.puts(line)
+        else
+          file_new.puts(line.sub( /include::/, "include::#{incbase}/"))
+        end
+      }
       file_old.close()
       file_new.close()
 
@@ -80,16 +90,16 @@ def get_docs(repo, branch, loc, target, verbose, attr_header)
        core = vcfg["core"]
        server = vcfg["server"]
 
-       get_docs(core["git_repo"], core["branch"], core["location"], "#{site_home}docs/#{ver}", verbose, attr_header)
-       get_docs(server["git_repo"], server["branch"], server["location"], "#{site_home}docs/#{ver}", verbose, attr_header) if server != nil
+       get_docs(core["git_repo"], core["branch"], core["location"], "#{site_home}", "docs/#{ver}", verbose, attr_header)
+       get_docs(server["git_repo"], server["branch"], server["location"], "#{site_home}", "docs/#{ver}", verbose, attr_header) if server != nil
 
      elsif type == "cachestores"
        cs_name = ver
-       get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}docs/#{type}/#{cs_name}", verbose, attr_header)
+       get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}", "docs/#{type}/#{cs_name}", verbose, attr_header)
 
      elsif type == "hotrod-clients"
        hrc_name = ver
-       get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}docs/#{type}/#{hrc_name}", verbose, attr_header)
+       get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}", "docs/#{type}/#{hrc_name}", verbose, attr_header)
 
     end
   end
