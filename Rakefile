@@ -47,7 +47,7 @@ task :default => :preview
 
 desc 'Setup the environment to run Awestruct'
 task :setup, [:env] => :init do |task, args|
-  next if !which('awestruct').nil?
+#  next if !which('awestruct').nil?
 
   if File.exist? 'Gemfile'
     if args[:env] == 'local'
