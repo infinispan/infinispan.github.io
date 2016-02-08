@@ -7,7 +7,6 @@ require 'uglifier'
 #
 # Required installed gems:
 # - uglifier (this has a runtime dependency on execjs)
-# - therubyracer
 #
 # Configuration:
 #
