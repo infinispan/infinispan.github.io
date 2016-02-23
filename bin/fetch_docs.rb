@@ -40,7 +40,7 @@ def get_docs(repo, branch, loc, docroot, docbase, verbose, attr_header)
   puts "    Cloning #{repo}@#{branch}/#{loc} to #{target}" if verbose
   tmp = "/tmp/fetchdocs"
   FileUtils.rm_rf tmp
-  Git.clone(repo, tmp, :depth => 1)
+  Git.clone(repo, tmp, :depth => 1, :branch => branch)
   g = Git.open(tmp)
   g.checkout branch
 
