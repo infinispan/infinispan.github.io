@@ -2,7 +2,6 @@
 
 require 'yaml'
 require 'fileutils'
-require 'git'
 require 'trollop'
 
 opts = Trollop::options do
@@ -31,20 +30,24 @@ cwd = File.expand_path File.dirname(__FILE__)
 site_home = cwd + "/../"
 puts "Using site home as #{site_home}" if verbose
 cfg = YAML.load_file(site_home + "_config/ispn.yml")
-
+git_clone_root = "/tmp/infinispan.github.io_docs"
+FileUtils.rm_rf git_clone_root
 FileUtils.rm_rf site_home + "docs"
 
-def get_docs(repo, branch, loc, docroot, docbase, verbose, attr_header)
+def get_docs(tmp, name, repo, branch, loc, docroot, docbase, verbose, attr_header)
   target = File.expand_path("#{docroot}#{docbase}")
   FileUtils.mkdir_p target
-  puts "    Cloning #{repo}@#{branch}/#{loc} to #{target}" if verbose
-  tmp = "/tmp/fetchdocs"
-  FileUtils.rm_rf tmp
-  Git.clone(repo, tmp, :depth => 1, :branch => branch)
-  g = Git.open(tmp)
-  g.checkout branch
+  puts "    Cloning #{repo}/#{loc} to #{target}" if verbose
+  git_clone_path = "#{tmp}/#{name}"
+  %x( git clone --depth=1 #{repo} #{git_clone_path} 2>&1 > /dev/null )
+  oldwd = FileUtils.pwd
+  FileUtils.chdir git_clone_path
+  puts "    Fetching branch #{branch}" if verbose
+  %x( git fetch --depth=1 origin #{branch} 2>&1 > /dev/null )
+  %x( git checkout FETCH_HEAD 2>&1 > /dev/null  )
+  FileUtils.chdir oldwd
 
-  docs_src = "#{tmp}/#{loc}"
+  docs_src = "#{git_clone_path}/#{loc}"
   d = Dir.open docs_src
   d.each {|f| FileUtils.cp_r("#{docs_src}/#{f}", target, :verbose => verbose) if f != "." and f != ".." and f != "Guardfile"}
 
@@ -70,13 +73,12 @@ def get_docs(repo, branch, loc, docroot, docbase, verbose, attr_header)
       FileUtils.mv file_new.path, file_old.path
     }
   end
-   FileUtils.rm_rf tmp
- end
+end
 
- cfg["docs"].each do |type, tcfg|
-   puts "Processing #{type}"
-   tcfg.each do |ver, vcfg|
-     puts "  #{ver}"
+cfg["docs"].each do |type, tcfg|
+  puts "Processing #{type}"
+  tcfg.each do |ver, vcfg|
+    puts "  #{ver}"
 
     attr_header = ""
     asciidocattr = vcfg["asciidocattr"]
@@ -86,23 +88,18 @@ def get_docs(repo, branch, loc, docroot, docbase, verbose, attr_header)
       end
     end
 
-     if type == "infinispan"
-       core = vcfg["core"]
-       server = vcfg["server"]
-
-       get_docs(core["git_repo"], core["branch"], core["location"], "#{site_home}", "docs/#{ver}", verbose, attr_header)
-       get_docs(server["git_repo"], server["branch"], server["location"], "#{site_home}", "docs/#{ver}", verbose, attr_header) if server != nil
-
-     elsif type == "cachestores"
-       cs_name = ver
-       get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}", "docs/#{type}/#{cs_name}", verbose, attr_header)
-
-     elsif type == "hotrod-clients"
-       hrc_name = ver
-       get_docs(vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}", "docs/#{type}/#{hrc_name}", verbose, attr_header)
-
+    if type == "infinispan"
+      core = vcfg["core"]
+      get_docs(git_clone_root, "infinispan", core["git_repo"], core["branch"], core["location"], "#{site_home}", "docs/#{ver}", verbose, attr_header)
+    elsif type == "cachestores"
+      cs_name = ver
+      get_docs(git_clone_root, cs_name, vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}", "docs/#{type}/#{cs_name}", verbose, attr_header)
+    elsif type == "hotrod-clients"
+      hrc_name = ver
+      get_docs(git_clone_root, hrc_name, vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}", "docs/#{type}/#{hrc_name}", verbose, attr_header)
     end
   end
 end
 
 puts "Time elapsed #{Time.now - beginning} seconds"
+
