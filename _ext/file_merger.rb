@@ -63,7 +63,7 @@ module Awestruct
         tmpOutputFile.close
 
         # Add the temporary file to the list of pages for rendering phase.
-        page = site.engine.load_page(tmpOutputPath)
+        page = site.engine.load_site_page(tmpOutputPath)
         page.source_path = tmpOutputPath
         page.output_path = outputPath
         site.pages << page
