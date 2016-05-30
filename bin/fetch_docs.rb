@@ -5,34 +5,27 @@ require 'fileutils'
 require 'trollop'
 
 opts = Trollop::options do
-  version "fetch_docs 0.0.1 (c) 2013 Manik Surtani"
+  version "fetch_docs 0.0.2 (c) The Infinispan team"
   banner <<-EOS
-This script pulls AsciiDoc documentation from Infinispan repositories (defined
-in _config/ispn.yml) and incorporates them into the Awestruct website.
+This script pulls documentation artifacts generated during Infinispan builds
+and incorporates them into the Awestruct website.
 
 Usage:
        bin/fetch_docs.rb [options]
 where [options] are:
 EOS
 
-  opt :force_clone, "Force re-clone of documentation repos", :default => false
   opt :verbose, "Be verbose", :default => false
-  opt :git_update, "Will update documentation from git, if force-clone is not set", :default => false
 end
 
 beginning = Time.now
 
 verbose = opts.verbose == true
-force_clone = opts.force_clone == true
-git_update = opts.git_update == true
 
 cwd = File.expand_path File.dirname(__FILE__)
 site_home = cwd + "/../"
 puts "Using site home as #{site_home}" if verbose
 cfg = YAML.load_file(site_home + "_config/ispn.yml")
-git_clone_root = "/tmp/infinispan.github.io_docs"
-FileUtils.rm_rf git_clone_root
-FileUtils.rm_rf site_home + "docs"
 
 def get_docs(tmp, name, repo, branch, loc, docroot, docbase, verbose, attr_header)
   target = File.expand_path("#{docroot}#{docbase}")
@@ -75,6 +68,32 @@ def get_docs(tmp, name, repo, branch, loc, docroot, docbase, verbose, attr_heade
   end
 end
 
+def extract_maven_artifact(artifact, target)
+  %x( mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:copy -DoutputDirectory=#{target} -DrepoUrl=https://repository.jboss.org/nexus/content/groups/public-jboss/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
+  %x( unzip -q #{target}/*.zip -d #{target} )
+  FileUtils.rm Dir.glob("#{target}/*.zip")
+end
+
+def get_maven_docs(htmlArtifact, pdfArtifact, docroot, docbase, docalias)
+  target = File.expand_path("#{docroot}/#{docbase}")
+  FileUtils.rm_rf target
+  FileUtils.mkdir_p target
+  
+  extract_maven_artifact(htmlArtifact, target)
+  if pdfArtifact != nil then
+    extract_maven_artifact(pdfArtifact, target)
+  end
+  if docalias != nil then
+    aliastarget = File.expand_path("#{docroot}/#{docalias}")
+    puts "Alias #{docalias}"
+    FileUtils.rm_rf aliastarget
+    FileUtils.cp_r(target, aliastarget)
+  end
+end
+
+versions_xml_file = File.open("#{site_home}/docs/versions.xml", "w")
+versions_xml_file.puts("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+versions_xml_file.puts("<versions>");
 cfg["docs"].each do |type, tcfg|
   puts "Processing #{type}"
   tcfg.each do |ver, vcfg|
@@ -90,16 +109,15 @@ cfg["docs"].each do |type, tcfg|
 
     if type == "infinispan"
       core = vcfg["core"]
-      get_docs(git_clone_root, "infinispan", core["git_repo"], core["branch"], core["location"], "#{site_home}", "docs/#{ver}", verbose, attr_header)
-    elsif type == "cachestores"
-      cs_name = ver
-      get_docs(git_clone_root, cs_name, vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}", "docs/#{type}/#{cs_name}", verbose, attr_header)
-    elsif type == "hotrod-clients"
-      hrc_name = ver
-      get_docs(git_clone_root, hrc_name, vcfg["git_repo"], vcfg["branch"], vcfg["location"], "#{site_home}", "docs/#{type}/#{hrc_name}", verbose, attr_header)
+      valias = core["alias"]
+      get_maven_docs(core["html"], core["pdf"], "#{site_home}/docs", "#{ver}", valias)
+      vname = if valias != nil then "#{ver} (#{valias})" else "#{ver}" end
+      versions_xml_file.puts("<version name=\"#{vname}\" path=\"#{ver}\" />");
     end
   end
 end
+versions_xml_file.puts("</versions>");
+versions_xml_file.close()
 
 puts "Time elapsed #{Time.now - beginning} seconds"
 
