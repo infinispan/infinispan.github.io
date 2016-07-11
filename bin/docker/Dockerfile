@@ -3,7 +3,7 @@ FROM       fedora:22
 # install the required dependencies to compile native extensions
 # and needed by the website to fetch resources
 # also installs vim because who doesn't need it :) useful to edit Gemfiles and co
-RUN        dnf -y install gcc-c++ make ruby-devel libxml2-devel libxslt-devel findutils git ruby wget vim
+RUN        dnf -y install gcc-c++ make ruby-devel libxml2-devel libxslt-devel findutils git ruby wget
 
 RUN        groupadd -r dev && useradd  -g dev -u 1000 dev && mkdir -p /home/dev && chown dev:dev /home/dev
 
