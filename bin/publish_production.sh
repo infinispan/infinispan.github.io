@@ -1,6 +1,6 @@
 #!/bin/sh
 rm -rf _site
-bin/fetch_docs.rb -f
+bin/fetch_docs.rb
 
 # The awestruct github_pages deployer doesn't work on the CI machine ATM, it deletes everything on the master branch
 # so we deploy manually instead
