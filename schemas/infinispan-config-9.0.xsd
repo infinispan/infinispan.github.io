@@ -196,7 +196,7 @@
           <xs:documentation>Defines the global state persistence configuration. If this element is not present, global state persistence will be disabled.</xs:documentation>
         </xs:annotation>
       </xs:element>
-      <xs:choice maxOccurs="unbounded">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="local-cache" type="tns:local-cache">
           <xs:annotation>
             <xs:documentation>Defines a LOCAL mode cache.</xs:documentation>
@@ -237,6 +237,7 @@
             <xs:documentation>Defines a DIST_* mode cache configuration.</xs:documentation>
           </xs:annotation>
         </xs:element>
+        <xs:any namespace="##other"/>
       </xs:choice>
     </xs:sequence>
     <xs:attribute name="name" type="xs:string">
@@ -250,9 +251,9 @@
     <xs:attribute name="jndi-name" type="xs:string">
       <xs:annotation><xs:documentation>Unused XML attribute</xs:documentation></xs:annotation>
     </xs:attribute>
-    <xs:attribute name="default-cache" type="xs:string" use="required">
+    <xs:attribute name="default-cache" type="xs:string">
       <xs:annotation>
-        <xs:documentation>Indicates the default cache for this cache container.</xs:documentation>
+        <xs:documentation>Indicates the default cache for this cache container</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="start">
@@ -321,11 +322,6 @@
     <xs:attribute name="executor" type="xs:string" >
       <xs:annotation>
         <xs:documentation>Defines the executor used for asynchronous transport communication.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="total-order-executor" type="xs:string" >
-      <xs:annotation>
-        <xs:documentation>Configuration for the total order executor service used to concurrent validate non conflicting transactions.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="remote-command-executor" type="xs:string" >
@@ -497,7 +493,7 @@
         </xs:complexType>
       </xs:element>
     </xs:sequence>
-    <xs:attribute name="marshaller" type="xs:string" default="org.infinispan.marshall.core.VersionAwareMarshaller">
+    <xs:attribute name="marshaller" type="xs:string">
       <xs:annotation>
         <xs:documentation>
           Fully qualified name of the marshaller to use. It must implement org.infinispan.marshall.StreamingMarshaller
@@ -661,17 +657,12 @@
           </xs:documentation>
         </xs:annotation>
       </xs:element>
-      <xs:element name="modules" minOccurs="0">
+      <xs:element name="memory" type="tns:memory" minOccurs="0">
         <xs:annotation>
           <xs:documentation>
-            This element contains configuration options for additional modules which affect cache configuration
+            Controls how the entries are stored in memory
           </xs:documentation>
         </xs:annotation>
-        <xs:complexType>
-          <xs:sequence minOccurs="0" maxOccurs="unbounded">
-            <xs:any namespace="##other"/>
-          </xs:sequence>
-        </xs:complexType>
       </xs:element>
       <xs:element name="indexing" minOccurs="0">
         <xs:annotation>
@@ -723,6 +714,7 @@
           <xs:documentation>Configures cache-level security.</xs:documentation>
         </xs:annotation>
       </xs:element>
+      <xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
     </xs:sequence>
     <xs:attribute name="name" type="xs:ID" use="required">
       <xs:annotation>
@@ -743,7 +735,7 @@
     <xs:attribute name="module" type="xs:string">
       <xs:annotation><xs:documentation>Unused XML attribute</xs:documentation></xs:annotation>
     </xs:attribute>
-    <xs:attribute name="statistics" type="xs:boolean" default="true">
+    <xs:attribute name="statistics" type="xs:boolean" default="false">
       <xs:annotation>
         <xs:documentation>Determines whether or not the cache should collect statistics.  Keep disabled for optimal performance.</xs:documentation>
       </xs:annotation>
@@ -829,7 +821,7 @@
         <xs:documentation>The locking mode for this cache, one of OPTIMISTIC or PESSIMISTIC.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="transaction-manager-lookup" type="xs:string" default="org.infinispan.transaction.lookup.GenericTransactionManagerLookup.GenericTransactionManagerLookup">
+    <xs:attribute name="transaction-manager-lookup" type="xs:string" default="org.infinispan.transaction.lookup.GenericTransactionManagerLookup">
       <xs:annotation>
         <xs:documentation>
           Configure Transaction manager lookup directly using an instance of TransactionManagerLookup. Calling this method marks the cache as transactional.
@@ -881,6 +873,11 @@
   </xs:complexType>
 
   <xs:complexType name="eviction">
+    <xs:annotation>
+      <xs:documentation>
+        DEPRECATED: please use memory element instead
+      </xs:documentation>
+    </xs:annotation>
     <xs:attribute name="strategy" type="tns:eviction-strategy" default="NONE">
       <xs:annotation>
         <xs:documentation>Sets the cache eviction strategy. Available options are 'UNORDERED', 'FIFO', 'LRU', 'LIRS' and 'NONE' (to disable eviction).</xs:documentation>
@@ -940,6 +937,7 @@
     <xs:annotation>
       <xs:documentation>
         Controls whether when stored in memory, keys and values are stored as references to their original objects, or in a serialized, binary format.  There are benefits to both approaches, but often if used in a clustered mode, storing objects as binary means that the cost of serialization happens early on, and can be amortized.  Further, deserialization costs are incurred lazily which improves throughput. It is possible to control this on a fine-grained basis: you can choose to just store keys or values as binary, or both.
+        DEPRECATED: please use memory element instead
       </xs:documentation>
     </xs:annotation>
     <xs:attribute name="keys" type="xs:boolean" default="true">
@@ -1022,7 +1020,7 @@
           </xs:documentation>
         </xs:annotation>
         <xs:complexType>
-          <xs:attribute name="enabled" type="xs:boolean" default="true">
+          <xs:attribute name="enabled" type="xs:boolean" default="false">
             <xs:annotation>
               <xs:documentation>
                 Enables authorization checks for this cache. Defaults to true if the authorization element is present.
@@ -1070,6 +1068,7 @@
     <xs:attribute name="key-equivalence" type="xs:string">
       <xs:annotation>
         <xs:documentation>
+          DEPRECATED: this is to be removed in a future release
           Fully qualified class name of the Equivalence class to use
           for keys stored in the cache, which provides with custom
           ways to compare cached keys
@@ -1079,10 +1078,90 @@
     <xs:attribute name="value-equivalence" type="xs:string">
       <xs:annotation>
         <xs:documentation>
+          DEPRECATED: this is to be removed in a future release
           Fully qualified class name of the Equivalence class to use
           for values stored in the cache, which provides with custom
           ways to compare cached values
         </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="memory">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="object" type="tns:memory-object">
+          <xs:annotation>
+            <xs:documentation>
+              Store keys and values as instance variables.  Instances of byte[] will be wrapped to ensure equality.
+            </xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="binary" type="tns:memory-binary">
+          <xs:annotation>
+            <xs:documentation>
+              Store keys and values as byte[] instances.  Key and value will be serialized to binary representations.
+            </xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="off-heap" type="tns:memory-off-heap">
+          <xs:annotation>
+            <xs:documentation>
+              Store keys and values as byte[] off of the Java heap.  Key and value will be serialized to binary
+              representations and stored in native memory as to not take up Java heap.  Temporary objects will be
+              put onto Java heap temporarily until processing is completed.
+            </xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:choice>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="memory-object">
+    <xs:attribute name="size" type="xs:long" default="-1">
+      <xs:annotation>
+        <xs:documentation>The size of the eviction cache as a long.  Limits the cache to this normal by the amount of
+        entries in the cache.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="memory-binary">
+    <xs:attribute name="size" type="xs:long" default="-1">
+      <xs:annotation>
+        <xs:documentation>The size of the eviction cache as a long.  If the configured type is COUNT, this will be
+          how many entries can be stored.  If the configured type is MEMORY, this will be how much memory
+          in bytes can be stored.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="eviction" type="tns:eviction-type">
+      <xs:annotation>
+        <xs:documentation>The eviction type to use whether it is COUNT or MEMORY.  COUNT will limit the cache based on
+        the number of entries.  MEMORY will limit the cache by how much memory the entries use</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="memory-off-heap">
+    <xs:attribute name="size" type="xs:long" default="-1">
+      <xs:annotation>
+        <xs:documentation>The size of the eviction cache as a long.  If the configured type is COUNT, this will be
+          how many entries can be stored.  If the configured type is MEMORY, this will be how much memory
+          in bytes can be stored.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="eviction" type="tns:eviction-type">
+      <xs:annotation>
+        <xs:documentation>The eviction type to use whether it is COUNT or MEMORY.  COUNT will limit the cache based on
+          the number of entries.  MEMORY will limit the cache by how much memory the entries use</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="address-count" type="xs:int" default="1048576">
+      <xs:annotation>
+        <xs:documentation>How many address pointers to use.  For optimal performance you will want more
+        address pointers than you expect to have entries.  This is similar to the size of an array backing
+        a hash map.  Without collisions lookups and writes will be constant time.  Each pointer will take
+        up 8 bytes of memory thus the default will use 8 MB of off-heap memory.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
   </xs:complexType>
@@ -1196,7 +1275,7 @@
             <xs:documentation>Number of hash space segments (per cluster). The default value is 256, and should be at least 20 * cluster size.</xs:documentation>
           </xs:annotation>
         </xs:attribute>
-        <xs:attribute name="capacity-factor" type="xs:double" default="1">
+        <xs:attribute name="capacity-factor" type="xs:double" default="1.0">
           <xs:annotation>
             <xs:documentation>Controls the proportion of entries that will reside on the local node,
               compared to the other nodes in the cluster. Value must be positive. The default is 1</xs:documentation>
@@ -1216,7 +1295,7 @@
             </xs:documentation>
           </xs:annotation>
         </xs:attribute>
-        <xs:attribute name="capacity" type="xs:float" default="1">
+        <xs:attribute name="capacity" type="xs:float" default="1.0">
           <xs:annotation>
             <xs:documentation>
               Controls the proportion of entries that will reside on the local node, compared to the other nodes
@@ -1299,12 +1378,14 @@
         </xs:annotation>
       </xs:element>
     </xs:sequence>
-    <xs:attribute name="name" type="xs:string">
-      <xs:annotation><xs:documentation>Unused XML attribute</xs:documentation></xs:annotation>
-    </xs:attribute>
     <xs:attribute name="shared" type="xs:boolean" default="false">
       <xs:annotation>
         <xs:documentation>This setting should be set to true when multiple cache instances share the same cache store (e.g., multiple nodes in a cluster using a JDBC-based CacheStore pointing to the same, shared database.) Setting this to true avoids multiple cache instances writing the same modification multiple times. If enabled, only the node where the modification originated will write to the cache store. If disabled, each individual cache reacts to a potential remote update by storing the data to the cache store.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="transactional" type="xs:boolean" default="false">
+      <xs:annotation>
+        <xs:documentation>This setting should be set to true when the underlying cache store supports transactions and it is desirable for the underlying store and the cache to remain synchronized. With this enabled any Exceptions thrown whilst writing to the underlying store will result in both the store's and cache's transactions rollingback.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="preload" type="xs:boolean" default="false">
@@ -1312,24 +1393,19 @@
         <xs:documentation>If true, when the cache starts, data stored in the cache store will be pre-loaded into memory. This is particularly useful when data in the cache store will be needed immediately after startup and you want to avoid cache operations being delayed as a result of loading this data lazily. Can be used to provide a 'warm-cache' on startup, however there is a performance penalty as startup time is affected by this process.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="passivation" type="xs:boolean" default="true">
-      <xs:annotation>
-        <xs:documentation>If true, data is only written to the cache store when it is evicted from memory, a phenomenon known as 'passivation'. Next time the data is requested, it will be 'activated' which means that data will be brought back to memory and removed from the persistent store. If false, the cache store contains a copy of the contents in memory, so writes to cache result in cache store writes. This essentially gives you a 'write-through' configuration.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="fetch-state" type="xs:boolean" default="true">
+    <xs:attribute name="fetch-state" type="xs:boolean" default="false">
       <xs:annotation>
         <xs:documentation>If true, fetch persistent state when joining a cluster. If multiple cache stores are chained, only one of them can have this property enabled.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="purge" type="xs:boolean" default="true">
+    <xs:attribute name="purge" type="xs:boolean" default="false">
       <xs:annotation>
         <xs:documentation>If true, purges this cache store when it starts up.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="singleton" type="xs:boolean" default="false">
       <xs:annotation>
-        <xs:documentation>If true, the singleton store cache store is enabled. SingletonStore is a delegating cache store used for situations when only one instance in a cluster should interact with the underlying store.</xs:documentation>
+        <xs:documentation>If true, the singleton store cache store is enabled. SingletonStore is a delegating cache store used for situations when only one instance in a cluster should interact with the underlying store. Deprecated: A shared store should be used instead, as this limits store writes to the primary owner of a key</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="read-only" type="xs:boolean" default="false">
@@ -1340,25 +1416,11 @@
   </xs:complexType>
 
   <xs:complexType name="write-behind">
-    <xs:attribute name="flush-lock-timeout" type="xs:int" default="1">
-      <xs:annotation>
-        <xs:documentation>
-          Timeout to acquire the lock which guards the state to be flushed to the cache store periodically.
-        </xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="modification-queue-size" type="xs:int" default="1024">
       <xs:annotation>
         <xs:documentation>
           Maximum number of entries in the asynchronous queue. When the queue is full, the store becomes write-through.
           until it can accept new entries
-        </xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="shutdown-timeout" type="xs:int" default="25000">
-      <xs:annotation>
-        <xs:documentation>
-          Timeout in milliseconds to stop the cache store.
         </xs:documentation>
       </xs:annotation>
     </xs:attribute>
@@ -1684,6 +1746,11 @@
           <xs:documentation>Index all data</xs:documentation>
         </xs:annotation>
       </xs:enumeration>
+      <xs:enumeration value="PRIMARY_OWNER">
+        <xs:annotation>
+          <xs:documentation>Only index changes on the primary owner, regardless of it's local or remote.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
     </xs:restriction>
   </xs:simpleType>
 
@@ -1712,6 +1779,11 @@
       <xs:enumeration value="LIRS">
         <xs:annotation>
           <xs:documentation>Low Inter-reference Recency Set. An improved version of LRU which uses cache-locality access information to better decide which data to evict.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="MANUAL">
+        <xs:annotation>
+          <xs:documentation>Eviction will be performed manually. Equivalent internally to NONE.</xs:documentation>
         </xs:annotation>
       </xs:enumeration>
     </xs:restriction>

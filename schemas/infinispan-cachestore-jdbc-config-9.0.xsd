@@ -7,8 +7,6 @@
              schemaLocation="http://www.infinispan.org/schemas/infinispan-config-9.0.xsd" />
 
   <xs:element name="string-keyed-jdbc-store" type="tns:string-keyed-jdbc-store"/>
-  <xs:element name="binary-keyed-jdbc-store" type="tns:binary-keyed-jdbc-store"/>
-  <xs:element name="mixed-keyed-jdbc-store" type="tns:mixed-keyed-jdbc-store"/>
 
   <xs:complexType name="jdbc-store" abstract="true">
     <xs:complexContent>
@@ -20,6 +18,22 @@
             <xs:element name="simple-connection" type="tns:simple-connection" />
           </xs:choice>
         </xs:sequence>
+        <xs:attribute name="dialect" type="tns:dialect" use="optional">
+          <xs:annotation>
+            <xs:documentation>Defines the JDBC dialect.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="db-major-version" type="xs:nonNegativeInteger" use="optional">
+          <xs:annotation>
+            <xs:documentation>Defines the major version of the database.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="db-minor-version" type="xs:nonNegativeInteger" use="optional">
+          <xs:annotation>
+            <xs:documentation>Defines the minor version of the database.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
@@ -38,45 +52,14 @@
         </xs:sequence>
       </xs:extension>
     </xs:complexContent>
-  </xs:complexType>
-
-  <xs:complexType name="binary-keyed-jdbc-store">
-    <xs:complexContent>
-      <xs:extension base="tns:jdbc-store">
-        <xs:sequence>
-          <xs:element name="binary-keyed-table" type="tns:binary-keyed-table" minOccurs="0">
-            <xs:annotation>
-              <xs:documentation>
-                Defines the table used to store cache buckets.
-              </xs:documentation>
-            </xs:annotation>
-          </xs:element>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <xs:complexType name="mixed-keyed-jdbc-store">
-    <xs:complexContent>
-      <xs:extension base="tns:jdbc-store">
-        <xs:sequence>
-          <xs:element name="binary-keyed-table" type="tns:binary-keyed-table" minOccurs="0">
-            <xs:annotation>
-              <xs:documentation>
-                Defines the table used to store cache buckets.
-              </xs:documentation>
-            </xs:annotation>
-          </xs:element>
-          <xs:element name="string-keyed-table" type="tns:string-keyed-table" minOccurs="0">
-            <xs:annotation>
-              <xs:documentation>
-                Defines the table used to store cache entries.
-              </xs:documentation>
-            </xs:annotation>
-          </xs:element>
-        </xs:sequence>
-      </xs:extension>
-    </xs:complexContent>
+    <xs:attribute name="key-to-string-mapper" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>
+          The class name of a org.infinispan.persistence.keymappers.Key2StringMapper to use for mapping keys to strings suitable for storage in a database table.
+          Defaults to org.infinispan.persistence.keymappers.DefaultTwoWayKey2StringMapper
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
   </xs:complexType>
 
   <xs:complexType name="string-keyed-table">
@@ -85,18 +68,6 @@
         <xs:attribute name="prefix" type="xs:string" default="ispn_entry">
           <xs:annotation>
             <xs:documentation>Defines the prefix prepended to the cache name used when composing the name of the cache entry table.</xs:documentation>
-          </xs:annotation>
-        </xs:attribute>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <xs:complexType name="binary-keyed-table">
-    <xs:complexContent>
-      <xs:extension base="tns:table">
-        <xs:attribute name="prefix" type="xs:string" default="ispn_bucket">
-          <xs:annotation>
-            <xs:documentation>Defines the prefix prepended to the cache name used when composing the name of the cache bucket table.</xs:documentation>
           </xs:annotation>
         </xs:attribute>
       </xs:extension>
@@ -126,7 +97,7 @@
         <xs:documentation>The fetch size used when querying from this table.  Used to avoid heap memory exhaustion when query is large.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="batch-size" type="xs:int" default="100">
+    <xs:attribute name="batch-size" type="xs:int" default="128">
       <xs:annotation>
         <xs:documentation>The statement batch size used when modifying this table.</xs:documentation>
       </xs:annotation>
@@ -183,6 +154,13 @@
   </xs:complexType>
 
   <xs:complexType name="connection-pool">
+    <xs:attribute name="properties-file" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>
+          The path of a properties file that provides additional configuration for the connection pool.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="connection-url" type="xs:string">
       <xs:annotation>
         <xs:documentation>
@@ -253,5 +231,26 @@
       </xs:annotation>
     </xs:attribute>
   </xs:complexType>
+
+  <xs:simpleType name="dialect">
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="ACCESS"/>
+      <xs:enumeration value="DB2"/>
+      <xs:enumeration value="DB2_390"/>
+      <xs:enumeration value="DERBY"/>
+      <xs:enumeration value="FIREBIRD"/>
+      <xs:enumeration value="H2"/>
+      <xs:enumeration value="HSQL"/>
+      <xs:enumeration value="INFORMIX"/>
+      <xs:enumeration value="INTERBASE"/>
+      <xs:enumeration value="MARIA_DB"/>
+      <xs:enumeration value="MYSQL"/>
+      <xs:enumeration value="ORACLE"/>
+      <xs:enumeration value="POSTGRES"/>
+      <xs:enumeration value="SQL_SERVER"/>
+      <xs:enumeration value="SQLITE"/>
+      <xs:enumeration value="SYBASE"/>
+    </xs:restriction>
+  </xs:simpleType>
 
 </xs:schema>
