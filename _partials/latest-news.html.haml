@@ -2,26 +2,48 @@
 #feed
   .text-center
   %i.icon-refresh.icon-spin.icon-4x
-%script{ :type => 'text/javascript', :src => 'https://www.google.com/jsapi'}
--# Uses Google Feed API to load blog.infinispan.org feed and replace the DOM elements
 :javascript
-  google.load("feeds", "1");
-
-  function initialize() {
-    var feed = new google.feeds.Feed("http://blog.infinispan.org/feeds/posts/default");
-    feed.setNumEntries(10);
-    feed.load(function(result) {
-      if (!result.error) {
-        var feedDiv = $('#feed');
-        feedDiv.empty();
-        for (var i = 0, shown = 0; (i < result.feed.entries.length) && (shown < 4); i++) {
-          var entry = result.feed.entries[i];
-          if (entry.categories.indexOf('release') < 0) {
-            feedDiv.append('<h4><a href="' + entry.link + '">' + entry.title + '</a></h4>');
-            ++shown;
-          }
-        }
+  function hasFeedEntryCategory(entry, category) {
+    if (entry.category) {
+      for (var i = 0; i < entry.category.length; i++) {
+        if (entry.category[i].term === category)
+          return true;
       }
-    });
+    }
+    return false;
   }
-  google.setOnLoadCallback(initialize);
+  
+  function findFeedEntryLink(entry, linkType) {
+    if (entry.link) {
+      for (var i = 0; i < entry.link.length; i++) {
+        if (entry.link[i].rel === linkType)
+          return entry.link[i].href;
+      }
+    }
+    return "";
+  }
+
+  function showAtomFeed(result) {
+    var feedDiv = $('#feed');
+    feedDiv.empty();
+    for (var i = 0, shown = 0; (i < result.feed.entry.length) && (shown < 4); i++) {
+      var entry = result.feed.entry[i];
+      
+      if (!hasFeedEntryCategory(entry, 'release')) {
+        feedDiv.append('<h4><a href="' + findFeedEntryLink(entry, 'alternate') + '">' + entry.title.$t + '</a></h4>');
+        ++shown;
+      }
+    }
+  }
+  $(function() {
+    $.ajax({
+      url: 'http://blog.infinispan.org/feeds/posts/default',
+      type: 'get',
+      dataType: 'jsonp',
+      data: {
+        alt : 'json-in-script' 
+      },
+      success: showAtomFeed
+    })
+  });
+
