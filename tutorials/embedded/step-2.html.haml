@@ -5,110 +5,109 @@ title: Embedded Step-by-Step Tutorial
 - tutorial_github_url = "https://github.com/infinispan/infinispan-embedded-tutorial"
 - @tutorial_steps = [ "The Weather Application", "Initializing the CacheManager", "Putting stuff in the cache", "Making entries expire", "Configuring the default cache", "Clustering the application", "Listen to changes in the cluster", "Listen to changes in the cache", "Grouping entries together", "A custom externalizer", "Temperature averages with streams", "Declarative configuration" ]
 - tutorial_step = 2
-.row
-  %ul.breadcrumb
-    %li
-      %a{:href => "/tutorials"} Tutorials
-    %li.active The Weather App
-  #columns
-    #leftcol.col-md-3.well
-      = partial( 'tutorialmenu.html.haml', { "tutorial_steps" => @tutorial_steps, "tutorial_step" => tutorial_step } )
+%ul.breadcrumb
+  %li
+    %a{:href => "/tutorials"} Tutorials
+  %li.active The Weather App
+#columns
+  #leftcol.col-md-3.well
+    = partial( 'tutorialmenu.html.haml', { "tutorial_steps" => @tutorial_steps, "tutorial_step" => tutorial_step } )
 
-    #maincol.col-md-9
-      = partial( 'tutorialnav.html.haml', { "tutorial_steps" => @tutorial_steps, "tutorial_step" => tutorial_step, "tutorial_github_url" => tutorial_github_url, "header" => true } )
-      %p
-        With a CacheManager running we can start creating caches and storing data in them. Caches in Infinispan are
-        %i "named"
-        which means they are identified by a unique name. There is however a special cache, however, called the
-        %i "default"
-        cache, which can be obtained easily without providing a name. We are going to enhance the 
-        %i WeatherService
-        implementations from our initial version so that
-        they store the retrieved data in a cache. To do this we will create an intermediate abstract class between the 
-        %i WeatherService
-        interface and the concrete 
-        implementations: the 
-        %i CachingWeatherService. 
-        This class wraps the expensive remote calls in a method which caches the result returned by the remote call and,
-        before subsequent invocations, checks whether the data is already available locally instead of invoking the expensive remote API. First of all let's obtain our cache:
-        %pre
-          %code.java
-            = preserve do
-              :escaped
-                Cache<String, LocationWeather> cache = cacheManager.getCache();
-          
-        If a requested cache doesn't exist in the 
-        %i CacheManager,
-        it will be created using the default configuration. As you can see, the generic types of the keys and values 
-        are inferred from the assignment type. Next up, let's see the caching wrapper for the weather retrieval:
-        %pre
-          %code.java
-            = preserve do
-              :escaped
-                LocationWeather weather = cache.get(location);
-                if (weather == null) {
-                  weather = fetchWeather(location);
-                  cache.put(location, weather);
-                }
-                return weather;
+  #maincol.col-md-9
+    = partial( 'tutorialnav.html.haml', { "tutorial_steps" => @tutorial_steps, "tutorial_step" => tutorial_step, "tutorial_github_url" => tutorial_github_url, "header" => true } )
+    %p
+      With a CacheManager running we can start creating caches and storing data in them. Caches in Infinispan are
+      %i "named"
+      which means they are identified by a unique name. There is however a special cache, however, called the
+      %i "default"
+      cache, which can be obtained easily without providing a name. We are going to enhance the 
+      %i WeatherService
+      implementations from our initial version so that
+      they store the retrieved data in a cache. To do this we will create an intermediate abstract class between the 
+      %i WeatherService
+      interface and the concrete 
+      implementations: the 
+      %i CachingWeatherService. 
+      This class wraps the expensive remote calls in a method which caches the result returned by the remote call and,
+      before subsequent invocations, checks whether the data is already available locally instead of invoking the expensive remote API. First of all let's obtain our cache:
+      %pre
+        %code.java
+          = preserve do
+            :escaped
+              Cache<String, LocationWeather> cache = cacheManager.getCache();
         
-        Since an Infinispan 
-        %i Cache 
-        is an implementation of the 
-        %i java.util.Map 
-        interface, the above code should be self explanatory. With the caching in place, let's run the application again, using the usual:
-        %pre
-          %code.nohighlight
-            = preserve do
-              :escaped
-                $ git checkout -f step-2
-                $ mvn clean package exec:exec
-        #output.accordion
-          .accordion-group
-            .accordion-heading
-              %a.accordion-toggle{"data-parent" => "#output", "data-toggle" => "collapse", :href => "#collapseOne"}
-                Output
-                %i.icon-angle-down
-              #collapseOne.accordion-body.collapse
-                .accordion-inner
-                  %pre
-                    %code.nohighlight
-                      = preserve do
-                        :escaped
-                          ---- Fetching weather information ----
-                          Rome, Italy - Temperature: 12.9° C, Conditions: light rain
-                          Como, Italy - Temperature: 6.3° C, Conditions: Sky is Clear
-                          Basel, Switzerland - Temperature: 0.8° C, Conditions: overcast clouds
-                          Bern, Switzerland - Temperature: -1.6° C, Conditions: broken clouds
-                          London, UK - Temperature: 1.8° C, Conditions: light rain
-                          Newcastle, UK - Temperature: 2.6° C, Conditions: scattered clouds
-                          Bucharest, Romania - Temperature: 9.3° C, Conditions: scattered clouds
-                          Cluj-Napoca, Romania - Temperature: 6.4° C, Conditions: scattered clouds
-                          Ottawa, Canada - Temperature: -7.0° C, Conditions: overcast clouds
-                          Toronto, Canada - Temperature: -7.0° C, Conditions: broken clouds
-                          Lisbon, Portugal - Temperature: 14.6° C, Conditions: overcast clouds
-                          Porto, Portugal - Temperature: 12.2° C, Conditions: moderate rain
-                          Raleigh, USA - Temperature: 3.9° C, Conditions: Sky is Clear
-                          Washington, USA - Temperature: 3.4° C, Conditions: light rain
-                          ---- Fetched in 1634ms ----
-                          ---- Fetching weather information ----
-                          Rome, Italy - Temperature: 12.9° C, Conditions: light rain
-                          Como, Italy - Temperature: 6.3° C, Conditions: Sky is Clear
-                          Basel, Switzerland - Temperature: 0.8° C, Conditions: overcast clouds
-                          Bern, Switzerland - Temperature: -1.6° C, Conditions: broken clouds
-                          London, UK - Temperature: 1.8° C, Conditions: light rain
-                          Newcastle, UK - Temperature: 2.6° C, Conditions: scattered clouds
-                          Bucharest, Romania - Temperature: 9.3° C, Conditions: scattered clouds
-                          Cluj-Napoca, Romania - Temperature: 6.4° C, Conditions: scattered clouds
-                          Ottawa, Canada - Temperature: -7.0° C, Conditions: overcast clouds
-                          Toronto, Canada - Temperature: -7.0° C, Conditions: broken clouds
-                          Lisbon, Portugal - Temperature: 14.6° C, Conditions: overcast clouds
-                          Porto, Portugal - Temperature: 12.2° C, Conditions: moderate rain
-                          Raleigh, USA - Temperature: 3.9° C, Conditions: Sky is Clear
-                          Washington, USA - Temperature: 3.4° C, Conditions: light rain
-                          ---- Fetched in 2ms ----
-        
-      %p
-        You should see the weather conditions displayed twice, but the second run should be several orders of magnitude faster. Good stuff !
-        Entries created above are immortal, i.e. they will exist in the cache until removed. In the next step we will see how to add mortal entries.
-      = partial( 'tutorialnav.html.haml', { "tutorial_steps" => @tutorial_steps, "tutorial_step" => tutorial_step, "tutorial_github_url" => tutorial_github_url } )
+      If a requested cache doesn't exist in the 
+      %i CacheManager,
+      it will be created using the default configuration. As you can see, the generic types of the keys and values 
+      are inferred from the assignment type. Next up, let's see the caching wrapper for the weather retrieval:
+      %pre
+        %code.java
+          = preserve do
+            :escaped
+              LocationWeather weather = cache.get(location);
+              if (weather == null) {
+                weather = fetchWeather(location);
+                cache.put(location, weather);
+              }
+              return weather;
+      
+      Since an Infinispan 
+      %i Cache 
+      is an implementation of the 
+      %i java.util.Map 
+      interface, the above code should be self explanatory. With the caching in place, let's run the application again, using the usual:
+      %pre
+        %code.nohighlight
+          = preserve do
+            :escaped
+              $ git checkout -f step-2
+              $ mvn clean package exec:exec
+      #output.accordion
+        .accordion-group
+          .accordion-heading
+            %a.accordion-toggle{"data-parent" => "#output", "data-toggle" => "collapse", :href => "#collapseOne"}
+              Output
+              %i.icon-angle-down
+            #collapseOne.accordion-body.collapse
+              .accordion-inner
+                %pre
+                  %code.nohighlight
+                    = preserve do
+                      :escaped
+                        ---- Fetching weather information ----
+                        Rome, Italy - Temperature: 12.9° C, Conditions: light rain
+                        Como, Italy - Temperature: 6.3° C, Conditions: Sky is Clear
+                        Basel, Switzerland - Temperature: 0.8° C, Conditions: overcast clouds
+                        Bern, Switzerland - Temperature: -1.6° C, Conditions: broken clouds
+                        London, UK - Temperature: 1.8° C, Conditions: light rain
+                        Newcastle, UK - Temperature: 2.6° C, Conditions: scattered clouds
+                        Bucharest, Romania - Temperature: 9.3° C, Conditions: scattered clouds
+                        Cluj-Napoca, Romania - Temperature: 6.4° C, Conditions: scattered clouds
+                        Ottawa, Canada - Temperature: -7.0° C, Conditions: overcast clouds
+                        Toronto, Canada - Temperature: -7.0° C, Conditions: broken clouds
+                        Lisbon, Portugal - Temperature: 14.6° C, Conditions: overcast clouds
+                        Porto, Portugal - Temperature: 12.2° C, Conditions: moderate rain
+                        Raleigh, USA - Temperature: 3.9° C, Conditions: Sky is Clear
+                        Washington, USA - Temperature: 3.4° C, Conditions: light rain
+                        ---- Fetched in 1634ms ----
+                        ---- Fetching weather information ----
+                        Rome, Italy - Temperature: 12.9° C, Conditions: light rain
+                        Como, Italy - Temperature: 6.3° C, Conditions: Sky is Clear
+                        Basel, Switzerland - Temperature: 0.8° C, Conditions: overcast clouds
+                        Bern, Switzerland - Temperature: -1.6° C, Conditions: broken clouds
+                        London, UK - Temperature: 1.8° C, Conditions: light rain
+                        Newcastle, UK - Temperature: 2.6° C, Conditions: scattered clouds
+                        Bucharest, Romania - Temperature: 9.3° C, Conditions: scattered clouds
+                        Cluj-Napoca, Romania - Temperature: 6.4° C, Conditions: scattered clouds
+                        Ottawa, Canada - Temperature: -7.0° C, Conditions: overcast clouds
+                        Toronto, Canada - Temperature: -7.0° C, Conditions: broken clouds
+                        Lisbon, Portugal - Temperature: 14.6° C, Conditions: overcast clouds
+                        Porto, Portugal - Temperature: 12.2° C, Conditions: moderate rain
+                        Raleigh, USA - Temperature: 3.9° C, Conditions: Sky is Clear
+                        Washington, USA - Temperature: 3.4° C, Conditions: light rain
+                        ---- Fetched in 2ms ----
+      
+    %p
+      You should see the weather conditions displayed twice, but the second run should be several orders of magnitude faster. Good stuff !
+      Entries created above are immortal, i.e. they will exist in the cache until removed. In the next step we will see how to add mortal entries.
+    = partial( 'tutorialnav.html.haml', { "tutorial_steps" => @tutorial_steps, "tutorial_step" => tutorial_step, "tutorial_github_url" => tutorial_github_url } )
