@@ -116,6 +116,28 @@ cfg["docs"].each do |type, tcfg|
     end
   end
 end
+
+# cpp and dotnet clients need the same special treatment
+["cpp","dotnet"].each do |client|
+  cfg["hotrod"][client]["downloads"].each do |label, artifact|
+    if artifact.include?("docs_version")
+        docs_version = artifact["docs_version"]
+        url = artifact["download"]
+        fullname = File.basename(url)
+        name = File.basename(url,".zip")
+        %x( wget #{url} -O _tmp.zip)
+        %x( unzip _tmp.zip "*-Source/documentation/*" -d _tmp)
+        %x( mkdir -p _site/hotrod-clients/#{client}/docs )
+        %x( rm _tmp/*/documentation/.gitignore )
+        %x( mv _tmp/*/documentation "_site/hotrod-clients/#{client}/docs/#{docs_version}" )
+        Dir.glob("_site/hotrod-clients/#{client}/docs/**/*.adoc").each do |f|
+          %x( asciidoctor #{f} )
+        end
+        %x( rm -rf _tmp _tmp.zip )
+    end
+  end
+end
+
 versions_xml_file.puts("</versions>");
 versions_xml_file.close()
 
