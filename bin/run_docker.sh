@@ -13,4 +13,4 @@ else
 fi
 echo $ROOT_DIR
 
-docker run -t -i -p 4242:4242 -v $ROOT_DIR:/home/dev/infinispan.github.io  infinispan/infinispan.github.io
+docker run -t -i -p 4242:4242 -v $ROOT_DIR:/home/dev/infinispan.github.io:z  infinispan/infinispan.github.io
