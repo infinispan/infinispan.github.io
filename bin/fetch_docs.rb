@@ -91,6 +91,7 @@ def get_maven_docs(htmlArtifact, pdfArtifact, docroot, docbase, docalias)
   end
 end
 
+Dir.mkdir("#{site_home}/docs/") unless File.exists?("#{site_home}/docs/")
 versions_xml_file = File.open("#{site_home}/docs/versions.xml", "w")
 versions_xml_file.puts("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
 versions_xml_file.puts("<versions>");
