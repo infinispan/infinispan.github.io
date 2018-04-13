@@ -21,6 +21,11 @@ pipeline {
                     // The manager variable requires the Groovy Postbuild plugin
                     manager.addShortText(env.NODE_NAME, "grey", "", "0px", "")
                 }
+                script {
+                    env.MAVEN_HOME = tool('Maven')
+                    env.MAVEN_OPTS = "-Xmx800m -XX:+HeapDumpOnOutOfMemoryError"
+                    env.JAVA_HOME = tool('Oracle JDK 8')
+                }
             }
         }
 
@@ -31,6 +36,9 @@ pipeline {
         }
 
         stage('Publish') {
+            environment {
+                PATH = "$MAVEN_HOME:$JAVA_HOME:$PATH"
+            }
             steps {
                 sh "./bin/publish_${params.site}.sh"
             }
