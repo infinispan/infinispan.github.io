@@ -85,7 +85,7 @@ def get_maven_docs(htmlArtifact, pdfArtifact, docroot, docbase, docalias)
   end
   if docalias != nil then
     aliastarget = File.expand_path("#{docroot}/#{docalias}")
-    puts "Alias #{docalias}"
+    puts "    Alias #{docalias}"
     FileUtils.rm_rf aliastarget
     FileUtils.cp_r(target, aliastarget)
   end
