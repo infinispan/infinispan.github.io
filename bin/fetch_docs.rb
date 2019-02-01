@@ -2,9 +2,9 @@
 
 require 'yaml'
 require 'fileutils'
-require 'trollop'
+require 'optimist'
 
-opts = Trollop::options do
+opts = Optimist::options do
   version "fetch_docs 0.0.2 (c) The Infinispan team"
   banner <<-EOS
 This script pulls documentation artifacts generated during Infinispan builds
