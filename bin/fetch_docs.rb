@@ -78,7 +78,7 @@ def get_maven_docs(htmlArtifact, pdfArtifact, docroot, docbase, docalias)
   target = File.expand_path("#{docroot}/#{docbase}")
   FileUtils.rm_rf target
   FileUtils.mkdir_p target
-  
+
   extract_maven_artifact(htmlArtifact, target)
   if pdfArtifact != nil then
     extract_maven_artifact(pdfArtifact, target)
@@ -140,7 +140,7 @@ end
 end
 
 # and then it's operator's turn
-cfg["ispn-operator"].each do |version, sub|
+cfg["ispn_operator"].each do |version, sub|
   puts "#{version} wget"
   zipUrl=sub["zip-url"]
   puts "#{version} wget #{zipUrl}"
@@ -159,4 +159,3 @@ versions_xml_file.puts("</versions>");
 versions_xml_file.close()
 
 puts "Time elapsed #{Time.now - beginning} seconds"
-
