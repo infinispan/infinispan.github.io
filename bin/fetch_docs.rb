@@ -174,9 +174,22 @@ cfg["sb_starter"].each do |version, sub|
   %x( mkdir -p _site/infinispan-spring-boot/#{version}/ )
   %x( mv _sbtmp/*.html "_site/infinispan-spring-boot/#{version}/" )
   %x( rm -rf _sbtmp* )
+
+# simple tutorials
+cfg["ispn_tutorials"].each do |version, sub|
+  puts "#{version} wget"
+  zipUrl=sub["zip-url"]
+  puts "#{version} wget #{zipUrl}"
+  %x( wget #{zipUrl} -O _tmp.zip)
+  %x( unzip _tmp.zip "*documentation/*" -d _tmp)
+  %x( rm -rf infinispan-simple-tutorials/#{version} )
+  %x( mkdir -p infinispan-simple-tutorials/#{version} )
+  %x( mv _tmp/infinispan-simple-tutorials*/* "infinispan-simple-tutorials/#{version}" )
 end
 
 versions_xml_file.puts("</versions>");
 versions_xml_file.close()
 
 puts "Time elapsed #{Time.now - beginning} seconds"
+
+end
