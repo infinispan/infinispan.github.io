@@ -155,6 +155,24 @@ cfg["ispn_operator"].each do |version, sub|
   %x( mkdir -p _site/infinispan-operator/#{version} )
   %x( mv _tmp/infinispan-operator*/* "_site/infinispan-operator/#{version}" )
 end
+
+# now for the spring boot starter docs
+cfg["sb_starter"].each do |version, sub|
+  puts "#{version} wget"
+  zipUrl=sub["zip-url"]
+  puts "#{version} wget #{zipUrl}"
+  %x( wget #{zipUrl} -O _tmp.zip)
+  %x( unzip _tmp.zip "*documentation/*" -d _tmp)
+  Dir.glob("_tmp/**/*.adoc").each do |f|
+    %x( asciidoctor #{f} )
+  end
+  Dir.glob("_tmp/**/*.asciidoc").each do |f|
+    %x( asciidoctor #{f} )
+  end
+  %x( mkdir -p _site/infinispan-spring-boot/#{version} )
+  %x( mv _tmp/infinispan-spring-boot*/* "_site/infinispan-spring-boot/#{version}" )
+end
+
 versions_xml_file.puts("</versions>");
 versions_xml_file.close()
 
