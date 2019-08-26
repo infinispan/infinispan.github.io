@@ -1,48 +1,65 @@
--# variables expected: release_version (a String) and release_info (structure).
-- release_version = page["release_version"]
-- release_info = page["release_info"]
--# release info should contain a codename, all, bin and server URLs, and a maven_latest version.
+- release_version = page["version"]
+- release_info = page["info"]
+- release_type = page["type"] || "archived"
 %tr
   %td
-    = release_version 
+    %b.h4 #{release_version}
+    - case release_type
+    - when "stable"
+      .label.label-success Stable
+    - when "unstable"
+      .label.label-warning Development
+    - else
+      .label.label-info Archived
+
+    %br
     %i "#{release_info.codename}"
-  %td.text-center
     = release_info.release_date
   %td.text-center
-    %a{:href => release_info.release_notes, :target => "_NEW"}
+    %a{:href => "release-notes#" + release_info.minor_version.to_s, :target => "_NEW"}
+      %i.fa.fa-pencil
+      Release notes
+    %br
+    %a{:href => release_info.fixed_issues, :target => "_NEW"}
       %i.fa.fa-bug
       Fixed issues
   %td.text-center
-    %a{:href => release_info.all}
-      %i.icon-download-alt
-      Embedded
-    %a{:href => release_info.all.to_s + ".sha1" }
-      (SHA-1)
-    %br
-    %a{:href => release_info.bin}
-      %i.icon-download-alt
-      Minimal
-    %a{:href => release_info.bin.to_s + ".sha1" }
-      (SHA-1)
-    %br
-    %a{:href => release_info.server}
-      %i.icon-download-alt
-      Server
-    %a{:href => release_info.server.to_s + ".sha1" }
-      (SHA-1)
-    %br
-    - if release_info.wfmodules?
-      %a{:href => release_info.wfmodules}
+    - if release_info.download.has_key?("all")
+      %a{:href => release_info.download.all}
+        %i.icon-download-alt
+        Embedded
+      %a{:href => release_info.download.all.to_s + ".sha1" }
+        (SHA-1)
+      %br
+    - if release_info.download.bin?
+      %a{:href => release_info.download.bin}
+        %i.icon-download-alt
+        Minimal
+      %a{:href => release_info.download.bin.to_s + ".sha1" }
+        (SHA-1)
+      %br
+    - if release_info.download.server?
+      %a{:href => release_info.download.server}
+        %i.icon-download-alt
+        Server
+      %a{:href => release_info.download.server.to_s + ".sha1" }
+        (SHA-1)
+      %br
+    - if release_info.download.wfmodules?
+      %a{:href => release_info.download.wfmodules}
         %i.icon-download-alt
         WildFly modules
-      %a{:href => release_info.wfmodules.to_s + ".sha1" }
+      %a{:href => release_info.download.wfmodules.to_s + ".sha1" }
         (SHA-1)
-    - if release_info.wfserver?
+    - if release_info.download.wfserver?
       %br
-      %a{:href => release_info.wfserver}
+      %a{:href => release_info.download.wfserver}
         %i.icon-download-alt
-        Legacy WildFly-based Server
-      %a{:href => release_info.wfserver.to_s + ".sha1" }
-        (SHA-1)
+        %i Legacy WildFly-based Server
+      %a{:href => release_info.download.wfserver.to_s + ".sha1" }
+        %i (SHA-1)
   %td.text-center
-    = partial("maven-coords-link.html.haml", {"artifactId" => "infinispan-core", "version_stable" => release_info.maven_latest, "modal_id" => release_version})
+    = partial("maven-coords-link.html.haml", {"artifactId" => "infinispan-core", "version" => release_info.maven_latest, "modal_id" => release_version})
+  %td.text-center
+    - if release_info.download.docker?
+      = partial("docker-coords-link.html.haml", {"tag" => release_info.download.docker, "modal_id" => release_version})
