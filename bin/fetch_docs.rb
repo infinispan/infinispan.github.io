@@ -144,16 +144,17 @@ cfg["ispn_operator"].each do |version, sub|
   puts "#{version} wget"
   zipUrl=sub["zip-url"]
   puts "#{version} wget #{zipUrl}"
-  %x( wget #{zipUrl} -O _tmp.zip)
-  %x( unzip _tmp.zip "*documentation/*" -d _tmp)
-  Dir.glob("_tmp/**/*.adoc").each do |f|
+  %x( wget #{zipUrl} -O _optmp.zip)
+  %x( unzip _optmp.zip "*documentation/*" -d _optmp)
+  Dir.glob("_optmp/**/*.asciidoc").each do |f|
     %x( asciidoctor #{f} )
   end
-  Dir.glob("_tmp/**/*.asciidoc").each do |f|
-    %x( asciidoctor #{f} )
+  Dir.glob("_optmp/**/*.html").each do |f|
+    %x( cp -r #{f} _optmp )
   end
-  %x( mkdir -p _site/infinispan-operator/#{version} )
-  %x( mv _tmp/infinispan-operator*/* "_site/infinispan-operator/#{version}" )
+  %x( mkdir -p _site/infinispan-operator/#{version}/ )
+  %x( mv _optmp/*.html "_site/infinispan-operator/#{version}/" )
+  %x( rm -rf _optmp* )
 end
 
 # now for the spring boot starter docs
@@ -161,16 +162,17 @@ cfg["sb_starter"].each do |version, sub|
   puts "#{version} wget"
   zipUrl=sub["zip-url"]
   puts "#{version} wget #{zipUrl}"
-  %x( wget #{zipUrl} -O _tmp.zip)
-  %x( unzip _tmp.zip "*documentation/*" -d _tmp)
-  Dir.glob("_tmp/**/*.adoc").each do |f|
+  %x( wget #{zipUrl} -O _sbtmp.zip)
+  %x( unzip _sbtmp.zip "*documentation/*" -d _sbtmp)
+  Dir.glob("_sbtmp/**/*.asciidoc").each do |f|
     %x( asciidoctor #{f} )
   end
-  Dir.glob("_tmp/**/*.asciidoc").each do |f|
-    %x( asciidoctor #{f} )
+  Dir.glob("_sbtmp/**/*.html").each do |f|
+    %x( cp -r #{f} _sbtmp )
   end
-  %x( mkdir -p _site/infinispan-spring-boot/#{version} )
-  %x( mv _tmp/infinispan-spring-boot*/* "_site/infinispan-spring-boot/#{version}" )
+  %x( mkdir -p _site/infinispan-spring-boot/#{version}/ )
+  %x( mv _sbtmp/*.html "_site/infinispan-spring-boot/#{version}/" )
+  %x( rm -rf _sbtmp* )
 end
 
 versions_xml_file.puts("</versions>");
