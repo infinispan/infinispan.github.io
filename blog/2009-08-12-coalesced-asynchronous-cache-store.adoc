@@ -1,0 +1,61 @@
+---
+layout: blog
+title: Coalesced Asynchronous Cache Store
+date: '2009-08-12T02:06:00.000-07:00'
+author: Galder Zamarreño
+tags: 
+modified_time: '2009-08-13T07:08:45.892-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-8048638839617624185
+blogger_orig_url: https://blog.infinispan.org/2009/08/coalesced-asynchronous-cache-store.html
+---
+As we prepare for Infinispan's beta release, let me introduce to you one
+of the recent enhancements implemented which improves the way the
+current asynchronous (or write-behind) cache store works.
+
+Right until now, the asynchronous cache store simply queued
+modifications, while a set of threads would apply them. However, if the
+queue contained N put operations on the same key, these threads would
+apply each and every modification one after the other, which is not very
+efficient.
+
+Thanks to the excellent feedback from the Infinispan community, we've
+now improved the asynchronous cache store so that it coalesces changes
+and only applies the latest modification on a key. So, if N put
+operations on the same key are queued, only the last modification will
+be applied to the cache store.
+
+Internally, the asynchronous concurrent queueing mechanism used performs
+in O(1) by keeping an map with the latest values for each key. So, this
+maps acts like the queue but there's a not a need for a queue as such,
+we only care about making sure the latest values are stored hence, order
+is not important.
+
+Note that the way threads apply these modifications is that they start
+working as soon as there are any changes available and so to see these
+changes coalesced, the system needs to be relatively busy or a lot of
+changes on the same key need to happen in a relatively short period of
+time. We could have made these threads work periodically, i.e. every X
+seconds, but by doing that, we would be letting modifications pile up
+and the time between operations and the cache store updates would go up,
+hence increasing the chance that the cache store is outdated.
+
+Finally, there's no configuration modifications required to get the
+asynchronous cache store to work in the coalesced way, it just works
+like this out-of-the-box. Example:
+
+[source,xml]
+----
+<?xml version="1.0" encoding="UTF-8"?>
+<infinispan xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:infinispan:config:4.0">
+  <namedCache name="persistentCache">
+     <loaders passivation="false" shared="false" preload="true">
+        <loader class="org.infinispan.loaders.file.FileCacheStore" fetchPersistentState="true" ignoreModifications="false" purgeOnStartup="false">
+           <properties>
+              <property name="location" value="/tmp"/>
+           </properties>
+           <async enabled="true" threadPoolSize="10"/>
+        </loader>
+     </loaders>
+  </namedCache>
+</infinispan>
+----

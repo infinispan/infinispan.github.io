@@ -1,0 +1,107 @@
+---
+layout: blog
+title: Benchmarking Infinispan and other Data Grid software
+date: '2010-02-16T23:23:00.000-08:00'
+author: Mircea Markus
+tags: 
+modified_time: '2010-02-18T03:07:36.634-08:00'
+thumbnail: http://2.bp.blogspot.com/_ISQfVF8ALAQ/S3vFPokOXGI/AAAAAAAABvw/LljfAUuIWKo/s72-c/Replicated_PUT.png
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-4560166791217568692
+blogger_orig_url: https://blog.infinispan.org/2010/02/benchmarking-infinispan-and-other-data.html
+---
+Why benchmarking?
+Benchmarking is an important aspect for us: we want to monitor our
+performance improvements between releases and compare ourselves with
+other products as well. Benchmarking a data grid product such as
+Infinispan is not a trivial task: one needs to start multiple processes
+over multiple machines, coordinate between them to make sure everything
+runs at once and centralize reports. Then there is the question of what
+access patterns the benchmark should stress.
+
+
+[.Apple-style-span]#*Introducing the cache benchmarking framework
+(CBF)
+*#What we've come up with is a tool to help us run our benchmarks and
+generate reports and charts. And more:
+- simple to configure (see config sample bellow)
+- simple to run. We supply a set of .sh scripts that connect to remote
+nodes and start cluster instances for you.
+- open source. Everybody can download it, read the code and run the
+benchmarks by themselves. Published results can be easily verified and
+validated.
+- extensible. It's easy to extend the framework in order to benchmark
+against additional products. It's also easy to write different data
+access patterns to be tested.
+
+- scalable. At this moment we've used CBF for benchmarking up to 62
+nodes.
+
+- users can test products, configurations, and access patterns on _their
+own hardware_ and network. This is crucial, since it means educated
+decisions can be made based on _relevant_ and _use-case specific_
+statistics and measurements. Further, the benchmark can even be used to
+compare performance of different configurations and tuning parameters of
+a single data grid product, to help users choose a configuration that
+works best for them
+
+Below is a sample configuration file and generated report.
+
+[source,xml]
+----
+<bench-config>
+
+  <master bindAddress="${127.0.0.1:master.address}" port="${2103:master.port}"/>
+
+  <benchmark initSize="2" maxSize="${4:slaves}" increment="1">
+    <DestroyWrapper runOnAllSlaves="true"/>
+    <StartCluster/>
+    <ClusterValidation partialReplication="false"/>
+    <Warmup operationCount="1000"/>
+    <WebSessionBenchmark numberOfRequests="2500" numOfThreads="2"/>
+    <CsvReportGeneration/>
+  </benchmark>
+
+  <products>
+    <jbosscache3>
+      <config name="mvcc/mvcc-repl-sync.xml"/>
+    </jbosscache3>
+    <infinispan4>
+      <config name="repl-sync.xml"/>
+      <config name="dist-sync.xml"/>
+      <config name="dist-sync-l1.xml"/>
+    </infinispan4>
+  </products>
+
+  <reports>
+    <report name="Replicated">
+      <item product="infinispan4" config="repl-sync.xml"/>
+      <item product="jbosscache3" config="mvcc/mvcc-repl-sync.xml"/>
+    </report>
+    <report name="Distributed">
+      <item product="infinispan4" config="dist-*"/>
+    </report>
+    <report name="All" includeAll="true"/>
+  </reports>
+
+</bench-config>
+----
+
+
+
+And this is what a generated charts look like:
+
+http://2.bp.blogspot.com/_ISQfVF8ALAQ/S3vFPokOXGI/AAAAAAAABvw/LljfAUuIWKo/s1600-h/Replicated_PUT.png[image:http://2.bp.blogspot.com/_ISQfVF8ALAQ/S3vFPokOXGI/AAAAAAAABvw/LljfAUuIWKo/s400/Replicated_PUT.png[image]]
+
+Where can you find CBF?
+CBF can be found
+https://sourceforge.net/apps/trac/cachebenchfwk/wiki[here]. For a quick
+way of getting up to speed with it we recommend the
+https://sourceforge.net/apps/trac/cachebenchfwk/wiki/FiveMinutesTutorial[5
+minutes tutorial].
+
+Enjoy!
+
+Mircea
+
+
+

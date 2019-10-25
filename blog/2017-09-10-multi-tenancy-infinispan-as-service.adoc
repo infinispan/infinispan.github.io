@@ -1,0 +1,189 @@
+---
+layout: blog
+title: Multi-tenancy - Infinispan as a Service (also on OpenShift)
+date: '2017-09-10T23:49:00.002-07:00'
+author: Sebastian Łaskawiec
+tags:
+- security
+- hotrod
+- server
+- multi-tenancy
+- rest
+modified_time: '2017-09-10T23:49:25.811-07:00'
+thumbnail: https://4.bp.blogspot.com/-9gJn1KCZK1Y/WUjMfn5VKXI/AAAAAAAAJrg/m6QfOjXjpPU6mfAsvn3kGnt5YYFOas1iQCLcBGAs/s72-c/multiple-data-containers-and-router.png
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-8520787527949373872
+blogger_orig_url: https://blog.infinispan.org/2017/09/multi-tenancy-infinispan-as-service.html
+---
+In recent years Software as a Service concept has gained a lot of
+traction. I'm pretty sure you've used it many times before. Let's take a
+look at a practical example and explain what's going on behind the
+scenes.
+
+===== Practical example - photo album application
+
+Imagine a very simple photo album application hosted within the cloud.
+Upon the first usage you are asked to create an account. Once you sign
+up, a new tenant is created for you in the application with all
+necessary details and some dedicated storage just for you. Starting from
+this point you can start using the album - download and upload photos. 
+
+
+
+The software provider that created the photo album application can also
+celebrate. They have a new client! But with a new client the system
+needs to increase its capacity to ensure it can store all those lovely
+photos. There are also other concerns - how to prevent leaking photos
+and other data from one account into another? And finally, since all the
+content will be transferred through the Internet, how to secure
+transmission?
+
+
+
+As you can see, multi-tenancy is not that easy as it would seem. The
+good news is that if it's properly configured and secured, it might be
+beneficial both for the client and for the software provider. 
+
+===== Multi-tenancy in Infinispan
+
+Let's think again about our photo album application for a moment.
+Whenever a new client signs up we need to create a new account for him
+and dedicate some storage. Translating that into Infinispan concepts
+this would mean creating a new
+https://docs.jboss.org/infinispan/9.1/apidocs/org/infinispan/manager/CacheContainer.html[CacheContainer].
+Within a CacheContainer we can create multiple Caches for user details,
+metadata and photos. You might be wondering why creating a new
+https://docs.jboss.org/infinispan/9.1/apidocs/org/infinispan/Cache.html[Cache]
+is not sufficient? It turns out that when a Hot Rod client connects to a
+cluster, it connects to a CacheContainer exposed via a Hot Rod Endpoint.
+Such a client has access to all Caches. Considering our example, your
+friends could possibly see your photos. That's definitely not good! So
+we need to create a CacheContainer per tenant. Before we introduced
+Multi-tenancy, you could expose each CacheContainer using a separate
+port (using separate Hot Rod Endpoint for each of them). In many
+scenarios this is impractical because of proliferation of ports. For
+this reason we introduced the Router concept. It allows multiple clients
+to access their own CacheContainers through a single endpoint and also
+prevents them from accessing data which doesn't belong to them. The
+final piece of the puzzle is transmitting sensitive data through an
+unsecured channel such as the Internet. The use of TLS encryption solves
+this problem. The final outcome should look like the following:
+
+
+
+https://4.bp.blogspot.com/-9gJn1KCZK1Y/WUjMfn5VKXI/AAAAAAAAJrg/m6QfOjXjpPU6mfAsvn3kGnt5YYFOas1iQCLcBGAs/s1600/multiple-data-containers-and-router.png[image:https://4.bp.blogspot.com/-9gJn1KCZK1Y/WUjMfn5VKXI/AAAAAAAAJrg/m6QfOjXjpPU6mfAsvn3kGnt5YYFOas1iQCLcBGAs/s320/multiple-data-containers-and-router.png[image,width=320,height=170]]
+
+
+
+The Router component on the diagram above is responsible for recognizing
+data from each client and redirecting it to the appropriate Hot Rod
+endpoint.
+As the name implies, the router inspects incoming traffic and reroutes
+it to the appropriate underlying CacheContainer. To do this it can use
+two different strategies depending on the protocol:
+https://en.wikipedia.org/wiki/Server_Name_Indication[TLS/SNI] for the
+Hot Rod protocol, matching each server certificate to a specific cache
+container  and path prefixes for REST.
+The SNI strategy detects the SNI Host Name (which is used as tenant) and
+also requires TLS certificates to match. By creating proper trust stores
+we can match which tenant can access which CacheContainers.
+URL path prefix is very easy to understand, but it is also less secure
+unless you enable authentication. For this reason it should not be used
+in production unless you know what you are doing (the SNI strategy for
+the REST endpoint will be implemented in the near future). Each client
+has its own unique REST path prefix that needs to be used for accessing
+the data (e.g. _http://127.0.0.1:8080/rest/*client1*/fotos/2_).
+
+
+
+Confused? Let's clarify this with an example.
+
+===== Foto application sample configuration
+
+The first step is to generate proper key/trust stores for the server and
+client:
+
+
+
+
+
+The next step is to configure the server. The snippet below shows only
+the most important parts:
+
+
+
+
+
+Let's analyze the most critical lines:
+
+* 7, 15 - We need to add generated key stores to the server identities
+* 25, 30 - It is highly recommended to use separate CacheContainers
+* 38, 39 - A Hot Rod connector (but without socket binding) is required
+to provide proper mapping to CacheContainer. You can also use many
+useful settings on this level (like ignored caches or authentication).
+* 42 - Router definition which binds into default Hot Rod and REST
+ports.
+* 44 - 46 - The most important bit which states that only a client using
+_SSLRealm1_ (which uses trust store corresponding
+to _client_1_server_keystore.jks_) and TLS/SNI Host name _client-1_ can
+access Hot Rod endpoint named _multi-tenant-hotrod-1_ (which points to
+CacheContainer _multi-tenancy-1_).
+
+===== Improving the application by using OpenShift
+
+_Hint: You might be interested in looking at our previous blog posts
+about hosting Infinispan on OpenShift. You may find them at the bottom
+of the page._
+
+
+
+So far we've learned how to create and configure a new CacheContainer
+per tenant. But we also need to remember that system capacity needs to
+be increased with each new tenant. OpenShift is a perfect tool for
+scaling the system up and down. The configuration we created in the
+previous step almost matches our needs but needs some tuning.
+
+
+
+As we mentioned earlier, we need to encrypt transport between the client
+and the server. The main disadvantage is that OpenShift Router will not
+be able to inspect it and take routing decisions. A
+https://docs.openshift.org/latest/architecture/core_concepts/routes.html#secured-routes[passthrough
+Route] fits perfectly in this scenario but requires creating TLS/SNI
+Host Names as Fully Qualified Application Names. So if you start
+OpenShift locally (using _oc cluster up_) the tenant names will look
+like the following: _client-1-fotoalbum.192.168.0.17.nip.io_. 
+
+
+
+We also need to think how to store generated key stores. The easiest way
+is to use
+https://docs.openshift.org/latest/dev_guide/secrets.html[Secrets]:
+
+
+
+
+
+Finally, a full DeploymentConfiguration:
+
+
+
+
+
+
+
+If you're interested in playing with the demo by yourself, you might
+find a working example
+https://github.com/infinispan-demos/infinispan-openshift-multitenancy[here].
+It mainly targets OpenShift but the concept and configuration are also
+applicable for local deployment.
+
+===== Links
+
+* http://blog.infinispan.org/2016/08/running-infinispan-cluster-on-openshift.html[Running
+Infinispan cluster on OpenShift]
+* http://blog.infinispan.org/2016/09/configuration-management-on-openshift.html[Configuration
+management on OpenShift, Kubernetes and Docker]
+* http://blog.infinispan.org/2017/03/checking-infinispan-cluster-health-and.html[Checking
+Infinispan cluster health and Kubernetes/OpenShift]
+* https://github.com/infinispan-demos/infinispan-openshift-multitenancy[Source
+code for the demo]

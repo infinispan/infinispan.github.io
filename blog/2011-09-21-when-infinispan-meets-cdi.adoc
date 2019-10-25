@@ -1,0 +1,158 @@
+---
+layout: blog
+title: When Infinispan meets CDI
+date: '2011-09-21T06:37:00.000-07:00'
+author: Kevin Pollet
+tags:
+- jsr 107
+- cdi
+modified_time: '2015-09-28T06:01:05.391-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-4649985884255161785
+blogger_orig_url: https://blog.infinispan.org/2011/09/when-infinispan-meets-cdi.html
+---
+Since version 5.0 (Pagoa) Infinispan has a new module. This module is a
+portable http://jcp.org/en/jsr/detail?id=299[CDI] extension which
+integrates Infinispan with the CDI programming model. Here are some
+highlights of what is provided:
+
+* full integration with *Java EE 6*
+* **typesafe **cache (and cache manager) injection
+* **JCACHE **annotations support
+
+Please note that this module is a technology preview and its API can
+still change. Next let's discuss some of its details.
+
+
+
+[.Apple-style-span]#Typesafe injection and configuration of cache#
+
+
+
+The first feature you can use out of the box is the *typesafe* injection
+of the _Cache_ and the _CacheManager_. Without any configuration you can
+inject the default cache, as well as the cache manager used by the
+extension. This injection can be performed in any bean managed by Java
+EE like EJB, Servlet and CDI beans. The only thing to do is to use
+the _@Inject_ annotation:
+
+
+
+
+
+
+
+Please note that the cache injection is typed. In this case, only
+_String_ typed Java objects could be added as key and value.
+
+It's also possible to configure the injected cache using CDI. The first
+step is to create a CDI qualifier, and then create the cache
+configuration producer, annotated with _@ConfigureCache_. The qualifier
+is used to qualify the injection point and the cache configuration
+producer:
+
+
+
+
+In the same way, a cache can be defined with the default configuration
+of the cache manager in use, using a producer field:
+
+
+
+
+One advantage of this approach is that all cache configurations of the
+entire application can be gathered together into a single
+_Configuration_ class.
+
+The Infinispan CDI extension provides a cache manager with a default
+configuration (and it is used by default). You can also override the
+default configuration (used by the default cache manager), as well as
+the default cache manager. You can find more information
+https://docs.jboss.org/author/x/BAFZ[here].
+
+[.Apple-style-span]#JCache annotations support#
+
+JCache (aka http://jcp.org/en/jsr/detail?id=107[JSR-107]) is famous as
+the oldest open JSR. However, this JSR has recently seen extensive
+progress, and is a candidate for inclusion in Java EE 7
+(http://jcp.org/en/jsr/detail?id=342[JSR-342]).
+
+This specification defines a standard caching API to work with a
+standalone cache, as well as a distributed cache. An interesting part of
+the specification are the annotations which are designed to solve common
+caching use cases. Some of the annotations defined by this specification
+are:
+
+* _@CacheResult_ caches the result of a method call
+* _@CachePut_ caches a method parameter
+* _@CacheRemoveEntry_ removes an entry from a cache
+* _@CacheRemoveAll_ removes all entries from a cache
+
+The following example illustrates the use of these annotations:
+
+
+
+
+
+The Infinispan CDI extension adds support for these annotations. The
+only thing to do is to enable the CDI interceptors in your application
+_beans.xml_ - you can find more information
+https://docs.jboss.org/author/x/BAFZ[here].
+
+[.Apple-style-span]#Infinispan CDI and JBoss AS 7#
+
+With JBoss AS 7, you can setup an Infinispan cache manager in the server
+configuration file. This allows you to externalize your Infinispan
+configuration and also to lookup the cache manager from JNDI, normally
+with the _@Resource_ annotation. This
+http://infinispan.blogspot.com/2011/07/infinispan-in-jboss-as7.html[post]
+has more details on the subject.
+
+As we mentioned earlier, you can override the default cache manager used
+by the Infinispan CDI extension. To use a JBoss AS 7 configured cache,
+you need to use the cache manager defined in JBoss AS 7. You only need
+to annotate the default cache manager producer with _@Resource_.
+Simple!
+
+
+
+
+Now, you can inject the cache defined in JBoss AS 7 as we described
+earlier.
+
+[.Apple-style-span]#What's next?#
+
+Here is a highlight of the features you will see soon.
+
+* support for all JSR 107 annotations - _@CachePut_, _@CacheDefaults_
+* support for remote cache
+* ability to listen Infinispan events with CDI observers
+* and more - let us know what you want ;-)
+
+As usual you can open issues and features request on the Infinispan
+https://issues.jboss.org/browse/ISPN[JIRA] (component _CDI
+Integration_).
+
+Feel free to open a topic in the Infinispan
+http://community.jboss.org/en/infinispan?view=discussions[forum] if you
+need help.
+
+The Infinispan CDI documentation is
+https://docs.jboss.org/author/x/BAFZ[here].
+
+To see the Infinispan CDI extension in action you can browse and run the
+quickstart application
+https://github.com/infinispan/infinispan-quickstart/tree/master/cdi[here]
+or watch this http://vimeo.com/27596937[screencast].
+
+Enjoy!
+
+
+*About the author*
+[.Apple-style-span]# #
+Kevin Pollet is a software engineer at http://www.serli.com/[SERLI] a
+Consulting & Software Engineering company based in France. He's an Open
+Source advocate and contributes on many projects such as Infinispan and
+Hibernate Validator, both at SERLI and at home. He is also involved in
+the Poitou-Charentes JUG and has spoken in many JUG events. He enjoys
+attending Java events like JUDCon, JBoss World and Devoxx.
+

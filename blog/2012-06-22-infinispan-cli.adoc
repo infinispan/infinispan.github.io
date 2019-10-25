@@ -1,0 +1,132 @@
+---
+layout: blog
+title: Infinispan CLI
+date: '2012-06-22T12:44:00.002-07:00'
+author: Tristan Tarrant
+tags:
+- command line interface
+- monitoring
+- data entry
+- shell
+- cli
+modified_time: '2012-06-22T12:47:09.686-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7295457461495208487
+blogger_orig_url: https://blog.infinispan.org/2012/06/infinispan-cli.html
+---
+When using Infinispan, both embedded as a library in an application or
+as a standalone server, I always longed for a simple standalone tool for
+interacting with the caches and the data within them. As all itches go,
+I had to scratch it, and so I present you with Infinispan's own CLI !
+
+The CLI allows you to inspect and modify the data within an Infinispan
+cache and also provides access to some of the more advanced features
+(such as transactions).
+
+The CLI is built out of two elements: a server-side module and the
+client command tool. The server-side module is optional, and provides
+the actual interpreter for the commands. Currently the server (and the
+client) use the JMX protocol to communicate, but in a future release we
+plan to support other communication protocols (in particular our own
+HotRod).
+
+To get started, you need at least Infinispan 5.2.0.ALPHA1. Unzip the
+distribution and start a server:
+
+
+./bin/startServer.sh -r hotrod
+
+
+The startServer.sh script automatically enables remote JMX connections
+and you can discover the port by running the jps command (part of the
+JDK/JRE) as follows:
+
+
+jps -v
+
+
+which should display something like
+
+
+26532 Jps -Dapplication.home=/usr/lib/jvm/jdk1.7.0_04 -Xms8m
+20508 Main -Djava.net.preferIPv4Stack=true
+-Dcom.sun.management.jmxremote.ssl=false
+-Dcom.sun.management.jmxremote.authenticate=false
+-Dcom.sun.management.jmxremote.port=50434 -Dsun.nio.ch.bugLevel=""
+-Dlog4j.configuration=file:////home/tst/Downloads/infinispan-5.2.0-SNAPSHOT/etc/log4j.xml
+
+
+Now we can connect to the Infinispan instance using the CLI as
+follows:
+
+
+./bin/ispn-cli.sh -c jmx://localhost:50434
+
+
+You will be presented with a prompt:
+
+
+[jmx://localhost:50434]MyCacheManager>
+
+
+The above prompt shows which host we're currently connected to and which
+CacheManager is being used (in this case: MyCacheManager).
+
+Let's try putting some data in the cache
+
+
+put a a
+
+
+Now let's check that the cache actually contains the entry we've just
+put
+
+
+get a
+
+
+Which will display a glorious
+
+
+a
+
+
+The CLI understands several commands. Just type
+
+help
+
+to get a list of them and then
+
+help [commandname]
+
+to get help on a specific command's syntax.
+
+The CLI uses the wonderful
+https://github.com/stalep/jreadline[JReadline], so it supports all sorts
+of fancy buffer editing, history navigation and tab-completion as if you
+were in your comfortable OS shell (sorry Windows, cmd is not exactly a
+modern shell).
+
+An important aspect of an Infinispan cache is that you can store
+whatever data you want in it. The CLI tries to interpret the data from
+the input you give it. It understands most of the Java native types
+(int, long, float, double, boolean, String), some additional fancy types
+(such as UUIDs) and a JSON syntax for mapping any type of Java class, so
+that you can write:
+
+put user1 \{ "package.MyClass": \{"i": 5, "x": null, "b": true } };
+
+Conversely, when performing a get, the interpreter will output a JSON
+representation of your classes.
+
+The CLI is still work in progress and will evolve and mature during
+Infinispan's 5.2 development cycle. You are all welcome to try it out
+and provide feedback on the
+https://community.jboss.org/en/infinispan?view=discussions[forums], on
+IRC on channel #infinispan and using our
+https://issues.jboss.org/browse/ISPN[issue tracker] to report bugs and
+ask for enhancements.
+
+I will soon be blogging again, hopefully with a video which will
+illustrate some of the more fanciful features of the CLI. Enjoy.
+
+

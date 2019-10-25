@@ -1,0 +1,84 @@
+---
+layout: blog
+title: Enhanced JGroups configuration
+date: '2019-03-05T05:27:00.000-08:00'
+author: Tristan Tarrant
+tags:
+- configuration
+- jgroups
+- '10.0'
+modified_time: '2019-03-05T05:27:04.401-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7381321340134963595
+blogger_orig_url: https://blog.infinispan.org/2019/03/enhanced-jgroups-configuration.html
+---
+Infinispan uses http://www.jgroups.org/[JGroups] as its underlying
+clustering layer. In order to configure the finer details of clustering
+(discovery, flow control, cross-site, etc) you have to provide a
+separate XML file with the desired configuration and reference it from
+your Infinispan XML file as follows:
+
+
+
+For simple configurations this is usually fine, but configuring complex
+setups, such as cross-site replication, means juggling multiple files
+(one for the local stack, one for the cross-site stack and one for the
+relay configuration).
+
+Starting with Infinispan 10 Alpha2 we have introduced a number of
+changes to make your life with JGroups configurations a lot easier.
+
+
+== Default stacks
+
+Infinispan now comes with two pre-declared stacks: `tcp` and `udp`.
+Using them is as simple as just referencing their names in the
+`<transport>` element.
+
+
+== Inline stacks
+
+Inlining a stack means you can put the JGroups configuration inside the
+Infinispan one as follows:
+
+
+You can use the full JGroups schema, and by using XML namespaces you get
+full validation.
+
+== Stack inheritance
+
+Most of the time you want to reuse one of the pre-declared stacks but
+just override some of the parameters (e.g. discovery) to suit your
+environment. The following example creates a new `tcpgossip` stack which
+is based on the default tcp stack but replaces the discovery protocol
+with `TCPGOSSIP`:
+
+
+
+In the above example you can see that we have enhanced the JGroups
+protocol declarations with two new attributes: `ispn:stack.combine` and
+`ispn:stack.position` which affect how and where protocol changes are
+applied on the parent configuration to obtain a new configuration.
+`stack.combine` can be one of `COMBINE` (the default, possibly
+overriding any specified attributes), `REPLACE` (which completely
+replaces the protocol and resets all attributes), `REMOVE` (removes the
+protocol) and `INSERT_AFTER` (which places this protocol in the stack
+immediately after the protocol specified by `stack.position`).
+
+== Multiple stacks and Cross-site
+
+The inline configuration really shows its usefulness in cross-site
+configurations. In fact, the JGroups stack declaration has been extended
+with a special element which replaces the need for a separate relay XML
+file and can reference other stacks just by name. The following
+configuration uses the default `udp` stack for the local cluster
+transport and uses the default `tcp` stack for connecting to a remote
+site:
+
+
+Having the entire configuration in a single place greatly simplifies
+management. Of course you can combine all of the above features to
+obtain the configuration you need for your environment. You can find
+more details and examples in the
+http://infinispan.org/docs/dev/user_guide/user_guide.html#cache_configuration_clustered[documentation].
+Enjoy !
+Tristan

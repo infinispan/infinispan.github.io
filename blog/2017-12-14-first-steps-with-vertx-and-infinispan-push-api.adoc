@@ -1,0 +1,167 @@
+---
+layout: blog
+title: First steps with Vert.x and Infinispan - PUSH API (Part 2)
+date: '2017-12-14T11:11:00.000-08:00'
+author: Katia Aresti
+tags:
+- reactive
+- listeners
+- infinispan
+- vert.x
+- push api
+- react
+modified_time: '2017-12-14T11:25:27.206-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-885985137699815698
+blogger_orig_url: https://blog.infinispan.org/2017/12/first-steps-with-vertx-and-infinispan-push-api.html
+---
+Welcome to the second in a multi-part series of blog posts about
+creating http://vertx.io/[Eclipse Vert.x] applications
+with http://infinispan.org/[Infinispan]. In the
+http://blog.infinispan.org/2017/12/first-steps-with-vertx-and-infinispan-rest-api.html[previous
+blog post] we have seen how to create a REST API. The purpose of this
+tutorial is to showcase how to create a PUSH API implemented with
+Vert.x and using Infinispan as a server.
+
+____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+_All the code of this tutorial is available in this
+https://github.com/karesti/cute-names[GitHub repository]. The backend is
+a Java project using Maven, so all the needed dependencies can be found
+in the pom.xml. The front is a super simple react application._
+____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+*
+*
+
+== PUSH API
+
+Creating a REST API is very straightforward. But today, even if we are
+heavily using REST, we don't always want to use request/response or
+polling, but instead we want to push directly from the server to the
+client. In this example, we are going to create an API that pushes every
+new value inserted in the default cache of Infinispan. These values are
+cute names, as we did in the REST API example.
+
+We are using two features here :
+
+* Infinispan client listeners
+* Vert.x bridge between the
+http://vertx.io/docs/vertx-core/java/#event_bus[Event Bus] and the
+browser
+
+http://infinispan.org/docs/stable/user_guide/user_guide.html#_Listeners_and_notifications_section[Infinispan
+Listeners] provide a way to the client get notified when something
+happens in a cache.
+
+The http://vertx.io/docs/vertx-web/java/#_sockjs_event_bus_bridge[Event
+Bus Bridge] that connects to the browser,
+uses http://sockjs.org/[SockJS]. SockJS is a JavaScript library that
+provides a WebSocket API, but it can be used with browsers that don't
+support web-sockets (see the website of the project for more detailed
+information). Vert.x supports this library and creates a bridge between
+your browser and your back-end easily through the Event Bus.
+
+
+=== Creating an Event Bus bridge
+
+
+Vert.x is a reactive framework, which means that uses
+https://github.com/ReactiveX/RxJava[RxJava] too, and provides a fancy
+API on top of it.
+
+First, we are going to create a new verticle called SendCuteNamesAPI.
+This verticle extends the CacheAccessVerticle we created in the
+http://blog.infinispan.org/2017/12/first-steps-with-vertx-and-infinispan-rest-api.html[previous
+blog post]. CacheAccessVerticle initialises the connection with
+Infinispan using the
+http://infinispan.org/docs/dev/user_guide/user_guide.html#using_hot_rod_server[Hot
+Rod protocol.]
+
+Now we need to create a SocketJSHandler. This handler has a method
+called bridge, where we configure some BridgeOptions. Obviously *we
+don't want the client to be able to read everything* traveling on the
+event bus, and this won't happen. We *configure an address*,
+*'cute-names'*, and we add the permission to read and write to this
+address.
+
+This handler is passed to the event bus route, where the path
+is /eventbus/*.
+
+Finally, we create a http server as we did in the REST API example. The
+difference is that instead of calling listen method, we call *rxListen*
+and *subscribe*.
+
+
+
+
+
+=== Getting notified and publishing
+
+
+Using
+http://infinispan.org/docs/stable/user_guide/user_guide.html#_Listeners_and_notifications_section[Infinispan
+listeners] is very easy.
+
+First, we are going to create a class that has
+the @ClientListener annotation. The client listener has to be added to
+the cache client configuration. We add a protected method
+called addConfigToCache that will be called just after the
+initialisation of the defaultCache in the abstract CacheAccessVerticle.
+Verticles extending the abstract class can now add custom configuration
+to the client.
+
+We want to be notified when a new entry is created. In this case, our
+listener has to contain a method with the @ClientCacheEntryCreated
+annotation on it. The signature of the method has to include a
+ClientCacheEntryCreatedEvent<String> parameter. This parameter will hold
+the 'key' of the entry that has been created.
+
+Finally, we use the key to retrieve the name using the getAsync method
+and then *publish* the value in the** Vert.x event bus** to the
+**address **where the *socket listener* is permitted to read
+*: cute-names*.
+
+
+
+Now we can run the main method and whenever we post a new name, we will
+see in the logs that the client listener is notified!
+
+
+
+
+
+
+=== Client code
+
+
+We are going to create a super simple react application that will just
+display hello. React community is *huge*, so there are lot's of
+tutorials out there to create a hello world client application. This
+application has a single component that displays "Hello".
+
+The react application runs calling npm install and npm start 
+in http://localhost:9000/.
+
+Now we need to connect the client to the backend with
+*SockJS*.** **Vert.x provides a JavaScript library for
+that: https://www.npmjs.com/package/vertx3-eventbus-client[vertx3-eventbus-client],
+built on top of SockJS. We create an EventBus object that will connect
+to *http://localhost:8082/eventbus* as we configured in the
+SendCuteNamesAPI. We register a handler on the *'cute-names'* address.
+The body of the message will contain the new cute name published in the
+event bus. Every time the handler is called, we update the component's
+state, and it will be rendered.
+
+
+
+
+
+== Wrap up
+
+We have learned how to create PUSH APIs with Vert.x, powered by
+Infinispan. The repository has some unit tests. Feedback is more than
+welcome to improve the code and the provided examples. I hope you
+enjoyed this tutorial ! On the next tutorials we will talk about
+https://github.com/vert-x3/vertx-infinispan[Infinispan as the cluster
+manager for Vert.x]. Stay tuned !
+
+

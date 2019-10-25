@@ -1,0 +1,129 @@
+---
+layout: blog
+title: Cache Store Batch Operations
+date: '2017-10-20T06:43:00.000-07:00'
+author: Ryan Emerson
+tags:
+- jdbc
+- rocksdb
+- jpa
+- leveldb
+- '9.1'
+- cache store
+modified_time: '2017-10-20T06:43:09.688-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-1552930257334265766
+blogger_orig_url: https://blog.infinispan.org/2017/10/cache-store-batch-operations.html
+---
+Infinispan 9.1.x introduces batch write and delete operations for cache
+stores. The introduction of batching should greatly improve performance
+when utilising write-behind cache stores, using putAll operations and
+committing transactions in non-transactional stores.
+
+== 
+
+== 
+
+== 
+
+
+
+== CacheWriter Interface Additions
+
+
+
+The CacheWriter interface has been extended so that it exposes two
+additional methods: deleteBatch and writeBatch.  For the sake of
+backwards compatibility a default implementation of these methods is
+provided, however if your cache store is able to utilise batching we
+strongly recommend you create your  own implementations. The additional
+methods and docs are show below: 
+
+
+
+
+
+
+
+=== Updated Stores
+
+
+
+Currently the JDBC, JPA, RocksDB and Remote stores have all been
+modified to take advantage of these latest changes.
+
+== 
+
+== 
+
+
+
+== Configuration Changes
+
+
+
+As each store implementations has different batching capabilities, it
+was necessary to introduce a max-batch-size attribute to the
+AbstractStoreConfiguration. This attribute defines the maximum number of
+entries that should be included in a single batch operation to the
+store. If a value less than one is provided, then the underlying store
+implementation should not place a upper limit on the number of entries
+in a batch. 
+
+=== Deprecated Attributes
+
+Both TableManipulationConfiguration#batchSize and
+JpaStoreConfiguration#batchSize have been deprecated, as they serve the
+same purpose as AbstractStoreConfiguration#maxBatchSize.
+
+
+== Store Benchmark
+
+
+To measure the impact of batch writes on Cache.putAll, we created a
+https://github.com/ryanemerson/benchmarks/tree/master/store[simple
+benchmark] to compare the performance of Infinispan 9.1.1.Final (with
+batching) and 9.0.3.Final (without).  The benchmark consisted of 20
+threads inserting 100000 cache entries as fast as possible into a cache
+via putAll; with each putAll operation containing 20 cache entries and
+the max-batch-size of each store being set to 20. The table below shows
+the average time taken for each store type after the benchmark was
+executed three times.
+
+
+
+
+
+[cols=",,,",options="header",]
+|======================================================
+|Store Type |9.0.3.Final |9.1.1-Final |Latency Decrease
+|JdbcStringBasedStore |29368ms |2597ms |91.12%
+|JPAStore |30798ms |16640ms |45.97%
+|RocksDBStore |1164ms |209ms |82.04%
+|======================================================
+
+
+
+== 
+
+The benchmark results above clearly show that performance is increased
+dramatically when utilising batch updates at the store level.
+
+== 
+
+==
+
+== Conclusions
+
+
+Infinispan 9.1.x introduces batching capabilities to the CacheWriter
+interface in order to improve performance. If you currently utilise a
+custom cache store, we strongly recommend that you provide your own
+implementation of the delete and write batch methods. 
+
+
+
+If you have any feedback on the CacheWriter changes, or would like to
+request some new features/optimisations, let us know via
+the https://developer.jboss.org/en/infinispan/content[forum], https://issues.jboss.org/projects/ISPN[issue
+tracker] or the #infinispan channel
+onhttp://webchat.freenode.net/?channels=%23infinispan[ Freenode].

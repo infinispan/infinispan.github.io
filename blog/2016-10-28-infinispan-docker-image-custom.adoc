@@ -1,0 +1,103 @@
+---
+layout: blog
+title: 'Infinispan Docker image: custom configuration'
+date: '2016-10-28T03:57:00.000-07:00'
+author: Gustavo
+tags:
+- docker
+- server
+- configuration
+- cli
+modified_time: '2016-10-28T03:57:45.988-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-6156455781570179027
+blogger_orig_url: https://blog.infinispan.org/2016/10/infinispan-docker-image-custom.html
+---
+
+In the
+http://blog.infinispan.org/2016/07/improved-infinispan-docker-image.html[previous
+post] we introduced the improved Docker image for Infinispan and showed
+how to run it with different parameters in order to create standalone,
+clustered and domain mode servers.
+
+This post will show how to address more advanced configuration changes
+than swapping the JGroups stack, covering cases like creating extra
+caches or using a pre-existent configuration file.
+
+
+====  
+
+==== Runtime configuration changes
+
+
+Since the Infinispan server is based on Wildfly, it also supports the
+Command Line Interface (CLI) to change configurations at runtime.
+
+Let's consider an example of a custom indexed cache with Infinispan
+storage. In order to configure it, we need 4 caches, one cache to hold
+our data, called _testCache_ and other three caches to hold the
+indexes:  _LuceneIndexesMetadata_, _LuceneIndexesData_ and
+_LuceneIndexesLocking_.
+
+This is normally achieved by adding this piece of configuration to the
+server xml:
+
+
+
+This is equivalent to the following script:
+
+
+
+
+To apply it to the server, save the script to a file, and run:
+
+
+where CONTAINER is the id of the running container.
+
+Everything that is applied using the CLI is automatically persisted in
+the server, and to check what the script produced, use the command to
+dump the config to a local file called _config.xml._
+
+
+Check the file _config.xml_: it should contain all four caches created
+via the CLI.
+
+
+====  
+
+====  Using an existent configuration file
+
+
+Most of the time changing configuration at runtime is sufficient, but it
+may be desirable to run the server with an existent xml, or change
+configurations that cannot be applied without a restart. For those
+cases, the easier option is to mount a volume in the Docker container
+and start the container with the provided configuration.
+
+This can be achieved with Docker's volume support. Consider an xml file
+called _customConfig.xml_ located on a local folder _/home/user/config_.
+The following command:
+
+
+will create a volume inside the container at the
+_/opt/jboss/infinispan-server/standalone/configuration/extra/_
+directory, with the contents of the local folder _/home/user/config_.
+
+The container is then launched with the entrypoint _extra/customConfig_,
+which means it will use a configuration named _customConfig_ located
+under the _extra_ folder relative to where the configurations are
+usually located at
+_/opt/jboss/infinispan-server/standalone/configuration_.
+
+
+====  
+
+==== Conclusion
+
+
+And that's all about custom configuration using the Infinispan Docker
+image.
+
+Stay tuned for the next post where we'll dive into multi-host clusters
+with the Infinispan Docker image.
+
+

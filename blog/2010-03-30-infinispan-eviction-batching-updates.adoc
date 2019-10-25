@@ -1,0 +1,124 @@
+---
+layout: blog
+title: Infinispan eviction, batching updates and LIRS
+date: '2010-03-30T03:50:00.000-07:00'
+author: Vladimir Blagojevic
+tags:
+- eviction
+- concurrency
+- data structures
+modified_time: '2015-09-28T06:00:39.048-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-9203379330709829373
+blogger_orig_url: https://blog.infinispan.org/2010/03/infinispan-eviction-batching-updates.html
+---
+DataContainer abstraction represents the heart of Infinispan. It is a
+container structure where actual cache data resides. Every put, remove,
+get and other invoked cache operations eventually end up in the data
+container. Therefore, it is of utmost importance the data container is
+implemented in a way that does not impede overall system throughput.
+Also recall that the data container's memory footprint can not grow
+indefinitely because we would eventually run out of memory; we have to
+periodically evict certain entries from the data container according to
+a chosen eviction algorithm.
+
+
+
+LRU eviction algorithm, although simple and easy to understand, under
+performs in cases of weak access locality (one time access entries are
+not timely replaced, entries to be accessed soonest are unfortunately
+replaced, and so on). Recently, a new eviction algorithm -
+http://portal.acm.org/citation.cfm?id=511334.511340[LIRS] has gathered a
+lot of attention because it addresses weak access locality shortcomings
+of LRU yet it retains LRU's simplicity.
+
+
+
+However, no matter what eviction algorithm is utilized, if eviction is
+not implemented in a scalable, low lock contention approach, it can
+seriously degrade overall system performance. In order to do any
+meaningful selection of entries for eviction we have to lock data
+container until appropriate eviction entries are selected. Having such a
+lock protected data container in turn causes high lock contention
+offsetting any eviction precision gained by sophisticated eviction
+algorithms. In order to get superior throughput while retaining high
+eviction precision we need both low lock contention data container and
+high precision eviction algorithm implementation – a seemingly
+impossible feat.
+
+
+
+Instead of making a trade-off between the high precision eviction
+algorithm and the low lock contention there is
+http://portal.acm.org/citation.cfm?id=1546683.1547428[a third approach]:
+we keep lock protected data container but we amortize locking cost
+through batching updates. The basic idea is to wrap any eviction
+algorithm with a framework that keeps track of cache access per thread
+(i.e. ThreadLocal) in a simple queue. For each cache hit associated with
+a thread, the access is recorded in the thread’s queue. If thread's
+queue is full or the number of accesses recorded in the queue reaches a
+certain pre-determined threshold, we acquire a lock and then execute
+operations defined by the eviction algorithm - once for all the accesses
+in the queue. A thread is allowed to access many cache items without
+requesting a lock to run the eviction replacement algorithm, or without
+paying the lock acquisition cost. We fully exploit a non-blocking lock
+APIs like tryLock. As you recall tryLock makes an attempt to get the
+lock and if the lock is currently held by another thread, it fails
+without blocking its caller thread. Although tryLock is cheap it is not
+used for every cache access for obvious reasons but rather on certain
+pre-determined thresholds. In case when thread's queue is totally full a
+lock must be explicitly requested. Therefore, using batching updates
+approach we significantly lower the cost of lock contention, streamline
+access to locked structures and retain the precision of eviction
+algorithm such as LIRS. The key insight is that batching the updates on
+the eviction algorithm doesn't materially affect the accuracy of the
+algorithm.
+
+
+
+How are these ideas implemented in Infinispan? We introduced
+BoundedConcurrentHashMap class based on Doug Lea's ConcurrentHashMap.
+BoundedConcurrentHashMap hashes entries based on their keys into lock
+protected segments. Instead of recording entries accessed per thread we
+record them in a lock free queue on a segment level. The main reason not
+to use ThreadLocal is that we could potentially have hundreds of threads
+hitting the data container, some of them very short lived thus possibly
+never reaching batching thresholds. When predetermined thresholds are
+reached eviction algorithms is executed on a segment level. Would
+running eviction algorithm on a segment level rather than entire data
+container impact overall eviction precision? In our performance tests we
+have not found any evidence of that.
+
+
+
+Infinispan's eviction algorithm is specified using strategy attribute of
+eviction XML element. In addition to old eviction approaches, starting
+with release 4.1.ALPHA2, you can now select LIRS eviction algorithm. LRU
+remains the default. Also note that starting with 4.1ALPHA2 release
+there are two distinct approaches to actually evict entries from the
+cache: piggyback and the default approach using a dedicated
+EvictionManager thread. Piggyback eviction thread policy, as it name
+implies, does eviction by piggybacking on user threads that are hitting
+the data container. Dedicated EvictionManager thread is unchanged from
+the previous release and it remains the default option. In order to
+support these two eviction thread policies a new eviction attribute
+threadPolicy has been added to eviction element of Infinispan
+configuration schema.
+
+
+
+Does eviction redesign based on batching updates promise to live up to
+its expectations? Ding et al, authors of the original batching proposal,
+found that their framework increased throughput nearly twofold in
+comparison with unmodified eviction in postgreSQL 8.2.3. We do not have
+any numbers to share yet, however, initial testing of
+BoundedConcurrentHashMap were indeed promising. One of our partner
+companies replaced their crucial caching component with
+BoundedConcurrentHashMap and realized a 54% performance improvement on
+the Berlin SPARQL benchmark for their flagship product. Stay tuned for
+more updates.
+
+
+
+Cheers,
+
+Vladimir

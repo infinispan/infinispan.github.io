@@ -1,0 +1,119 @@
+---
+layout: blog
+title: 'Hot Rod Remote Events #4: Clustering and Failover'
+date: '2014-12-15T00:27:00.000-08:00'
+author: Galder Zamarreño
+tags:
+- hotrod
+- event
+- remote events
+- '7.0'
+- failover
+modified_time: '2015-09-28T22:19:55.459-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-8775425045739573587
+blogger_orig_url: https://blog.infinispan.org/2014/12/hot-rod-remote-events-4-clustering-and.html
+---
+This blog post is the last in a series that looks at the forthcoming Hot
+Rod Remote Events functionality included in Infinispan 7.0.
+http://blog.infinispan.org/2014/08/hot-rod-remote-events-1-getting-started.html[First
+article] focused on how to get started receiving remote events from Hot
+Rod servers. The
+http://blog.infinispan.org/2014/08/hot-rod-remote-events-2-filtering-events.html[second
+article] looked at how Hot Rod remote events can be filtered, and the
+http://blog.infinispan.org/2014/09/hot-rod-remote-events-3-customizing.html[third
+one] showed how to customize contents of events.
+
+In this last article, we'll be focusing on how remote events are fired
+in a clustered environment and how failover situations are dealt with.
+
+The most important thing to know about remote events in a clustered
+environment is that *when a client adds a remote listener, this is
+installed in a single node in the cluster and that this node is in
+charge of sending events back to the client for all affected operations
+happening cluster wide*.
+
+As a result of this, when filtering or event customization is applied,
+the org.infinispan.notifications.cachelistener.filter.CacheEventFilter
+and/or org.infinispan.notifications.cachelistener.filter.CacheEventConverter
+instances must be somehow marshallable. This is necessary because when
+the client listener is installed in a cluster, the filter and/or
+converter instances are sent to other nodes in the cluster so that
+filtering and conversion can happen right where the event originates,
+hence improving efficiency. These classes can be made marshallable by
+making them extend Serializable, or
+http://infinispan.org/docs/7.0.x/user_guide/user_guide.html#_plugging_infinispan_with_user_defined_externalizers[providing
+and registering a custom Externalizer for them].
+
+Under normal circumstances, the code and examples showed in previous
+blog posts work the same way in clustered environment. However, in a
+clustered environment, a decision needs to be made with regards to how
+to deal with situations where nodes go down: If a node goes down that
+does not have the client listener installed, nothing happens. However,
+when the node containing the client listener goes down, the Hot Rod
+client implementation transparently fails over the client listener
+registration to a different node. As a result of this failover, there
+could be a gap in the event consumption. This gap is solved using one of
+these solutions:
+
+
+==== State Delivery
+
+
+
+The @ClientListener annotation has an optional parameter
+called includeCurrentState. When this is enabled and the client listener
+is registered, before receiving any events for on-going operations, the
+server sends ClientCacheEntryCreatedEvent event instances (for methods
+annotated with @ClientCacheEntryCreated) for all existing cache entries
+to the client. This offers the client an opportunity to construct some
+state or computation based on the contents of the clustered cache. When
+the Hot Rod client transparently fails over registered listeners, it
+re-registers them in a different node and if includeCurrentState is
+enabled, clients can recompute their state or computation to reinstate
+it to what it was before the failover. The downside of
+includeCurrentState is that it's performance is heavily dependant on the
+cache size, and hence it's disabled by default.
+
+
+
+==== @ClientCacheFailover
+
+
+
+Alternatively, instead of relying on receiving state, users can define a
+method with @ClientCacheFailover annotation that
+receives ClientCacheFailoverEvent as parameter inside the client
+listener implementation:
+
+
+
+
+
+This method would be called back whenever the node that had this client
+listener has gone down. This can be handy for situations when the end
+users just wants to clear up some local state as a result of the
+failover, e.g. clear a near or L1 cache. When events are received again,
+the near or L1 cache could be repopulated again.
+
+
+
+This callback method of dealing with client listener failover offers a
+simple, efficient solution to dealing with cluster topology changes
+affecting client listeners. Depending on the remote event use case, this
+method might be better suited that state delivery.
+
+
+
+=== Final Words
+
+
+
+This post marks the end of the remote event series. In future Infinispan
+versions, we'll continue improving the technology adding some extra
+features, and more importantly, we'll start building higher level
+abstractions on top of remote events, such as Hot Rod client Near
+Caches.
+
+Cheers,
+Galder
+

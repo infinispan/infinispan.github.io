@@ -1,0 +1,131 @@
+---
+layout: blog
+title: 'Infinispan Server: remote protocols improvements'
+date: '2013-05-17T11:42:00.000-07:00'
+author: Tristan Tarrant
+tags: 
+modified_time: '2013-05-17T11:42:18.245-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-5455091021820104003
+blogger_orig_url: https://blog.infinispan.org/2013/05/infinispan-server-remote-protocols.html
+---
+A couple of weeks ago, Infinispan 5.3.0.Beta1 was released, which
+brought a slew of improvements to two of the remoting protocols: Hot Rod
+and REST. This week's 5.3.0.Beta2 brings even more goodies: the ability
+to expose the same container over multiple Hot Rod endpoints and the
+integration of the WebSocket endpoint. We've also been working on
+fleshing out the
+https://docs.jboss.org/author/display/ISPN/Infinispan+Server[documentation]
+for the server.
+
+
+== Hot Rod SSL
+
+
+Hot Rod, Infinispan's own high-performance, topology aware protocol, has
+gained the ability to encrypt the communication using SSL and optionally
+require client certificate authentication. While this is still not the
+full-blown authentication/authorization infrastructure we will be
+implementing for Infinispan 6.0, it is the first step in that
+direction.
+In the context of the Infinispan Server, setting this up is quite
+simple. Download the Infinispan Server distribution from
+http://www.jboss.org/infinispan/downloads and unzip it.
+Next create a keystore with a self-signed certificate:
+
+$ keytool -genkey -alias hotrod -keyalg RSA -keystore keystore.jks
+-keysize 2048
+Enter keystore password:  secret
+Re-enter new password: secret
+What is your first and last name?
+  [Unknown]:  HotRod
+What is the name of your organizational unit?
+  [Unknown]:  Infinispan
+What is the name of your organization?
+  [Unknown]:  JBoss
+What is the name of your City or Locality?
+  [Unknown]:  Red Hat
+What is the name of your State or Province?
+  [Unknown]:  World
+What is the two-letter country code for this unit?
+  [Unknown]:  WW
+Is CN=HotRod, OU=Infinispan, O=JBoss, L=Red Hat, ST=World, C=WW
+correct?
+  [no]:  yes
+
+Enter key password for <hotrod>
+    (RETURN if same as keystore password):
+
+Put the keystore in the standalone/configuration directory together with
+the standalone-hotrod-ssl.xml from the docs/examples/configs
+directory.
+Now start the server using bin/standalone.sh -c
+standalone-hotrod-ssl.xml
+This will start a server with a HotRod endpoint on port 11222 which will
+only accept SSL connections.
+
+Now we need a client:
+
+
+This client needs to find the keystore.jks file you generated above.
+
+
+== Hot Rod container sharing
+
+
+Another feature added to the Hot Rod endpoint is the ability to share
+the same container between multiple endpoints, and exposing them on
+different interfaces. This could be used to offer an unencrypted backend
+endpoint to be used by "internal" servers to populate the cache and an
+encrypted frontend endpoint to be used by "external" applications. With
+the future addition of authorization, this will offer the ability to
+handle many types of security scenarios.
+
+
+== REST Extended Headers
+
+
+The REST endpoint now returns the Expires header for mortal entries. It
+will also return additional headers when the extended query parameter is
+added, e.g. GET /cacheName/cacheKey?extended
+will return the following custom headers:
+
+* Cluster-Primary-Owner: the node name of the primary owner for this key
+* Cluster-Node-Name: the JGroups node name of the server that has
+handled the request
+* Cluster-Physical-Address: the physical JGroups address of the server
+that has handled the request.
+
+With the introduction of custom metadata, courtesy of
+https://jira.jboss.org/browse/ISPN-2281[ISPN-2281], we will also allow
+returning that information too.
+
+
+== REST Collections
+
+
+Another improvement made to the REST endpoint is the ability to retrieve
+all keys in a cache, by simply invoking a GET /cacheName
+This will return a list of keys present in the given cacheName as the
+body of the response. The format of the response can be controlled via
+the Accept header as follows:
+
+* application/xml - the list of keys will be returned in XML format.
+* application/json - the list of keys will be return in JSON format.
+* text/html - the list of keys will be returned in HTML format.
+* text/plain - the list of keys will be returned in plain text format,
+one key per line
+
+If the cache identified by cacheName is distributed, only the keys owned
+by the node handling the request will be returned. To return all keys,
+append the "global" parameter to the query, as follows: GET
+/cacheName?global
+
+
+== WebSocket endpoint
+
+
+The WebSocket endpoint is now finally part of the new Infinispan Server
+package. Bear in mind that this is just a pure WebSocket server. When we
+will be able to upgrade our base from AS 7.x to WildFly 8 we will be
+able to take advantage of the new Undertow web server which has native
+support for WebSockets.

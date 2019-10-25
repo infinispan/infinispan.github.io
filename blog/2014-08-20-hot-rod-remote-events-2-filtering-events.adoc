@@ -1,0 +1,105 @@
+---
+layout: blog
+title: 'Hot Rod Remote Events #2: Filtering events'
+date: '2014-08-20T08:18:00.001-07:00'
+author: Galder Zamarreño
+tags:
+- hotrod
+- event
+- remote events
+- '7.0'
+modified_time: '2015-09-28T22:19:55.395-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-1409533794181251932
+blogger_orig_url: https://blog.infinispan.org/2014/08/hot-rod-remote-events-2-filtering-events.html
+---
+This blog post is the second in a series that looks at the forthcoming
+Hot Rod Remote Events functionality included in Infinispan 7.0. In the
+http://blog.infinispan.org/2014/08/hot-rod-remote-events-1-getting-started.html[first
+blog post] we looked at how to get started receiving remote events from
+Hot Rod servers. This time we are going to focus on how to filter events
+directly in the server.
+
+Sending events to remote clients has a cost which increases as the
+number of clients. The more clients register remote listeners, the more
+events the server has to send. This cost also goes up as the number of
+modifications are executed against the cache. The more cache
+modifications, the more events that need to be sent.
+
+A way to reduce this cost is by filtering the events to send
+server-side. If at the server level custom code decides that clients are
+not interested in a particular event, the event does not even need to
+leave the server, improving the overall performance of the system.
+
+Remote event filters are created by implementing
+a org.infinispan.notifications.cachelistener.filter.CacheEventFilterFactory
+class. Each factory must have a name associated to it via the
+org.infinispan.notifications.cachelistener.filter.NamedFactory
+annotation.
+
+When a listener is added, we can provide the name of a key value filter
+factory to use with this listener, and when the listener is added, the
+server will look up the factory and invoke getFilter method to get
+a org.infinispan.notifications.cachelistener.filter.CacheEventFilterFactory class
+instance to filter events server side.
+
+Filtering can be done based on key or value information, and even based
+on cached entry metadata. Here's a sample implementation which will
+filter key "2" out of the events sent to clients:
+
+
+Plugging the server with this key value filter requires deploying this
+filter factory (and associated filter class) within a jar file including
+a service definition inside the
+META-INF/services/org.infinispan.notifications.cachelistener.filter.CacheEventFilterFactory file:
+
+
+With the server plugged with the filter, the next step is adding a
+remote client listener that will use this filter. For this example,
+we'll extend the EventLogListener implementation provided in the
+http://blog.infinispan.org/2014/08/hot-rod-remote-events-1-getting-started.html[first
+blog post] in the series and we override the @ClientListener annotation
+to indicate the filter factory to use with this listener:
+
+
+Next, we add the listener via the RemoteCache API and we execute some
+operations against the remote cache:
+
+
+
+
+
+
+If we checkout the system output we'll see that the client receives
+events for all keys except those that have been filtered:
+
+
+
+Finally, with Hot Rod remote events we have tried to provide additional
+flexibility at the client side, which is why when adding client
+listeners, users can provide parameters to the filter factory so that
+filter instances with different behaviours can be generated out of a
+single filter factory based on client side information. To show this in
+action, we are going to enhance the filter factory above so that instead
+of filtering on a statically given key, it can filter dynamically based
+on the key provided when adding the listener. Here's the revised
+version:
+
+
+Finally, here's how we can now filter by "3" instead of "2":
+
+
+And the output:
+
+
+
+To summarise, we've seen how Hot Rod remote events can be filtered
+providing key/value filter factories that can create instances that
+filter which events are sent to clients, and how these filters can act
+on client provided information.
+
+In the next blog post, we'll look at how to customize remote events in
+order to reduce the amount of information sent to the clients, or on the
+contrary, provide even more information to our clients.
+
+Cheers,
+Galder

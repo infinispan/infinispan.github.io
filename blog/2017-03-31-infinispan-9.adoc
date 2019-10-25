@@ -1,0 +1,186 @@
+---
+layout: blog
+title: Infinispan 9
+date: '2017-03-31T01:50:00.000-07:00'
+author: Tristan Tarrant
+tags:
+- '9.0'
+- release
+- final
+modified_time: '2017-03-31T02:01:13.139-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-4909829576773072848
+blogger_orig_url: https://blog.infinispan.org/2017/03/infinispan-9.html
+---
+Infinispan 9 is the culmination of nearly a year of work. It is
+codenamed "Ruppaner" in honor of the city of Konstanz, where we designed
+many of the improvements we've made. Prost!
+
+
+== Performance
+
+
+We decided it was time to revisit Infinispan's performance and
+scalability. So we went back to our internals design and we made a
+number of improvements. Infinispan 9.0 is faster than any previous
+release by quite a sizeable margin in a number of key aspects:
+
+
+* distributed writes, thanks to a new algorithm which reduces the number
+of RPCs required to write to the owners
+* distributed reads, which scale much better under load
+* replicated writes, also with better scalability under load
+* eviction, thanks to a new in-memory container
+* internal marshalling, which was completely rewritten
+
+
+We will have a post dedicated to benchmarks detailing the difference
+against previous versions and in various scenarios.
+
+
+== Marshalling
+
+
+We've made several improvements in the cluster and persistent storage
+marshalling layer which has resulted in increased performance and
+smaller payloads. Also, the new marshaller layer makes JBoss Marshalling
+an optional component, which is only used when no Infinispan
+Externalizers (or AdvancedExternalizers) are available for a given type,
+hence relying on standard JDK Serializable/Externalizable capabilities
+to be marshalled.
+
+
+== Remote Hot Rod Clients
+
+
+We now ship alternate marshallers for remote clients based on Kryo and
+ProtoStuff.
+
+Additionally, the Hot Rod protocol now supports streaming operations for
+dealing with large objects.
+
+
+== Off-Heap and data-container changes
+
+
+An In-Memory Data Grid likes to eat through your memory (because you
+want it to be fast!), but in the world of the JVM that is not ideal:
+that huge chunk of data gives Garbage Collectors a hard time when the
+heap goes into double-digit gigabyte territory. Long GC pauses can make
+individual nodes unresponsive, compromising the stability of your
+cluster.
+
+Infinispan 9 introduces an improved data container which can optionally
+store entries off-heap.
+
+Additionally, our bounded container has been replaced with Ben Manes'
+excellent Caffeine which provides much better performance. Check out
+Ben's benchmarks where he compares, among other things, against
+Infinispan's old bounded container.
+
+Configuration-wise, the previously separate concepts of eviction,
+store-as-binary and data-container have been merged into a single
+'memory' configuration element.
+
+
+== Persistence
+
+
+The JDBC cache store received quite an overhaul:
+
+
+* The internal connection pool is now based on HikariCP, for improved
+performance
+* Writes will now use database-specific upsert functionality when
+available
+* Transactional writes to the cache translate to transactional writes to
+the database
+* The JdbcBinaryStore and JdbcMixedStore have been removed as detailed
+here
+
+
+We have also replaced the LevelDB cache store with the better-maintained
+and faster RocksDB cache store.
+
+
+== Ickle, our new query language
+
+
+We decided it was time for Infinispan to have a proper query language,
+which would take full advantage of our query capabilities. We have
+therefore grafted Lucene's full-text operators on top of a subset of
+JP-QL to obtain Ickle. We have already started describing Ickle in a
+recent blog post. For a taste of Ickle, the following query shows how to
+combine a traditional boolean clause with a full-text term query:
+
+
+select transactionId, amount, description from com.acme.Transaction
+where amount > 10 and description : "coffee"
+
+
+== Cloud integrations
+
+
+Infinispan continues to play nicely in cloud environments thanks to a
+number of improvements that have been made to discovery (such as
+KUBE_PING for Kubernetes/OpenShift), health probes and our pre-built
+Docker images.
+
+
+== Multi-tenant server and SNI support
+
+
+Infinispan Server is now capable of exposing multiple cache containers
+through a single Hot Rod or REST endpoint. The selection of the
+container is performed via SNI. This allows you to have a single cluster
+serve all your applications while maintaining each one's data
+isolated.
+
+
+== Administration Console
+
+
+The adminstration console has been completely rewritten in a more
+modular fashion using TypeScript to allow for greater extensibility and
+ease of maintanence. In addition to this refactor, the console now
+supports the following:
+
+
+* Stateless views
+* HTTP Digest Authentication
+* Management of individual and clustered Standalone server instances
+* Internet Explorer
+
+
+
+== Documentation overhaul
+
+
+Our http://infinispan.org/docs/stable/index.html[documentation] has been
+completely overhauled with entire chapters being added or rewritten for
+readability and consistency.
+
+
+== What's coming
+
+
+We will be blogging in more detail about some of the things above, so
+watch out for more content coming soon !
+
+
+We've already started working on Infinispan 9.1 which will bring a
+number of new features and improvements, such as clustered counters,
+consistency checker with merge policies, a new distributed cache for
+even better write performance, and more.
+
+
+== Get it now !
+
+
+Head over to our http://infinispan.org/download/[download] page to get
+binaries, sources, clients, etc.
+
+Please http://infinispan.org/community/[join us] to let us know what you
+think about this release.
+
+
+The Infinispan team

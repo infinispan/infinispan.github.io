@@ -1,0 +1,190 @@
+---
+layout: blog
+title: 'Keynote of the decade: behind the scenes, an Infinispan perspective'
+date: '2011-06-09T01:16:00.000-07:00'
+author: Manik Surtani
+tags:
+- jbossworld
+- demo
+modified_time: '2015-09-28T22:12:45.030-07:00'
+thumbnail: http://1.bp.blogspot.com/-BU_Th8gwcGQ/Te_F39JVgLI/AAAAAAAABfg/lFNL0VBpmIw/s72-c/Screen+shot+2011-06-08+at+19.55.50.png
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7468026689122770664
+blogger_orig_url: https://blog.infinispan.org/2011/06/keynote-of-decade-behind-scenes.html
+---
+http://www.redhat.com/summit/[JBoss World 2011]'s much talked about
+keynote ended with a big bang - a live demo that many thought we were
+insane to even try and pull off - and has sparked off a lot of interest,
+many claiming JBoss _has got its mojo back_.  One of the things people
+keep asking is, what actually went on?  How did we build such a demo?
+ How can we do the same?
+
+
+
+http://1.bp.blogspot.com/-BU_Th8gwcGQ/Te_F39JVgLI/AAAAAAAABfg/lFNL0VBpmIw/s1600/Screen+shot+2011-06-08+at+19.55.50.png[image:http://1.bp.blogspot.com/-BU_Th8gwcGQ/Te_F39JVgLI/AAAAAAAABfg/lFNL0VBpmIw/s320/Screen+shot+2011-06-08+at+19.55.50.png[image,width=320,height=240]]Firstly,
+if you did not attend the keynote or did not watch it online, I
+recommend that you *stop reading this now, and go and watch the
+keynote.* http://www.jboss.org/jbw2011keynote[A recording is available
+online] (the demo starts at about minute 35).
+
+
+
+Ok, now that you've been primed, lets talk about the role Infinispan
+played in that demo.  The demo involved reading mass volumes of
+real-time data off a Twitter stream, and storing these tweets in an
+Infinispan grid. This _primary grid_ (known as Grid-A), and ran off 3
+large rack-mount servers. The Infinispan nodes were standalone,
+bootstrapped off a simple Main class, and formed a cluster, running in
+asynchronous
+http://community.jboss.org/docs/DOC-14853#distribution[distributed mode]
+with 2 data owners.
+
+
+
+Andrew Sacamano did an excellent job of building an HTML 5-based webapp
+to visualise what goes on in such a grid, making use of
+http://community.jboss.org/docs/DOC-14871[cache listeners] pushing
+events to browsers and browsers rendering the "spinning spheres" using
+HTML 5's canvas tag.  So now we could visualise data and data movement
+within a grid of Infinispan nodes.
+
+
+
+http://1.bp.blogspot.com/-72Xfg5uM8Bk/Te_GgGQ4pQI/AAAAAAAABfk/ZphDf8ES4R8/s1600/Screen+shot+2011-06-08+at+19.58.06.png[image:http://1.bp.blogspot.com/-72Xfg5uM8Bk/Te_GgGQ4pQI/AAAAAAAABfk/ZphDf8ES4R8/s320/Screen+shot+2011-06-08+at+19.58.06.png[image,width=320,height=214]]As
+Twitter data started to populate the grid, we fired up a second grid
+(Grid-B) consisting of 8 nodes. Again, these nodes were configured using
+asynchronous distribution and 2 data owners, but this time these nodes
+were running on very small and cheap plugtop computers.  These plugtops
+-
+http://www.globalscaletechnologies.com/t-guruplugdetails.aspx[GuruPlugs]
+- are constrained devices with 512MB of RAM, a 1GHz ARM processor.
+
+Yes, your iPhone has more grunt :-) And yes, these sub-iPhone devices
+were running a real data grid!
+
+The purpose of this was to demonstrate the extremely low footprint and
+overhead Infinispan imposes on your hardware (we even had to run
+http://today.java.net/pub/a/today/2009/05/21/zero-and-shark-openjdk-port.html[the
+zero assembly port of OpenJDK], an interpreted-mode JVM, since the
+processor only had a 16-bit bus!). We also had a server running JBossAS
+running Andrew's cool visualisation webapp rendering the contents of
+Grid-B, so people could "see" the data in both grids.
+
+
+
+We then fired up http://www.jboss.org/drools[Drools] to have it mine the
+contents of Grid-A and send it to Grid-B applying some rules to select
+the interesting tweets, namely the ones having the hashtag *#JBW*. With
+this in place, we then invited the audience to participate - by tweeting
+with hashtag #JBW, as well as the hashtag of your favourite JBoss
+project - e.g., #infinispan :-)  People were allowed to vote for more
+than one project, and the most prolific tweeter was to win a prize.
+ This started a frenzy of tweeting, and was reflected in the two grid
+visualisations.
+
+
+
+Not only Infinispan is very quick here: needless to say, Drools was
+sending the tweets from Grid-A to Grid-B using
+http://www.jboss.org/hornetq[HornetQ], the fastest JMS implementation on
+the planet.
+
+
+
+Jay Balunas of http://www.jboss.org/richfaces[Richfaces] built a
+TwitterStream app with live updates of these tweets for various devices,
+including iPhones, iPads, Android phones and tablets, and of course,
+desktop web browsers, grabbing data off Grid-B.  Christian Sadilek and
+Mike Brock from the http://www.jboss.org/errai[Errai] team also built a
+tag-cloud application visualising popular tags as a tag cloud, again off
+Grid-B, making use of Errai to push events to the browser.
+
+
+
+After simulating Mark Proctor to try cheating the system with a script,
+we could recover the correct votes: clear Grid-B, update the Drools
+rules to have it discard the cheat tweets, and have a cleaned up stream
+of tweets flow to Grid-B.
+
+
+
+All applications, including Drools and the visualizations, where using a
+JPA interface to store or load the tweets: it was powered by an early
+preview of http://community.jboss.org/docs/DOC-16273[HibernateOGM],
+which aims to abstract any NoSQL store as a JPA persistence store while
+still providing some level of consistency. As HibernateOGM is not
+feature complete, it was using http://search.hibernate.org/[Hibernate
+Search] to provide query capabilities via a Lucene index, and using the
+Infinispan integration of Hibernate Search to distribute the index on
+Infinispan.
+
+
+
+We then demonstrated failover, as we invited the winner to come up on
+stage to choose and brutally un-plug one of the plugtops of his choice
+from Grid-B - this plugtop became his prize. Important to note, the
+webapps running off the grid did not risk to lose any data, Drools
+pulling stuff off Grid-A onto Grid-B was still able to continue running,
+the Lucene index could continually be updated and queried by the
+remaining nodes.
+
+
+
+From an Infinispan perspective, what did this demo make use of?
+
+* Data distribution, numOwners = 2
+* Async network communication via http://jgroups.org/[JGroups]
+* JTA integration with http://www.jboss.org/jbosstm[JBossTS]
+* http://community.jboss.org/docs/DOC-14871[Cache listeners] to notify
+applications of changes in data and topology
+* The http://community.jboss.org/docs/DOC-14332[Infinispan Lucene
+Directory] distributing the Lucene index on the grid
+
+So a fairly simple setup, using simple embeddable components, cheap
+hardware, to build a fairly complex application with excellent failover
+and scalability properties.
+
+
+
+So we where depending on wi-fi connectivity, internet access, a live
+tweet stream, technology previews and people's cooperation!
+
+
+
+To make things more interesting, the day before the demo one of the
+servers died; hardware failure: didn't survive the trip. A second
+server, meant to serve the UI webapps, started reporting failures on all
+network interfaces just before starting the demo: it could not figure
+out hardware addresses of cluster peers, and we had no time to replace
+him: its backup was already dead. Interesting enough we could tap in
+some advanced parameters of the JGroups configuration to workaround this
+issue.
+
+
+
+http://in.relation.to/service/File/13429[image:http://in.relation.to/service/File/13429[image,width=200,height=194]]Nothing
+was pre-recorded! Actually the backup plan was to have Mark Little
+dancing a tip-tap; next year we will try to stretch our demo even more
+so you might see that dance!
+
+So here you can see the recording of the
+event: http://www.jboss.org/jbw2011keynote or listen to the
+http://bit.ly/lELbAy[behind the scenes podcast].
+
+
+
+After the demo, we did hear of a large commercial application using
+Infinispan and Drools in precisely this manner - except instead of
+Twitter, the large data stream was flight seat pricing, changing
+dynamically and constantly, and eventually rendered to web pages of
+various travel sites - oh, and they weren't running on plugtops in case
+you were thinking ;)  So, the example isn't completely artificial.
+
+
+
+How do you use Infinispan?  We'd love for you to share stories with us.
+
+
+
+Cheers
+
+Manik and Sanne

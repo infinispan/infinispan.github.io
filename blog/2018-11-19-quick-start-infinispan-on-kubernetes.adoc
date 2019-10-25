@@ -1,0 +1,84 @@
+---
+layout: blog
+title: Quick start Infinispan on Kubernetes
+date: '2018-11-19T04:14:00.001-08:00'
+author: Galder Zamarreño
+tags:
+- kubernetes
+- minikube
+modified_time: '2018-11-19T04:14:56.325-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-3096535795736402644
+blogger_orig_url: https://blog.infinispan.org/2018/11/quick-start-infinispan-on-kubernetes.html
+---
+Last week we showed you
+https://blog.infinispan.org/2018/11/the-fastest-path-to-running-infinispan.html[how
+to easily run Infinispan on top of OpenShift]. This week we're trying to
+do the same on Minikube, a tool that makes it easy to run vanilla
+Kubernetes locally.
+
+Although we've already covered the topic in the
+https://blog.infinispan.org/2016/08/running-infinispan-cluster-on-kubernetes.html[past],
+we felt the descriptors needed a permanent location and an update to the
+latest Infinispan releases. Detailed instructions can be found in
+https://github.com/infinispan-demos/infinispan-kubernetes[this
+repository].
+
+With OpenShift, we took advantage of
+https://docs.openshift.com/container-platform/3.11/dev_guide/templates.html[Templates]
+which allow a set of objects to be parameterised.
+Templates are OpenShift specific, so Kubernetes does not understand
+them. Instead, we provide you with the individual descriptors required
+to run Infinispan (Helm chart to come...). This includes:
+
+
+* A
+https://github.com/infinispan-demos/infinispan-kubernetes/blob/master/statefulset.yaml[stateful
+set]
+* Two services, for
+https://github.com/infinispan-demos/infinispan-kubernetes/blob/master/service-hotrod.yaml[Hot
+Rod] and
+https://github.com/infinispan-demos/infinispan-kubernetes/blob/master/service-http.yaml[HTTP
+REST] endpoints)
+* A
+https://github.com/infinispan-demos/infinispan-kubernetes/blob/master/rolebinding.yaml[rolebinding] so
+that Kubernetes API can be queried when forming a cluster.
+* A
+https://github.com/infinispan-demos/infinispan-kubernetes/blob/master/secret.yaml[secret]
+for plain authentication.
+
+
+Before applying the descriptors, download and install
+https://kubernetes.io/docs/setup/minikube/[Minikube]. Then, set a
+profile, select the VM driver, give it enough CPU and memory for your
+experiments, and start it.
+
+Once Minikube it's running and you have the corresponding kubectl
+command line tool installed, simply call:
+
+$ kubectl apply -f .
+
+Once all pods are ready, you should verify the 3-node cluster has formed
+correctly (find out how in the
+https://github.com/infinispan-demos/infinispan-kubernetes/blob/master/README.md[README]
+file).
+
+When ready, you can start storing and retrieving data. The HTTP REST
+endpoint is particularly useful for these initial tests, to verify
+everything works as expected:
+
+$ kubectl exec \
+  -it infinispan-server-0 \
+  -- curl -v -u test:changeme -H 'Content-type: text/plain' -d 'test'
+infinispan-server-http:8080/rest/default/stuff
+
+Then:
+
+$ kubectl exec -it infinispan-server-1 \
+  -- curl -v -u test:changeme
+infinispan-server-http:8080/rest/default/stuff
+
+Go and try it out and let us know what you think. You can find us on
+https://infinispan.zulipchat.com/[this Zulip chat] :)
+
+Cheers,
+Galder

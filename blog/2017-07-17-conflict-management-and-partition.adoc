@@ -1,0 +1,220 @@
+---
+layout: blog
+title: Conflict Management and Partition Handling
+date: '2017-07-17T05:09:00.000-07:00'
+author: Ryan Emerson
+tags:
+- '9.1'
+- partition handling
+modified_time: '2017-07-17T08:44:54.737-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-5340222105416259030
+blogger_orig_url: https://blog.infinispan.org/2017/07/conflict-management-and-partition.html
+---
+In Infinispan 9.1.0.Final we have overhauled the behaviour and
+configuration
+of http://infinispan.org/docs/stable/user_guide/user_guide.html#partition_handling[partition
+handling] in distributed and replicated caches.  Partition handling is
+no longer simply enabled/disabled, instead a partition strategy is
+configured. This allows for more fine-grained control of a cache's
+behaviour when a split brain occurs. Furthermore, we have created
+the https://docs.jboss.org/infinispan/9.1/apidocs/org/infinispan/conflict/ConflictManager.html[ConflictManager] component
+so that conflicts on cache entries can be automatically resolved
+on-demand by users and/or automatically during partition merges .
+
+
+
+== Conflict Manager
+
+
+During a cache's lifecycle it is possible for inconsistencies to appear
+between replicas of a cache entry  due to a variety of reasons (e.g
+replication failures, incorrect use of flags etc).  The conflict manager
+is a tool that allows users to retrieve all stored replica values for a
+cache entry. In addition to allowing users to process a stream of cache
+entries whose stored replicas have conflicting values. Furthermore, by
+utilising implementations of the
+https://docs.jboss.org/infinispan/9.1/apidocs/org/infinispan/conflict/EntryMergePolicy.html[EntryMergePolicy]
+interface it is possible for said conflicts to be resolved
+deterministically.
+
+
+=== 
+
+=== EntryMergePolicy
+
+
+
+In the event of conflicts arising between one or more replicas of a
+given CacheEntry, it is necessary for a conflict resolution algorithm to
+be defined, therefore we provide the EntryMergePolicy interface. This
+interface consists of a single method, "merge", whose output is utilised
+as the "resolved" CacheEntry for a given key. A non-null return value is
+put to all replicas of the CacheEntry in question, whereas a null return
+value results in all replicas being removed from the cache.
+
+
+
+The merge method takes two parameters: the "preferredEntry" and
+"otherEntries". In the context of a partition merge, the preferredEntry
+is the CacheEntry associated with the partition whose coordinator is
+conducting the merge (or if multiple entries exist in this partition,
+it’s the primary replica). However, in all other contexts, the
+preferredEntry is simply the primary replica. The second parameter,
+"otherEntries" is simply a list of all other entries associated with the
+key for which a conflict was detected.
+
+
+
+Currently Infinispan provides the following implementations of
+EntryMergePolicy:
+
+
+
+
+
+[cols=",",options="header",]
+|=======================================================================
+|Policy |Description
+|MergePolicies.PREFERRED_ALWAYS |Always utilise the "preferredEntry".
+
+|MergePolicies.PREFERRED_NON_NULL |Utilise the "preferredEntry" if it is
+non-null, otherwise utilise the first entry from "otherEntries".
+
+|MergePolicies.REMOVE_ALL |Always remove a key from the cache when a
+conflict is detected.
+|=======================================================================
+
+
+
+=== Application Usage
+
+
+
+For conflict resolution during partition merges, once an
+EntryMergePolicy has been configured for the cache, no additional
+actions are required by the user.  However, if an Infinispan user would
+like to utilise the ConflictManager explicitly in their application, it
+should be retrieved by passing an AdvancedCache instance to the
+https://docs.jboss.org/infinispan/9.1/apidocs/org/infinispan/conflict/ConflictManagerFactory.html[ConflictManagerFactory]. 
+
+
+
+Note, that depending on the number of entries in the cache, the
+getConflicts and resolveConflict methods are expensive operations, as
+they both depend on a spliterator which lazily loads cache entries on a
+per segment basis. Consequently, when operating in distributed mode, if
+many conflicts exist, it is possible for an OutOfMemoryException to
+occur on the node searching for conflicts.
+
+== 
+
+== 
+
+== 
+
+== 
+
+==
+
+== Partition Handling Strategies
+
+
+
+In 9.1.0.Final the partition handling enabled/disabled option has been
+deprecated and users must now configure an appropriate PartitionHandling
+strategy for their application. A partition handling strategy determines
+what operations can be performed on a cache when a split brain event has
+occurred. Ultimately, in terms of
+http://en.wikipedia.org/wiki/CAP_theorem[Brewer’s CAP theorem], the
+configured strategy determines whether the cache's availability or
+consistency is sacrificed in the presence of partition(s). Below is a
+table of the provided strategies and their characteristics:
+
+
+
+
+[cols=",,",options="header",]
+|=======================================================================
+|Strategy |Description |CAP
+|DENY_READ_WRITES |If the partition does not have all owners for a given
+segment, both reads and writes are denied for all keys in that
+segment.
+
+This is equivalent to setting partition handling to true in Infinispan
+9.0. |Consistency
+
+|ALLOW_READS |Allows reads for a given key if it exists in this
+partition, but only allows writes if this partition contains all owners
+of a segment. |Availability
+
+|ALLOW_READ_WRITES |Allow entries on each partition to diverge, with
+conflicts resolved during merge.
+
+This is equivalent to setting partition handling to false in Infinispan
+9.0. |Availability
+|=======================================================================
+
+
+
+== 
+
+=== Conflict Resolution on Partition Merge
+
+
+When utilising the ALLOW_READ_WRITES partition strategy it is possible
+for the values of cache entries to diverge between competing partitions.
+Therefore, when the two partitions merge, it is necessary for these
+conflicts to be resolved. Internally Infinispan utilises a cache's
+ConflictManager to search for cache entry conflicts and then applies the
+configured EntryMergePolicy to automatically resolve said conflicts
+before rebalancing the cache. This conflict resolution is completely
+automatic and does not require any additional code or input from
+Infinispan users.
+
+
+
+Note, that if you do not want conflicts to be resolved automatically
+during a partition merge, i.e. the behaviour before 9.1.x, you can set
+the merge-policy to null (or NONE in xml). 
+
+== 
+
+== 
+
+
+
+=== Configuration
+
+==== 
+
+===== Programmatic
+
+
+
+
+
+==== XML
+
+
+
+
+
+
+
+== Conclusion
+
+
+
+Partition handling has been overhauled in Infinispan 9.1.0.Final to
+allow for increased control over a cache's behaviour. We have introduced
+the ConflictManager which enables users to inspect and manage the
+consistency of their cache entries via custom and provided merge
+policies.
+
+
+If you have any feedback on the partition handling changes, or would
+like to request some new features/optimisations, let us know via
+the https://developer.jboss.org/en/infinispan/content[forum], https://issues.jboss.org/projects/ISPN[issue
+tracker] or the #infinispan channel
+onhttp://webchat.freenode.net/?channels=%23infinispan[ Freenode].
+

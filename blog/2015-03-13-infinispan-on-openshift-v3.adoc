@@ -1,0 +1,132 @@
+---
+layout: blog
+title: Infinispan on Openshift v3
+date: '2015-03-13T09:50:00.000-07:00'
+author: Gustavo
+tags:
+- docker
+- openshift
+- kubernetes
+- paas
+- server
+- jgroups
+- vagrant
+modified_time: '2015-09-28T22:19:23.853-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-6642105538994535091
+blogger_orig_url: https://blog.infinispan.org/2015/03/infinispan-on-openshift-v3.html
+---
+
+Openshift v3 is the open source next generation of Paas, where
+applications run on https://www.docker.com/[Docker] containers and are
+orchestrated/controlled/scheduled by
+http://kubernetes.io/[Kubernetes].
+
+In this post I'll show how to create an Infinispan cluster on Openshift
+v3 and resize it with a snap of a finger.
+
+
+==== Installing Openshift v3
+
+====  
+
+Openshift v3 has not been released yet, so I'm going to use the code
+from https://github.com/openshift/origin[origin].
+There are
+http://docs.openshift.org/latest/getting_started/installation.html[many
+ways] to install Openshift v3, but for simplicity, I'll run a full
+multinode cluster locally on top of VirtualBoxes using the provided
+https://www.vagrantup.com/[Vagrant] scripts.
+
+Let's start by checking out and building the sources:
+
+[source,line-pre]
+----
+----
+
+
+To boot Openshift, it's a simple matter of starting up the desired
+number of nodes:
+
+
+Grab a beer while the cluster is being provisioned, after a while you
+should be able to see 3 instances running:
+
+
+
+
+====  
+
+==== Creating the Infinispan template
+
+
+The following template defines a 2 node Infinispan cluster communicating
+via TCP, and discovery done using the
+http://www.jgroups.org/javadoc/org/jgroups/stack/GossipRouter.html[JGroups
+gossip router]:
+
+
+
+There are few different components declared in this template:
+
+
+* A service with id _jgroups-gossip-service_ that will expose a JGroups
+gossip router service on port 11000, around the
+https://registry.hub.docker.com/u/gustavonalle/jgroups-gossip/[JGroups
+Gossip container]
+* A ReplicationController with id _jgroups-gossip-controller_.
+Replication Controllers are used to ensure that, at any moment, there
+will be a certain number of replicas of a pod (a group of related docker
+containers) running. If for some reason a node crashes, the
+ReplicationController will instantiate a new pod elsewhere, keeping the
+service endpoint address unchanged.
+* Another ReplicationController with id _infinispan-controller_. This
+controller will start 2 replicas of the _infinispan-pod_. As it happens
+with the _jgroups-pod_, the _infinispan-pod_ has only one container
+defined: the infinispan-server container (based on
+https://registry.hub.docker.com/u/jboss/infinispan-server/[jboss/infinispan-server])
+, that is started with the 'clustered.xml' profile and configured with
+the 'jgroups-gossip-service' address. By defining the gossip router as a
+service, Openshift guarantees that environment variables such
+as[.pl-s1]# JGROUPS_GOSSIP_SERVICE_SERVICE_HOST are# available to other
+pods (consumers).
+
+
+
+
+==== Applying the template
+
+
+
+To apply the template via cmd line:
+
+
+Grab another beer, it can take a while since in this case the docker
+images need to be fetched on each of the minions from the public
+registry. In the meantime, to inspect the pods, along with their
+containers and statuses:
+
+
+
+
+==== Resizing the cluster
+
+
+Changing the number of pods (and thus the number of nodes in the
+Infinispan cluster) is a simple matter of manipulating the number of
+replicas in the Replication Controller. To increase the number of nodes
+to 4:
+
+
+
+This should take only a few seconds, since the docker images are already
+present in all the minions.
+
+
+
+
+And this concludes the post, be sure to check other cool features of
+Openshift in the
+http://docs.openshift.org/latest/welcome/index.html#[project
+documentation] and try out other
+https://github.com/openshift/origin/tree/master/examples[samples].
+

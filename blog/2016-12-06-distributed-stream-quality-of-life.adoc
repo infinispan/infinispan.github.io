@@ -1,0 +1,68 @@
+---
+layout: blog
+title: Distributed Stream Quality of Life Improvements
+date: '2016-12-06T11:54:00.000-08:00'
+author: Unknown
+tags:
+- '9.0'
+- infinispan
+- streams
+modified_time: '2016-12-06T11:54:15.931-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7859244941475556914
+blogger_orig_url: https://blog.infinispan.org/2016/12/distributed-stream-quality-of-life.html
+---
+As I hope most people reading this already know, since Infinispan 8 you
+can utilize the entire Java 8 Stream API and have it be distributed
+across your cluster.  This performs the various intermediate and
+terminal operations on the data local to the node it lives on, providing
+for extreme performance.  There are some limitations and things to know
+as was explained at
+http://blog.infinispan.org/2015/09/distributed-streams.html[distributed-streams].
+
+The problem with the API up to now was that, if you wanted to use
+lambdas, it was quite an ugly scene.  Take for example the following
+code snippet:
+
+
+== 8.0 Distributed Streams Example
+
+However, for Infinispan 9 we utilize a little syntax feature added with
+Java 8
+[https://docs.oracle.com/javase/specs/jls/se8/html/jls-15.html#jls-15.12.2.5[1]]
+to add some much needed quality of life improvements.  This allows the
+most specific interface to be chosen when a method is overloaded.  This
+allows for a neat interaction when we add some new interfaces that
+implement Serializable and the various function interfaces
+(SerializableFunction, SerializablePredicate, SerializableSupplier,
+etc).  All of the Stream methods have been overridden on the
+https://docs.jboss.org/infinispan/9.0/apidocs/org/infinispan/CacheStream.html[CacheStream]
+interface to take these arguments.
+
+This allows for the code to be much cleaner as we can see here:
+
+== 9.0 Distributed Streams Example
+
+Extra Methods
+
+This is not the only benefit of providing the *CacheStream* interface:
+we can also provide new methods that aren't available on the standard
+https://docs.oracle.com/javase/8/docs/api/?java/util/stream/Stream.html[Stream]
+interface.  One example is the
+https://docs.jboss.org/infinispan/9.0/apidocs/org/infinispan/CacheStream.html#forEach-org.infinispan.util.function.SerializableBiConsumer-[forEach]
+method which allows the user to more easily provide a Cache that is
+injected on each node as required.  This way you don't have to use the
+clumsy
+https://docs.jboss.org/infinispan/9.0/apidocs/org/infinispan/stream/CacheAware.html[CacheAware]
+interface and can directly use lambdas as desired.
+
+Here is an example of the new *forEach* method in action:
+
+
+In this example we take a cache and, based on the keys in it, write
+those values into another cache. Since *forEach* doesn't have to be side
+effect free, you can do whatever you want inside here.
+
+All in all these improvements should make using Distributed Streams with
+Infinispan much easier.  The extra methods could be extended further if
+users have use cases they would love to suggest.  Just let us know, and
+I hope you enjoy using Infinispan!

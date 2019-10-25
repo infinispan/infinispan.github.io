@@ -1,0 +1,137 @@
+---
+layout: blog
+title: Infinispan Spark connector 0.5 released!
+date: '2017-04-03T02:15:00.000-07:00'
+author: Gustavo
+tags:
+- spark
+- server
+modified_time: '2017-04-03T02:16:08.904-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-534996395361083814
+blogger_orig_url: https://blog.infinispan.org/2017/04/infinispan-spark-connector-05-released.html
+---
+The Infinispan Spark connector offers seamless integration between
+Apache Spark and Infinispan Servers.
+Apart from supporting Infinispan 9.0.0.Final and Spark 2.1.0, this
+release brings many usability improvements, and support for another
+major Spark API.
+
+
+==== Configuration changes
+
+
+The connector no longer uses a _java.util.Properties_ object to hold
+configuration, that's now duty of
+_org.infinispan.spark.config.ConnectorConfiguration_, type safe and both
+Java and Scala friendly:
+
+
+
+
+====  
+
+==== Filtering by query String
+
+
+The previous version introduced the possibility of filtering an
+InfinispanRDD by providing a _Query_ instance, that required going
+through the QueryDSL which in turn required a properly configured remote
+cache.
+
+It's now possible to simply use an Ickle query string:
+
+
+
+
+
+==== Improved support for Protocol Buffers
+
+
+Support for reading from a Cache with protobuf encoding was present in
+the previous connector version, but now it's possible to also write
+using protobuf encoding and also have protobuf schema registration
+automatically handled.
+
+To see this in practice, consider an arbitrary non-Infinispan based
+_RDD<Integer, Hotel>_ where Hotel is given by:
+
+
+
+In order to write this RDD to Infinispan it's just a matter of doing:
+
+
+Internally the connector will trigger the auto-generation of the
+_.proto_ file and message marshallers related to the configured
+entity(ies) and will handle registration of schemas in the server prior
+to writing.
+
+
+
+
+==== Splitter is now pluggable
+
+
+The _Splitter_ is the interface responsible to create one or more
+partitions from a Infinispan cache, being each partition related to one
+or more segments. The Infinispan Spark connector now can be created
+using a custom implementation of Splitter allowing for different data
+partitioning strategies during the job processing.
+
+
+
+==== Goodbye Scala 2.10
+
+
+Scala 2.10 support was removed, Scala 2.11 is currently the only
+supported version. Scala 2.12 support will follow
+https://issues.apache.org/jira/browse/SPARK-14220
+
+
+
+====  
+
+==== Streams with initial state
+
+
+It is possible to configure the _[.pl-en]#InfinispanInputDStream#_ with
+an extra boolean parameter to receive the current cache state as
+events.
+
+
+====  
+
+==== Dataset support
+
+
+The Infinispan Spark connector now ships with support for Spark's
+Dataset API, with support for pushing down predicates, similar to
+_rdd.filterByQuery_. The entry point of this API is the Spark session:
+
+
+
+To create an Infinispan based Dataframe, the "infinispan" data source
+need to be used, along with the usual connector configuration:
+
+
+From here it's possible to use the untyped API, for example:
+
+
+or execute SQL queries by setting a view:
+
+
+In both cases above, the predicates and the required columns will be
+converted to an Infinispan Ickle filter, thus filtering data at the
+source rather than at Spark processing phase.
+
+
+For the full list of changes see the
+https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12316820&version=12331257[release
+notes.] For more information about the connector, the
+https://github.com/infinispan/infinispan-spark/blob/master/README.md[official
+documentation] is the place to go. Also check the
+https://github.com/infinispan/infinispan-spark/tree/master/examples/twitter[twitter
+data processing sample] and to report bugs or request new features use
+the https://issues.jboss.org/projects/ISPRK[project JIRA].
+
+
+

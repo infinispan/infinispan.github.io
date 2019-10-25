@@ -1,0 +1,65 @@
+---
+layout: blog
+title: Scattered cache
+date: '2017-07-03T13:49:00.001-07:00'
+author: Unknown
+tags: 
+modified_time: '2017-07-03T13:49:17.517-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7123650778935854208
+blogger_orig_url: https://blog.infinispan.org/2017/07/scattered-cache.html
+---
+Infinispan strives for high throughput and low latency. Version
+9.1.0.CR1 comes with a new cache mode - scattered cache - that's our
+answer to low round-trip times for write operations. Through a smart
+routing algorithm it guarantees that the write operation will result in
+only single RPC, where distributed caches with 2 owners would often use
+2 RPCs. Scattered cache is resilient against single node failure (this
+is equivalent to distributed cache with 2 owners) and does not support
+transactions.
+
+Declarative configuration is straigtforward:
+
+and programmatic is a piece of cake, too:
+
+What does the routing algorithm differently, then? In distributed cache,
+one node is always designated as the _primary_ owner and the others
+owners are _backups_. When a (non-owner) node does a write (invoke
+`cache.put("k", "v")`), it sends the command to the primary owner,
+primary forwards it to the backups and the operation is completed only
+when all owners confirm this to the first node (_originator_). It's not
+possible to contact all owners in a single multinode RPC from the
+originator as the primary has to decide upon ordering in case of
+concurrent writes.
+
+In scattered cache every node may be the backup. We don't designate
+backup owners in the routing table (also called _consistent hash_ for
+historical reasons), only primaries are set there. When a node does a
+write it sends the command to the primary owner and when this confirms
+the operation the originator stores the entry locally, effectively
+becoming a backup. That means that there can be more than 2 copies of
+the entry in the cluster, the others being outdated - but only
+temporarily, the other copies are eventually invalidated through a
+background process that does not slow down the synchronous writes. As
+you can see, this algorithm cannot be easily extended to multiple owners
+(keeping the performance characteristics) and therefore scattered cache
+does not support multiple backups.
+
+In case of primary crash, the reconciliation process is somewhat more
+complex, because there's no central record telling who are the backups.
+Instead, the new primary owner has to search all nodes and pick the last
+write - previous primary owner has assigned each entry a sequence number
+which makes this possible. And there are more technical difficulties -
+you can read about these in the
+https://github.com/infinispan/infinispan/blob/master/core/src/main/java/org/infinispan/scattered/package-info.java[design
+document] or in the
+https://github.com/infinispan/infinispan/blob/master/documentation/src/main/asciidoc/user_guide/clustering.adoc#scattered-mode[documentation].
+
+There is a con, of course. When reading an entry from a distributed
+cache, there is some chance that the entry will be located on this node
+(being one of the owners), and local reads are very fast. In scattered
+cache we always read from the primary node, as the local version of the
+entry might be already outdated. That halves the chance for a local read
+- and this is the price you pay for faster writes. Don't worry too much,
+though - we have plans for
+http://infinispan.org/docs/stable/user_guide/user_guide.html#l1_caching[L1-like
+caching] that will make reads great again!

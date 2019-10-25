@@ -1,0 +1,108 @@
+---
+layout: blog
+title: Memory based eviction
+date: '2015-09-25T05:07:00.001-07:00'
+author: Unknown
+tags:
+- '8.0'
+- eviction
+- memory
+modified_time: '2015-09-25T05:07:31.410-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-9205619912921210471
+blogger_orig_url: https://blog.infinispan.org/2015/09/memory-based-eviction.html
+---
+== Eviction Today
+
+Infinispan since its inception has supported a way to help users control
+how much memory the in memory cache entries consume in the JVM.  This
+has always been limited to a number of entries.  In the past users have
+had to estimate the average amount of bytes their entries used on the
+heap.  With this average you can easily calculate how many entries could
+safely be stored in memory without running into issues.  For users who
+have keys and values that are relatively similar this can work well. 
+However when the case requires entries that vary in size this can be
+problematic and you end up calculating the average size based on the
+worse case.
+
+
+== Enter Memory Based Eviction
+
+
+Infinispan 8 introduces memory based eviction counting.  That is
+Infinispan will automatically keep track of how large the key, value and
+overhead if possible.  It can use these values then to try to limit the
+number of entries instead to a memory count such as 1 Gigabyte.
+
+
+=== Key/Value limitations
+
+Unfortunately this is currently limited to only using keys and values
+stored as primitives, primitive wrappers (ie. Integer),
+java.lang.String(s) and any of the previously mentioned stored in an
+array.  This means this feature cannot be used with any custom classes. 
+If enough feedback is provided we could provide a SPI to allow the user
+to plug in their own counter for their own classes, but this is not
+planned currently.
+
+There are a couple ways to easily get around this.  One is to use
+http://infinispan.org/docs/8.0.x/user_guide/user_guide.html#_store_as_binary[storeAsBinary],
+which will store your keys and/or values as byte arrays for you
+automatically, satisfying this limitation.  A second way is when you are
+using the client such as HotRod, in this case the data is stored in the
+serialized (byte[]) form.  Note that
+http://infinispan.org/docs/8.0.x/user_guide/user_guide.html#_enable_compatibility_mode[compatibility
+mode] will prevent this from occurring and you are unable to use these
+configurations together.
+
+=== Eviction Type limitation
+
+Due to the complexity of LIRS, memory based eviction is only supported
+with LRU at this time. See the types
+http://infinispan.org/docs/8.0.x/user_guide/user_guide.html#_eviction_strategies[here]. 
+This could be enhanced at a later point, but is also not planned.
+
+
+== How to enable
+
+You can enable memory based eviction either through programmatic or
+declarative configuration.  Note that Infinispan added long support
+(limited to 2^48) for the size value which directly helps memory based
+eviction if users want to utilize caches larger than 2 GB.
+
+=== Programmatic
+
+
+
+=== Declarative 
+
+
+
+== 
+
+== Supported JVMs
+
+This was tested and written specifically for Oracle and OpenJDK JVMs. 
+In testing these JVMs showed memory accuracy within 1% of desired value.
+Other JVMs may shown incorrect values.
+
+The algorithm takes into account JVM options, such as compressed
+pointers and 32 bit JVM vs 64 bit JVM.  Keep in mind this is only for
+the data container and doesn't take into account additional overhead
+such as created threads or other runtime objects.
+
+Other JVMs are not handled such as the IBM JVM which was briefly tested
+and showed incorrect numbers greater than 10% of the desired amount. 
+Support for other JVMs can be added later as interest is shown for
+them.
+
+
+== Closing Notes
+
+
+I hope this feature helps people to better handle their memory
+constraints while using Infinispan!  Let us know if you have any
+http://infinispan.org/getinvolved/[feedback or concerns].
+
+Cheers!
+
+ - Will

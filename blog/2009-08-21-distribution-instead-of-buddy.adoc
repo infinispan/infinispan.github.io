@@ -1,0 +1,154 @@
+---
+layout: blog
+title: Distribution instead of Buddy Replication
+date: '2009-08-21T03:21:00.000-07:00'
+author: Manik Surtani
+tags:
+- buddy replication
+- partitioning
+- distribution
+modified_time: '2009-09-07T06:35:42.309-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-6567008812797414090
+blogger_orig_url: https://blog.infinispan.org/2009/08/distribution-instead-of-buddy.html
+---
+People have often commented on
+http://www.jboss.org/community/wiki/JBossCacheBuddyReplication[Buddy
+Replication] (from http://www.jboss.org/jbosscache[JBoss Cache]) not
+being available in Infinispan, and have asked how Infinispan's far
+superior http://www.jboss.org/community/docs/DOC-10278[distribution]
+mode works. I've decided to write this article to discuss the main
+differences from a high level. For deeper technical details, please
+visit the http://www.jboss.org/community/wiki/Infinispan[Infinispan
+wiki].
+
+Scalability versus high availability
+These two concepts are often at odds with one another, even though they
+are commonly lumped together. What is usually good for scalability isn't
+always good for high availability, and vice versa. When it comes to
+clustering servers, high availability often means simply maintaining
+more copies, so that if nodes fail - and with commodity hardware, this
+is expected - state is not lost. An extreme case of this is replicated
+mode, available in both JBoss Cache and Infinispan, where each node is a
+clone of its neighbour. This provides very high availability, but
+unfortunately, this does not scale well. Assume you have 2GB per node.
+Discounting overhead, with replicated mode, you can only address 2GB of
+space, regardless of how large the cluster is. Even if you had 100 nodes
+- seemingly 200GB of space! - you'd still only be able to address 2GB
+since each node maintains a redundant copy. Further, since every node
+needs a copy, a lot of network traffic is generated as the cluster size
+grows.
+
+Enter Buddy Replication
+Buddy Replication (BR) was originally devised as a solution to this
+scalability problem. BR does not replicate state to every other node in
+the cluster. Instead, it chooses a fixed number of 'backup' nodes and
+only replicates to these backups. The number of backups is configurable,
+but in general it means that the number of backups is fixed. BR improved
+scalability significantly and showed near-linear scalability with
+increasing cluster size. This means that as more nodes are added to a
+cluster, the space available grows linearly as does the available
+computing power if measured in transactions per second.
+
+But Buddy Replication doesn't help everybody!
+BR was specifically designed around the HTTP session caching use-case
+for the JBoss Application Server, and heavily optimised accordingly. As
+a result, session affinity is mandated, and applications that do not use
+session affinity can be prone to a lot of data gravitation and
+'thrashing' - data is moved back and forth across a cluster as different
+nodes attempt to claim 'ownership' of state. Of course this is not a
+problem with JBoss AS and HTTP session caching - session affinity is
+recommended, available on most load balancer hardware and/or software,
+is taken for granted, and is a well-understood and employed paradigm for
+web-based applications.
+
+So we had to get better
+Just solving the HTTP session caching use-case wasn't enough. A
+well-performing data grid needs to to better, and crucially, session
+affinity cannot be taken for granted. And this was the primary reason
+for not porting BR to Infinispan. As such, Infinispan does not and will
+not support BR as it is too restrictive.
+
+Distribution
+Distribution is a new cache mode in Infinispan. It is also the default
+clustered mode - as opposed to replication, which isn't scalable.
+Distribution makes use of familiar concepts in data grids, such as
+http://www.spiteful.com/2008/03/17/programmers-toolbox-part-3-consistent-hashing/[consistent
+hashing], call proxying and local caching of remote lookups. What this
+leads to is a design that does scale well - fixed number of replicas for
+each cache entry, just like BR - but no requirement for session
+affinity.
+
+What about co-locating state?
+Co-location of state - moving entries about as a single block - was
+automatic and implicit with BR. Since each node always picked a backup
+node for all its state, one could visualize all of the state on a given
+node as a single block. Thus, colocation was trivial and automatic:
+whatever you put in Node1 will always be together, even if Node1
+eventually dies and the state is accessed on Node2. However, this meant
+that state cannot be evenly balanced across a cluster since the data
+blocks are very coarse grained.
+With distribution, colocation is not implicit. In part due to the use of
+consistent hashing to determine where each cached entry resides, and
+also in part due to the finer-grained cache structure of Infinispan -
+key/value pairs instead of a tree-structure - this leads to individual
+entries as the granularity of state blocks. This means nodes can be far
+better balanced across a cluster. However, it does mean that certain
+optimizations which rely on co-location - such as keeping related
+entries close together - is a little more tricky.
+
+One approach to co-locate state would be to use containers as values.
+For example, put all entries that should be colocated together into a
+HashMap. Then store the HashMap in the cache. But that is coarse-grained
+and ugly as an approach, and will mean that the entire HashMap would
+need to be locked and serialized as a single atomic unit, which can be
+expensive if this map is large.
+
+Another approach is to use Infinispan's
+http://infinispan.sourceforge.net/4.0/apidocs/org/infinispan/atomic/AtomicMap.html[AtomicMap]
+API. This powerful API lets you group entries together, so they will
+always be colocated, locked together, but replication will be much
+finer-grained, allowing only deltas to the map to be replicated. So that
+makes replication fast and performant, but it still means everything is
+locked as a single atomic unit. While this is necessary for certain
+applications, it isn't always be desirable.
+
+One more solution is to implement your own
+http://infinispan.sourceforge.net/4.0/apidocs/org/infinispan/distribution/ConsistentHash.html[ConsistentHash]
+algorithm - perhaps extending DefaultConsistentHash. This implementation
+would have knowledge of your object model, and hashes related instances
+such that they are located together in the hash space. By far the most
+complex mechanism, but if performance and co-location really is a hard
+requirement then you cannot get better than this approach.
+
+In summary:
+
+Buddy Replication
+
+* Near-linear scalability
+* Session affinity mandatory
+* Co-location automatic
+* Applicable to a specific set of use cases due to the session affinity
+requirement
+
+Distribution
+
+* Near-linear scalability
+* No session affinity needed
+* Co-location requires special treatment, ranging in complexity based on
+performance and locking requirements. By default, no co-location is
+provided
+* Applicable to a far wider range of use cases, and hence the default
+highly scalable clustered mode in Infinispan
+
+Hopefully this article has sufficiently interested you in distribution,
+and has whetted your appetite for more. I would recommend the
+http://www.jboss.org/community/wiki/Infinispan[Infinispan wiki] which
+has a wealth of information including interactive tutorials and GUI
+demos, design documents and API documentation. And of course you can't
+beat http://www.jboss.org/infinispan/downloads[downloading Infinispan]
+and trying it out, or grabbing the
+http://www.jboss.org/infinispan/sourcecode[source code] and looking
+through the implementation details.
+
+Cheers
+Manik

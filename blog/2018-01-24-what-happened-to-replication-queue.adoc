@@ -1,0 +1,49 @@
+---
+layout: blog
+title: What happened to the replication queue?
+date: '2018-01-24T06:00:00.000-08:00'
+author: Galder Zamarreño
+tags:
+- '9.0'
+- '8.2'
+modified_time: '2018-01-24T06:00:33.660-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-1280263803711217091
+blogger_orig_url: https://blog.infinispan.org/2018/01/what-happened-to-replication-queue.html
+---
+Recently I saw an Infinispan user that was having issues using the
+replication queue, a clustering functionality that had been part of
+Infinispan since it's first release. Looking at the latest Infinispan
+codebase I realised it wasn't there any more, what happened to it?
+
+The aim of the replication queue was to batch individual cache
+operations and send them as one to other nodes, rather than sending them
+each operation individually.
+
+Over time we started considering whether the replication queue could be
+removed:
+
+
+. The replication queue was duplicating functionality: JGroups, which
+manages the group communication layer, already bundles messages and the
+network stack can do it too.
+. Using the replication queue was not more efficient because when the
+message is delivered in the remote node, the messages are processed
+sequentially. If processing first message blocks, the other commands are
+not processed until it finishes.
+. It can add complexity if messages with different order requirements
+come in same batch, e.g. no order, FIFO or total.
+
+In essence, Infinispan's replication queue was doing the same as
+JGroups' message bundler. Whereas JGroups' message bundler had been
+evolving and different options had been developed, Infinispan's
+replication queue was still using same algorithm as in its first
+release.
+
+So in Infinispan 8.2 the replication queue was deprecated and in 9.0 it
+was finally removed. If you ever find the need to batch your changes,
+configure
+http://www.jgroups.org/manual/html/user-advanced.html#MessageBundling[JGroups'
+message bundler].
+
+Cheers,
+Galder

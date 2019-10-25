@@ -1,0 +1,134 @@
+---
+layout: blog
+title: Hibernate Second Level Cache improvements
+date: '2015-10-01T06:41:00.003-07:00'
+author: Unknown
+tags:
+- jpa
+- hibernate
+- second level cache provider
+modified_time: '2016-06-13T23:48:26.166-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-2426495200310961025
+blogger_orig_url: https://blog.infinispan.org/2015/10/hibernate-second-level-cache.html
+---
+Infinispan has been implementing *Hibernate Second Level Cache* for a
+long time, replacing the previous JBoss Cache implementation with very
+similar logic. The main aim of the implementation has always been to
+have very fast reads, keeping the overhead of cache during reads on
+minimum. This was achieved using local reads in invalidation-mode cache
+and Infinispan's _putForExternalRead_ operation, where the request to
+cache never blocks.
+
+Recently we've looked on the implementation again to see whether we can
+speed it up even more. For a long time you could use only transactional
+caches to keep the cache in sync with database. However transactions
+come at some cost so we thought about a way to get around it. And we
+have found it, through custom interceptors we have managed to do
+two-phase updates to the cache and now the non-transactional caches are
+the default configuration. So, if you're using Hibernate with your own
+configuration, don't forget to update that when migrating to Hibernate
+ORM 5!
+
+With transactions gone, our task was not over. So far entity/collection
+caching has been implemented for invalidation mode caches, but it's
+tempting to consider replication mode, too. For replicated caches, we
+got rid of a special cache for _pending puts_ (this local cache detects
+out-of-date reads, keeping the entity cache consistent). Instead, we
+used different technique where a logical removal from the cache is
+substituted by replace with a token called _tombstone_, and updates
+pre-invalidate the cache in a similar way. This change opened the
+possibility for *non-transactional replicated* and *distributed* caches
+(transactional mode is not supported). We were pleased to see the
+results of some benchmark where the high hit ratio in replicated caches
+has dramatically speeded up all operations.
+
+There is one downside of the current implementation - in replication
+mode, you *should not use eviction*, as eviction cannot tell regular
+entity (which can be evicted) from the tombstone. If tombstone was
+evicted, there's a risk of inconsistent reads. So when using replicated
+caches, you should rely on expiration to keep your cache slender. We
+hope that eventually we'll remove this limitation.
+
+All modes described above give us cache without any stale reads. That
+comes at a cost - each modification (insert, update or removal) requires
+2 accesses to the cache (though, sometimes the second access can be
+asynchronous). Some applications do not require such strict consistency
+- and that's where _nonstrict-read-write_ comes to the scene. Here we
+guarantee that the cache will provide the same result as DB after the
+modifying transaction commits - between DB commit and transaction commit
+a stale value can be provided. If you use asynchronous cache, this may
+be delayed even more but unless the operation fails (e.g. due to locking
+timeout) the cache will eventually get into a state consistent with DB.
+This allows us to limit modifications to single cache access per
+modification.
+
+Note that _nonstrict-read-write_ mode is supported only for *versioned*
+entities/collections (that way we can find out which entity is actually
+newer). Also, you cannot use eviction in nonstrict-read-write mode, for
+the same reason as in tombstone-based modes. Invalidation cache mode is
+not supported neither.
+
+If you'll try out the most recent Hibernate ORM, you'll find out that
+*Infinispan 7.2.x* is used there. This is because ORM 5.0.0.Final was
+released before Infinispan 8.0.0.Final went out and we can't change the
+major version of dependency in micro-release. However, we try to keep
+*Infinispan 8.0.x* binary compatible (in parts used by Hibernate), and
+therefore you can just replace the dependencies on classpath and use the
+most recent Infinispan, if you prefer to do so.
+
+To sum things up, here is the table of supported configurations:
+
+
+
+
+Concurrency strategy
+
+Cache transactions
+
+Cache mode
+
+Implementation
+
+Eviction
+
+transactional
+
+transactional
+
+invalidation
+
+pending puts
+
+yes
+
+read-write
+
+non-transactional
+
+non-transactional
+
+replicated/distributed
+
+tombstones
+
+no
+
+nonstrict-read-write
+
+versioned entries
+
+
+There's also the _read-only_ mode - this can be used instead of both
+_transactional_ or _read-write_ modes, but at this point it does not
+offer any further performance gains, since we have to make sure that you
+don't see a removed value. Actually, it also does not matter whether you
+specify transactional or read-write mode; the proper strategy will be
+picked according to your cache configuration (transactional vs.
+non-transactional).
+
+We hope that you'll try these new modes and many consistency fixes
+included along (you should use Hibernate ORM *5.0.2.Final* or later),
+and tell us about your experience.
+
+Happy caching!
+

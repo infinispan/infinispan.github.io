@@ -1,0 +1,94 @@
+---
+layout: blog
+title: What's so cool about an asynchronous API?
+date: '2009-05-13T15:13:00.000-07:00'
+author: Manik Surtani
+tags:
+- asynchronous
+- future
+- API
+modified_time: '2009-06-09T09:46:06.948-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7174737965854828621
+blogger_orig_url: https://blog.infinispan.org/2009/05/whats-so-cool-about-asynchronous-api.html
+---
+Inspired by some thoughts from a recent conversation with
+http://jbossfox.blogspot.com/[JBoss Messaging's Tim Fox], I've decided
+to go ahead and implement a new,
+https://jira.jboss.org/jira/browse/ISPN-72[asynchronous API] for
+Infinispan.
+
+To sum things up, this new API - additional methods on
+http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/Cache.html[Cache]
+- allow for asynchronous versions of put(), putIfAbsent(), putAll(),
+remove(), replace(), clear() and their various overloaded forms.
+Unimaginatively called putAsync(), putIfAbsentAsync(), etc., these new
+methods return a
+http://java.sun.com/j2se/1.5.0/docs/api/java/util/concurrent/Future.html[Future]
+rather than the expected return type. E.g.,
+
+
+[source,java]
+----
+V put(K key, V value);
+Future<V> putAsync(K key, V value);
+
+boolean remove(K key, V value);
+Future<Boolean> removeAsync(K key, V value);
+
+void clear();
+Future<Void> clearAsync();
+
+// ... etc ...
+----
+
+
+You guessed it, these methods do not block. They return immediately, and
+how cool is that! If you care about return values - or indeed simply
+want to wait until the operation completes - you do a Future.get(),
+which will block until the call completes. Why is this useful? Mainly
+because, in the case of clustered caches, it allows you to get the best
+of both worlds when it comes to synchronous and asynchronous mode
+transports.
+
+Synchronous transports are normally recommended because of the
+guarantees they offer - the caller always knows that a call has properly
+propagated across the network, and is aware of any potential exceptions.
+However, asynchronous transports give you greater parallelism. You can
+start on the next operation even before the first one has made it across
+the network. But this is at a cost: losing out on the knowledge that a
+call has safely completed.
+
+With this powerful new API though, you can have your cake and eat it
+too. Consider:
+
+
+
+[source,java]
+----
+Cache<String, String> cache = getCache();
+Future<String> f1 = cache.putAsync(k1, v1);
+Future<String> f2 = cache.putAsync(k2, v2);
+Future<String> f3 = cache.putAsync(k3, v3);
+
+f1.get();
+f2.get();
+f3.get();
+----
+
+
+
+The network calls - possibly the most expensive part of a clustered
+write - involved for the 3 put calls can now happen in parallel. This is
+even more useful if the cache is distributed, and k1, k2 and k3 map to
+different nodes in the cluster - the processing required to handle the
+put operation on the remote nodes can happen simultaneously, on
+different nodes. And all the same, when calling Future.get(), we block
+until the calls have completed successfully. And we are aware of any
+exceptions thrown. With this approach, elapsed time taken to process all
+3 puts should - theoretically, anyway - only be as slow as the single,
+slowest put().
+
+This new API is now in Infinispan's trunk and yours to enjoy. It will be
+a main feature of my next release, which should be out in a few days.
+Please do give it a spin - I'd love to hear your thoughts and
+experiences.

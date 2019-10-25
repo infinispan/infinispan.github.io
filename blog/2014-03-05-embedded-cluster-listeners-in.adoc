@@ -1,0 +1,164 @@
+---
+layout: blog
+title: Embedded Cluster Listeners in Infinispan 7.0.0.Alpha1
+date: '2014-03-05T06:54:00.000-08:00'
+author: Unknown
+tags:
+- listeners
+modified_time: '2015-11-26T06:42:39.111-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-5744590504523514675
+blogger_orig_url: https://blog.infinispan.org/2014/03/embedded-cluster-listeners-in.html
+---
+If you are following on the dev listing, you may have seen a
+https://github.com/infinispan/infinispan/wiki/Clustered-listeners[design
+doc] come through that details adding support for Clustered Listeners to
+Infinispan.  This features allows for listeners to be used in a
+distributed cache configuration.  I am happy to say that this feature is
+now in
+http://blog.infinispan.org/2014/02/infinispan-700alpha1-release.html[Infinispan
+7.0.0.Alpha1] !
+
+This feature is needed since local listeners in a distributed cache are
+only notified of events on the node where the data resides.  Therefore,
+clustered listeners allow for a single listener to receive any write
+notification (limited to CacheEntryCreatedEvent, CacheEntryModifiedEvent
+and CacheEntryRemovedEvent) that occurs in the cluster which is
+installed on 1 node.
+
+
+==== Basic Example
+
+Using a cluster listener is just as easy as a regular listener. Here is
+a simple use case that stores the events as it receives them.
+
+That is all that is required is just to set the property of your
+Listener annotated class to say _clustered = true_. There are other
+important changes in the rest of the document. Please let us know how
+you like the new cluster listeners ! Also if any issues are found, it is
+much appreciated to log those to
+https://issues.jboss.org/browse/ISPN[JIRA].
+
+
+==== Differences between Local and Cluster Listeners
+
+===== Pre and post Notifications
+
+In a local cluster listener, the listener is notified twice, before the
+operation is completed and after the entry is updated.  A cluster
+listener is *ONLY* notified after the operation is completed while still
+holding locks.  Therefore, the _isPre_ method always returns false in a
+cluster listener.
+
+===== Transaction begin and completion
+
+In a transactional cache, local listeners are notified when a
+transaction begins and when it is completed (either through rollback or
+commit).  A cluster listener is never notified of anything occurring
+until after the data has been updated, and thus will only ever be
+notified of committed entries and also will not receive
+TransactionRegisteredEvent or TransactionCompletedEvent events.
+
+
+=== API Changes
+
+
+There are a few new API classes that have been added to allow for
+configuration and operation of cluster listeners.
+
+
+==== Listener annotation
+
+
+The existing org.infinispan.notifications.Listener annotation has had a
+couple properties added to it.
+
+The new clustered property defines whether or not this listener is a
+cluster listener or not.  This means the listener will be sent all write
+modification events.
+
+A cluster listener is not supported in an Invalidation cache.  Local or
+replicated caches can use a cluster listener though.  They will behave
+like a local cluster listener, except that replicated will be less
+performant.
+
+The includeCurrentState property is also new and will provide a way for
+a listener when being registered to immediately be sent a
+CacheCreatedEvent for every entry in the cache.  This will be supported
+for both local and cluster listeners.  In a local listener it will only
+query the local data that is available, so in the case of a Distributed
+cache this will still only provide a possible subset of data.  However a
+clustered listener will retrieve the data from all nodes as needed.  A
+cache will still be available for writes during the includeCurrentState
+period.  However the notifications will be queued until all state has
+been first sent. *NOTE: includeCurrentState is currently not implemented
+but is planned during this release still* see
+https://issues.jboss.org/browse/ISPN-4068[ISPN-4068]
+
+
+==== KeyValueFilter
+
+
+This is a new Filter class that can be used to filter events or other
+operations based on the key value and metadata of the updated object.
+
+
+
+==== Converter
+
+
+A converter is used to convert a given key, value, metadata entry to a
+resulting value. This is useful if your listener doesn't require the
+entire value and need just a portion from it. Or if the listener were to
+do some sort of translation, this would allow it to scale to each node
+instead of having to run the translation all on the node where the
+listener is registered.
+
+
+
+==== Cache
+
+
+The cache interface also has an additional overloaded method to allow
+for registering the previously mentioned KeyValueFilter and Converter
+with the Listener provided.  Note that either type of listener, cluster
+or local, may be used with any of the overloaded addListener methods on
+the Cache interface.
+
+This new method is similar to the other addListener methods, but is
+specially optimized for use with cluster listeners in distributed mode.
+Whenever a modification occurs which would cause an event to be sent to
+the cluster notifier the KeyValueFilter is first ran to see if this
+event should even be sent to the listener. If it is then the converter
+will be used to convert result into whatever data is desired to send
+back to the listener. These combined allow for reducing overall network
+traffic for events that you don't want to get or reduce payload size by
+sending a different or subset of the value.
+
+
+==== Events
+
+
+There are some cases in Infinispan when it is unclear if a notification
+was properly raised in a non transactional cache. Due to this we have
+made available an additional value on the CacheEntryCreatedEvent,
+CacheEntryModifiedEvent, and CacheEntryRemovedEvent. This is to
+symbolize that this event could have been possibly duplicated or even
+changed types (CacheEntryModifiedEvent instead of
+CacheEntryCreatedEvent).
+
+This should only return true if we had a node who was an owner go down
+while in the middle of processing the write.
+
+
+=== Functional Changes
+
+
+
+==== CacheEntryModified during creates
+
+
+Prior to Infinispan 7.0, whenever a new entry was created, this would
+generate both CacheEntryCreated and CacheEntryModified events.  This has
+been changed now so that only a CacheEntryCreated event is raised to
+more consistently model what has occurred.
+

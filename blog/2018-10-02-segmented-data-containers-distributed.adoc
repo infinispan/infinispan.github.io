@@ -1,0 +1,135 @@
+---
+layout: blog
+title: 'Segmented Data Containers: Distributed Stream Performance Boost'
+date: '2018-10-02T11:11:00.000-07:00'
+author: Unknown
+tags: 
+modified_time: '2018-10-03T05:11:58.530-07:00'
+thumbnail: https://2.bp.blogspot.com/-5FopP39_Z6k/W7O94C_HrAI/AAAAAAAAeDM/xWnwzer_RP8gQBlZvDI5MOY-Qroof7S_gCLcBGAs/s72-c/NonSegmentedData.jpg
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-3069540324882598954
+blogger_orig_url: https://blog.infinispan.org/2018/10/segmented-data-containers-distributed.html
+---
+Welcome to the first of several blog posts that describe the
+segmentation of containers that Infinispan uses to store data. Some of
+you may have noticed in the previous
+https://blog.infinispan.org/2018/06/infinispan-930final-is-out.html[9.3.0.Final
+notes] that we announced a new feature named “Segmented On-Heap Data
+Container”. We also mentioned that “It improves performance of stream
+operations”, but what does that really mean?
+
+
+== What is a segmented data container and why does it matter? 
+
+
+Imagine a cluster of 4 nodes in distributed mode (numOwners = 2) with
+entries for k0 - k13. It might look like this:
+
+
+https://2.bp.blogspot.com/-5FopP39_Z6k/W7O94C_HrAI/AAAAAAAAeDM/xWnwzer_RP8gQBlZvDI5MOY-Qroof7S_gCLcBGAs/s1600/NonSegmentedData.jpg[image:https://2.bp.blogspot.com/-5FopP39_Z6k/W7O94C_HrAI/AAAAAAAAeDM/xWnwzer_RP8gQBlZvDI5MOY-Qroof7S_gCLcBGAs/s640/NonSegmentedData.jpg[image,width=640,height=568]]
+
+
+
+
+The data is distributed between the nodes with only two copies of each
+entry available. However, the data itself is stored internally in the
+same Map instance. As a result, when performing operations on all
+entries in the cache, Infinispan must iterate over the same data
+multiple times. This degrades performance.
+
+As of Infinispan 9.3, a segmented data container is available to
+separate data by segments. Although only on-heap bounded and unbounded
+implementations are currently available.
+
+With a segmented data container, that same data set might look like
+this:
+
+
+https://2.bp.blogspot.com/-7S1k7hNmrHI/W7O99geUbkI/AAAAAAAAeDQ/k5tbJq0w22ovQxpNG2uXcMIV63HIvz4MQCLcBGAs/s1600/SegmentedData.jpg[image:https://2.bp.blogspot.com/-7S1k7hNmrHI/W7O99geUbkI/AAAAAAAAeDQ/k5tbJq0w22ovQxpNG2uXcMIV63HIvz4MQCLcBGAs/s640/SegmentedData.jpg[image,width=640,height=562]]
+
+
+
+
+Because Infinispan internally reasons on data in terms of segments, a
+segmented data container lets Infinispan process data only in specific
+segments. This allows for operations performed upon all entries to
+require iteration over the data only once.
+
+
+== Actual Performance Difference
+
+
+So with the above example you might be thinking that the performance
+increase maximum is two times throughput, since numOwners is two. This
+is close, but not quite correct. While iterating on the data we also
+have to determine what segment an entry belongs to. With a segmented
+container we know this already, so there is no need to calculate that.
+This provides additional performance, as you will see.
+
+The following graphs were generated using the benchmark at
+https://github.com/infinispan/infinispan-benchmarks/tree/master/iteration.
+The following command was run: *java -jar target/benchmarks.jar
+-pvalueObjectSize=1000 -pentryAmount=50000 -pbatchSize=4096*
+
+*[#docs-internal-guid-9b20945e-7fff-7241-2261-95b975ba8902]#image:https://lh6.googleusercontent.com/XMXQWsWISdPTt-93vLV5RgnJld-ASxkiWaXDZ-O1guXkoe87fYj1Ra2mlQHfcnTmVlXKNTZhk5T095pL99PjqlHgCbqlpFLyvQoTSBarR65wO275T7syowLSBxZl8syWKSYF9H43[image,title="Chart",width=624,height=385]#*
+
+The preceding graph is the result of the iteration methods. As you can
+notice the performance increase isn’t that much… why not?!?
+
+Unfortunately, remote iteration requires a lot of network overhead, so
+we don’t get to see the full benefits of segmentation. But at least it
+is about 5-12% faster, not too shabby.
+
+Now to show the real improvement, here is the chart showing the
+performance increase for the Cache#size operation:
+
+[#docs-internal-guid-413b551a-7fff-9931-559d-9fda906ad6b1]#image:https://lh6.googleusercontent.com/HHbRs5_4t4jE_7j8l3ArlsuPCgFXjh7zZXLGJXo3e9LLOP-matr7qTGzLiH8RpW9at1IimMrtC-LNKSsQmAujhMjVXxj31ruTGfEHeP9J-rTpUIFo0WjoyY_NCezBD6WtUj2NVgy[image,title="Chart",width=624,height=385]#
+
+If you notice there is *huge* increase in performance: almost a three
+fold increase over the non-segmented container, even though numOwners is
+only two. The old segment calculation adds a bit of overhead compared to
+just incrementing a number.
+
+So keep in mind this change will show a larger gain in performance if
+the result returned is smaller, especially if it is a fixed size, such
+as a single int for Cache#size.
+
+
+== What about gets and puts?
+
+
+Having the container segmented should also affect get and put
+performance as well, right? In testing the difference for get and puts
+are less than one percent, in favor of segmentation due to some
+optimizations we were able to add.
+
+
+== How do I enable this?
+
+
+So the performance gains are noticeable, especially when the remote
+operation returns a small data set. But how can a user configure this?
+This is the nice part, due to no performance loss with other operations
+the container will always be segmented as long as the cache mode
+supports segmentation. That is if it is a Distributed, Replicated or
+Scattered cache.
+
+
+== A real-life example and closing
+
+
+Since this feature has been around a while already, we actually have
+users gaining benefits from this feature. An example can be found at
+https://developer.jboss.org/message/983837#983837. In this case the user
+only upgraded to Infinispan 9.3 and received over a three-fold increase
+in performance when using distributed streams. It actually starts to
+bring distributed streams performance within range of indexed query for
+some use cases.
+
+So, by upgrading your application to Infinispan 9.3 or newer, you will
+benefit from these improvements. There will be future posts regarding
+segmentation, including support for stores. Either way please feel free
+to http://infinispan.org/download/[download Infinispan],
+https://issues.jboss.org/projects/ISPN[report bugs],
+https://infinispan.zulipchat.com/[chat with us], ask questions on the
+https://developer.jboss.org/en/infinispan/content[forum] or on
+https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest[StackOverflow].

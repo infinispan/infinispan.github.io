@@ -1,0 +1,154 @@
+---
+layout: blog
+title: Checking Infinispan cluster health and Kubernetes/OpenShift
+date: '2017-03-01T00:30:00.000-08:00'
+author: Sebastian Łaskawiec
+tags:
+- openshift
+- kubernetes
+- state transfer
+- health
+modified_time: '2017-03-01T00:30:58.297-08:00'
+thumbnail: https://4.bp.blogspot.com/-VGt1uUFgHJc/WLAnfWUl3eI/AAAAAAAAIgA/aGllPftLOMgnFFkApMeSCgosFhjYCzhOwCLcB/s72-c/Screenshot%2Bfrom%2B2017-02-24%2B13-30-41.png
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-2204273330727028984
+blogger_orig_url: https://blog.infinispan.org/2017/03/checking-infinispan-cluster-health-and.html
+---
+Modern applications and microservices often need to expose their health
+status. A common example is
+https://docs.spring.io/spring-boot/docs/current-SNAPSHOT/reference/htmlsingle/#production-ready[Spring
+Actuator] but there are also many different ways of doing that. 
+
+
+
+Starting from Infinispan 9.0.0.Beta2 we introduced the
+http://infinispan.org/docs/dev/user_guide/user_guide.html#monitoring_cluster_health[HealthCheck
+API]. It is accessible in both Embedded and Client/Server mode. 
+
+
+
+== Cluster Health and Embedded Mode
+
+
+
+The HealthCheck API might be obtained directly from EmbeddedCacheManager
+and it looks like this:
+
+
+
+
+
+The nice thing about the API is that it is exposed in JMX by default:
+
+
+
+https://4.bp.blogspot.com/-VGt1uUFgHJc/WLAnfWUl3eI/AAAAAAAAIgA/aGllPftLOMgnFFkApMeSCgosFhjYCzhOwCLcB/s1600/Screenshot%2Bfrom%2B2017-02-24%2B13-30-41.png[image:https://4.bp.blogspot.com/-VGt1uUFgHJc/WLAnfWUl3eI/AAAAAAAAIgA/aGllPftLOMgnFFkApMeSCgosFhjYCzhOwCLcB/s640/Screenshot%2Bfrom%2B2017-02-24%2B13-30-41.png[image,width=640,height=403]]
+
+
+
+More information about using HealthCheck API in Embedded Mode might be
+found here:
+
+* http://infinispan.org/docs/dev/user_guide/user_guide.html#monitoring_cluster_health
+
+
+
+== Cluster Health and Server Mode
+
+
+
+Since Infinispan is based on Wildfly, we decided to use CLI as well as
+built-in
+https://docs.jboss.org/author/display/WFLY10/The+HTTP+management+API[Management
+REST] interface.
+
+
+
+Here's an example of checking the status of a running server:
+
+
+
+
+
+Querying the HealthCheck API using the Management REST is also very
+simple:
+
+
+
+
+
+Note that for the REST endpoint, you have to use proper credentials. 
+
+
+
+More information about the HealthCheckA API in Server Mode might be
+found here:
+
+* http://infinispan.org/docs/dev/server_guide/server_guide.html#health_monitoring
+
+
+
+== Cluster Health and Kubernetes/OpenShift
+
+
+Monitoring cluster health is crucial for Clouds Platforms such as
+Kubernetes and OpenShift. Those Clouds use a concept of immutable Pods.
+This means that every time you need change anything in your application
+(changing configuration for the instance), you need to replace the old
+instances with new ones. There are several ways of doing that but we
+highly recommend using
+https://docs.openshift.org/latest/dev_guide/deployments/deployment_strategies.html#when-to-use-a-rolling-deployment[Rolling
+Updates]. We also recommend to tune the configuration and instruct
+Kubernetes/OpenShift to replace Pods one by one (I will show you an
+example in a moment). 
+
+
+
+Our goal is to configure Kubernetes/OpenShift in such a way, that each
+time a new Pod is joining or leaving the cluster a
+https://github.com/infinispan/infinispan/wiki/Non-Blocking-State-Transfer-V2[State
+Transfer] is triggered. When data is being transferred between the
+nodes, the
+https://docs.openshift.org/latest/dev_guide/application_health.html[Readiness
+Probe] needs to report failures and prevent Kubernetes/OpenShift from
+doing progress in Rolling Update procedure. Once the cluster is back in
+stable state, Kubernetes/OpenShift can replace another node. This
+process loops until all nodes are replaced. 
+
+
+
+Luckily, we introduced two scripts in our Docker image, which can be
+used out of the box for Liveness and Readiness Probes:
+
+* https://github.com/jboss-dockerfiles/infinispan/blob/master/server/is_healthy.sh[/usr/local/bin/is_healthy.sh]
+* https://github.com/jboss-dockerfiles/infinispan/blob/master/server/is_running.sh[/usr/local/bin/is_running.sh]
+
+At this point we are ready to put all the things together and assemble
+DeploymentConfig:
+
+
+
+
+
+Interesting parts of the configuration:
+
+* *lines 13 and 14:* We allocate additional capacity for the Rolling
+Update and allow one Pod to be down. This ensures Kubernetes/OpenShift
+replaces nodes one by one.
+* *line 44:* Sometimes shutting a Pod down takes a little while. It is
+always better to wait until it terminates gracefully than taking the
+risk of losing data.
+* *lines 45 - 53:* The Liveness Probe definition. Note that when a node
+is transferring the data it might highly occupied. It is wise to set
+higher value of '_failureThreshold_'.
+* *lines 54 - 62:* The same rule as the above. The bigger the cluster
+is, the higher the value of '_successThreshold_' as well as
+'_failureThreshold_'.
+
+Feel free to checkout other articles about deploying Infinispan on
+Kubernetes/OpenShift:
+
+* http://blog.infinispan.org/2016/08/running-infinispan-cluster-on-openshift.html
+* http://blog.infinispan.org/2016/08/running-infinispan-cluster-on-kubernetes.html
+* http://blog.infinispan.org/2016/09/configuration-management-on-openshift.html
+* http://blog.infinispan.org/2016/10/openshift-and-node-affinity.html
+* http://blog.infinispan.org/2016/07/bleeding-edge-on-docker.html

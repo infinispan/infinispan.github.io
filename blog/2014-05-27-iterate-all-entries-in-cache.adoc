@@ -1,0 +1,153 @@
+---
+layout: blog
+title: Iterate all the entries in the cache
+date: '2014-05-27T13:17:00.001-07:00'
+author: Unknown
+tags: 
+modified_time: '2014-10-31T14:15:02.380-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-8467800185644192234
+blogger_orig_url: https://blog.infinispan.org/2014/05/iterate-all-entries-in-cache.html
+---
+Dear all, with the release of
+http://blog.infinispan.org/2014/05/infinispan-700alpha4-is-out.html[7.0.0.Alpha4]
+it was mentioned that we now support Distributed Entry Iterator which
+allows for iteration over all entries in the cache.  Iterating over all
+the entries in the cache has always been an highly demanded community
+feature. Existing methods (entrySet, keySet, size) were not a good fit
+because of potential OOM and were causing a lot of user annoyance. Voila
+a nice distributed solution :-) 
+https://issues.jboss.org/browse/ISPN-4222[ISPN-4222]
+
+
+== Public Interface Additions
+
+
+The added public API changes are as follows:
+
+===
+AdvancedCache
+
+
+This returns an EntryIterable that can be used directly as an Iterable
+over the contents or also to pass a converter to convert the resulting
+value that is returned to another value or even type itself.
+
+===
+EntryIterable
+
+
+
+
+EntryIterable also implements AutoCloseable and as such should be closed
+after iteration or if an exception case occurs.  Thus the Java 7 try
+with resources syntax should be used.
+
+Note that EntryIterable has a method that allows you to also provide an
+optional Converter to change the values to another type if desired. This
+conversion is done on the remote nodes and is preferable to be used when
+the values can be reduced in size to reduce overall payload size.
+
+An example of how to perform the iteration with any cache type.
+
+
+
+== General Algorithm
+
+
+Essentially when the iterator is generated it will start an iteration
+process on the local node to retrieve all values local to that node
+(including from loader) and also a remote thread that will do the same
+thing on nodes one at at time. As values are retrieved they are made
+available to the iterator for processing. The chunkSize configuration
+for the State Transfer configuration will limit how many values are
+available to be waiting to be iterated on at a time (loader, local and
+remotely retrieved values count towards this). This is important to
+limit how many values are stored in memory when both using a loader and
+in distributed caches to help prevent an OOM condition from occurring.
+
+The provided KeyValueFilter is used on the various nodes to limit what
+entries are returned to the iterator and are sent to the remote node(s)
+when using a Distributed cache to limit how many results are returned. A
+converter is similar to the KeyValueFilter but it is ran on any entry
+that passes the filter to possibly converter the value to another such
+as a projection view if desired. Both the KeyValueFilter and Converter
+must be serializable for proper operation!
+
+The operation is also aware of rehash events occurring, since this could
+alter which node owns what entry. This is handled automatically by the
+iterator by tracking what segments have moved and requesting them from
+the other node if needed.
+
+
+== Local, Replicated and Invalidation Cache Optimizations
+
+
+These caches have some additional optimizations from above in the
+following
+
+. The KeyValueFilter and Converter do not need to be Serializable
+. KeyValueFilter optimization is only relevant when using a loader
+. Converter optimization is minimial, the main benefit being it allows
+code to be the same between cache types
+
+== Gotchas
+
+
+This is just to talk about some various cases that users should be aware
+of.
+
+=== Transactional Behaviour
+
+When using the entry iterator in a transactional context, all of the
+values are retrieved outside of the current transaction if there is one,
+and no transaction is started if there isn't one.
+
+This is done due to the behaviour of Repeatable Read isolation level. 
+If not then then all of the retrieved values would have to be stored
+locally in the current context for that transaction, which would most
+likely cause an OOM condition in many cases.
+
+=== Removal using Iterator
+
+Since the iteration process does not take part of transactions, the
+remove operation of the iterator is not supported as well.  If desired
+the user should just invoke the remove method from the Cache itself to
+do this.
+
+=== Consistency Guarantees
+
+This iterator only guarantees consistency in regards to each value
+independently. That is it will show a view of each value that existed
+during the period of when the iteration began and when it completed.
+Thus it is entirely possible to see a subset of values if say a
+transaction was committed at the same time as iteration. This would
+require additional isolation level changes outside of the scope of the
+iterator to implement this, such as adding Serializable isolation
+level.
+
+=== Return type change
+
+Before ISPN 7 is released, it is still needed to change the return type
+from Map.Entry to instead be CacheEntry as users may need the Metadata
+stored with the entry as well. This will come in
+https://issues.jboss.org/browse/ISPN-4326[ISPN-4326]
+
+
+== Try it out
+
+
+Let us know if and how you guys plan on using this and any feedback
+would be appreciated!
+
+
+== *Update* Oct 31, 2014
+
+As of Infinispan 7.0.0.Final the Entry Iterator now properly supports
+transactional data and thus will show the most up to date value if there
+is a pending change (however read values are not brought into the
+context to prevent OOM errors).
+
+The remove operation on the iterator is fully supported and will perform
+the operation in the current transactional context if there is one. 
+Caution though as you must use the iterator in the thread it was
+retrieved from for it to work properly.

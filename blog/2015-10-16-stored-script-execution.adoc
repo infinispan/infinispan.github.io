@@ -1,0 +1,61 @@
+---
+layout: blog
+title: Stored Script Execution
+date: '2015-10-16T02:22:00.000-07:00'
+author: Tristan Tarrant
+tags:
+- hotrod
+- remote
+- scripting
+- javascript
+- server
+- nashorn
+modified_time: '2015-10-16T02:22:34.026-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-1897146103126485394
+blogger_orig_url: https://blog.infinispan.org/2015/10/stored-script-execution.html
+---
+One of the questions we get asked a lot is: when will I be able to run
+Map/Reduce and DistExec jobs over HotRod.
+
+I'm happy to say: now !
+
+Infinispan Server comes with Stored Script Execution which means that
+remote clients can invoke named scripts on the server. If you're
+familiar with the concept of Stored Procedures of the SQL world, then
+you already have an idea of what this feature is about. The types of
+scripts you can run are those handled by Java's scripting API. Out of
+the box this means Javascript (which uses either the Nashorn engine on
+JDK 8+), but you can add many more (Groovy, Scala, JRuby, Jython, Lua,
+etc). Scripts are stored in a dedicated script cache ("___scriptcache")
+so that they can be easily created/modified using the standard cache
+operations (put/get/etc.).
+
+Here's an example of a very simple script:
+
+
+The script above just obtains the default cache, retrieves the value
+with key 'a' and returns it (the Javascript script engine uses the last
+evaluated expression of a script as its return value).
+The first line of the script is special: it looks like a comment, but,
+like the first line in Unix shell scripts, it actually provides
+instructions on how the script should be run in the form of
+properties.
+
+The mode property instructs the execution engine where we want to run
+the script: _local_ for running the script on the node that is handling
+the request and _distributed_ for running the script wrapped by a
+distributed executor. Bear in mind that you can certainly use clustered
+operations in _local_ mode.
+
+Scripts can also take named parameters which will "appear" as bindings
+in the execution scope.
+
+
+Invoking it from a Java HotRod client would look like this:
+
+
+Server-side scripts will be evolving quite a bit in Infinispan 8.1 where
+we will add support for the broader concept of server-side tasks which
+will include both scripts and deployable code which can be invoked in
+the same way, all managed and configured by the upcoming changes in the
+Infinispan Server console.

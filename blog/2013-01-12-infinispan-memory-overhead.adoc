@@ -1,0 +1,188 @@
+---
+layout: blog
+title: Infinispan memory overhead
+date: '2013-01-12T08:53:00.000-08:00'
+author: Martin Genčúr
+tags:
+- overhead
+- memory
+- performance
+modified_time: '2013-01-14T04:58:14.850-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-2015345639455049711
+blogger_orig_url: https://blog.infinispan.org/2013/01/infinispan-memory-overhead.html
+---
+Have you ever wondered how much Java heap memory is actually consumed
+when data is stored in Infinispan cache? Let's look at some numbers
+obtained through real measurement.
+
+The strategy was the following:
+
+1) Start Infinispan server in local mode (only one server instance,
+eviction disabled)
+2) Keep calling full garbage collection (via JMX or directly via
+System.gc() when Infinispan is deployed as a library) until the
+difference in consumed memory by the running server gets under 100kB
+between two consecutive runs of GC
+3) Load the cache with *100MB* of data via respective client (or
+directly store in the cache when Infinispan is deployed as a library)
+4) Keep calling the GC until the used memory is stabilised
+5) Measure the difference between the final values of consumed memory
+after the first and second cycle of GC runs
+6) Repeat steps 3, 4 and 5 four times to get an average value (first
+iteration ignored)
+
+The amount of consumed memory was obtained from a verbose GC log
+(related JVM options: -verbose:gc -XX:+PrintGCDetails
+-XX:+PrintGCTimeStamps -Xloggc:/tmp/gc.log)
+
+The test output looks like this: https://gist.github.com/4512589
+
+The operating system (Ubuntu) as well as JVM (Oracle JDK 1.6) were
+64-bit. Infinispan 5.2.0.Beta6. Keys were kept intentionally small (10
+character Strings) with byte arrays as values. The target entry size is
+a sum of key size and value size.
+
+
+== *Memory overhead of Infinispan accessed through clients*
+
+== 
+
+
+*HotRod client*
+
+
+entry size -> overall memory
+
+512B       -> 137144kB
+
+1kB        -> 120184kB
+
+10kB       -> 104145kB
+
+1MB        -> 102424kB
+
+
+So how much additional memory is consumed on top of each entry?
+
+
+entry size/actual memory per entry -> overhead per entry
+
+512B/686B                -> ~174B
+
+1kB(1024B)/1202B         -> ~178B
+
+10kB(10240B)/10414B      -> ~176B
+
+1MB(1048576B)/1048821B   -> ~245B
+
+
+*MemCached client (text protocol, SpyMemcached client) *
+
+
+entry size -> overall memory
+
+512B       -> 139197kB
+
+1kB        -> 120517kB
+
+10kB       -> 104226kB
+
+1MB        -> N/A (SpyMemcached allows max. 20kB per entry)
+
+
+
+entry size/actual memory per entry -> overhead per entry
+
+512B/696B               -> ~184B
+
+1kB(1024B)/1205B        -> ~181B
+
+10kB(10240B)/10422B     -> ~182B
+
+
+
+== 
+
+*REST client (Content-Type: application/octet-stream)*
+
+
+entry size -> overall memory
+
+512B       -> 143998kB
+
+1kB        -> 122909kB
+
+10kB       -> 104466kB
+
+1MB        -> 102412kB
+
+
+
+entry size/actual memory per entry -> overhead per entry
+
+512B/720B               -> ~208B
+
+1kB(1024B)/1229B        -> ~205B
+
+10kB(10240B)/10446B     -> ~206B
+
+1MB(1048576B)/1048698B  -> ~123B
+
+
+The memory overhead for individual entries seems to be more or less
+constant
+across different cache entry sizes.
+
+
+== Memory overhead of Infinispan deployed as a library
+
+
+Infinispan was deployed to http://www.jboss.org/jbossas[JBoss
+Application Server 7] using http://arquillian.org/[Arquillian].
+
+
+entry size -> overall memory/overall with storeAsBinary
+
+512B       -> 132736kB / 132733kB
+
+1kB        -> 117568kB / 117568kB
+
+10kB       -> 103953kB / 103950kB
+
+1MB        -> 102414kB / 102415kB
+
+
+There was almost no difference in overall consumed memory when enabling
+or disabling storeAsBinary.
+
+
+entry size/actual memory per entry-> overhead per entry (w/o
+storeAsBinary)
+
+512B/663B               -> ~151B
+
+1kB(1024B)/1175B        -> ~151B
+
+10kB(10240B)/10395B     -> ~155B
+
+1MB(1048576B)/1048719B  -> ~143B
+
+
+As you can see, the overhead per entry is constant across different
+entry sizes and is ~151 bytes.
+
+
+== Conclusion
+
+
+The memory overhead is slightly more than 150 bytes per entry when
+storing data into the cache locally. When accessing the cache via remote
+clients, the memory overhead is a little bit higher and ranges from ~170
+to ~250 bytes, depending on remote client type and cache entry size. If
+we ignored the statistics for 1MB entries, which could be affected by a
+small number of entries (100) stored in the cache, the range would have
+been even narrower.
+
+
+Cheers,
+Martin

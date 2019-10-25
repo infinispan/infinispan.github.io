@@ -1,0 +1,64 @@
+---
+layout: blog
+title: Faster transaction protocols in Infinispan!
+date: '2013-04-29T02:25:00.000-07:00'
+author: Pedro Ruivo
+tags: 
+modified_time: '2013-05-03T08:35:41.703-07:00'
+thumbnail: http://4.bp.blogspot.com/-5aEjRD-cQKk/UXqvR762K7I/AAAAAAAAAEk/fs_-b6Z0Lvw/s72-c/contention.png
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-2348375407617276572
+blogger_orig_url: https://blog.infinispan.org/2013/04/faster-transaction-protocols-in.html
+---
+
+
+The total order based protocol is a lock free commit protocol that
+relies on the concept of totally ordered delivery of messages which,
+informally, implies that each node which delivers a set of messages,
+delivers them in the same order.
+
+This protocol comes with this advantages.
+
+. transactions can be committed in one phase, as they are delivered in
+the same order by the nodes that receive them.
+. it mitigates distributed deadlocks.
+
+The weaknesses of this approach are the fact that its implementation
+relies on a single thread per node which receives the transaction and
+its modification from other nodes in the cluster, and the slightly
+higher number of messages exchanged by JGroups.
+
+Thus, this protocol delivers best performance in scenarios of *high
+contention*, in which it can benefit from the single-phase commit and
+the thread that delivers/applies transactions is not the bottleneck.
+
+Currently, the Total Order based protocol is available only
+in *transactional* caches for *replicated* and *distributed* modes and
+it is available
+in http://infinispan.blogspot.com.br/2013/04/infinispan-530alpha1-is-out.html[Infinispan
+5.3.0 Alpha1].
+
+If you are interested in know more, please take a look at the
+https://docs.jboss.org/author/display/ISPN/Total+Order+based+commit+protocol[user
+documentation] where it is explained in more detail how it behaves and
+how you can configure it. Since this is a recent work, if you find any
+incorrect behavior please create a
+https://issues.jboss.org/issues/?jql=project%20%3D%20ISPN[JIRA].
+
+Please find below some benchmarks comparing the total order based
+implementation with the locking based implementation in two different
+scenarios:
+
+* *Contention*: 1000 keys in a *shared* pool, 8 threads per node and 5
+writes (on average) per transaction;
+
+* *No Contention*: 1000 keys in a thread *private* pool, 8 threads per
+node and 5 writes (on average) per transaction.
+
+http://4.bp.blogspot.com/-5aEjRD-cQKk/UXqvR762K7I/AAAAAAAAAEk/fs_-b6Z0Lvw/s1600/contention.png[image:http://4.bp.blogspot.com/-5aEjRD-cQKk/UXqvR762K7I/AAAAAAAAAEk/fs_-b6Z0Lvw/s1600/contention.png[image,width=640,height=384]]
+
+
+
+http://1.bp.blogspot.com/-wT9K8wvpPcE/UXqvSJmj3bI/AAAAAAAAAEs/XO36wbOzHo0/s1600/no-contention.png[image:http://1.bp.blogspot.com/-wT9K8wvpPcE/UXqvSJmj3bI/AAAAAAAAAEs/XO36wbOzHo0/s1600/no-contention.png[image,width=640,height=384]]
+
+
+

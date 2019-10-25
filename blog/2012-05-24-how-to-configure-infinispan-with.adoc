@@ -1,0 +1,183 @@
+---
+layout: blog
+title: How to configure Infinispan with transactions, backed by relational DB on JBoss
+  AS 7 vs. Tomcat 7
+date: '2012-05-24T06:55:00.002-07:00'
+author: Martin Genčúr
+tags:
+- database
+- transactions
+- c3p0
+- as7
+- cache store
+- tomcat
+modified_time: '2012-05-28T01:02:45.109-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-1043800181058532603
+blogger_orig_url: https://blog.infinispan.org/2012/05/how-to-configure-infinispan-with.html
+---
+
+Migrating projects from one container to another is often problematic.
+Not as much with Infinispan. This article is about configuring
+Infinispan, using Transaction Manager for demarcating transaction
+boundaries, while keeping the data both in a memory and relational
+database - stored via JDBC cache store. I'll demonstrate all the
+features on code snippets. 
+
+A complete application is located at
+https://github.com/mgencur/infinispan-examples and is called
+carmart-tx-jdbc. It's a web application based on JSF 2, Seam 3 and
+Infinispan 5.1.4.FINAL, is fully working, tested with JBoss  Application
+Server 7.1.1.Final and Tomcat 7.0.27. There  is one prerequisite,
+though. It needs an installed and working MySQL database in your system.
+The database name should be carmartdb, accessible by a user with
+carmart/carmart username/password.
+ 
+First, look at what we need to configure for JBoss Application Server
+7. 
+
+== Configuring transactions and JDBC cache store on JBoss AS 7 
+
+Infinispan will be configured via new fluent API using builders, hence
+the call to  .build() method at the end. We need to configure aspects
+related to  transactions and cache loaders. The configuration API for
+cache loaders  is likely going to be changed in not-so-far future. It
+should be fluent  and more intuitive, generally easier to use than
+current one. 
+
+I purposely do not show XML configuration. Configuration examples can be
+found at
+https://github.com/infinispan/infinispan/blob/master/core/src/main/resources/config-samples/sample.xml.
+In order to configure transactions and cache loaders, look for tags
+called  <transaction> and <loaders> and modify that sample file
+according to below configuration. Tag names and attribute names are very
+similar for both XML and Java configuration. If that is not enough,
+there is always a schema in Infinispan distribution.
+
+The configuration of Infinispan is as follows: 
+
+
+
+Lines marked with red are different in other containers/configurations,
+as you'll see in a minute. The code above implies that we need to
+specify proper TransactionManagerLookup implementation which is, in this
+case, GenericTransactionManagerLookup. We  also need to say: "Hey, I
+wanna use ManagedConnectionFactory as a connectionFactoryClass". OK,
+here we go. I should, as well, explain how to configure a datasource
+properly, right? In JBoss AS 7, this is configured as a subsystem in
+$JBOSS_HOME/standalone/configuration/standalone.xml:
+
+
+
+The usage of transactions is very simple as we can obtain a transaction
+object by injection.
+
+
+
+Sources:
+https://github.com/mgencur/infinispan-examples/blob/master/carmart-tx-jdbc/src/jbossas/java/org/infinispan/examples/carmart/session/CarManager.java
+
+Quite easy, isn't it ...if you know how to do it. The only problem is
+that it does not work (at least not completely) :-) If you deploy the
+app, you find out that when storing a key-value pair in  the cache, an
+exception is thrown. This exception indicates that the operation with DB
+(and JDBC cache store) failed. The exception says:
+
+
+
+A complete stack trace looks similar to
+https://gist.github.com/2777348
+There's still an open issue in JIRA (ISPN-604) and it is being worked
+on. 
+
+== Configuring transactions and JDBC cache store on JBoss AS 7 - c3p0
+
+But how do we cope with this inconvenience for now... By not using a
+managed datasource but rather a third party library called c3p0 (JDBC3 
+Connection and Statement Pooling, more information at
+http://www.mchange.com/projects/c3p0/index.html) Infinispan allows you
+to use this library for connecting to the database. If you really want
+to use it, you need to choose a different connectionFactoryClass which
+is, in this case, PooledConnectionFactory.
+
+Infinispan configuration looks like this:
+
+
+Transactions are accessible in the same way as in the previous use case.
+Now let's look at configuration for Tomcat servlet container. 
+
+
+== Configuring transactions and JDBC cache store on Tomcat 7
+
+Tomcat does not have any Transaction Manager in it so we have to bundle
+one with the application. For the purpose of this exercise, we choose
+JBoss Transactions (http://www.jboss.org/jbosstm). See dependencies at
+the end.
+
+Cache manager and cache configuration is in this form:
+
+
+
+For Tomcat, we need to specify a different transactionManagerLookup
+implementation and datasourceJndiLocation. Tomcat simply places objects 
+under a bit different JNDI locations. The datasource is defined in
+context.xml file which has to be on classpath. This file might look like
+this:
+
+
+
+How do we get the transaction manager in the application then? Lets
+obtain  it directly from a cache. 
+
+Infinispan knows how to find the manager and we need to know how to
+obtain it from Infinispan.
+
+
+
+Sources:
+https://github.com/mgencur/infinispan-examples/blob/master/carmart-tx-jdbc/src/tomcat/java/org/infinispan/examples/carmart/session/CarManager.java
+The transaction manager provides standard methods for transactions, such
+as begin(), commit() and rollback(). 
+
+
+== *Now is the time for dependencies*
+
+So...which dependencies do we always need when using Infinispan with
+JDBC cache stores and transactions? These are infinspan-core,
+infinispan-cachestore-jdbc and javax.transaction.jta. The scope for jta
+dependency, as defined in Maven, is different for JBossAS and Tomcat.
+
+*Common dependencies for JBossAS and Tomcat*
+
+
+
+Of course, our application needs a few more dependencies but these are
+not directly related to Infinispan. Let's ignore them in this article.
+JBoss AS 7 provides managed datasource that is accessible from
+Infinispan. The only specific dependency (related to transactions or
+Infinispan) is JTA.
+
+*Dependencies specific to JBossAS - using managed Datasource (managed by
+the server)*
+
+
+
+*Dependencies specific to JBossAS - using c3p0*
+
+
+
+Yes, you need to bundle also MySQL connector. On the other hand, for
+Tomcat use case and JBossAS with managed datasource, this jar file needs
+do be deployed to the server separately. For Tomcat, do this simply by
+copying the jar file to $TOMCAT_HOME/lib.  For JBoss AS 7, copy the jar
+file into $JBOSS_HOME/standalone/deployments.
+
+*Dependencies specific to Tomcat - using JBoss Transactions*
+
+
+
+That's it. I hope you've found this article helpful. Any feedback is
+welcome, especially the positive one :-) If you find any problem with
+the  application, feel free to comment here or participate in Infinispan
+forums (http://www.jboss.org/infinispan/forums).
+
+Martin

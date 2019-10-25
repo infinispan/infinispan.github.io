@@ -1,0 +1,173 @@
+---
+layout: blog
+title: RESTful queries coming to Infinispan 9.2
+date: '2018-02-09T04:00:00.000-08:00'
+author: Gustavo
+tags:
+- rest query
+- '9.2'
+- Protobuf
+- JSON
+- query
+modified_time: '2018-02-09T04:00:47.335-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-9003477498202325065
+blogger_orig_url: https://blog.infinispan.org/2018/02/restful-queries-coming-to-infinispan-92.html
+---
+
+One of the interesting features in the upcoming Infinispan 9.2 release
+is the possibility to execute queries over the REST endpoint, enabling
+users to take advantage of the easy-to-use and expressiveness of the
+Ickle query language, that combines a subset of JP-QL with full-text
+features. You can learn more info about Ickle in a
+http://blog.infinispan.org/2016/12/meet-ickle.html[previous post].
+
+Besides exposing query over REST, Infinispan 9.2 also adds support for
+mapping between JSON and Protobuf formats, allowing an efficient storage
+in binary format while exposing queries, reading and writing content as
+JSON documents.
+
+To illustrate those new capabilities, this post will walk you through a
+sample app from scratch!
+
+
+===
+Sample app
+
+=====
+Running the server
+
+We start by
+https://github.com/jboss-dockerfiles/infinispan/tree/master/server[running]
+the Infinispan Server 9.2.0.CR2 (the latest release candidate):
+
+
+
+This will get you a fresh instance of Infinispan running, with login and
+password 'user' and the REST port 8080 mapped to localhost. TIP: if you
+run more than one container, they'll form a cluster automatically.
+
+
+===== Creating an indexed cache
+
+Next step is to create an indexed cache called 'pokemon'. We make use of
+the CLI  (Command Line Interface) to create this cache. In the future,
+with https://issues.jboss.org/browse/ISPN-8529[ISPN-8529], we'll also be
+able to create cache with arbitrary configuration using REST, but for
+now we execute a CLI recipe:
+
+
+
+
+===== Creating the schema
+
+In order to be able to query, we need to define a protobuf schema for
+our data. The schema follows the Protobuf 2 format (Protobuf 3 support
+is coming) and allows for extensions to define indexing properties
+(analyzers, storage, etc).
+
+Here's how it looks like:
+
+
+
+The protobuf schema can contain some comments on top of fields and
+messages with "annotations" to control indexing. Hibernate Search users
+will recognize some of those pseudo annotations we are using here: they
+resemble closely their counterpart.
+
+
+
+===== Registering the schema
+
+Once we have our schema, we can easily register it via REST:
+
+
+
+
+=====
+Populating the cache
+
+We're now ready to put some data in the cache. As mentioned earlier,
+ingesting can be done by sending JSON documents directly. Once
+Infinispan receives those documents, it will convert them to protobuf,
+index and store them.
+
+In order to match a particular inbound document to an entity in the
+schema, Infinispan uses a special meta field called *__type_* that must
+be provided in the document. Here's an example of a JSON document that
+conforms to our schema:
+
+
+Writing the document is easy:
+
+
+
+we can retrieve content by key as JSON:
+
+
+
+
+===== Querying
+
+
+The new query endpoint can be called with an "action" parameter named
+"search", after the cache name. The simplest query, which returns all
+data can be done with:
+
+http://localhost:8080/rest/pokemon?action=search&query=from%20Pokemon[http://localhost:8080/rest/pokemon?action=search&query=from
+Pokemon]
+
+
+If you do not want to return all the fields, use a _Select_ clause:
+
+http://localhost:8080/rest/pokemon?action=search&query=Select%20name,%20speed%20from%20Pokemon[http://localhost:8080/rest/pokemon?action=search&query=Select
+name, speed from Pokemon]
+
+
+Pagination can be controlled with the _offset_, _max_results_ URL
+parameters:
+
+http://localhost:8080/rest/pokemon?action=search&query=from%20Pokemon&offset=2&max_results=20[http://localhost:8080/rest/pokemon?action=search&query=from
+Pokemon&offset=2&max_results=20]
+
+
+Grouping is also possible:
+
+http://localhost:8080/rest/pokemon?action=search&query=select%20count(p.name)%20from%20Pokemon%20p%20group%20by%20generation[http://localhost:8080/rest/pokemon?action=search&query=select
+count(p.name) from Pokemon p group by generation]
+
+
+Example of a query result:
+
+http://localhost:8080/rest/pokemon?action=search&query=select%20name,pokedex_number,against_fire%20from%20Pokemon%20order%20by%20against_fire%20asc&max_results=5[http://localhost:8080/rest/pokemon?action=search&query=select
+name,pokedex_number,against_fire from Pokemon order by against_fire
+asc&max_results=5]
+
+Results:
+
+
+
+
+
+
+=== Conclusion
+
+===  
+
+Infinispan 9.2 makes it easier to quickly ingest and query datasets
+using the ubiquitous JSON format, without sacrificing type safety and
+storage size.
+
+By storing Protobuf, this will also enable other clients like the Hot
+Rod C#/C++ clients to query, read and write data simultaneously with
+REST clients.
+
+The full source code for the demo, along with instructions on how to
+populate the whole dataset can be found at
+https://github.com/infinispan-demos/infinispan-pokemon[Github].
+
+Finally, please try out this new feature in your own dataset and let us
+know how it goes!
+
+
+
+

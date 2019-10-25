@@ -1,0 +1,131 @@
+---
+layout: blog
+title: 'Functional Map API: Working with multiple entries'
+date: '2015-09-08T09:34:00.000-07:00'
+author: Galder Zamarreño
+tags:
+- functional
+- '8.0'
+- API
+- lambda
+modified_time: '2015-09-28T05:58:23.984-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-5220228434807539010
+blogger_orig_url: https://blog.infinispan.org/2015/09/functional-map-api-working-with.html
+---
+We continue with the blog series on the experimental Functional Map API
+which was released as part of Infinispan 8.0.0.Final. In this blog post
+we'll be focusing on how to work with multiple entries at the same time.
+For reference, here are the previous entries in the series:
+
+. http://blog.infinispan.org/2015/08/new-functional-map-api-in-infinispan-8.html[Functional
+Map Introduction]
+. http://blog.infinispan.org/2015/09/functional-map-api-working-with-single.html[Working
+with single entries]
+
+The approach taken by the Functional Map API when working with multiple
+keys is to provide a lazy, pull-style API. All multi-key operations take
+a collection parameter which indicates the keys to work with (and
+sometimes contain value information too), and a function to execute for
+each key/value pair. Each function's ability depends on the entry view
+received as function parameter, which changes depending on the
+underlying map:
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/EntryView.ReadEntryView.html[ReadEntryView]
+for https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadOnlyMap.html[ReadOnlyMap],
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/EntryView.WriteEntryView.html[WriteEntryView]
+for https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.WriteOnlyMap.html[WriteOnlyMap],
+or
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/EntryView.ReadWriteEntryView.html[ReadWriteView]
+for https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadWriteMap.html[ReadWriteMap].
+The return type for all multi-key operations, except the ones from
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.WriteOnlyMap.html[WriteOnlyMap],
+return an instance of
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Traversable.html[Traversable]
+which exposes methods for working with the returned data from each
+function execution. Let's see an example:
+
+
+
+
+
+This example demonstrates some of the key aspects of working with
+multiple entries using the Functional Map API:
+
+* As explained in the previous blog post, all data-handling methods
+(including multi-key methods) for
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.WriteOnlyMap.html[WriteOnlyMap]
+return
+https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html[CompletableFuture<Void>],
+because there's nothing the function can provide that could not be
+computed in advance or outside the function.
+* Normally, the order of
+the https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Traversable.html[Traversable] matches
+the order of the input collection though this is not currently
+guaranteed.
+
+There is a special type of multi-key operations which work on all
+keys/entries stored in Infinispan. The behaviour is very similar to the
+multi-key operations shown above, with the exception that they do not
+take a collection of keys (and/or values) as parameters:
+
+
+
+
+
+There's a few interesting things to note about working with all entries
+using the Functional Map API:
+
+* When working with all entries, the order of the
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Traversable.html[Traversable]
+is not guaranteed.
+* Read-only's
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadOnlyMap.html#keys--[keys()]
+and
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadOnlyMap.html#entries--[entries()]
+offer the possibility to traverse all keys and entries present in the
+cache. When traversing entries, both keys and values including metadata
+are available. Contrary to Java's
+http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ConcurrentMap.html[ConcurrentMap],
+there's no possibility to navigate only the values (and metadata) since
+there's little to be gained from such method and once a key's entry has
+been retrieved, there's no extra cost to provide the key as well.
+
+It's worth noting that when we sat down to think about how to work with
+multiple entries, we considered having a push-style API where the user
+would receive callbacks pushed as the entries to work with were located.
+This is the approach that reactive APIs such as http://reactivex.io/[Rx]
+follow, but we decided against using such APIs at this level for several
+reasons:
+
+. We have huge interest in providing a Rx-style API for Infinispan, but
+we didn't want the core API to have a dependency on
+http://reactivex.io/[Rx] or http://www.reactive-streams.org/[Reactive
+Streams]. 
+. We didn't want to reimplement a push-style async API since this is not
+trivial to do and requires careful thinking, specially around
+back-pressure and flow control.
+. Push-style APIs require more work on the user side compared to
+pull-style APIs.
+. Pull-style APIs can still be lazy and partly asynchronous since the
+user can decide to work with
+the https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Traversable.html[Traversable] at
+a later stage, and the separation between intermediate and terminating
+operations provides a good abstraction to avoid unnecessary computation.
+
+In fact, it is this desire to keep a clear separation between
+intermediate and terminating operations at
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Traversable.html[Traversable]
+that has resulted in having no manual way to iterate over the
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Traversable.html[Traversable].
+In other words, there is no iterator() nor spliterator() methods in
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Traversable.html[Traversable]
+since these are often associated with manual, user-end iteration, and we
+want to avoid such thing since in the majority of cases, Infinispan
+knows best how to exactly iterate over the data.
+
+
+
+In the next blog post, we'll be looking at how to work with listeners
+using the Functional Map API.
+
+Cheers,
+Galder

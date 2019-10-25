@@ -1,0 +1,129 @@
+---
+layout: blog
+title: 'Functional Map API: Working with single entries'
+date: '2015-09-02T06:12:00.001-07:00'
+author: Galder Zamarreño
+tags:
+- functional
+- '8.0'
+- introduction
+- API
+- lambda
+modified_time: '2015-09-28T05:58:38.291-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-6141964976245959693
+blogger_orig_url: https://blog.infinispan.org/2015/09/functional-map-api-working-with-single.html
+---
+In this blog post we'll continue with the introduction of the
+experimental Functional Map API, which was released as part of
+http://blog.infinispan.org/2015/08/infinispan-800final.html[Infinispan
+8.0.0.Final], focusing on how to manipulate data using single-key
+operations.
+
+As mentioned in the
+http://blog.infinispan.org/2015/08/new-functional-map-api-in-infinispan-8.html[Functional
+Map API introduction], there are three types of operations that can be
+executed against a functional map: read-only operations (executed via
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadOnlyMap.html[ReadOnlyMap]),
+write-only operations (executed via
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.WriteOnlyMap.html[WriteOnlyMap]),
+and read-write operations (executed via
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadWriteMap.html[ReadWriteMap])
+and .
+
+Firstly, we need construct instances of
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadOnlyMap.html[ReadOnlyMap],
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.WriteOnlyMap.html[WriteOnlyMap]
+and
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadWriteMap.html[ReadWriteMap]
+to be able to work with them:
+
+
+Next, let's see all three types of operations in action, chaining them
+to store a single key/value pair along with some metadata, then read it
+and finally delete a returning the previously stored data:
+
+
+This example demonstrates some of the key aspects of working with single
+entries using the Functional Map API:
+
+* Single entry methods are asynchronous
+returning https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html[CompletableFuture] instances
+which provide methods to compose and chain operations so that it can
+feel is they're being executed sequentially. Unfortunately Java does not
+have https://en.wikibooks.org/wiki/Haskell/do_notation[Haskell's do
+notation] or http://docs.scala-lang.org/tutorials/FAQ/yield.html[Scala's
+for comprehensions] to make it more palatable, but it's great news that
+Java finally offers mechanisms to work with CompletableFutures in a
+non-blocking way, even if they're a bit more verbose than what's
+proposed in other languages.
+* All data-handling methods for
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.WriteOnlyMap.html[WriteOnlyMap]
+return
+https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html[CompletableFuture<Void>],
+meaning that the user can find out when the operation has completed but
+nothing else, because there's nothing the function can provide that
+could not be computed in advance or outside the function.
+* The return type for most of the data handling methods in
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadOnlyMap.html[ReadOnlyMap]
+(and
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadWriteMap.html[ReadWriteMap])
+are quite flexible. So, a function can decide to return value
+information, or metadata, or for convenience, it can also return the
+ReadEntryView it receives as parameter. This can be useful for users
+wanting to return both value and metadata parameter information.
+* The read-write operation demonstrated above showed how to remove an
+entry and return the previously associated value. In this particular
+case, we know there's a value associated with the entry and hence we
+called
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/EntryView.ReadEntryView.html[ReadEntryView.get()]
+directly, but if we were not sure if the value is present or
+not, https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/EntryView.ReadEntryView.html#find--[ReadEntryView.find()]
+should be called and return the
+https://docs.oracle.com/javase/8/docs/api/java/util/Optional.html[Optional]
+instance instead.
+* In the example,
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/MetaParam.MetaLifespan.html[Lifespan
+metadata parameter] is constructed using the new Java Time API available
+in Java 8, but it could have been done equally
+with http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/TimeUnit.html[java.util.concurrent.TimeUnit]
+as long as the conversion was done to number of milliseconds during
+which the entry should be accessible.
+* Lifespan-based expiration works just as it does with other Infinispan
+APIs, so you can easily modify the example to lower the lifespan, wait
+for duration to pass and then verify that the value is not present any
+more.
+
+If storing a constant value,
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.WriteOnlyMap.html#eval-K-java.util.function.Consumer-[WriteOnlyMap.eval(K,
+Consumer)] could be used instead
+of https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.WriteOnlyMap.html#eval-K-V-java.util.function.BiConsumer-[WriteOnlyMap.eval(K,
+V, Consumer)], making the code clearer, but if the value is
+variable, https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.WriteOnlyMap.html#eval-K-V-java.util.function.BiConsumer-[WriteOnlyMap.eval(K,
+V, Consumer)] should be used to avoid, as much as possible, functions
+capturing external variables. Clearly, operations exposed by functional
+map can't cover all scenarios and there might be situations where
+external variables are captured by functions, but these should in
+general, should be a minority. Here is as example showing how to
+implement
+http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ConcurrentSkipListMap.html#replace-K-V-V-[ConcurrentMap.replace(K,
+V, V)] where external variable capturing is required:
+
+
+
+
+
+The reason we didn't add a WriteOnly.eval(K, V, V, Consumer) to the API
+is because value-equality-based replace comparisons are just one type of
+replace operations that could be executed. In other cases, metadata
+parameter based comparison might be more suitable, e.g. Hot Rod replace
+operation where version (a type of metadata parameter) equality is the
+deciding factor to determine whether the replace should happen or not.
+
+In the next blog post, we'll be looking at how to work with multiple
+entries using the Functional Map API.
+
+
+
+Cheers,
+
+Galder
