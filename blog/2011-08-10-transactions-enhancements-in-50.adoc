@@ -1,0 +1,103 @@
+---
+layout: post
+title: Transactions enhancements in 5.0
+date: '2011-08-10T03:33:00.000-07:00'
+author: Mircea Markus
+tags:
+- jta
+- radargun
+- transactions
+- benchmarks
+modified_time: '2012-01-17T03:14:29.911-08:00'
+thumbnail: http://3.bp.blogspot.com/-OBeJ5lxWquM/TgRePeHHFxI/AAAAAAAAB_g/ob6y0_gHpZ8/s72-c/tx_benchmark.png
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-8754827774130849896
+blogger_orig_url: https://blog.infinispan.org/2011/06/transactions-enhancements-in-50.html
+---
+Besides other cool features such as Map reduce and distributed
+executors, Infinispan 5.0.0 "Pagoa" brings some significant improvements
+around transactional functionality:
+
+* https://docs.jboss.org/author/x/BIF7[transaction recovery]
+http://community.jboss.org/docs/DOC-16646?uniqueTitle=false[] is now
+supported, with a set of tools that allow state reconciliation in case
+the transaction fails during 2nd phase of 2PC. This is especially useful
+in the case of transactions spreading over Infinispan and another
+resource manager, e.g. a database (distributed transactions). You can
+find out more on how to enable and use transaction recovery
+https://docs.jboss.org/author/x/BIF7[here].
+* http://download.oracle.com/javaee/1.3/api/javax/transaction/Synchronization.html[Synchronization]
+enlistment is another important feature in this release. This allows
+Infinispan to enlist in a transaction as an
+http://download.oracle.com/javaee/1.3/api/javax/transaction/Synchronization.html[Synchronization]
+rather than an
+http://download.oracle.com/javaee/1.3/api/javax/transaction/xa/XAResource.html[XAResource].This
+enlistment allows the TransactionManager to optimize 2PC with a 1PC
+where only one other resource is enlisted with that transaction
+(http://docs.redhat.com/docs/en-US/JBoss_Enterprise_Web_Platform/5/html/Administration_And_Configuration_Guide/ch09s04.html[last
+resource commit optimization]). This is particularly important when
+using Infinispan as a 2nd level cache in Hibernate. You can read more
+about this feature https://docs.jboss.org/author/x/_YB7[here].
+* besides that several bugs were fixed particularly when it comes to the
+integration with a transaction manager - BIG thanks to the community for
+reporting and testing them!
+
+To summarise, Infinispan can participate in a transaction in 3 ways:
+
+. as a fully fledged XAResource that supports recovery
+. as an XAResource, but without recovery. This is the default
+configuration
+. and as an Synchronization
+
+In order to analyze the performance of running Infinispan in different
+transactional modes I've
+https://sourceforge.net/apps/trac/radargun/wiki/BenchmarkingTransactions[enhanced]
+and used
+http://sourceforge.net/apps/trac/radargun/wiki/WikiStart[Radargun]. The
+diagram below shows a performance comparison between running Infinispan
+in all the 3 modes described. The forth plot in the chart shows the
+performance of running Infinispan without transactions - this gives an
+idea about the cost of using transactions vs. raw operations.
+
+ +
+
+http://3.bp.blogspot.com/-OBeJ5lxWquM/TgRePeHHFxI/AAAAAAAAB_g/ob6y0_gHpZ8/s1600/tx_benchmark.png[image:http://3.bp.blogspot.com/-OBeJ5lxWquM/TgRePeHHFxI/AAAAAAAAB_g/ob6y0_gHpZ8/s400/tx_benchmark.png[image]] +
+
+ +
+
+The benchmark was run on
+https://github.com/mmarkus/radargun/blob/blog_13Jun_2011/plugins/infinispan5/src/main/resources/benchmark/benchmark-tx.xml[this]
+Radargun configuration, using Infinispan 5.0.0.CR5 configured as shown
+https://github.com/mmarkus/radargun/blob/blog_13Jun_2011/plugins/infinispan5/src/main/resources/dist-tx-sync-commit.xml[here].
+As a TransactionManager
+https://github.com/mmarkus/radargun/blob/blog_13Jun_2011/plugins/infinispan5/pom.xml#L38[JBossTS
+4.15.0.FINAL] was used, configured with a VolatileStore as shown
+https://github.com/mmarkus/radargun/blob/blog_13Jun_2011/plugins/infinispan5/src/main/java/org/radargun/infinispan/JBossTMLookup.java[here].
+Each node was an http://ark.intel.com/Product.aspx?id=47923[4-core
+Intel(R) Xeon(R) CPU E5640 @ 2.67GHz], with 4GB RAM.
+
+Each transaction spread over only one put operation. The chart shows the
+following:
+
+* a non-transactional put is about 40% faster than a transactional one
+* http://download.oracle.com/javaee/1.3/api/javax/transaction/Synchronization.html[Synchronization]-enlisted
+transactions outperform an
+http://download.oracle.com/javaee/1.3/api/javax/transaction/xa/XAResource.html[XAResource]
+enlisted one by about 20%
+* A recoverable cache has about the same performance as a
+non-recoverable cache when it comes to transactions.
+
+And that's not all! During Infinispan 5.0.0 development we've been
+thinking a lot about how we can improve transactional throughput,
+especially in scenarios in which multiple transactions are writing on
+the same key. As a result we've come up with some improvement
+suggestions summarised
+http://community.jboss.org/wiki/PossibleLockingImprovements[here]:
+please feel free to take a look and comment!
+
+ +
+
+Cheers,
+
+Mircea
+
+ +

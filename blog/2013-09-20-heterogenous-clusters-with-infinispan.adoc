@@ -1,0 +1,47 @@
+---
+layout: post
+title: Heterogenous clusters with Infinispan 6.0.0.Beta1
+date: '2013-09-20T08:38:00.000-07:00'
+author: Unknown
+tags: 
+modified_time: '2013-09-20T08:38:04.060-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-298238953577386573
+blogger_orig_url: https://blog.infinispan.org/2013/09/heterogenous-clusters-with-infinispan.html
+---
+One of the basic rules of participating in an Infinispan cluster was
+that everyone must pay their fair share. Sure, each node was able to run
+a diferent set of caches (i.e. the cluster didn't have to be symmetric).
+But when a node started up a distributed cache, it automatically took
+ownership of a share of the keys equal to all the other members of the
+cache. +
+ +
+With the implementation of
+https://issues.jboss.org/browse/ISPN-3051[ISPN-3051] in 6.0.0.Beta1,
+that is no longer the case. Each node can now opt to own more or less
+keys, using the new capacityFactor setting. The default capacity factor
+is 1.0, and nodes can specify both a higher and a lower value via
+configuration API: +
+ +
+
+Or via the XML configuration: +
+ 
+
+ +
+Note that we don't guarantee that the number of keys owned by a node
+will be exactly proportional to its capacity factor. In particular,
+custom ConsistentHashFactory implementations are free to ignore the
+capacityFactor setting completely. But the default ConsistentHashFactory
+will try to respect it as much as it can. +
+ +
+One interesting use case is nodes with a capacity factor of 0. This
+could be useful when some nodes are too short-lived to be useful as data
+owners, but they can't use HotRod (or other remote protocols) because
+they need transactions. With cross-site replication as well, the "site
+master" should only deal with forwarding commands between sites and
+shouldn't handle user requests, so it makes sense to configure it with a
+capacity factor of 0. +
+ +
+A final note: Infinispan server 6.0.0.Beta1 also supports this feature,
+but the setting is called capacity-factor to match the AS naming
+convention. +
+ +

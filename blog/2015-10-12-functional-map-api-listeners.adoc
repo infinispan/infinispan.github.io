@@ -1,0 +1,157 @@
+---
+layout: post
+title: 'Functional Map API: Listeners'
+date: '2015-10-12T02:37:00.002-07:00'
+author: Galder Zamarreño
+tags:
+- functional
+- '8.0'
+- listeners
+- API
+modified_time: '2015-10-12T02:38:13.106-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7609972786383054902
+blogger_orig_url: https://blog.infinispan.org/2015/10/functional-map-api-listeners.html
+---
+We continue with the blog series on the experimental Functional Map API
+which was released as part of
+http://blog.infinispan.org/2015/08/infinispan-800final.html[Infinispan
+8.0.0.Final]. In this blog post we'll be focusing on how to listen for
+Functional Map events. For reference, here are the previous entries in
+the series: +
+
+. http://blog.infinispan.org/2015/08/new-functional-map-api-in-infinispan-8.html[Functional
+Map Introduction]
+. http://blog.infinispan.org/2015/09/functional-map-api-working-with-single.html[Working
+with single entries]
+. http://blog.infinispan.org/2015/09/functional-map-api-working-with.html[Working
+with multiple entries]
+
+The first thing to notice about Functional Map listeners is that they
+only send events post-event, so that means the events are received after
+the event has happened. In contrast with Infinispan Cache listeners,
+there are no pre-event listener invocations. The reason pre-events are
+not available is because listeners are meant to be an opportunity to
+find out what has happened, and having pre-events can sometimes hint as
+if the listener was able to alter the execution of the operation, for
+which the listener is not really suited. If interested in pre-events or
+potentially altering the execution,
+http://infinispan.org/docs/8.1.x/user_guide/user_guide.html#_custom_interceptors[plugging
+custom interceptors] is the recommended solution.
+
+ +
+
+Functional Map offers two type of event listeners: write-only operation
+listeners and read-write operation listeners.
+
+ +
+
+=== Write-Only Listeners
+
+ +
+
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Listeners.WriteListeners.html[Write
+listeners] enable users to register listeners for any cache entry write
+events that happen in either a read-write or write-only functional map.
+
+ +
+
+Listeners for write events cannot distinguish between cache entry
+created and cache entry modify/update events because they don’t have
+access to the previous value. All they know is that a new non-null entry
+has been written. However, write event listeners can distinguish between
+entry removals and cache entry create/modify-update events because they
+can query what the new entry’s value via
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/EntryView.ReadEntryView.html#find--[ReadEntryView.find()]
+method.
+
+ +
+
+Adding a write listener is done via the WriteListeners interface which
+is accessible via both
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadWriteMap.html#listeners--[ReadWriteMap.listeners()]
+and
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.WriteOnlyMap.html#listeners--[WriteOnlyMap.listeners()]
+method. A write listener implementation can be defined either passing a
+function to
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Listeners.WriteListeners.html#onWrite-java.util.function.Consumer-[onWrite(Consumer<ReadEntryView<K,
+V>>)] method, or passing a WriteListener implementation to
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Listeners.WriteListeners.html#add-org.infinispan.commons.api.functional.Listeners.WriteListeners.WriteListener-[add(WriteListener<K,
+V>)] method. Either way, all these methods return an
+https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html[AutoCloseable]
+instance that can be used to de-register the function listener. Example
+and expected output:
+
+ +
+
+ +
+
+=== Read-Write Listeners
+
+ +
+
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Listeners.ReadWriteListeners.html[Read-write
+listeners] enable users to register listeners for cache entry created,
+modified and removed events, and also register listeners for any cache
+entry write events. Entry created, modified and removed events can only
+be fired when these originate on a read-write functional map, since this
+is the only one that guarantees that the previous value has been read,
+and hence the differentiation between create, modified and removed can
+be fully guaranteed.
+
+ +
+
+Adding a read-write listener is done via the
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Listeners.ReadWriteListeners.html[ReadWriteListeners]
+interface which is accessible via
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/FunctionalMap.ReadWriteMap.html#listeners--[ReadWriteMap.listeners()]
+method. If interested in only one of the event types, the simplest way
+to add a listener is to pass a function to either
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Listeners.ReadWriteListeners.ReadWriteListener.html#onCreate-org.infinispan.commons.api.functional.EntryView.ReadEntryView-[onCreate],
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Listeners.ReadWriteListeners.ReadWriteListener.html#onModify-org.infinispan.commons.api.functional.EntryView.ReadEntryView-org.infinispan.commons.api.functional.EntryView.ReadEntryView-[onModify]
+or
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Listeners.ReadWriteListeners.ReadWriteListener.html#onRemove-org.infinispan.commons.api.functional.EntryView.ReadEntryView-[onRemove]
+methods. Otherwise, if interested in multiple type of events, passing a
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Listeners.ReadWriteListeners.ReadWriteListener.html[ReadWriteListener]
+implementation via
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/functional/Listeners.ReadWriteListeners.html#add-org.infinispan.commons.api.functional.Listeners.ReadWriteListeners.ReadWriteListener-[add(ReadWriteListener<K,
+V>)] is the easiest. As with write-listeners, all these methods return
+an AutoCloseable instance that can be used to de-register the listener.
+
+ +
+
+Here's an example of adding a ReadWriteListener that handles multiple
+type of events:
+
+ +
+
+ +
+
+=== Closing Notes
+
+ +
+
+More listener event types are yet to be implemented for Functional API,
+such as expiration events or passivation/activation events. We are
+capturing this future work and other improvements under the
+https://issues.jboss.org/browse/ISPN-5704[ISPN-5704] issue. +
+ +
+We'd love to hear from you on how you are finding this new API. To
+provide feedback or report any problems with it, head to our
+http://infinispan.org/community/[user forums] and create a post there.
+
+ +
+
+In next blog post in the series, we'll be looking into how to pass
+per-invocation parameters to tweak operations.
+
+ +
+
+Cheers,
+
+Galder
+
+ +
+
+ +
+
+ +

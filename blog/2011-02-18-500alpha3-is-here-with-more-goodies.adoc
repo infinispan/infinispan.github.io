@@ -1,0 +1,111 @@
+---
+layout: post
+title: 5.0.0.ALPHA3 is here with more goodies!
+date: '2011-02-18T05:29:00.000-08:00'
+author: Galder Zamarreño
+tags:
+- '5.0'
+- asynchronous
+- alpha
+- configuration
+modified_time: '2015-09-28T22:12:22.629-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-1447646935341359713
+blogger_orig_url: https://blog.infinispan.org/2011/02/500alpha3-is-here-with-more-goodies.html
+---
+For those who can't wait to get hold on the newest Infinispan features,
+we've just released the third alpha release of the 5.0 series, called
+5.0.0.ALPHA3.
+
+ +
+
+Apart from including fixes in
+https://issues.jboss.org/secure/ConfigureReport.jspa?atl_token=c0ee1b92ed270815b460be3704d78af9ead2f994&versions=12316042&sections=all&style=none&selectedProjectId=12310799&reportKey=org.jboss.labs.jira.plugin.release-notes-report-plugin:releasenotes&Next=Next[4.2.1.CR2],
+it allows users to prefetch data in advance in parallel thanks to the
+new getAsync() method. Why is this useful? Imagine the following
+scenario: A cache is configured with distribution and an app that
+requires values associated with k1, k2, and k3 in order to do its job.
+In the worst case scenario assume that all these keys located in remote
+nodes. Previously, before 5.0.0.ALPHA3, you'd have written something
+like this:
+
+ +
+
+[source,java]
+----
+Value v1 = cache.get("k1");
+Value v2 = cache.get("k2");
+Value v3 = cache.get("k3");
+----
+
+ +
+
+The problem with this code is that each get() is sequential, so the
+second get() call must wait for first get() to retrieve data from the
+remote node before it can execute. This is clearly not very optimal.
+From 5.0.0.ALPHA3 onwards, you can do this instead:
+
+ +
+
+[source,java]
+----
+NotifyingFuture<Value> f1 = cache.getAsync("k1");
+NotifyingFuture<Value> f2 = cache.getAsync("k2");
+NotifyingFuture<Value> f3 = cache.getAsync("k3");
+...
+Value v1 = f1.get(); // blocks until value has been returned
+Value v2 = f2.get();
+Value v3 = f3.get();
+----
+
+ +
+
+The clear advantage here is that the get requests, via getAsync(), can
+be fired in parallel and they don't need to wait for each other.
+Afterwards, when the value is needed, simply call get() on the future
+received.
+
+ +
+
+Amongst other API enhancements, such as
+https://issues.jboss.org/browse/ISPN-900[RemoteCache implementing size()
+and isEmpty()], or https://issues.jboss.org/browse/ISPN-906[the ability
+to delete AtomicMap instances via AtomicMapLookup], it's worth
+highlighting that we've taken
+http://community.jboss.org/thread/161913[your feedback on board with
+regards to how Infinispan is configured programmatically], and from
+5.0.0.ALPHA3 onwards, we provide a more fluent way of configuring
+Infinispan. For example:
+
+ +
+
+[source,java]
+----
+GlobalConfiguration gc = new GlobalConfiguration();
+
+GlobalJmxStatisticsConfig jmxStatistics = gc.configureGlobalJmxStatistics();
+jmxStatistics.allowDuplicateDomains(true).enabled(true);
+
+TransportConfig transport = gc.configureTransport();
+transport.clusterName("blah").machineId("id").rackId("rack").strictPeerToPeer(true);
+----
+
+ +
+
+You can find more examples of this new configuration
+https://github.com/infinispan/infinispan/blob/master/core/src/test/java/org/infinispan/config/ProgrammaticConfigurationTest.java[here].
+Note that this fluent API is likely to evolve further before we go final
+with 5.0.0 as shown in this
+http://community.jboss.org/message/588125#588125[forum discussion], but
+please keep your feedback coming! Finally, details of what's fixed is in
+the
+https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12310799&version=12315984[release
+notes]. As always, please use the
+http://community.jboss.org/en/infinispan?view=discussions[user forums]
+to report back, grab the release
+http://www.jboss.org/infinispan/downloads[here], enjoy and keep the
+feedback coming.
+
+ +
+
+Cheers, +
+Galder

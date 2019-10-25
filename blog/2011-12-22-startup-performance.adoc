@@ -1,0 +1,91 @@
+---
+layout: post
+title: Startup performance
+date: '2011-12-22T08:41:00.000-08:00'
+author: Manik Surtani
+tags:
+- benchmarks
+- cpu
+- memory
+- performance
+modified_time: '2015-09-28T06:01:20.935-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-8773782847170679031
+blogger_orig_url: https://blog.infinispan.org/2011/12/startup-performance.html
+---
+One of the things I've done recently was to benchmark how quickly
+Infinispan starts up.  Specifically looking at LOCAL mode (where you
+don't have the delays of opening sockets and discovery protocols you see
+in clustered mode), I wrote up a very simple test to start up 2000
+caches in a loop, using the same cache manager. +
+ +
+This is a pretty valid use case, since when used as a non-clustered 2nd
+level cache in Hibernate, a separate cache instance is created _per
+entity type_, and in the past this has become somewhat of a
+bottleneck. +
+ +
+In this test, I compared Infinispan 5.0.1.Final, 5.1.0.CR1 and
+5.1.0.CR2.  5.1.0 is significantly quicker, but I used this test (and
+subsequent profiling) to commit a couple of interesting changes in
+5.1.0.CR2, which has improved things even more - both in terms of CPU
+performance as well as memory footprint. +
+ +
+Essentially, 5.1.0.CR1 made use of
+https://github.com/jbossas/jandex[Jandex] to perform annotation scanning
+of internal components at build-time, to prevent expensive reflection
+calls to determine component dependencies and lifecycle at runtime.
+ 5.1.0.CR2 takes this concept a step further - now we don't just cache
+annotation lookups at build-time, but entire dependency graphs.  And
+determining and ordering of lifecycle methods are done at build-time
+too, again making startup times significantly quicker while offering a
+much tighter memory footprint. +
+ +
+Enough talk.  Here is
+https://github.com/maniksurtani/InfinispanStartupBenchmark[the test
+used], and here are the performance numbers, as per my laptop, a 2010
+MacBook Pro with an i5 CPU. +
+ +
+ +
+Multiverse:InfinispanStartupBenchmark manik [master]$ ./bench.sh  +
+---- Starting benchmark --- +
+ +
+ +
+  Please standby ...  +
+ +
+ +
+Using Infinispan 5.0.1.FINAL (JMX enabled? false)  +
+   Created 2000 caches in *10.9 seconds* and consumed *172.32 Mb* of
+memory. +
+ +
+ +
+Using Infinispan 5.0.1.FINAL (JMX enabled? true)  +
+   Created 2000 caches in *56.18 seconds* and consumed *315.21 Mb* of
+memory. +
+ +
+ +
+Using Infinispan 5.1.0.CR1 (JMX enabled? false)  +
+   Created 2000 caches in *7.13 seconds* and consumed *157.5 Mb* of
+memory. +
+ +
+ +
+Using Infinispan 5.1.0.CR1 (JMX enabled? true)  +
+   Created 2000 caches in *34.9 seconds* and consumed *243.33 Mb* of
+memory. +
+ +
+ +
+Using Infinispan 5.1.0.CR2(JMX enabled? false)  +
+   Created 2000 caches in *3.18 seconds* and consumed *142.2 Mb* of
+memory. +
+ +
+ +
+Using Infinispan 5.1.0.CR2(JMX enabled? true)  +
+   Created 2000 caches in *17.62 seconds* and consumed *176.13 Mb* of
+memory. +
+ +
+ +
+A whopping 3.5 times faster, and significantly more memory-efficient
+especially when enabling JMX reporting.  :-) +
+ +
+ +
+Enjoy! +
+Manik +
+ +

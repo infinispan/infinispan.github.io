@@ -1,0 +1,48 @@
+---
+layout: post
+title: Map/Reduce parallel execution
+date: '2014-02-24T07:59:00.000-08:00'
+author: Vladimir Blagojevic
+tags: 
+modified_time: '2014-02-24T07:59:10.360-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7465380952767713167
+blogger_orig_url: https://blog.infinispan.org/2014/02/mapreduce-parallel-execution.html
+---
+ +
+Ever since Infinispan 5.2 release we implemented fully distributed
+execution of both map and reduce phases of MapReduceTask. For the map
+phase, MapReduceTask hashes task input keys, groups them by execution
+node N these keys are hashed to, and sends map function along input keys
+to each node N. At node N map function gets invoked for each input key
+and locally loaded corresponding value. However, map function on node N,
+until recently, got invoked on a single thread regardless of the number
+of key/value pairs. If we need to invoke map function on many key/value
+pairs, things would sooner rather than later grind to a halt. +
+ +
+Similarly in order to complete reduce phase, MapReduceTask groups
+intermediate KOut keys by execution node N they are hashed to. After
+intermediate phase is completed, MapReduceTask sends a reduce command to
+each node N where KOut keys are hashed. Once reduce command arrives on
+target execution node, it looks up temporary cache belonging to
+MapReduceTask and for each KOut key, grabs a list of VOut values, wraps
+it with an Iterator and invokes reduce on it. However, even reduce
+function, until recently, got invoked on a single thread, as well. Even
+though, due to the nature of map/reduce paradigm, reduce entails
+significantly smaller number of key/value function invocations compared
+to a map, current single threaded execution model does not help to speed
+things up. +
+ +
+Starting with Infinispan community release 7.0.0.Alpha1, map and reduce
+task phases are executed in parallel. If the eviction is not configured
+for the cache where key/value pairs involved in the map phase reside,
+MapReduceTask uses fork/join work-stealing technique for parallel
+execution of the map and reduce functions. Otherwise, we implement
+parallel execution using a standard thread executor framework. Reduce
+phase is always executed using fork/join work-stealing algorithm. Either
+way, we are hoping that users' large map/reduce tasks will experience a
+significant execution speedup.  At the moment, we are conducting our own
+performance tests and will get back to you with the results soon. Stay
+tuned. +
+ +
+Cheers, +
+Vladimir

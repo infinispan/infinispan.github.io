@@ -1,0 +1,142 @@
+---
+layout: post
+title: Data Container Changes Part 1
+date: '2016-12-19T12:50:00.001-08:00'
+author: Unknown
+tags: 
+modified_time: '2016-12-19T13:58:39.522-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7630210085989661942
+blogger_orig_url: https://blog.infinispan.org/2016/12/data-container-changes-part-1.html
+---
+Infinispan 9.0 Beta 1 introduces some big changes to the Infinispan data
+container.  This is the first of two blog posts detailing those
+changes. +
+ +
+This post will cover the changes to eviction which utilizes a new
+provider, https://github.com/ben-manes/caffeine[Caffeine].  As you may
+already know Infinispan has supported our own implementations of
+https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU[LRU] (Least
+Recently Used) and
+https://en.wikipedia.org/wiki/LIRS_caching_algorithm[LIRS] (Low
+Inter-reference Receny Set) algorithms for our bounded caches. +
+ +
+Our implementations of eviction were even rewritten for Infinispan 8,
+but we found we still had some issues or limitations with them,
+especially LIRS.  Our old implementation had some problems with keeping
+the correct number of entries.  The new implementation while not having
+that issue had others, such as being considerably more complex.  And
+while it implemented the entire LIRS specification, it could have memory
+usage https://issues.jboss.org/browse/ISPN-7171[issues].  This led us to
+looking at alternatives and Caffeine seemed like a logical fit as well
+as being well maintained and the author, Ben Manes, is quite
+responsive. +
+ +
+
+== Enter Caffeine
+
+ +
+Caffeine doesn't utilize LRU or LIRS for its eviction algorithm and
+instead implements https://arxiv.org/abs/1512.00727[TinyLFU] with an
+admission window.  This has the benefit of the high hit ratio like LIRS,
+while also requiring low memory overhead like LRU.  Caffeine also
+provides custom weighting for objects, which allow us to reuse the code
+that was developed for MEMORY based eviction as well. +
+ +
+The only thing that Caffeine doesn't support is our idea of a custom
+https://docs.jboss.org/infinispan/8.2/apidocs/org/infinispan/commons/equivalence/Equivalence.html[Equivalence]. 
+Thus Infinispan now wraps byte[] instances to ensure equals and hashCode
+methods work properly.  This also gives us a good opportunity to
+reevaluate the dataContainer configuration element. +
+ +
+
+== Deprecations
+
+ +
+The data container configuration has thus been deprecated and is now
+replaced by a new configuration element named memory.   Also since we
+are adding a new element the eviction configuration could also be
+consolidated into memory, and thus eviction is also deprecated.  And
+last but not least the storeAsBinary configuration element has also been
+integrated into the new memory configuration element.  Now we have 1
+configuration element instead of 3, can't beat that! +
+ +
+
+== New Configuration
+
+ +
+The new memory configuration will start out pretty simple and new
+elements can be added as there is a need.  The memory element will be
+composed of a single sub element that can be of three different
+choices.  For this post we will go over two of the sub elements: OBJECT
+and BINARY. +
+ +
+
+=== OBJECT
+
+ +
+Object storage stores the actual objects as provided from the user in
+the Java Heap.  This is the default storage method when no memory
+configuration is provided.  This method will provide the best
+performance when using operations that operate upon the entire data set,
+such as distributed streams, indexing and local reads etc. +
+ +
+Unfortunately OBJECT storage only allows for COUNT based eviction as we
+cannot properly estimate user object types properly.  This could be
+improved in a feature version if there is enough interest. Note that you
+can technically configured MEMORY eviction type with the OBJECT storage
+type with declarative configuration, but it will throw an exception when
+you build the configuration.  Therefore OBJECT only has a single element
+named size to determine the amount of entries that can be stored in the
+cache. +
+ +
+An example of how Object storage can be configured: +
+
+==== XML
+
+DECLARATIVE
+
+ +
+
+=== BINARY
+
+ +
+Binary storage stores the object in its serialized form in a byte
+array.  This has an interesting side effect of objects are always stored
+as a deep copy.  This can be useful if you want to modify an object
+after retrieving it without affecting the underlying cache stored
+object.  Since objects have to be deserialized when performing
+operations on them some things such as distributed streams and local
+gets will be a little bit slower. +
+ +
+A nice benefit of storing entries as BINARY is that we can estimate the
+total on heap size of the object.  Thus BINARY supports both COUNT and
+MEMORY based eviction types. +
+ +
+An example of how Binary storage can be configured: +
+
+==== XML
+
+DECLARATIVE
+
+ +
+
+=== OFF-HEAP
+
+ +
+This option will be described in more detail in the next blog post. 
+Stay tuned! +
+ +
+
+== Conclusion
+
+ +
+Caffeine should bring us a great solution, while also reducing a lot of
+maintenance ourselves.  The new memory configuration also provides a
+simpler solution by removing two other configuration elements. +
+ +
+We hope you enjoy the new changes to the data container and look out for
+another blog post coming soon to detail the other new changes to the
+data container!  In the meantime please check out our latest
+http://infinispan.org/download/[Infinispan 9.0] before it goes final and
+give us any feedback on irc://irc.freenode.net/infinispan[IRC] or
+https://jira.jboss.org/browse/ISPN[JIRA]

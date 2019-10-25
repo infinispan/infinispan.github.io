@@ -1,0 +1,123 @@
+---
+layout: post
+title: Simple cache
+date: '2015-09-16T01:53:00.001-07:00'
+author: Unknown
+tags: 
+modified_time: '2015-09-16T01:53:59.996-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-5484858756758012613
+blogger_orig_url: https://blog.infinispan.org/2015/09/simple-cache.html
+---
+Infinispan *local caches* have several features that make it more than
+just a map - expiration and eviction, listeners, statistics,
+transactions, cache stores and so forth. However, this comes at a price
+- due to all the hooks and object allocation, plain ConcurrentHashMap is
+faster than local cache. +
+ +
+There are applications that need something in between - great
+performance but some of those features, too. In our case, the motivation
+were internal caches in Hibernate Second Level Cache. Therefore
+Infinispan *8.0.1.Final* brings the *simple cache* - alternative
+implementation of the _AdvancedCache_ interface optimized for maximum
+performance when you need just the basics. +
+ +
+The table below shows which features are available in simple cache: +
+ +
+
+[cols=",",options="header",]
+|========================================
+|Feature |Availability
+|Basic map-like API |✔
+|Cache listeners (non-clustered) |✔
+|Expiration |✔
+|Eviction |✔
+|Security |✔
+|JMX access |✔
+|Statistics |✔
+|Transactions |✘
+|Invocation batching |✘
+|Persistence (cache stores and loader) |✘
+|Map Reduce Framework |✘
+|Distributed Executors Framework |✘
+|Custom interceptors |✘
+|Indexing (querying) |✘
+|Compatibility (embedded/server) |✘
+|Store as binary |✘
+|========================================
+
+ +
+ +
+Configuring simple cache is as simple as adding one attribute to the XML
+configuration: +
+ +
+
+ +
+While configuration schema allows to set up the unsupported features,
+doing so results in an exception when the cache is created. +
+ +
+You can also configure simple cache programmatically: +
+ +
+
+ +
+So, what kind of performance improvement can you expect? We had run
+basic (single-threaded) benchmark using
+http://openjdk.java.net/projects/code-tools/jmh/[JMH] and this is what
+we got: +
+ +
+
+Implementation
+
+get() (operations/s)
+
+put() (operations/s)
+
+ConcurrentHashMap
+
+128,354,135
+
+±
+
+2,178,755
+
+33,980,088
+
+±
+
+28,487
+
+Simple cache
+
+86,969,897
+
+±
+
+738,935
+
+14,044,642
+
+±
+
+14,280
+
+Local cache
+
+17,280,018
+
+±
+
+361,910
+
+2,267,850
+
+±
+
+44,814
+
+ +
+This gives us about 5✕ speedup for reads and 6✕ for writes. Your mileage
+may vary, but it's certain that simple cache provides substantial
+performance benefits. +
+ +
+So, if your use-case allows it, try out simple cache and let us know.
+It's as simple as one configuration attribute! +
+ +

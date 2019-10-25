@@ -1,0 +1,108 @@
+---
+layout: post
+title: Defining cache configurations via CacheManager in Beta1
+date: '2009-08-21T03:18:00.000-07:00'
+author: Galder Zamarreño
+tags: 
+modified_time: '2009-08-21T04:27:03.036-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7730713046943098622
+blogger_orig_url: https://blog.infinispan.org/2009/08/defining-cache-configurations-via.html
+---
+Infinispan's first beta release is just around the corner and in
+preparation, I'd like to introduce to the Infinispan users an important
+API change in org.infinispan.manager.CacheManager class that will be
+part of this beta release. +
+ +
+As a result of the development of the Infinispan second level cache
+provider for Hibernate, we have discovered that the CacheManager API for
+definition and retrieval of Configuration instances was a bit limited.
+So, for this coming release, the following method has been deleted: +
+
+[source,java]
+----
+void defineCache(String cacheName, Configuration configurationOverride)
+----
+
+ +
+And instead, the following two methods have been added: +
+
+[source,java]
+----
+Configuration defineConfiguration(String cacheName, Configuration configurationOverride);
+Configuration defineConfiguration(String cacheName, String templateCacheName, 
+   Configuration configurationOverride);
+----
+
+ +
+The primary driver for this change has been the development of the
+Infinispan cache provider, where we wanted to enable users to configure
+or override most commonly modified Infinispan parameters via hibernate
+configuration file. This would avoid users having to modify different
+files for the most commonly modified parameters, hence improving
+usability of the Infinispan cache provider. However, to be able to
+implement this, we needed CacheManager's API to be enhanced so that: +
+ +
+- Existing defined cache configurations could be overriden. This enables
+use cases like this: Sample Infinispan cache provider configuration will
+contain a generic cache definition to be used for entities. Via
+hibernate configuration file, users could redefine the maximum number of
+entries to be allowed before eviction kicks in for all entities. The
+code would look something like this: +
+
+[source,java]
+----
+// Assume that 'cache-provider-configs.xml' contains 
+// a named cache for entities called 'entity'
+CacheManager cacheManager = new DefaultCacheManager(
+   "/home/me/infinispan/cache-provider-configs.xml");
+Configuration overridingConfiguration = new Configuration();
+overridingConfiguration.setEvictionMaxEntries(20000); // max entries to 20.000
+// Override existing 'entity' configuration so that eviction max entries are 20.000.
+cacheManager.defineConfiguration("entity", overridingConfiguration);
+----
+
+ +
+- Be able to define new cache configurations based on the configuration
+of a given cache instance, optionally applying some overrides. This
+enables uses cases like the following: A user wants to define eviction
+wake up interval for a specific entity which is different to the wake up
+interval used for the rest of entities. +
+
+[source,java]
+----
+// Assume that 'cache-provider-configs.xml' contains 
+// a named cache for entities called 'entity'
+CacheManager cacheManager = new DefaultCacheManager(
+   "/home/me/infinispan/cache-provider-configs.xml");
+Configuration overridingConfiguration = new Configuration();
+// set wake up interval to 240 seconds
+overridingConfiguration.setEvictionWakeUpInterval(240000L);
+// Create a new cache configuration for com.acme.Person entity 
+// based on 'entity' configuration, overriding the wake up interval to be 240 seconds
+cacheManager.defineConfiguration("com.acme.Person", "entity", overridingConfiguration);
+----
+
+ +
+Another limitation of the previous API, which we've solved with this API
+change, is that in the past the only way to get a cache's Configuration
+required the cache to be started because the only way to get the
+Configuration instance was from the Cache API. However, with this API
+change, we can now retrieve a cache's Configuration instance via the
+CacheManager API. Example: +
+
+[source,java]
+----
+// Assume that 'cache-provider-configs.xml' contains 
+// a named cache for entities called 'entity'
+CacheManager cacheManager = new DefaultCacheManager(
+   "/home/me/infinispan/cache-provider-configs.xml");
+// Pass a brand new Configuration instance without overrides 
+// and it will return the given cache name's Configuration
+Configuration entityConfiguration = cacheManager.defineConfiguration("entity", 
+new Configuration());
+----
+
+ +
+If you would like to provide any feedback to this post, either respond
+to this blog entry or go to
+http://www.jboss.org/infinispan/forums.html[Infinispan's user forums].

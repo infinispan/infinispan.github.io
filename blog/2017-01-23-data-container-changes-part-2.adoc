@@ -1,0 +1,158 @@
+---
+layout: post
+title: Data Container Changes Part 2
+date: '2017-01-23T13:35:00.002-08:00'
+author: Unknown
+tags: 
+modified_time: '2017-01-27T05:11:39.710-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-3597184894679767136
+blogger_orig_url: https://blog.infinispan.org/2017/01/data-container-changes-part-2.html
+---
+Before the end of the year I wrote a
+http://blog.infinispan.org/2016/12/data-container-changes-part-1.html[blog
+post] detailing some of the more recent changes that Infinispan
+introduced with the in memory data container.  As was mentioned in the
+previous post we would be detailing some other new changes. If you poked
+around in our new
+https://docs.jboss.org/infinispan/9.0/configdocs/infinispan-config-9.0.html[schema]
+after Beta 1 you may have spoiled the surprise for yourself. +
+ +
+With the upcoming 9.0 Beta 2, I am excited to announce that Infinispan
+will have support for entries being stored *off heap*, as in outside of
+the JVM heap. This has some interesting benefits and drawbacks, but we
+hope you can agree the benefits in many cases far outweigh the
+drawbacks. But before we get into that lets first see how you can
+configure your cache to utilize off heap. +
+ +
+
+== New Configuration
+
+ +
+The off heap configuration is another option under the new memory
+element that was discussed in the previous post. It is used in the same
+way that either OBJECT or BINARY is used.  You can use either COUNT or
+MEMORY eviciton types, the example below shows the latter. +
+
+=== XML
+
+ +
+
+=== DECLARATIVE
+
+As you can see the configuration is almost identical to the other types
+of storage. The only real difference is the new address pointer
+argument, which will be explained below. +
+ +
+
+== Requirements
+
+ +
+Our off heap implementation supports all existing features of
+Infinispan. There are some limitations and drawbacks of using the
+feature. This section will describe these in further detail. +
+ +
+
+=== Serialization
+
+ +
+Off Heap runs in essentially BINARY mode, which requires entries to be
+serialized into their byte[] forms. Thus all keys and entries must be
+Serializable or have provided Infinispan
+http://infinispan.org/docs/dev/user_guide/user_guide.html#marshalling[Externalizers]. +
+ +
+
+=== Size
+
+ +
+Currently a key and a value must be able to be stored in a byte[].
+Therefore a key or value in serialized form cannot be more than just
+over 2 Gigabytes.  This could be enhanced possibly at a later point, if
+the need arose.  I hope you aren't transferring this over your network
+though! +
+ +
+ +
+
+== Implementation Details 
+
+ +
+Our off heap implementation uses the Java Unsafe to allocate memory
+outside of the Java heap. This data is stored as a bucket of linked list
+pointers, just like a standard Java HashMap. When an entry is added the
+key's serialized byte[] is hashed and an appropriate offset is found in
+the bucket. Then the entry is added to the bucket as the first element
+or if an entry(ies) is present it is added to the rear of the linked
+list. +
+ +
+All of this data is protected by an array of ReadWriteLock instances. 
+The number of address pointers is evenly divisible by the number of lock
+instances.  The number of lock instances is how many cores your machines
+doubled and rounded to the nearest power of two.  Thus each lock
+protects an equivalent amount of address spaces.  This provides for good
+lock granularity and reads will not block each other but unfortunately
+writes will wait and block all reads. +
+ +
+If you are using a bounded off heap container either by count or memory
+this will create a backing LRU doubly linked list to keep track of which
+elements were accessed most recently and removes the least recently
+accessed element when there are too many present in the cache. +
+
+===  
+
+=== Memory Overhead
+
+ +
+As with all cache implementations there is overhead required to store
+these entries. We have a fixed and variable overhead which scales with
+the amount of entries. I will detail these and briefly mention what they
+are used for. +
+
+==== Fixed overhead
+
+As was mentioned there is a new address count parameter when configuring
+off heap. This value is used to determine how many linked list pointers
+are available. Normally you want to have more node pointers than you
+have entries in the cache, since then chances are you have one element
+in each linked list.  This is very similar to the
+https://docs.oracle.com/javase/7/docs/api/java/util/HashMap.html#HashMap%28int%29[int
+argument constructor] for HashMap.  It is also rounded up to the nearest
+power of two.  The big difference being that this off heap
+implementation will not resize.  Thus your read/write times will be
+slower if you have a lot of collisions. The overhead of a pointer is 8
+bytes, so for approximately one million pointers it will be 8 Megabytes
+of off heap. +
+ +
+Bounded off heap requires very little fixed memory, just 32 bytes for
+head/tail pointers and a counter and an additional Java lock object. +
+
+==== Variable overhead
+
+Unfortunately to store your entries we may need to wrap them with some
+data. Thus for every entry you add to the cache we store an additional
+25 bytes for each entry.  This data is used for header information and
+also our linked list forward pointer. +
+ +
+Bounded off heap requires additional housekeeping for its LRU list
+nodes.  Thus each entry adds an additional 36 bytes above the number
+above. It is larger due to requiring a doubly linked list and having to
+have pointers to and from the entry and eviction node. +
+ +
+
+=== Performance
+
+ +
+The off heap container was designed with the intent that key lookups are
+quite fast. In general these should be about the same performance.
+However local reads and stream operations can be a little slower as
+there is an additional deserialization phase required. +
+ +
+
+== Summary
+
+ +
+We hope you all try out our new off heap feature! Please make sure to
+contact us if you have any feedback, find any bugs or have any
+questions!  You can get in contact with us on our
+https://developer.jboss.org/en/infinispan/content[forum],
+https://issues.jboss.org/projects/ISPN[issue tracker], or directly on
+IRC freenode channel
+http://webchat.freenode.net/?channels=%23infinispan[Infinispan]. 

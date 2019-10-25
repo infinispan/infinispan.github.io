@@ -1,0 +1,72 @@
+---
+layout: post
+title: 'Better Late than Never: Remote Cache collections'
+date: '2017-10-02T09:40:00.001-07:00'
+author: Unknown
+tags:
+- hotrod
+- '9.1'
+modified_time: '2017-10-02T09:40:37.825-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-1067286530354658911
+blogger_orig_url: https://blog.infinispan.org/2017/10/better-late-than-never-remote-cache.html
+---
+One of the main benefits of Infinispan extending the java.util.Map
+interface when we introduced our
+https://docs.jboss.org/infinispan/9.1/apidocs/org/infinispan/Cache.html[Cache]
+interface  was that users would immediately be able to use a well
+established and familiar API. +
+ +
+The unfortunate thing about this relationship is that now the Cache
+interface also has to implement all of the other methods such as keySet,
+values and entrySet. Originally Infinispan didn't implement these
+collections or returned an immutable copy (requiring all elements to be
+in memory). Neither choice is obviously desirable. +
+ +
+This all changed with
+https://issues.jboss.org/browse/ISPN-4836[ISPN-4836] which provided
+backing implementations of keySet, values and entrySet collections. This
+means that all methods were now provided and would keep up to date with
+changes to the underlying Cache and updates to these collections would
+be persisted down to the Cache. The implementation also didn't keep a
+copy of all contents and instead allowed for memory efficient iteration.
+And if the user still wanted to use a copy they could still do that, by
+iterating over the collection and copying themselves. This later spring
+boarded our implementation of Distributed Stream as well. +
+ +
+The problem was that the RemoteCache was left in the old state, where
+some things weren't implemented and others were copies just like how
+embedded caches used to be. +
+
+Well I can now gladly say with the release of Infinispan 9.1 that
+RemoteCache now has backing implementations of keySet, values and
+entrySet implemented via
+https://issues.jboss.org/browse/ISPN-7900[ISPN-7900]. Thus these
+collections support all methods on these collections and are backed by
+the underlying RemoteCache. +
+ +
+
+Unfortunately the Stream methods on these collections are not
+distributed like embedded, but we hope to someday improve that as well.
+Instead these streams must iterate over the cache to perform the
+operations locally. By default these will pull 10,000 entries at a time
+to try to make sure that memory is not overburdened on the client. If
+you want to decrease this number (less memory - lower performance) or
+increase (more memory - higher performance) you can tweak this by
+changing the *batchSize* parameter via
+https://docs.jboss.org/infinispan/9.1/apidocs/org/infinispan/client/hotrod/configuration/ConfigurationBuilder.html#batchSize-int-[ConfigurationBuilder]
+or
+**[.blob-code-inner]#[.pl-c]#infinispan.client.hotrod.batch_Size##**[.blob-code-inner]#[.pl-c]#
+if you use a property based file.## +
+ +
+[.blob-code-inner]#[.pl-c]#You can read more about this and the remote
+iterator which drives these collections on our
+http://infinispan.org/docs/stable/user_guide/user_guide.html#remotecache_keyset_entryset_values[user
+guide]. ## +
+ +
+[.blob-code-inner]#[.pl-c]#We hope you find that this improves your
+usage of RemoteCaches in the future by allowing you to have backed
+collections that also allow you to use the improvements of Java 8 with
+Streams.## +
+ +
+[.blob-code-inner]#[.pl-c]#If you have yet you can acquire Infinispan
+9.1.1 or the latest stable version at http://infinispan.org/download/##

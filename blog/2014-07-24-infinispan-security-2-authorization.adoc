@@ -1,0 +1,64 @@
+---
+layout: post
+title: 'Infinispan Security #2: Authorization Reloaded and Auditing'
+date: '2014-07-24T13:13:00.001-07:00'
+author: Tristan Tarrant
+tags: 
+modified_time: '2014-07-24T13:13:54.649-07:00'
+thumbnail: http://1.bp.blogspot.com/-9APesRwdaS8/U9Ffb9ZwJDI/AAAAAAAAEjs/-bPCvrCgOeI/s72-c/securityperf.png
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-8200654017249164158
+blogger_orig_url: https://blog.infinispan.org/2014/07/infinispan-security-2-authorization.html
+---
+Since the
+http://blog.infinispan.org/2014/04/infinispan-security-1-authorization.html[last
+post] on Infinispan Security, there have been a few changes related to
+how we handle authorization in Infinispan. All of these are available in
+the recently released 7.0.0.Alpha5. +
+ +
+
+== Authorization Performance
+
+Previously we mentioned the need to use a _SecurityManager_ and
+javax.security.auth.Subject.doAs() in order to achieve authorization in
+embedded mode. Unfortunately those components have a severe performance
+impact. In particular, retrieving the current _Subject_ from the
+_AccessControlContext_ adds, on my test environment, 3.5µs per call.
+Since the execution of a _Cache.put_ takes about 0.5µs when
+authorization is not in use, this means that every invocation is 8x
+slower. +
+ +
+For this reason we have introduced an alternative for those of you
+(hopefully the majority), that do not need to use a _SecurityManager_
+and can avoid the _AccessControlContext_: invoke your
+_PrivilegedActions_ using the new
+org.infinispan.security.Security.doAs() method, which uses a
+_ThreadLocal_ to store the current _Subject_. Using this new approach,
+the overhead per invocation falls to 0.5µs: a 7x improvement ! +
+_Security.doAs()_ is actually smart: if it detects that a
+_SecurityManager_ is in use, it will fallback to retrieving the
+_Subject_ via the _AccessControlContext_, so you don't need to decide
+what approach you will be using in production. The following chart shows
+the impact of using each approach when compared to running without
+authorization: +
+
+http://1.bp.blogspot.com/-9APesRwdaS8/U9Ffb9ZwJDI/AAAAAAAAEjs/-bPCvrCgOeI/s1600/securityperf.png[image:http://1.bp.blogspot.com/-9APesRwdaS8/U9Ffb9ZwJDI/AAAAAAAAEjs/-bPCvrCgOeI/s1600/securityperf.png[image,width=320,height=180]]
+
+ +
+ +
+
+== Auditing
+
+ +
+An essential part of an authorization framework, is the ability to track
+WHO is doing WHAT (or is being prevented from doing it !). Infinispan
+now offers a pluggable audit framework which you can use to track the
+execution of cache/container operations. The default audit logger sends
+audit messages to your logging framework of choice (e.g. Log4J), but you
+can write your own to take any appropriate actions you deem appropriate
+for your security policies. +
+ +
+As usual, for more details, check out the
+http://infinispan.org/docs/7.0.x/user_guide/user_guide.html#_security[Security
+chapter] in the Infinispan documentation and the
+https://docs.jboss.org/infinispan/7.0/apidocs/org/infinispan/security/package-summary.html[org.infinispan.security]
+JavaDocs. +

@@ -1,0 +1,102 @@
+---
+layout: post
+title: Introducing the Infinispan Hadoop Connector
+date: '2015-09-21T12:45:00.000-07:00'
+author: Gustavo
+tags:
+- yarn
+- hadoop
+- server
+- flink
+modified_time: '2015-09-28T22:19:23.845-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-2425361303736535353
+blogger_orig_url: https://blog.infinispan.org/2015/09/introducing-infinispan-hadoop-connector.html
+---
+The version 0.1 of the Infinispan Hadoop connector has just been made
+available! +
+ +
+The connector will host several integrations with Hadoop related
+projects, and in this first release it supports converting Infinispan
+server into a Hadoop compliant data source, by providing an
+implementation of InputFormat and OutputFormat. +
+ +
+
+==== The InfinispanInputFormat and InfinispanOutputFormat
+
+====  
+
+==== 
+
+A Hadoop InputFormat is a specification of how a certain data source can
+be partitioned and how to read data from each of the partitions.
+Conversely, OutputFormat is used to write. +
+ +
+Looking closely at the Hadoop's InputFormat interface, we can see two
+methods: +
+ +
+    List<InputSplit> getSplits(JobContext context); +
+  +
+    RecordReader<K,V> createRecordReader(InputSplit
+split,TaskAttemptContext context); +
+ +
+The first method defines essentially a data partitioner, calculating one
+or more InputSplits that contain information about a certain partition
+of the data. With possession of a InputSplit, one can use it to obtain a
+RecordReader to iterate over the data. These two operations allow for
+parallelization of data processing across multiple nodes, and that's how
+Hadoop map reduce achieves a high throughput over large datasets. +
+ +
+In Infinispan terms, each partition is a set of segments on a certain
+server, and a record reader is a remote iterator over those segments.
+The default partitioner shipped with the connector will create as many
+partitions as servers in the cluster, and each partition will contain
+the segments that are associated with that specific server. +
+ +
+
+==== Not only map reduce
+
+ +
+Although the InfinispanInputFormat and InfinispanOutputformat can be
+used to run traditional Hadoop map reduce jobs over Infinispan data, it
+is not coupled to the Hadoop map reduce runtime. It is possible to
+leverage the connector to integrate Infinispan with other tools that,
+besides supporting Hadoop I/O interfaces, are able to read and write
+data more efficiently. One of those tools is
+https://flink.apache.org/[Apache Flink], that has a dataflow engine
+capable of doing batch and stream data processing that supersedes the
+classic two stage map reduce approach. 
+
+ +
+
+==== Apache Flink example
+
+====  
+
+==== 
+
+Apache Flink supports Hadoop's InputFormat as a data source to execute
+batch jobs, so to integrate with Infinispan it's straightforward:
+
+ +
+
+ +
+Please refer to the
+https://github.com/infinispan/infinispan-hadoop/tree/master/samples/flink[complete
+sample] that has docker images for both Apache Flink and Infinispan
+server, and detailed instructions on how to execute and customise job. +
+ +
+
+==== Stay tuned
+
+ +
+More details about the connector, maven coordinates, configuration
+options, sources and samples can be found at the
+https://github.com/infinispan/infinispan-hadoop[project repository] +
+ +
+In upcoming versions we expect to have a tighter integration with the
+Hadoop platform in order to run Infinispan clusters as a YARN
+application (https://issues.jboss.org/browse/ISPN-5709[ISPN-5709]), and
+also support other tools from the ecosystem such as
+https://pig.apache.org/[Apache Pig]
+(https://issues.jboss.org/browse/ISPN-5749[ISPN-5749]) +
+ +

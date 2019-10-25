@@ -1,0 +1,236 @@
+---
+layout: post
+title: Clustering Vert.x with Infinispan
+date: '2018-03-21T13:08:00.000-07:00'
+author: Katia Aresti
+tags:
+- infinispan
+- vert.x
+modified_time: '2018-03-21T13:14:36.276-07:00'
+thumbnail: https://4.bp.blogspot.com/-wNPoumRNOZU/WqqNdMdm6mI/AAAAAAAACNM/Nvrirnuw-ok_BfS8Gh7DaomoTGhdEwk-ACLcBGAs/s72-c/dummyApp.png
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-4888487643017555573
+blogger_orig_url: https://blog.infinispan.org/2018/03/clustering-vertx-with-infinispan.html
+---
+Welcome to the third in a multi-part series of blog posts about creating
+Eclipse Vert.x applications with Infinispan. In the previous blog posts
+we have seen how to create
+http://blog.infinispan.org/2017/12/first-steps-with-vertx-and-infinispan-rest-api.html[REST]
+and
+http://blog.infinispan.org/2017/12/first-steps-with-vertx-and-infinispan-push-api.html[PUSH]
+APIs using the
+http://infinispan.org/docs/stable/server_guide/server_guide.html[Infinispan
+Server]. The purpose of this tutorial is to showcase how to create
+clustered http://vertx.io/[Vert.x] applications using Infinispan in
+embedded mode. +
+ +
+ +
+
+== Why Infinispan ?
+
+ +
+Infinispan can be used for http://infinispan.org/about/[several use
+cases]. Among them we find that it can be used as the underlying
+framework to cluster your applications. Infinispan uses peer-to-peer
+communication between nodes, so the architecture is not based on
+master/slave mode and there is no single point of failure. Infinispan
+supports replication and resilience across data centers, is fast and
+reliable. All the http://infinispan.org/features/[features] that make
+this datagrid a great product, make it a great cluster manager. If you
+need to create clustered applications or microservices, this can be
+achieved with http://vertx.io/docs/#clustering[Vert.x] using
+the http://vertx.io/docs/vertx-infinispan/java/[Vert.x-Infinispan
+cluster manager]. +
+ +
+ +
+
+== Creating a clustered application
+
+ +
+The code of this tutorial is available
+https://github.com/infinispan-demos/vertx-api/tree/master/clustered[here]. +
+ +
+
+=== Dummy Application
+
+ +
+Let’s start with a dummy clustered system with 3 verticles. +
+
+ +
+
+https://4.bp.blogspot.com/-wNPoumRNOZU/WqqNdMdm6mI/AAAAAAAACNM/Nvrirnuw-ok_BfS8Gh7DaomoTGhdEwk-ACLcBGAs/s1600/dummyApp.png[image:https://4.bp.blogspot.com/-wNPoumRNOZU/WqqNdMdm6mI/AAAAAAAACNM/Nvrirnuw-ok_BfS8Gh7DaomoTGhdEwk-ACLcBGAs/s640/dummyApp.png[image,width=640,height=275]]
+
+ +
+
+==== WebService Status Producer
+
+Produces randomly [0,1,2] values every 1000 milliseconds and sends them
+to the event bus *"ids"* address. +
+ +
+
+ +
+ +
+
+==== Reboot Consumer
+
+Consumes messages from the event bus *"ids"* address, and launches
+a *"reboot"* that lasts for 3000 milliseconds whenever the value is 0.
+If a reboot is already happening, we don’t need to relaunch any new
+reboot. When a reboot starts or ends, a message is sent to the event bus
+to the *"reboot"* address. +
+ +
+Notice that: +
+
+* We use a simple boolean to check if there is a reboot going on. This
+is safe because every verticle is executed from a single event loop
+thread, so there won’t be multiple threads executing the code at the
+same time.
+* An ID is generated to identify the Verticle. The message sent to the
+event bus is a JsonObject
+
+ +
+ +
+ +
+
+==== Monitoring
+
+Consumes monitoring messages from the event bus *"reboot"* address and
+logs them. +
+ +
+
+ +
+ +
+
+=== Clustering the dummy Application
+
+ +
+To create a cluster of these applications, we just need to do 2
+things: +
+ +
+
+. Add the cluster manager maven dependency.
++
+ 
+. Run and deploy each verticle in cluster mode. Each Verticle class has
+a main method that deploys each verticle separetly. Example for the
+Monitoring verticle.
+
+ +
+
+[cols="^",]
+|=======================================================================
+|https://2.bp.blogspot.com/-GjOWQzixVq8/Wpgynw-A8OI/AAAAAAAACLQ/EUz57xgYcjcve1jXrARPEufaOLfLErUDwCEwYBhgL/s1600/Monitoring.png[image:https://2.bp.blogspot.com/-GjOWQzixVq8/Wpgynw-A8OI/AAAAAAAACLQ/EUz57xgYcjcve1jXrARPEufaOLfLErUDwCEwYBhgL/s320/Monitoring.png[image,width=320,height=296]]
+
+|Running the application, we can monitor the logs
+|=======================================================================
+
+Each clustered application contains - or embeds - an Infinispan
+instance. Under the hood, the 3 Infinispan instances will form a
+cluster. +
+ +
+ +
+
+== What if I need to scale
+
+ +
+Imagine you need to scale the Reboot Consumer application. We can run it
+multiple times, let’s say 2 more times. The two new instances will join
+the cluster. In this case, we have “ID-93EB” ”ID-45B8” and “ID-247A”, so
+now we have a cluster of 5. It's very simple but if we have a look to
+the monitoring console, we will notice reboots are now happening in
+parallel. +
+ +
+
+[cols="^",]
+|=======================================================================
+|https://3.bp.blogspot.com/-YTja7FV8S4k/Wpg6YuIstTI/AAAAAAAACL4/xH2N4erfgfk_ZUcICwmyp_2WQQNKlPpqQCLcBGAs/s1600/MultipleReboots.png[image:https://3.bp.blogspot.com/-YTja7FV8S4k/Wpg6YuIstTI/AAAAAAAACL4/xH2N4erfgfk_ZUcICwmyp_2WQQNKlPpqQCLcBGAs/s400/MultipleReboots.png[image,width=400,height=245]]
+
+|3 Reboot Consumers
+|=======================================================================
+
+ +
+ +
+As I mentioned before, this example is a dummy application. But in real
+life you could need to trigger a process from a verticle that runs
+multiple times and need to be sure this process is happening just once
+at a time. How can we fix this ? We can use Vert.x Shared Data
+structures API. +
+ +
+
+=== Shared data API to rescue
+
+ +
+In this particular case, we are going to use a clustered lock. Using the
+lock, we can now synchronise the reboots among the 3 nodes. +
+
+ +
+ +
+
+[cols="^",]
+|=======================================================================
+|https://2.bp.blogspot.com/--calcYXn5l4/WplAZEu4f8I/AAAAAAAACMU/eFrivRZMsHE8XUZr-BAvAuUikZ9-_k3DACLcBGAs/s1600/MonitoringUsingLock.png[image:https://2.bp.blogspot.com/--calcYXn5l4/WplAZEu4f8I/AAAAAAAACMU/eFrivRZMsHE8XUZr-BAvAuUikZ9-_k3DACLcBGAs/s400/MonitoringUsingLock.png[image,width=400,height=256]]
+
+|Using Shared Data API, one reboot at a time
+|=======================================================================
+
+ +
+Vert.x clustered lock in this example is using an emulated version of
+the new Clustered Lock API of Infinispan introduced in 9.2 which has
+been freshly released. I will come back to share about this API in
+particular in further blog posts. You can read about it on the
+http://infinispan.org/docs/stable/user_guide/user_guide.html#clustered_lock[documentation]
+or run the
+https://github.com/infinispan/infinispan-simple-tutorials/tree/master/lock[infinispan-simple-tutorial]. +
+ +
+
+=== One node at a time
+
+ +
+When clustering applications with Vert.x, there is something you need to
+take care of. It is important to understand that each node contains an
+instance of the datagrid. This means that scaling up and down needs to
+be done one at a time. Infinispan, as other datagrids, reshuffles the
+data when a new node joins or leaves a cluster. This process is done
+following a distributed hashing algorithm, so not every data is moved
+around, just the data that is supposed to live in the new node, or the
+data owned by a leaving node. If we just kill a bunch of nodes without
+taking care of the cluster, consequences can be harming! This is
+something quite obvious when dealing with databases : we just don’t kill
+a bunch of database instances without taking care of every instance at a
+time. Even when Infinispan data is only in memory we need to take care
+about it in the same
+way. http://vertx.io/docs/vertx-infinispan/java/#_configuring_for_kubernetes_or_openshift_3[Openshift,
+which is built on top of Kubernetes], helps dealing properly and safely
+with these scale up and down operations. +
+ +
+ +
+
+== Conclusions
+
+ +
+As you have seen, creating clustered applications with Vert.x and
+Infinispan is very straightforward. The clustered event bus is very
+powerful. In this example we have seen how to use a clustered lock, but
+other
+http://vertx.io/docs/apidocs/io/vertx/core/shareddata/SharedData.html[shared
+data structures] built on top
+of http://infinispan.org/docs/stable/user_guide/user_guide.html#the_code_strongcounter_code_interface_when_the_consistency_or_bounds_matters[Counters]
+are available. +
+ +
+ +
+
+== About the Vert.x Infinispan Cluster Manager status
+
+ +
+At the time of this writing,
+http://blog.infinispan.org/2018/02/infinispan-920final.html[Infinspan
+9.2.0.Final] has been released. From vert.x-infinispan cluster manager
+point of view, before Vert.x 3.6 (which is not out yet) the cluster
+manager is using Infinispan 9.1.6.final and it’s using an emulation
+layer for locks and counters. In this tutorial we are using Vert.x 3.5.1
+version. +
+ +
+This tutorial will be updated with the version using Infinispan 9.2 as
+soon as the next
+https://github.com/vert-x3/vertx-infinispan/[vert.x-infinispan] will be
+released, which will happen in a few months. Meanwhile, stay tuned! +
+ +

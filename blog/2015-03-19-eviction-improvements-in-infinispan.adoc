@@ -1,0 +1,73 @@
+---
+layout: post
+title: Eviction Improvements in Infinispan 7.2.0.Beta1
+date: '2015-03-19T09:51:00.000-07:00'
+author: Unknown
+tags:
+- '7.2'
+- eviction
+modified_time: '2015-09-28T06:08:46.111-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-5218333371495131083
+blogger_orig_url: https://blog.infinispan.org/2015/03/eviction-improvements-in-infinispan.html
+---
+As many of you are most likely aware Infinispan provides a way to limit
+how many entries are stored in a single node's memory at a given time. 
+This is configurable via the eviction element in xml or
+EvictionConfiguraitonBuilder through the programmatic configuration. +
+ +
+In 7.2.0.Beta1 we have made some internal changes to our internal
+eviction support.  This mostly entailed moving our implementation to the
+new https://issues.jboss.org/browse/ISPN-3023[ConcurrentHashMap that was
+updated for Java 8].  This provides for a few new benefits and
+behaviors. +
+ +
+
+== Long Size Support
+
+Previously our eviction entry amount was limited to the maximum value of
+an int (2^31) and was always rounded up to the nearest power of 2 (ie.
+100 would be changed to 128 which is 2^7). +
+ +
+With the new changes you can store up to a long worth of entries and it
+is not constrained to a power of 2.  Unfortunately Beta1 does not
+contain the changes to allow for a long to be configured yet, but this
+should be https://issues.jboss.org/browse/ISPN-5306[fixed] before
+7.2.0.Final is done. +
+ +
+
+== Memory wide eviction size
+
+The old bounded map performed it's eviction based on evicting elements
+stored in the same segment.  This could cause the map to evict entries
+before it actually hit the maximum size.  This is described in detail
+http://infinispan.org/docs/7.1.x/faqs/faqs.html#_cache_s_number_of_entries_never_reaches_configured_maxentries_why_is_that[here]. +
+ +
+The new ConcurrentHashMap for Java 8 automatically resizes its number of
+segments.  As such the old method of eviction will not work.  Instead we
+keep track of all entries in the entire map and only evict when we go
+over the max size.  This prevents entries from being evicted that may
+not be the the least recent (previously in the case of when many
+elements in the same segment were added). +
+ +
+
+== Better scalability
+
+Since we utilize the new ConcurrentHashMap this automatically resizes
+the segments based on the amount of entries in the cache.  Increasing
+the number of segments has some various benefits. +
+
+=== *Less blocking*
+
+With more segments, that means there is more fine grained locking when
+updating an entry.  The determination whether an entry needs evicting is
+done outside of any lock, further reducing contention. +
+
+=== Lower time complexity
+
+Since there are more segments there should be fewer hash collisions,
+which should provide O(1) complexity much more frequently for accessing
+a given key. +
+ +
+Cheers, +
+ +
+Will

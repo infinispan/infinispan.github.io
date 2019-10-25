@@ -1,0 +1,112 @@
+---
+layout: post
+title: 9.x JDBC Store Improvements
+date: '2017-01-23T09:23:00.000-08:00'
+author: Ryan Emerson
+tags: 
+modified_time: '2017-01-23T09:23:39.558-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-8996251127832570573
+blogger_orig_url: https://blog.infinispan.org/2017/01/9x-jdbc-store-improvements.html
+---
+Infinispan 9 introduces several changes to the JDBC stores, in
+summary: +
+
+* Configuration of DB version
+* Upsert support for store writes
+* Timestamp indexing
+* http://www.mchange.com/projects/c3p0/[c3p0] connection pool replaced
+by https://github.com/brettwooldridge/HikariCP[HikariCP]
+
+ +
+
+== DB Version Configuration
+
+ +
+
+Previously when configuring a JDBC store it was only possible for a user
+to specify the vendor of the underlying DB. Consequently, it was not
+possible for Infinispan to utilise more recent features of DB as the SQL
+utilised by our JDBC stores had to satisfy the capabilities of the
+oldest supported DB version. +
+ +
+In Infinispan 9 we have completely refactored the code responsible for
+generating SQL queries.  Enabling our JDBC stores to take greater
+advantage of optimisations and features applicable to a given database
+vendor and version. See the below gist for examples of how to specify
+the major and minor versions of your database. +
+ +
+Programmatic config: +
+
+XML Config: +
+
+*Note*: If no version information is provided, then we attempt to
+retrieve version data via the JDBC driver.  This is not always possible
+and in such cases we default to SQL queries which are compatible with
+the lowest supported version of the specified DB dialect. +
+ +
+
+=== Upsert Support
+
+ +
+As a consequence of the refactoring mentioned above, writes to the JDBC
+stores finally utilise upserts. Previously, the JDBC stores had to first
+select an entry, before inserting or updating a DB row depending on
+whether the entry previously existed.  Now, in supported DBs, store
+writes are performed atomically via a single SQL statement. +
+ +
+In some cases it may be desirable for the previous store behaviour to be
+utilised, in such cases the following property should be passed to your
+store's configuration and set to true:
+`infinispan.jdbc.upsert.disabled`. +
+ +
+
+=== Timestamp Indexing
+
+ +
+
+By default an index is now created on the `timestamp-column` of a JDBC
+store when the "create-on-start" option is set to true for a store's
+table.  The advantage of this index is that it prevents the DB from
+having to perform full table searches when purging a table of expired
+cache entries.  Similar to upsert support, this index is optional an can
+be disabled by setting the property `infinispan.jdbc.indexing.disabled`
+to true.  
+
+ +
+
+== Hello HikariCP
+
+ +
+
+In Infinispan 9 we welcome HikariCP as the new default implementation
+for the JDBC PooledConnectionFactory. HikariCP provides superior
+performance to c3p0 (the previous default), whilst also providing a much
+smaller footprint. The PooledConnectionFactoryConfiguration remains the
+same as before, expect we now include the ability to explicitly define a
+properties file where additional configuration parameters can be
+specified for the underlying HikariCP. For a full list of the available
+HikariCP configuration properties, please see
+the https://github.com/brettwooldridge/HikariCP#configuration-knobs-baby[official
+documentation]. 
+
+ +
+
+*Note:* Support for c3p0 has been deprecated and will be removed in a
+future release. However, users can force c3p0 to be utilised as before
+by providing the system property `-Dinfinispan.jdbc.c3p0.force=true`.
+
+ +
+
+ +
+
+== Summary
+
+ +
+We have introduced the above new features to the JDBC stores in order to
+improve performance and to enable us to further the store's capabilities
+in the future. If you're a user of the JDBC stores and have any feedback
+on the latest changes, or would like to request some new
+features/optimisations, let us know via
+the https://developer.jboss.org/en/infinispan/content[forum], https://issues.jboss.org/projects/ISPN[issue
+tracker] or the #infinispan channel
+onhttp://webchat.freenode.net/?channels=%23infinispan[ Freenode]. 

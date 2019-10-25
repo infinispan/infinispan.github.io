@@ -1,0 +1,173 @@
+---
+layout: post
+title: 'Infinispan: the Start of a New Era in Open Source Data Grids'
+date: '2009-04-28T14:00:00.000-07:00'
+author: Manik Surtani
+tags:
+- data grids
+- announcement
+modified_time: '2009-04-30T06:22:29.803-07:00'
+thumbnail: http://1.bp.blogspot.com/_ca0W9t-Ryos/Sfhee24rNUI/AAAAAAAAAJg/hRj8RbeGgAE/s72-c/1159192_woman.jpg
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-1032424688975648985
+blogger_orig_url: https://blog.infinispan.org/2009/04/infinispan-start-of-new-era-in-open.html
+---
+Over the past few months we've been flying under the radar preparing for
+the launch of a new, open source, highly scalable distributed data grid
+platform. We've finally got to a stage where we can announce it publicly
+and I would like to say that http://www.jboss.org/infinispan[Infinispan]
+is now ready to take on the world! +
+ +
+The way we write computer software is changing. The demise of the
+http://java.dzone.com/articles/caching-parallelism-scalability[Quake
+Rule] has made hardware manufacturers cram more cores on a CPU, more
+CPUs in a server. To achieve the levels of throughput and resilience
+that modern applications demand, compute grids are becoming increasingly
+popular. All this serves to exacerbate existing database bottlenecks;
+hence the need for a data grid platform. +
+ +
+http://1.bp.blogspot.com/_ca0W9t-Ryos/Sfhee24rNUI/AAAAAAAAAJg/hRj8RbeGgAE/s1600-h/1159192_woman.jpg[image:http://1.bp.blogspot.com/_ca0W9t-Ryos/Sfhee24rNUI/AAAAAAAAAJg/hRj8RbeGgAE/s400/1159192_woman.jpg[image]]So
+why is Infinispan sexy? +
+ +
+1. Massive heap - If you have 100 blade servers, and each node has 2GB
+of space to dedicate to a replicated cache, you end up with 2 GB of
+total data. Every server is just a copy. On the other hand, with a
+distributed grid - assuming you want 1 copy per data item - you get a
+100 GB memory backed virtual heap that is efficiently accessible from
+anywhere in the grid. Session affinity is not required, so you don't
+need fancy load balancing policies. Of course you can still use them for
+further optimisation. If a server fails, the grid simply creates new
+copies of the lost data, and puts them on other servers. This means that
+applications looking for ultimate performance are no longer forced to
+delegate the majority of their data lookups to a large single database
+server - that massive bottleneck that exists in over 80% of enterprise
+applications! +
+ +
+2. Extreme scalability - Since data is evenly distributed, there is
+essentially no major limit to the size of the grid, except group
+communication on the network - which is minimised to just discovery of
+new nodes. All data access patterns use peer-to-peer communication where
+nodes directly speak to each other, which scales very well. +
+ +
+3. Very fast and lightweight core - The internal data structures of
+Infinispan are simple, very lightweight and heavily optimised for high
+concurrency. Early benchmarks have indicated 3-5 times less memory
+usage, and around 50% better CPU performance than the latest and
+greatest JBoss Cache release. Unlike other popular, competing commercial
+software, Infinispan scales when there are many local threads accessing
+the grid at the same time. Even though non-clustered caching (LOCAL
+mode) is not its primary goal, Infinispan still is very competitive
+here. +
+ +
+4. Not Just for Java (PHP, Python, Ruby, C, etc.) - The
+http://www.jboss.org/community/wiki/InfinispanRoadmap[roadmap] has a
+plan for a language-independent server module. This will support both
+the popular memcached protocol - with existing clients for almost every
+popular programming language - as well as an optimised
+Infinispan-specific protocol. This means that Infinispan is not just
+useful to Java. Any major website or application that wants to take
+advantage of a fast data grid will be able to do so. +
+ +
+5. Support for Compute Grids - Also on the roadmap is the ability to
+pass a Runnable around the grid. You will be able to push complex
+processing towards the server where data is local, and pull back results
+using a Future. This
+http://labs.google.com/papers/mapreduce.html[map/reduce] style paradigm
+is common in applications where a large amount of data is needed to
+compute relatively small results. +
+ +
+6. Management is key! - When you start thinking about running a grid on
+several hundred servers, management is no longer an extra, it becomes a
+necessity. This is on Infinispan's roadmap. We aim to provide rich
+tooling in this area, with many integration opportunities. +
+ +
+7. Competition is Proprietary - All of the major, viable competitors in
+the space are not open-source, and are very expensive. Enough said.
+:-) +
+ +
+What are data
+grids?http://www.arcatoglobal.com/images/ag_serverfarm.jpg[image:http://www.arcatoglobal.com/images/ag_serverfarm.jpg[image]] +
+ +
+Data grids are, to put it simply, highly concurrent distributed data
+structures. Data grids typically allow you to address a large amount of
+memory and store data in a way that it is quick to access. They also
+tend to feature low latency retrieval, and maintain adequate copies
+across a network to provide resilience to server failure. +
+ +
+As such, at its core, Infinispan presents a humble data structure. But
+this is also a high specialised data structure, tuned to and geared for
+a great degree of concurrency - especially on multi-CPU/multi-core
+architectures. Most of the internals are essentially lock- and
+synchronization-free, favouring state-of-the-art non-blocking algorithms
+and techniques wherever possible. This translates to a data structure
+that is extremely quick even when it deals with a large number of
+concurrent accesses. +
+ +
+Beyond this, Infinispan is also a distributed data structure. It farms
+data out across a cluster of in-memory containers. It does so with a
+configurable degree of redundancy and various parameters to tune the
+performance-versus-resilience trade-off. Local "L1" caches are also
+maintained for quick reads of frequently accessed data. +
+ +
+Further, Infinispan supports
+http://en.wikipedia.org/wiki/Java_Transaction_API[JTA] transactions. It
+also offers eviction strategies to ensure individual nodes do not run
+out of memory and passivation/overflow to disk. Warm-starts using
+preloads are also supported. +
+ +
+JBoss Cache and Infinispan +
+ +
+So where does Infinispan stand against the competition? Let's start with
+http://www.jbosscache.org/[JBoss Cache]. It is no surprise that there
+are many similarities between JBoss Cache and Infinispan, given that
+they share the same minds! Infinispan is an evolution of JBoss Cache in
+that it borrows ideas, designs and some code, but for all practical
+purposes it is a brand new project and a new, much more streamlined
+codebase. +
+ +
+JBoss Cache has evolved from a basic replicated tree structure to
+include custom, high performance marshalling (in version 1.4), Buddy
+Replication (1.4), a new simplified API (2.X), high concurrency MVCC
+locking (3.0.X) and a new non-blocking state transfer mechanism (3.1.X).
+These were all incremental steps, but it is time for a quantum leap. +
+ +
+Hence Infinispan. Infinispan is a whole new project - not just JBoss
+Cache 4.0! - because it is far wider in scope and goals - not to mention
+target audience. Here are a few points summarising the differences: +
+
+* JBoss Cache is a clustering library. Infinispan's goal is to be a data
+grid platform, complete with management and migration tooling.
+* JBoss Cache's focus has been on clustering, using replication. This
+has allowed it to scale to several 10s (occasionally even over 100)
+nodes. Infinispan's goals are far greater - to scale to grids of several
+100's of nodes, eventually exceeding 1000's of nodes. This is achieved
+using consistent hash based data distribution.
+* Infinispan's data structure design is significantly different to that
+of JBoss Cache. This is to help achieve the target CPU and memory
+performance. Internally, data is stored in a flat, map-like container
+rather than a tree. That said, a tree-like compatibility layer -
+implemented on top of the flat container - is provided to aid migration
+from JBoss Cache.
+* JBoss Cache traditionally competed against other frameworks like
+EHCache and Terracotta. Infinispan, on the other hand, goes head to head
+against Oracle's Coherence, Gemfire and Gigaspaces.
+
+I have put up some
+http://www.jboss.org/community/wiki/InfinispanFrequentlyAskedQuestions[FAQs
+on the project]. A
+http://www.jboss.org/community/wiki/InfinispanRoadmap[project roadmap]
+is also available, as well as
+http://www.jboss.org/community/wiki/5minutetutorialonInfinispan[a
+5-minute guide to using Infinispan]. +
+ +
+Have a look at
+https://jira.jboss.org/jira/browse/ISPN?report=com.atlassian.jira.plugin.system.project:roadmap-panel[JIRA]
+or grab the code from our
+http://www.jboss.org/infinispan/sourcecode[Subversion repository] to see
+where we are with things. If you are interested in participating in
+Infinispan, be sure to read our
+http://www.jboss.org/infinispan/community[community page]. +
+ +
+I look forward to your feedback! +
+ +
+Cheers +
+Manik

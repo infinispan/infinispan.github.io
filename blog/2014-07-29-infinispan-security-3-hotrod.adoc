@@ -1,0 +1,65 @@
+---
+layout: post
+title: 'Infinispan Security #3: HotRod authentication'
+date: '2014-07-29T06:07:00.000-07:00'
+author: Tristan Tarrant
+tags: 
+modified_time: '2014-07-29T06:07:20.873-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7391181056901936565
+blogger_orig_url: https://blog.infinispan.org/2014/07/infinispan-security-3-hotrod.html
+---
+Let's continue our excursus into the security features that are being
+developed within Infinispan 7.0 by having a look at how our
+high-performance cache remoting protocol HotRod was enhanced to support
+authentication. +
+ +
+Since Infinispan 5.3, HotRod has featured SSL/TLS support which, aside
+from encryption, also provides some form of authentication by optionally
+requiring client certificates. While this does indeed stop unauthorized
+clients from connecting to a remote cache, the level of access-control
+ends there. Now that we have full role-based authorization checks at the
+cache and container level, we want to be able to recognize users and map
+their roles accordingly. +
+ +
+As usual, we didn't want to reinvent the wheel, but leverage existing
+security frameworks and integrate them into our existing platform. For
+this reason, the protocol chosen to implement HotRod authentication is
+SASL, which is in widespread use in other connection-oriented transports
+(e.g. LDAP, Memached, etc). +
+ +
+Using SASL we can support the following authentication mechanisms out of
+the box (since they are part of the standard JDK/JRE): +
+
+* PLAIN where credentials are exchanged in clear-text (insecure, but
+easieast to setup)
+* DIGEST-MD5 where credentials are hashed using server-provided nonces
+* GSSAPI where clients can use Kerberos tokens
+* EXTERNAL where the client-certificate identity of the underlying
+transport is used as the credentials
+
+More SASL mechanisms can be plugged in by using the Java Cryptography
+Archictecture (JCA). +
+ +
+Since our preferred server distribution is based on a stripped-down
+WildFly server, we are essentially reusing the Security Realms of the
+container. This gives us the ability to validate users and to also
+retrieve group membership. against a number of sources (property files,
+LDAP, etc). +
+ +
+The following is an example server configuration which uses the
+_ApplicationRealm_ to authenticate and authorize users. Since the
+_<identity-role-mapper>_ is in use, role names will be mapped 1:1 from
+the realm into Infinispan roles. +
+The HotRod endpoint is using the SASL PLAIN mechanism. Note that two
+caches have been defined: the _default_ cache, without authorization,
+and a _secured_ cache, which instead requires authorization. This means
+that remote clients can access the _default_ cache anonymously, but they
+will need to authenticate if they want to access the _secured_ cache.
+
+ +
+The following bit of code explains how to use the HotRod Java client to
+connect to the secured cache defined above: +
+
+All of the above is already available in Infinispan 7.0.0.Alpha5, so
+head on over to the http://infinispan.org/download/[download page] to
+experience the goodness.

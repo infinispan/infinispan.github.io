@@ -1,0 +1,143 @@
+---
+layout: post
+title: Running Infinispan cluster on Kubernetes
+date: '2016-08-18T02:27:00.000-07:00'
+author: Sebastian Łaskawiec
+tags:
+- kubernetes
+modified_time: '2017-02-24T05:26:14.991-08:00'
+thumbnail: https://2.bp.blogspot.com/-SxPVOKzEEH8/V62_FFizzhI/AAAAAAAAHI8/ARH6rBWLOtwwibGis3djKZk9vCDAvFipgCLcB/s72-c/Infinispan%2B%252B%2BKubernetes.png
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-6707507324892990682
+blogger_orig_url: https://blog.infinispan.org/2016/08/running-infinispan-cluster-on-kubernetes.html
+---
+In the
+http://blog.infinispan.org/2016/08/running-infinispan-cluster-on-openshift.html[previous
+post] we looked how to run Infinispan on OpenShift. Today, our goal is
+exactly the same, but we'll focus on Kubernetes. +
+ +
+Running Infinispan on Kubernetes requires using proper discovery
+protocol. This blog post uses
+https://github.com/jgroups-extras/jgroups-kubernetes[Kubernetes Ping]
+but it's also possible to use
+http://blog.infinispan.org/2016/07/improved-infinispan-docker-image.html[Gossip
+Router]. +
+
+===== Our goal
+
+We'd like to build Infinispan cluster based on Kubernetes hosted locally
+(using https://github.com/kubernetes/minikube[Minikube]). We will expose
+a service and route it to our local machine. Finally, we will use it to
+put data into the grid.
+
+ +
+
+ +
+
+https://2.bp.blogspot.com/-SxPVOKzEEH8/V62_FFizzhI/AAAAAAAAHI8/ARH6rBWLOtwwibGis3djKZk9vCDAvFipgCLcB/s1600/Infinispan%2B%252B%2BKubernetes.png[image:https://2.bp.blogspot.com/-SxPVOKzEEH8/V62_FFizzhI/AAAAAAAAHI8/ARH6rBWLOtwwibGis3djKZk9vCDAvFipgCLcB/s320/Infinispan%2B%252B%2BKubernetes.png[image,width=240,height=320]]
+
+ +
+
+ +
+
+===== Spinning local Kubernetes cluster
+
+There are many ways to spin up a local Kubernetes cluster. One of my
+favorites is https://github.com/kubernetes/minikube[Minikube]. At first
+you will need the 'minikube' binary, which can be downloaded from
+https://github.com/kubernetes/minikube/releases[Github releases page]. I
+usually copy it into '/usr/bin' which makes it very convenient to use.
+The next step is to download 'kubectl' binary. I usually use Kubernetes
+https://github.com/kubernetes/kubernetes/releases[Github releases page]
+for this. The 'kubectl' binary is stored inside the release archive
+under
+'kubernetes/platforms/<your_platform>/<your_architecture>/kubectl'. I'm
+using linux/amd64 since I'm running Fedora F23. I also copy the binary
+to '/usr/bin'.
+
+ +
+
+We are ready to spin up Kubernetes:
+
+ +
+
+ +
+
+===== Deploying Infinispan cluster
+
+This time we'll focus on automation, so there will be no 'kubectl edit'
+commands. Below is the yaml file for creating all necessary components
+in Kubernetes cluster:
+
+ +
+
+* (lines 23 - 24) - We added additional arguments to the bootstrap scipt
+* (lines 26 - 30) - We used Downward API for pass the current namespace
+to the Infinispan
+* (lines 34 - 45) - We defined all ports used by the Pod
+* (lines 49 - 66) - We created a service for port 8080 (the REST
+interface)
+* (line 64) - We used
+http://kubernetes.io/docs/user-guide/services/#type-nodeport[NodePort
+service type] which we will expose via Minikube in the next paragraph
+
+ +
+
+Save it somewhere on the disk and execute 'kubectl create' command: +
+
+ +
+
+ +
+
+===== Exposing the service port
+
+One of the
+https://github.com/kubernetes/minikube#known-issues[Minikube's
+limitations] is that it can't use
+http://kubernetes.io/docs/user-guide/ingress/[Ingress API] and expose
+services to the outside world. Thankfully there's other way - use Node
+Port service type. With this simple trick we will be able to access the
+service using '<minikube_ip>:<node_port_number>'. The port number was
+specified in the yaml file (we could leave it blank and let Kubernetes
+assign random one). The node port can easily be checked using the
+following command:
+
+ +
+
+ +
+In order to obtain the Kubernetes node IP, use the following command: +
+
+ +
+
+ +
+
+===== Testing the setup
+
+Testing is quite simple and the only thing to remember is to use the
+proper address - <minikube_ip>:<node_port>:
+
+ +
+
+ +
+
+===== Clean up
+
+Minikube has all-in-one command to do the clean up:
+
+ +
+
+ +
+
+===== Conclusion
+
+Kubernetes setup is almost identical to the OpenShift one but there are
+a couple of differences to keep in mind:
+
+* OpenShift's DeploymentConfiguration is similar Kubernetes Deployment
+with ReplicaSets
+* OpenShift's Services work the same way as in Kubernetes
+* OpenShift's Routes are similar to Kubernetes' Ingresses
+
+Happy scaling and don't forget to check if Infinispan formed a cluster
+(hint - look into the
+http://blog.infinispan.org/2016/08/running-infinispan-cluster-on-openshift.html[previous
+post]).

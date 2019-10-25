@@ -1,0 +1,55 @@
+---
+layout: post
+title: Speeding up Cache calls with IGNORE_RETURN_VALUES invocation flag
+date: '2012-09-04T02:47:00.000-07:00'
+author: Galder Zamarreño
+tags:
+- flags
+- '5.2'
+- performance
+modified_time: '2015-09-28T06:04:54.692-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-253397893654517340
+blogger_orig_url: https://blog.infinispan.org/2012/09/speeding-up-cache-calls-with.html
+---
+Starting with
+http://infinispan.blogspot.cz/2012/09/infinispan-520alpha3-is-out.html[Infinispan
+5.2.0.Alpha3], a new Infinispan invocation flag has been added called
+http://docs.jboss.org/infinispan/5.2/apidocs/org/infinispan/context/Flag.html#IGNORE_RETURN_VALUES[IGNORE_RETURN_VALUES].
+
+This flag signals that the client that calls an Infinispan Cache
+operation () which has some kind of return, i.e.
+http://docs.oracle.com/javase/6/docs/api/java/util/Map.html#put(K,%20V)[java.util.Map#put(Object,
+Object)] (remember that Infinispan's Cache interface extends
+java.util.Map), the return value (which in the case of
+http://docs.oracle.com/javase/6/docs/api/java/util/Map.html#put(K,%20V)[java.util.Map#put(Object,
+Object)] represents the previous value) will be ignored by the client
+application. A typical client application that ignores the return value
+would use code like this:
+
+In this example, both cache put call are ignoring the return of the put
+call, which returns the previous value. In other words, when we cache
+the last login date, we don't care what the previous value was, so this
+is a great opportunity for the client code to be re-written in this way:
+
+Or even better:
+
+Thanks to such hints, *Infinispan caches can behave in a more efficient
+way and can potentially do operations faster*, because work associated
+with the production of the return value will be skipped. Such work can
+on occasions involve network calls, or access to persistent cache
+stores, so by avoiding this work, the cache calls are effectively
+faster.
+
+In previous Infinispan versions, a similar effect could be achieved with
+flags with a narrower target and which are considered too brittle for
+end user consumption such as
+http://docs.jboss.org/infinispan/5.2/apidocs/org/infinispan/context/Flag.html#SKIP_REMOTE_LOOKUP[SKIP_REMOTE_LOOKUP]
+or
+http://docs.jboss.org/infinispan/5.2/apidocs/org/infinispan/context/Flag.html#SKIP_CACHE_LOAD[SKIP_CACHE_LOAD].
+So, if you're using either of these flags in your Infinispan client
+codebase, we highly recommend that from Infinispan 5.2.0.Alpha3 you
+start using
+http://docs.jboss.org/infinispan/5.2/apidocs/org/infinispan/context/Flag.html#IGNORE_RETURN_VALUES[IGNORE_RETURN_VALUES]
+instead.
+
+Cheers, Galder

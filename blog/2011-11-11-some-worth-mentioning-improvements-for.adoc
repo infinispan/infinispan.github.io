@@ -1,0 +1,39 @@
+---
+layout: post
+title: Some worth mentioning improvements for pessimistic transactions
+date: '2011-11-11T04:35:00.000-08:00'
+author: Mircea Markus
+tags:
+- transactions
+- locking
+modified_time: '2015-09-28T22:22:15.749-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-3297865564555485943
+blogger_orig_url: https://blog.infinispan.org/2011/11/some-worth-mentioning-improvements-for.html
+---
+Pessimistic transactions were added in 5.1 and are the "rebranding" of
+eager transactions from previous Infinispan releases. But besides the
+re-branding, the code also brought some worth mentioning performance
+optimisation:
+
+* a single RPC happens for acquiring lock on a key, disregarding the
+number of invocations. So if you call _cache.put(k,v)_ in a loop, within
+the scope of the same transaction, there is only one remote call to the
+owner of _k_.
+* if the key you want to lock/write maps to the local node then no
+remote locks are acquired. In other words there won't be any RPCs for
+writing to a key that maps locally. This can be very powerful used in
+conjunction with the
+https://docs.jboss.org/author/x/IwY5[KeyAffinityService], as it allows
+you to control the locality of you keys.
+* during the two phase commit (2PC), the prepare phase doesn't perform
+any RPCs: this optimisation is based on the fact locks are already
+acquired on each write. This means that then number of RPCs during
+transactions lifespan is reduced with 1.
+* for some writes to the cache (e..g _cache.put(k,v)_) two RPCs were
+performed: one to acquire the remote lock and one to fetch the previous
+value. The obvious optimisation in this case was to make a single RPC
+for both operations - which we do starting with 5.1.
+
+Enjoy!
+
+Mircea

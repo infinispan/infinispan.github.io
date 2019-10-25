@@ -1,0 +1,103 @@
+---
+layout: post
+title: 'Infinispan Security #1: Authorization'
+date: '2014-04-11T04:28:00.000-07:00'
+author: Tristan Tarrant
+tags: 
+modified_time: '2014-04-11T04:28:32.980-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7889564347101732588
+blogger_orig_url: https://blog.infinispan.org/2014/04/infinispan-security-1-authorization.html
+---
+Dear all, with the release of 7.0.0.Alpha3, Infinispan has finally
+gained the ability to perform Access Control (aka Authorization) on
+CacheManagers and Caches. This is the first stepping-stone towards the
+full-fledged security work that will be completed during the 7.0
+cycle. +
+ +
+Infinispan authorization is built around the standard security features
+available in a JDK near you, such as JAAS and the SecurityManager.
+Here's a worked example. +
+ +
+
+== Running within a SecurityManager
+
+In order for Infinispan to be able to enforce access restrictions, you
+should enable the SecurityManager in your JVM. This can be done from the
+command-line: +
+ +
+
+....
+java -Djava.security.manager ...
+....
+
+ +
+or programmatically: +
+ +
+
+....
+System.setSecurityManager(new SecurityManager());
+....
+
+ +
+You don't have to use the default implementation that comes with the
+JDK, but if you do you need to supply an appropriate policy file. The
+Infinispan distribution comes with an example policy file which
+illustrates the permissions required by some of Infinispan's JAR files.
+Integrate these permissions with the ones required by your
+application. +
+ +
+While Infinispan's authorization _can_ work without a SecurityManager
+for the basic cache operations (put, get, etc), some more complex tasks
+(distexec, map/reduce, query) will fail without one. +
+
+== Configuring Infinispan for authorization
+
+Authorization in Infinispan is configured at two levels: at the cache
+container and at the single cache. +
+Let's look at cache containers (aka CacheManagers) first: +
+
+Each cache container determines the following: +
+
+* whether to use authorization, via the _enabled_ attribute. 
+* a class which will map the user's principals to a set of roles
+* a set of named roles and the permissions they represent
+
+We then need to define the specific roles for each cache: +
+
+ +
+As you can see you can choose to use only a subset of the roles defined
+at the container level. +
+ +
+Before you can start using a secured cache, you need to get yourself a
+_javax.security.auth.Subject_. +
+
+== Obtaining a Subject
+
+Infinispan is not fussy about how you obtain a JAAS
+http://docs.oracle.com/javase/7/docs/api/javax/security/auth/Subject.html[Subject]:
+you may use your container's features, or a third-party library (such as
+https://www.jboss.org/picketbox[JBoss PicketBox] or
+https://shiro.apache.org/[Apache Shiro]). The important thing is that
+your Subject should be populated with a set of
+http://docs.oracle.com/javase/7/docs/api/java/security/Principal.html[Principals]
+which represent the user and the groups it belongs to in your security
+domain (e.g. LDAP, Active Directory, etc). +
+It is then the duty of the _mapper_ to look through the principals
+associated with the Subject and convert them into roles suitable for
+matching those you have defined at the container level. +
+Once you have a Subject, you interact with the Cache within the context
+of a _PrivilegedAction_ as follows: +
+
+ +
+Obviously if you're lucky enough to use Java 8, you can use the
+following, more concise, lambda-enabled code: +
+
+ +
+ +
+For more details consult the
+http://infinispan.org/docs/7.0.x/user_guide/user_guide.html#_security[Security
+chapter] in the Infinispan documentation and the
+https://docs.jboss.org/infinispan/7.0/apidocs/org/infinispan/security/package-summary.html[org.infinispan.security]
+JavaDocs. +
+ +
+Stay tuned for the next parts in the Infinispan security saga !

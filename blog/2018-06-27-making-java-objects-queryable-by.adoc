@@ -1,0 +1,79 @@
+---
+layout: post
+title: Making Java objects queryable by Infinispan remote clients
+date: '2018-06-27T04:46:00.000-07:00'
+author: Galder Zamarreño
+tags:
+- remote query
+modified_time: '2018-06-27T04:47:21.591-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7670094109988265383
+blogger_orig_url: https://blog.infinispan.org/2018/06/making-java-objects-queryable-by.html
+---
+The following is a common question amongst Infinispan community users: +
+
+_____________________________________________________________
+*How do I make my Java objects queryable by remote clients?* 
+_____________________________________________________________
+
+ +
+
+=== Annotation Method
+
+ +
+The simplest way is to take advantage
+https://github.com/infinispan/protostream[Infinispan Protostream]
+annotations to mark your objects queryable and decide how each object
+field should be indexed. Example: +
+ +
+
+Then, the
+https://github.com/infinispan/protostream/blob/master/core/src/main/java/org/infinispan/protostream/annotations/ProtoSchemaBuilder.java[ProtoSchemaBuilder]
+can inspect the annotated class and derive a
+https://developers.google.com/protocol-buffers/[Google Protocol Buffers]
+schema file from it. Example: +
+ +
+
+Finally, the schema file needs to be registered in the
+“___protobuf_metadata” cache: +
+ +
+
+Although this is by far the easiest way to make your Java objects
+queryable, this method might not always be viable. For example, you
+might not be able to modify the Java object classes to add the
+annotations. For such use cases, a more verbose method is available that
+does not require modifying the source code of the Java object. +
+ +
+
+=== Plain Object Method
+
+ +
+For example, given this Java object: +
+ +
+
+A Protocol Buffers schema must be defined where comments are used to
+define the object as queryable and decide how each field is indexed: +
+ +
+
+This method also requires a
+https://github.com/infinispan/protostream/blob/master/core/src/main/java/org/infinispan/protostream/MessageMarshaller.java[Protostream
+message marshaller] to be defined which specifies how each field is
+serialized/deserialized: +
+ +
+
+This method still requires the Protocol Buffers schema to be registered
+remotely, but on top of that, the schema and marshaller need to be
+registered in the client: +
+ +
+
+Clearly, this second method is a lot more verbose and more laborious
+when refactoring. If any changes are made to the Java object, the
+marshaller and Protocol Buffer schema need to also be changed
+accordingly. This is done automatically in the first method. +
+ +
+Both methods are demonstrated in full in the
+https://github.com/infinispan-demos/queryable-pojos[queryable-pojos
+demo]. +
+ +
+Cheers +
+Galder +
+ +

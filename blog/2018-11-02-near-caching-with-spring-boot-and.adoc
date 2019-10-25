@@ -1,0 +1,218 @@
+---
+layout: post
+title: Near caching with Spring-Boot and Infinispan
+date: '2018-11-02T01:27:00.000-07:00'
+author: Katia Aresti
+tags:
+- spring-boot starters
+- hotrod
+- near caching
+- infinispan
+- spring
+- spring-boot
+modified_time: '2018-11-02T01:27:44.702-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-4258344245989877564
+blogger_orig_url: https://blog.infinispan.org/2018/11/near-caching-with-spring-boot-and.html
+---
+ +
+We have recently released
+https://github.com/infinispan/infinispan-spring-boot[infinispan-spring-boot-starter]
+*2.0.0.Final*. This version supports
+https://spring.io/projects/spring-boot[Spring Boot 2.1] and
+http://infinispan.org/[Infinispan 9.4.0.Final]. +
+ +
+Before this release, some important features - such as near caching -
+were only configurable by code. +
+From now on, we can set all of the Hot Rod client configuration using
+the *hotrod.properties* file or
+the https://issues.jboss.org/browse/ISPN-9437[Spring application YAML].
+The latter is an important community requirement we had. +
+ +
+Let's see how to speed up our applications performance
+with http://infinispan.org/docs/stable/user_guide/user_guide.html#near_caching[near
+caching]! +
+ +
+ +
+
+== 
+
+== 
+
+== Hot Rod
+
+===  
+
+Just as a quick reminder, Infinispan can be used embedded in your
+application or in *client/server* mode. To connect you application to a
+server you can use an http://infinispan.org/hotrod-clients/[Infinispan
+Client] and the Infinispan
+http://infinispan.org/docs/stable/user_guide/user_guide.html#hot_rod_server_usage[“Hot
+Rod Protocol”]. Other protocols are available, such as REST, but Hot Rod
+is the most recommended way since it is the one that supports most of
+the Infinispan functionalities. +
+ +
+
+== Near cache
+
+ +
+
+From the Infinispan
+http://infinispan.org/docs/stable/user_guide/user_guide.html#near_caching[documentation]:
+Hot Rod client can keep a local cache that stores recently used data.
+Enabling near caching can significantly improve the performance of read
+operations *get* and *getVersioned* since data can potentially be
+located locally within the Hot Rod client instead of having to go
+remote. +
+ +
+
+== When should I use it? 
+
+ +
+
+Near caching can improve the performance of an application when most of
+the accesses to a given cache are read-only and the accessed dataset is
+relatively small. +
+When an application is doing lots of writes to a cache, invalidations,
+evictions and updates to the near cache need to happen. In this scenario
+we won't probably get much benefit. +
+ +
+As I said in the introduction, the good news is that *this feature can
+be activated just by configuration*. Code doesn't change, so we can
+measure the benefits, if such exist, in a very straightforward way. +
+ +
+
+== Spring-Boot
+
+ +
+
+I have created a very simple application, available
+https://github.com/infinispan-demos/infinispan-near-cache[here]. Maven,
+Java 8 and an Infinispan server are required to run it. You can
+http://downloads.jboss.org/infinispan/9.4.0.Final/infinispan-server-9.4.0.Final.zip[download
+the server] or
+use https://hub.docker.com/r/jboss/infinispan-server/[docker]. +
+ +
+ +
+Docker: docker run -it -p 11222:11222
+jboss/infinispan-server:9.4.0.Final +
+ +
+Standalone: PATH/infinispan-server-9.4.0.Final/bin/standalone.sh +
+ +
+Once the server is up and running, build the application using maven  +
+ +
+>> infinispan-near-cache: mvn clean install +
+
+ +
+
+=== Writer 
+
+ +
+This application loads the required data to a remote cache: a list of
+some of the Infinispan contributors over the last decade. +
+
+ +
+
+>> writer: mvn spring-boot:run
+
+ +
+
+ +
+
+=== Reader 
+
+ +
+The reader application does 10.000 accesses to the contributors cache.
+Using a random id, I call 10.000 times the get method. The job gets done
+in my laptop in ~4000 milliseconds. +
+ +
+>> reader-no-near-cache: mvn spring-boot:run +
+
+ +
+
+ +
+
+== Activating the near cache
+
+ +
+
+I need to configure two properties:
+
+* *Near Cache Mode:* DISABLED or INVALIDATED. Default value is DISABLED,
+so I turn it on with *INVALIDATED*.
+* *Max Entries:* Integer value that sets the max size of the near
+caches. There is no default value, so I set up one.
+
+The hotrod client configuration is [.underline]#for each client#,
+[.underline]#not for each cache# (this might change in the future). With
+that in mind, note that configuring the previous properties will
+activate near caching *for all the caches*. If you need to activate it
+just for *some of them*, add the following property: +
+
+* *Cache Name Pattern:*  String pattern. For example "i8n-.*" will
+activate the near caching for all the caches whose name starts by
+"i8n-".
+
+ +
+Configuration can be placed in the *hotrod-client.properties*,
+*Spring-boot configuration* or *code*. +
+
+=== hotrod-client.properties
+
+**infinispan.client.hotrod.near_cache.mode=**INVALIDATED
+
+**infinispan.client.hotrod.near_cache.max_entries=**40
+
+*infinispan.client.hotrod.near_cache.cache_name_pattern=*i8n-.*
+
+ +
+
+=== application.yaml (or properties)
+
+*infinispan:* +
+   *remote:* +
+     *near-cache-mode:* INVALIDATED +
+     *near-cache-max-entries:* 10 +
+     *near-cache-cache-name-pattern:* i8n-.*
+
+===== code 
+
+With the Infinispan Spring-Boot Starter, I can add custom configuration
+using the *InfinispanRemoteCacheCustomizer*. +
+ +
+
+ +
+
+== Results
+
+ +
+
+My dataset contains 25 contributors. If I activate the near cache with
+max 12 entries and I run my reader again, I get the job done in ~1900
+milliseconds, which is already an improvement. If I configure it to hold
+the complete dataset, I get it done in ~220 milliseconds, which is a big
+one! +
+ +
+
+=== Conclusions
+
+ +
+
+Near caching can help us speed up our client applications if configured
+properly. We can test our tuning easily because we only need to add some
+configuration to the client. Finally, the
+https://github.com/infinispan/infinispan-spring-boot[Spring-Boot
+Infinispan Starter] helps us build services with Spring-Boot and
+Infinispan. 
+
+ +
+
+Further work will be done to help Spring-Boot users work with
+Infinispan, so stay tuned! Any feedback on the starter or any
+requirement from the community is more that welcome. Find us
+in https://infinispan.zulipchat.com/[Zulip Chat] for direct contact or
+post your questions in
+https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest[StackOverflow]! +
+ +
+ +
+ +
+ +

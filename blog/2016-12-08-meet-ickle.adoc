@@ -1,0 +1,227 @@
+---
+layout: post
+title: Meet Ickle!
+date: '2016-12-08T04:50:00.000-08:00'
+author: Unknown
+tags:
+- '9.0'
+- JP-QL
+- Hibernate-Search
+- jpa
+- lucene
+- full-text
+- indexing
+- language
+- query
+- DSL
+modified_time: '2016-12-08T04:52:02.368-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-6924153057805410893
+blogger_orig_url: https://blog.infinispan.org/2016/12/meet-ickle.html
+---
+[[docs-internal-guid-04619441-de6b-024f-1a8e-a4977a23b5c6]]
+ +
+
+As you’ve already learned from an earlier post this week, Infinispan 9
+is on its final approach to landing and is bringing a new query
+language. Hurray! But wait, was there something wrong with the old
+one(s)? Not wrong really ...  I’ll explain.
+
+ +
+
+Infinispan is a data grid of several query languages. Historically, it
+has offered search support early in its existence by integrating with
+Hibernate Search which provides a powerful Java-based DSL enabling you
+to build Lucene queries and run them on top of your Java domain model
+living in the data grid. Usage of this integration is confined to
+embedded mode, but that still succeeds in making Java users happy.
+
+ +
+
+While the Hibernate Search combination is neat and very appealing to
+Java users it completely leaves non-JVM languages accessing Infinispan
+via remote protocols out in the cold.
+
+ +
+
+Enter Remote Query. Infinispan 6.0 starts to address the need of
+searching the grid remotely via Hot Rod. The internals are still built
+on top of Lucene and Hibernate Search bedrock but these technologies are
+now hidden behind a new query API, the
+https://docs.jboss.org/infinispan/9.0/apidocs/org/infinispan/query/dsl/QueryBuilder.html[QueryBuilder],
+an internal DSL resembling JPA criteria query. The QueryBuilder has
+implementations for both embedded mode and Hot Rod. This new API
+provides all relational operators you can think of, but no full-text
+search initially, we planned to add that later.
+
+ +
+
+Creating a new internal DSL was fun. However, having a long term
+strategy for evolving it while keeping complete backward compatibility
+and also doing so uniformly across implementations in multiple languages
+proved to be a difficult challenge. So while we were contemplating
+adding new full-text operators to this DSL we decided on making a long
+leap forward and adopt a more flexible alternative by having our own
+string based query language instead, another DSL really, albeit an
+external one this time.
+
+ +
+
+So after the long ado, let me introduce Ickle, Infinispan’s new query
+language, conspicuously resembling JP-QL.
+
+ +
+
+Ickle:
+
+is a light and small subset of JP-QL, hence the lovely name
+
+queries Java classes and supports Protocol Buffers too
+
+queries can target a single entity type
+
+queries can filter on properties of embedded objects too, including
+collections
+
+supports projections, aggregations, sorting, named parameters
+
+supports indexed and non-indexed execution
+
+supports complex boolean expressions
+
+does not support computations in expressions (eg. user.age >
+sqrt(user.shoeSize + 3) is not allowed but user.age >= 18 is fine)
+
+does not support joins
+
+* but, navigations along embedded entities are implicit joins and are
+allowed
+* joining on embedded collections is allowed
+* other join types not supported
+
+subqueries are not supported
+
+besides the normal relational operators it offers full-text operators,
+similar to Lucene’s  query parser
+
+is now supported across various Infinispan APIs, wherever a Query
+produced by the QueryBuilder is accepted (even for continuous queries or
+in event filters for listeners!)
+
+ +
+
+That is to say we squeezed JP-QL to the bare minimum and added full-text
+predicates that closely follow the syntax of
+https://lucene.apache.org/core/6_2_1/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#package.description[Lucene’s
+query parser].
+
+ +
+
+If you are familiar with JPA/JP-QL then the following example will speak
+for itself:
+
+ +
+
+select accountId, sum(amount) from com.acme.Transaction  +
+    where amount < 20.0  +
+    group by accountId  +
+    having sum(amount) > 1000.0  +
+    order by accountId
+
+ +
+
+The same query can be written using the QueryBuilder:
+
+ +
+
+Query query = queryFactory.from(Transaction.class) +
+.select(Expression.property("accountId"), Expression.sum("amount")) +
+.having("amount").lt(20.0) +
+.groupBy("accountId") +
+.having(Expression.sum("amount")).gt(1000.0) +
+.orderBy("accountId").build();
+
+ +
+
+Both examples look nice but I hope you will agree the first one is
+better.
+
+ +
+
+Ickle supports several new predicates for full-text matching that the
+QueryBuilder is missing. These predicates use the : operator that you
+are probably familiar from Lucene’s own query language.  This example
+demonstrates a simple full-text term query:
+
+ +
+
+select transactionId, amount, description from com.acme.Transaction  +
+where amount > 10 and description : "coffee"
+
+ +
+
+As you can see, relational predicates and full-text predicates can be
+combined with boolean operators at will.
+
+ +
+
+The only important thing to remark here is relational predicates are
+applicable to non-analyzed fields while full-text predicates can be
+applied to analyzed field only. How does indexing work, what is analysis
+and how do I turn it on/off for my fields? That’s the topic of a future
+post, so please be patient or start
+readinghttps://docs.jboss.org/hibernate/search/5.6/reference/en-US/html_single/#_analysis[
+here].
+
+ +
+
+Besides term queries we support several more:
+
+* Term                     description : "coffee"
+* Fuzzy                    description : "cofee"~2
+* Range                   amount : [40 to 90}
+* Phrase                  description : "hello world"
+* Proximity               description : "canceling fee"~3
+* Wildcard                description : "te?t"
+* Regexp                 description : /[mb]oat/
+* Boosting                description : "beer"^3 and description :
+"books"
+
+You can read all about them starting from
+https://lucene.apache.org/core/6_2_1/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#package.description[here].
+
+ +
+
+But is Ickle really new? Not really. The name is new, the full-text
+features are new, but a JP-QL-ish query string was always internally
+present in the Query objects produced by the QueryBuilder since the
+beginning of Remote Query. That language was never exposed and specified
+until now. It evolved significantly over time and now it is ready for
+you to use it. The QueryBuilder / criteria-like API is still there as a
+convenience but it might go out of favor over time. It will be limited
+to non-full-text functionality only. As Ickle grows we’ll probably not
+be able to include some of the additions in the QueryBuilder in a
+backward compatible manner. If growing will cause too much pain we might
+consider deprecating it in favor of Ickle or if there is serious demand
+for it we might continue to evolve the QueryBuilder in a non compatible
+manner.
+
+ +
+
+Being a string based query language, Ickle is very convenient for our
+REST endpoint, the CLI, and the administration console allowing you to
+quickly inspect the contents of the grid. You’ll be able to use it there
+pretty soon. We’ll also continue to expand Ickle with more advanced
+full-text features like spatial queries and faceting, but that’s a
+subject for another major version. Until then, why not grab the current
+9.0 Beta1 and test drive the new query language yourself? We’d love to
+hear your feedback on
+thehttps://developer.jboss.org/en/infinispan/content[ forum], on
+ourhttps://issues.jboss.org/projects/ISPN[ issue tracker] or on IRC on
+the #infinispan channel
+onhttp://webchat.freenode.net/?channels=%23infinispan[ Freenode].
+
+ +
+
+Happy coding!
+
+ +

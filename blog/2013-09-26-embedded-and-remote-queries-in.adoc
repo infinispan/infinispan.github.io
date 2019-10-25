@@ -1,0 +1,264 @@
+---
+layout: post
+title: " Embedded and remote queries in Infinispan 6.0.0.Beta1"
+date: '2013-09-26T14:21:00.002-07:00'
+author: Unknown
+tags:
+- protostream
+- hotrod
+- lucene
+- Protobuf
+- remote query
+- hibernate search
+- '6.0'
+- embedded query
+- Infinispan Query
+- DSL
+modified_time: '2015-09-28T22:19:55.406-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-2234619140778632353
+blogger_orig_url: https://blog.infinispan.org/2013/09/embedded-and-remote-queries-in.html
+---
+ +
+If you're following Infinispan's mailing lists you've probably caught a
+glimpse of the new developments in the Query land: a new DSL, remote
+querying via Hot Rod client, a new marshaller based on Google's
+Protobuf. Time to unveil these properly! +
+ +
+
+==== 
+
+==== The new Query DSL
+
+==== 
+
+ +
+Starting with version 6.0 Infinispan offers a new (experimental) way of
+running queries against your cached entities based on a simple filtering
+DSL. The aim of the new DSL is to simplify the way you write queries and
+to be agnostic of the underlying query mechanism(s) making it possible
+to provide alternative query engines in the future besides Lucene and
+still being able to use the same query language/API. The previous
+Hibernate Search & Lucene based
+https://docs.jboss.org/author/display/ISPN/Querying+Infinispan[approach]
+is still in place and will continue to be supported and in fact the new
+DSL is currently implemented right on top of it. The future will surely
+bring index-less searching based on map-reduce and possibly other new
+cool search technologies. +
+ +
+Running DSL-based queries in embedded mode is almost identical to
+running the existing Lucene-based queries. All you need to do is have
+infinispan-query-dsl.jar and infinispan-query.jar in your classpath
+(besides Infinispan and its dependecies), enable indexing for your
+caches, annotate your POJO cache values and your're ready. +
+ +
+__ +
+
+....
+ConfigurationBuilder cfg = new ConfigurationBuilder();
+cfg.indexing().enable();
+
+DefaultCacheManager cacheManager = new DefaultCacheManager(cfg.build());
+
+Cache cache = cacheManager.getCache();
+....
+
+____Alternatively, indexing (and everything else) can also be configured
+via XML configuration, as already described in the user guide, so we'll
+not delve into details here. +
+ +
+Your Hibernate Search annotated entity might look like this. +
+ +
+__ +
+
+....
+import org.hibernate.search.annotations.*;
+...
+
+@Indexed
+public class User {
+
+    @Field(store = Store.YES, analyze = Analyze.NO)
+    private String name;
+
+    @Field(store = Store.YES, analyze = Analyze.NO, indexNullAs = Field.DEFAULT_NULL_TOKEN)
+    private String surname;
+
+    @IndexedEmbedded(indexNullAs = Field.DEFAULT_NULL_TOKEN)
+    private List addresses;
+
+    // .. the rest omitted for brevity
+}
+....
+
+____Running a DSL based query involves obtaining a
+_https://github.com/infinispan/infinispan/blob/6.0.0.Beta1/query-dsl/src/main/java/org/infinispan/query/dsl/QueryFactory.java[QueryFactory]_
+from the (cache scoped) _SearchManager_ and then constructing the query
+as follows: +
+ +
+__ +
+
+....
+import org.infinispan.query.Search;
+import org.infinispan.query.dsl.QueryFactory;
+import org.infinispan.query.dsl.Query;
+...
+
+QueryFactory qf = Search.getSearchManager(cache).getQueryFactory();
+
+Query q = qf.from(User.class)
+    .having("name").eq("John")
+    .toBuilder().build();
+
+List list = q.list();
+
+assertEquals(1, list.size());
+assertEquals("John", list.get(0).getName());
+assertEquals("Doe", list.get(0).getSurname());
+....
+
+____That's it! I'm sure this raised your curiosity as to what the DSL is
+actually capable of so you might want to look at the list of supported
+filter operators in
+_https://github.com/infinispan/infinispan/blob/6.0.0.Beta1/query-dsl/src/main/java/org/infinispan/query/dsl/FilterConditionEndContext.java[FilterConditionEndContext]_.
+Combining multiple conditions with boolean operators, including
+sub-conditions, is also possible: +
+ +
+
+....
+Query q = qf.from(User.class)
+    .having("name").eq("John")
+    .and().having("surname").eq("Doe")
+    .and().not(qf.having("address.street").like("%Tanzania%").or().having("address.postCode").in("TZ13", "TZ22"))
+    .toBuilder().build();
+....
+
+ +
+The DSL is pretty nifty right now and will surely be expanded in the
+future based on your feedback. It also provides support for result
+pagination, sorting, projections, embedded objects, all demonstrated in
+_https://github.com/infinispan/infinispan/blob/6.0.0.Beta1/query/src/test/java/org/infinispan/query/dsl/embedded/QueryDslConditionsTest.java[QueryDslConditionsTest]_
+which I encourage you to look at until the proper user guide is
+published. Still, this is not a relational database, so keep in mind
+that all queries are written in the scope of the _single_ targeted
+entity (and its embedded entities). There are no joins (yet), no
+correlated subqueries, no grouping or aggregations. +
+ +
+Moving further, probably the most exciting thing about the new DSL is
+using it remotely via the Hot Rod client. But to make this leap we first
+had to adopt a common format for storing our cache entries and
+marshalling them over the wire that would also be cross-language and
+robust enough to support evolving object schemas. But probably most of
+all, this format had to have a schema rather than just being an opaque
+blob otherwise indexing and searching are meaningless. Enter Protocol
+Buffers. +
+ +
+
+==== The Protobuf marshaller
+
+ +
+Configuring the _RemoteCacheManager_ of the Java Hot Rod client to use
+it is straight forward: +
+__ +
+
+....
+import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
+...
+
+ConfigurationBuilder clientBuilder = new ConfigurationBuilder();
+clientBuilder.addServer()
+    .host("127.0.0.1").port(11234)
+    .marshaller(new ProtoStreamMarshaller());
+....
+
+____Now you'll be able to store and get from the remote cache your
+_User_ instaces encoded in protobuf format provided that: +
+ +
+1. a Protobuf type was declared for your entity in a _.proto_
+https://github.com/infinispan/protostream/blob/1.0.0.Alpha6/sample-domain-definition/src/main/resources/bank.proto[file]
+which was then compiled into a _.protobin_
+https://developers.google.com/protocol-buffers/docs/techniques?hl=ro#self-description[binary
+descriptor] +
+ +
+2. the binary descriptor was registered with your _RemoteCacheManager_'s
+_ProtoStreamMarshaller_ instance like this: +
+__ +
+
+....
+ProtoStreamMarshaller.getSerializationContext(remoteCacheManager)
+    .registerProtofile("my-test-schema.protobin");
+....
+
+____3. a per-entity marshaller was registered: +
+__ +
+
+....
+ProtoStreamMarshaller.getSerializationContext(remoteCacheManager)
+    .registerMarshaller(User.class, new UserMarshaller());
+....
+
+____Steps 2 and 3 are closely tied to the way
+https://github.com/infinispan/protostream[Protosteam] library works,
+which is pretty straight forward but cannot be detailed here. Having a
+look at our
+https://github.com/infinispan/protostream/blob/1.0.0.Alpha6/sample-domain-implementation/src/main/java/org/infinispan/protostream/sampledomain/marshallers/UserMarshaller.java[_UserMarshaller_]
+sample should clear this up. +
+ +
+Keeping your objects stored in protobuf format has the benefit of being
+able to consume them with compatible clients written in other languages.
+But if this does not sound enticing enough probably the fact they can
+now be easily indexed should be more appealing. +
+ +
+
+==== Remote querying via the Hot Rod client
+
+ +
+Given a _RemoteCacheManager_ configured as previously described the next
+steps to enable remote query over its caches are: +
+ +
+1. add the DSL jar to client's classpath,
+infinispan-remote-query-server.jar to server's classpath and
+infinispan-remote-query-client.jar to both +
+2. enable indexing in your cache configuration - same as for embedded
+mode +
+3. register your protobuf binary descriptor by invoking the
+'_registerProtofile_' method of the server's _ProtobufMetadataManager_
+MBean (one instance per _EmbeddedCacheManager_) +
+ +
+All data placed in cache now is being indexed without the need to
+annotate your entities for Hibernate Search. In fact these classes are
+only meaningful to the Java client and do not even exist on the
+server. +
+ +
+Running the queries over the Hot Rod client is now very similar to
+embedded mode. The DSL is in fact the same. The only part that is
+slightly different is how you obtain the _QueryFactory_: +
+ +
+__ +
+
+....
+import org.infinispan.client.hotrod.Search;
+import org.infinispan.query.dsl.QueryFactory;
+import org.infinispan.query.dsl.Query;
+...
+
+remoteCache.put(2, new User("John", "Doe", 33));
+
+QueryFactory qf = Search.getQueryFactory(remoteCache);
+
+Query query = qf.from(User.class)
+    .having("name").eq("John")
+    .toBuilder().build();
+
+List list = query.list();
+assertEquals(1, list.size());
+assertEquals("John", list.get(0).getName());
+assertEquals("Doe", list.get(0).getSurname());
+....
+
+__
+
+_ _ 
+
+Voila! The end of our journey for today! Stay tuned, keep an eye on
+Infinispan Query and please share your comments with us. +
+ +

@@ -1,0 +1,161 @@
+---
+layout: post
+title: Infinispan 10.0.0.Beta4
+date: '2019-07-15T03:02:00.000-07:00'
+author: Tristan Tarrant
+tags:
+- beta
+- release
+- '10.0'
+modified_time: '2019-07-15T03:02:36.926-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-3850425274703620788
+blogger_orig_url: https://blog.infinispan.org/2019/07/infinispan-1000beta4.html
+---
+Dear Infinispan users, +
+ +
+it has been a while since our last release and quite a few things have
+been cooking in the Infinispan furnace. Bear in mind that the list below
+should just serve as a summary and that dedicated blogs, documentation
+and examples will appear in the near future. +
+ +
+
+== Server
+
+Since 5.3, our server has been built on top of WildFly (JBoss AS7 at the
+time). WildFly gave us a very solid base, including integration with a
+lot of useful components (security, datasources, management etc) but it
+also forced us to maintain a large amount of integration code. We have
+therefore decided to start from a much leaner base to build the new
+server which, internally we've been calling ServerNG, but which we're
+now releasing as "Infinispan Server". The old WildFly-based server is
+still available, but it should be considered "legacy" and will no longer
+receive any feature enhancements. +
+ +
+The new server deserves its own dedicated post, but its main features
+are: +
+
+* smaller size (36MB vs 130MB)
+* smaller memory footprint (20MB heap usage at boot vs 40MB)
+* single-port: the Hot Rod, REST and management endpoint are now served
+through a single-port (11222) with automatic protocol detection between
+HTTP/1.1, HTTP/2 and Hot Rod. The memcached endpoint is handled
+separately since we don't implement the binary protocol yet.
+* security implemented using
+https://docs.jboss.org/author/display/WFLY/WildFly+Elytron+Security[WildFly
+Elytron] currently supporting PLAIN, DIGEST-MD5, SCRAM, EXTERNAL mechs
+for Hot Rod, BASIC, DIGEST, CLIENT_CERT for REST/HTTP
+(OAuth/JWT/GS2/GSSAPI/SPNEGO will be coming in the next releases)
+* the server configuration extends the embedded configuration scheme
+* caches/counters are created and managed dynamically through Hot Rod /
+REST.
+
+== Marshalling
+
+Infinispan's marshalling has received a significant overhaul and it is
+now split into three distinct marshallers: Internal, Persistence and
+User (https://issues.jboss.org/browse/ISPN-7409[ISPN-7409]
+https://issues.jboss.org/browse/ISPN-9621[ISPN-9621]) +
+The Persistence marshaller is now based on ProtoBuf allowing for
+long-term compatibility of data stored in memory and in cache stores. +
+The Store Migrator has been updated to allow migration from Infinispan
+8.x/9.x cache stores to the new format
+(https://issues.jboss.org/browse/ISPN-10276[ISPN-10276]) +
+ +
+
+== Core changes
+
+Infinispan's internal dependency-injection has been completely rewritten
+so that factories, components and dependencies are discovered and
+resolved at compile time instead of using runtime reflection. This,
+together with the marshalling changes and recent JGroups changes, paves
+the way for usage and native compilation with
+https://quarkus.io/[Quarkus]. +
+
+== REST
+
+The REST API is continuing its overhaul with the following additions to
+the v2 API +
+
+* Cluster Resource
+(https://issues.jboss.org/browse/ISPN-10268[ISPN-10268])
+* Cache Resource (https://issues.jboss.org/browse/ISPN-9772[ISPN-9772]
+https://issues.jboss.org/browse/ISPN-10392[ISPN-10392])
+* Counter Resource
+(https://issues.jboss.org/browse/ISPN-10151[ISPN-10151]
+https://issues.jboss.org/browse/ISPN-10152[ISPN-10152])
+
+The REST endpoint now fully supports authorization
+(https://issues.jboss.org/browse/ISPN-8736[ISPN-8736]) +
+
+== Reactive API
+
+The first implementation of our new Reactive API have been merged. This
+is still work in progress and the API will receive major changes until
+the Final release. +
+The new API includes a new API module and a new KeyValueStore Hot Rod
+client where search, continuous search and Key Value store methods are
+included. +
+
+== Cross-Site Replication
+
+Async mode cross-site replication received 2 major improvements: +
+
+* async mode is now able to detect disconnections between sites and
+bring the site offline based on <take-offline> configuration
+(https://issues.jboss.org/browse/ISPN-10180[ISPN-10180])
+* track and exposes the average replication times for asynchronous
+requests (https://issues.jboss.org/browse/ISPN-9457[ISPN-9457])
+
+ +
+
+== Non-blocking
+
+ +
+
+* Non-blocking Hot Rod authentication
+(https://issues.jboss.org/browse/ISPN-9841[ISPN-9841])
+* Non-blocking REST endpoint
+(https://issues.jboss.org/browse/ISPN-10210[ISPN-10210])
+* Update internal remote listener code to support non blocking
+(https://issues.jboss.org/browse/ISPN-9716[ISPN-9716])
+* Update internal embedded listeners to be non blocking
+(https://issues.jboss.org/browse/ISPN-9715[ISPN-9715])
+
+ +
+
+== Removal/deprecations
+
+A new major release is also an opportunity to do some house cleaning. +
+
+=== Deprecations
+
+ +
+
+* Deprecate GridFileSystem and org.infinispan.io stream implementations
+(https://issues.jboss.org/browse/ISPN-10298[ISPN-10298])
+* Deprecated Total Order transaction mode
+(https://issues.jboss.org/browse/ISPN-10259[ISPN-10259])
+
+=== Removals
+
+* AtomicMap implementations removed
+(https://issues.jboss.org/browse/ISPN-10230[ISPN-10230])
+* Remove deprecated org.infinispan.io classes
+(https://issues.jboss.org/browse/ISPN-10297[ISPN-10297])
+* Remove org.infinispan.tools.ConfigurationConverter
+(https://issues.jboss.org/browse/ISPN-10231[ISPN-10231])
+* Remove compatibility mode
+(https://issues.jboss.org/browse/ISPN-10370[ISPN-10370])
+
+ +
+If you are curious you can read the
+https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12310799&version=12340951[detailed
+release notes] including all fixed issues. +
+As usual you can ask questions on the
+https://developer.jboss.org/en/infinispan/content[forum],
+https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest[StackOverflow]
+and interactively on our http://infinispan.zulipchat.com/[Zulip Chat]. +
+Please report any bugs you find on our
+https://issues.jboss.org/projects/ISPN/summary[Issue Tracker.] +
+Going back to our three-week schedule, our next release will be Beta5,
+three weeks from now.

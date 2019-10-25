@@ -1,0 +1,57 @@
+---
+layout: post
+title: Infinispan 5.1.0.BETA2 is out and asymmetric clusters are here!
+date: '2011-10-19T00:01:00.000-07:00'
+author: Galder Zamarreño
+tags:
+- asymmetric clusters
+modified_time: '2015-09-28T06:01:20.853-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-6693568017456752942
+blogger_orig_url: https://blog.infinispan.org/2011/10/infinispan-510beta2-is-out-and.html
+---
+The latest beta of the 5.1 '_Brahma_' series, 5.1.0.BETA2, is out now
+and thanks to Dan Berindei, it comes with support for asymmetric
+clusters which has been highly demanded. +
+ +
+Before asymmetric clusters were supported, it was required that all
+Infinispan caches that client code interacted against were defined and
+running in all nodes in the cluster, otherwise, cluster wide messages
+for a cache that did not exist in a node would fail. So, imagine this
+scenario where [.Apple-style-span]#c1# and [.Apple-style-span]#c2# are
+user defined caches configured with replication: +
+ +
+[.Apple-style-span]#Node A [c1]# +
+[.Apple-style-span]#Node B [c1, c2] # +
+ +
+Without asymmetric clusters, whenever [.Apple-style-span]#c2# cache was
+modified in Node B, a replication message would be sent to Node A, but
+the replication would fail indicating that c2 was not defined in Node A.
+This failure would get propagated back to Node B which would result in
+the modification failing. This kind of problems can particularly affect
+managed environments such as the JBoss Application Server, because
+often, deployments will be made in a subset of the cluster, so it could
+well happen that not all nodes have a particular cache started. +
+ +
+So, what Infinispan 5.1.0.BETA2 '_Brahma_' brings is support for this
+type of scenarios by maintaining a view correlating nodes and started
+caches, hence allowing any node to know which other nodes have a
+particular cache started. This means that in the above case, Node B
+would not have sent a replication message to Node A because it would
+know that [.Apple-style-span]#c2# was only started in Node B. +
+ +
+The lack of support for asymmetric clusters is what forced Infinispan
+servers to only accept invocations for predefined caches because these
+predefined could be started when the servers were started, hence
+avoiding the asymmetric cluster problem. Now that asymmetric clusters
+are supported, it's likely that this limitation go away, but the
+timeline is to be defined yet. +
+ +
+This release also includes a http://goo.gl/s6apG[bunch of other fixes]
+and as always, please use the
+http://community.jboss.org/en/infinispan?view=discussions[user forums]
+to report back, grab the release
+http://www.jboss.org/infinispan/downloads[here], enjoy and keep the
+feedback coming. +
+ +
+Cheers, +
+Galder

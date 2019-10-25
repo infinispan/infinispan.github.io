@@ -1,0 +1,138 @@
+---
+layout: post
+title: Increase transactional throughput with deadlock detection
+date: '2009-07-27T05:36:00.000-07:00'
+author: Mircea Markus
+tags:
+- transactions
+- benchmarks
+- deadlock detection
+- concurrency
+modified_time: '2009-07-29T02:57:39.447-07:00'
+thumbnail: http://1.bp.blogspot.com/_ISQfVF8ALAQ/Sm2hy99CLHI/AAAAAAAABp4/VNnd1p70YW8/s72-c/DLD_local.JPG
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-2082739167162906527
+blogger_orig_url: https://blog.infinispan.org/2009/07/increase-transactional-throughput-with.html
+---
+Deadlock detection is a new feature in Infinispan. It is about
+increasing the number of transactions that can be concurrently
+processed. Let's start with the problem first (the deadlock) then
+discuss some design details and performance. +
+ +
+So, the by-the-book deadlock example is the following: +
+
+* Transaction one (T1) performs following operation sequence: (write
+key_1,write key_2)
+
+* Transaction two (T2) performs following sequence: (write key_2, write
+key_1).
+
+Now, if the T1 and T2 happen at the same time and both have executed
+first operation, then they will wait for each other virtually forever to
+release owned locks on keys. In the real world, the waiting period is
+defined by a lock acquisition timeout (LAT) - which defaults to 10
+seconds - that allows the system to overcome such scenarios and respond
+to the user one way (successful) or the other(failure): so after a
+period of LAT one (or both) transaction will rollback, allowing the
+other to continue working. +
+ +
+Deadlocks are bad for both system's throughput and user experience.
+System throughput is affected because during the deadlock period (which
+might extend up to LAT) no other thread will be able to update neither
+key_1 nor key_2. Even worse, access to any other keys that were modified
+by T1 or T2 will be similarly restricted. User experience is altered by
+the fact that the call(s) will freeze for the entire deadlock period,
+and also there's a chance that both T1 and T2 will rollback by timing
+out. +
+ +
+As a side note, in the previous example, if the code running the
+transactions would(and can) enforce any sort of ordering on the keys
+accessed within the transaction, then the deadlock would be avoided.
+E.g. if the application code would order the operation based on the
+lexicographic ordering of keys, both T1 and T2 would execute the
+following sequence: (write key_1,write key_2), and so no deadlock would
+result. This is a best practice and should be followed whenever
+possible. +
+Enough with the theory! The way Infinispan performs deadlock detection
+is based on an algorithm designed by
+http://www.jboss.org/community/people/jason.greene%40jboss.com[Jason
+Greene] and
+http://www.jboss.org/community/people/manik.surtani%40jboss.com[Manik
+Surtani], which is detailed
+http://www.jboss.org/index.html?module=bb&op=viewtopic&p=4244838#4244838[here].
+The basic idea is to split the LAT in smaller cycles, as it follows: +
+
+[source,java]
+----
+lock(int lockAcquisitionTimeout) {
+while (currentTime < startTime + timeout) {
+ if (acquire(smallTimeout)) break;
+ testForDeadlock(globalTransaction, key);
+}
+}
+----
+
+ +
+What testForDeadlock(globalTransaction, key) does is check weather there
+is another transaction that satisfies both conditions: +
+
+. holds a lock on key and +
+. intends to lock on a key that is currently called by this
+transaction. +
+
+If such a transaction is found then this is a deadlock, and one of the
+running transactions will be interrupted: the decision of which
+transaction will interrupt is based on coin toss, a random number that
+is associated with each transaction. This will ensure that only one
+transaction will rollback, and the decision is deterministic: nodes and
+transactions do not need to communicate with each other to determine the
+outcome. +
+ +
+Deadlock detection in Infinispan works in two flavors: determining
+deadlocks on transactions that spread over several caches and deadlock
+detection in transactions running on a single(local) cache. +
+ +
+Let's see some performance figures as well. A class for benchmarking
+performance of deadlock detection functionality was created and can be
+seen
+http://viewvc.jboss.org/cgi-bin/viewvc.cgi/infinispan/trunk/core/src/test/java/org/infinispan/profiling/DeadlockDetectionPerformanceTest.java?view=markup[here].
+Test description (from javadoc):  +
+
+__________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+ +
+We use a fixed size pool of keys (KEY_POOL_SIZE) on which each
+transaction operates. A number of threads (THREAD_COUNT) repeatedly
+starts transactions and tries to acquire locks on a random subset of
+this pool, by executing put operations on each key. If all locks were
+successfully acquired then the tx tries to commit: only if it succeeds
+this tx is counted as successful. The number of elements in this subset
+is the transaction size (TX_SIZE). The greater transaction size is, the
+higher chance for deadlock situation to occur. On each thread these
+transactions are being repeatedly executed (each time on a different,
+random key set) for a given time interval (BENCHMARK_DURATION). At the
+end, the number of successful transactions from each thread is
+cumulated, and this defines throughput (successful tx) per time unit (by
+default one minute).
+__________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+
+ +
+Disclaimer: The following figures are for a scenario especially designed
+to force very high contention. This is not typical, and you shouldn't
+expect to see this level of increase in performance for applications
+with lower contention (which most likely is the case). Please feel free
+tune the above benchmark class to fit the contention level of your
+application; sharing your experience would be very useful! +
+ +
+Following diagram shows the performance degradation resulting from
+running the deadlock detection code by itslef in a scenario where no
+contention/deadlocks are present. +
+http://1.bp.blogspot.com/_ISQfVF8ALAQ/Sm2hy99CLHI/AAAAAAAABp4/VNnd1p70YW8/s1600-h/DLD_local.JPG[image:http://1.bp.blogspot.com/_ISQfVF8ALAQ/Sm2hy99CLHI/AAAAAAAABp4/VNnd1p70YW8/s400/DLD_local.JPG[image]]http://2.bp.blogspot.com/_ISQfVF8ALAQ/Sm2h_re8qKI/AAAAAAAABqA/bsNgEyCkcYw/s1600-h/DLD_replicated.JPG[image:http://2.bp.blogspot.com/_ISQfVF8ALAQ/Sm2h_re8qKI/AAAAAAAABqA/bsNgEyCkcYw/s400/DLD_replicated.JPG[image]]http://2.bp.blogspot.com/_ISQfVF8ALAQ/Sm2iMq08ZjI/AAAAAAAABqI/Fn049-27Bts/s1600-h/DLD_enabling_overhead.JPG[image:http://2.bp.blogspot.com/_ISQfVF8ALAQ/Sm2iMq08ZjI/AAAAAAAABqI/Fn049-27Bts/s400/DLD_enabling_overhead.JPG[image]]
+Some clues on when to enable deadlock detection. A high number of
+transaction rolling back due to
+org.infinispan.util.concurrent.TimeoutException is an indicator that
+this functionality might help. TimeoutException might be caused by other
+causes as well, but deadlocks will always result in this exception being
+thrown. Generally, when you have a high contention on a set of keys,
+deadlock detection may help. But the best way is not to guess the
+performance improvement but to benchmark and monitor it: you can have
+access to statistics (e.g. number of deadlocks detected) through JMX, as
+it is exposed via the DeadlockDetectingLockManager MBean.

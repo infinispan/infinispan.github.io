@@ -1,0 +1,220 @@
+---
+layout: post
+title: Composing the Infinispan Docker image
+date: '2016-12-05T03:42:00.000-08:00'
+author: Gustavo
+tags:
+- compose
+- jdbc
+- docker
+- persistence
+- server
+- modules
+- oracle
+- cache store
+modified_time: '2016-12-08T01:42:12.034-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-4984211490250460785
+blogger_orig_url: https://blog.infinispan.org/2016/12/composing-infinispan-docker-image.html
+---
+ +
+In the
+http://blog.infinispan.org/2016/10/infinispan-docker-image-custom.html[previous]
+post we showed how to manipulate the Infinispan Docker container
+configuration at both runtime and boot time. +
+ +
+Before diving into multi-host Docker usage, in this post we'll explore
+how to create multi-container Docker applications involving Infinispan
+with the help of https://docs.docker.com/compose/[Docker Compose]. +
+ +
+For this we'll look at a typical scenario of an Infinispan server backed
+by an Oracle database as a cache store. +
+ +
+All the code for this sample can be found on
+https://github.com/gustavonalle/infinispan-docker-compose[github]. +
+ +
+
+===  
+
+=== Infinispan with Oracle JDBC cache store
+
+===  
+
+ +
+In order to have a cache with persistence with Oracle, we need to do
+some configuration: configure the driver in the server, create the data
+source associated with the driver, and configure the cache itself with
+JDBC persistence.
+
+ +
+Let's take a look at each of those steps:
+
+===== Obtaining and configuring the driver
+
+The driver (ojdbc6.jar) should be
+http://www.oracle.com/technetwork/apps-tech/jdbc-112010-090769.html[downloaded]
+and placed in the 'driver' folder of the sample project. +
+ +
+The module.xml declaration used to make it available on the server is as
+follows: +
+ +
+
+ +
+
+===== Configuring the Data source
+
+The data source is configured in the "datasource" element of the server
+configuration file as shown below: +
+ +
+
+ +
+and inside the "datasource/drivers" element, we need to declare the
+driver: +
+ +
+
+ +
+
+===== Creating the cache
+
+The last piece is to define a cache with the proper JDBC Store: +
+ +
+
+ +
+
+===== Putting all together
+
+From now on, without using Docker we'd be ready to download and install
+Oracle following the specific instructions for your OS, then download
+the Infinispan Server, edit the configuration files, copy over the
+driver jar, figure out how to launch the database and server, taking
+care not to have any port conflicts. +
+ +
+If it sounds too much work, it's because it really is. Wouldn't it be
+nice to have all these wired together and launched with a simple command
+line? Let's take a look at the Docker way next. +
+
+===  +
+ 
+
+=== Enter Docker Compose
+
+ +
+Docker Compose is a tool part of the Docker stack to facilitate
+configuration, execution and management of related Docker containers. +
+ +
+By describing the application aspects in a single yaml file, it allows
+centralized control of the containers, including custom configuration
+and parameters, and it also allows runtime interactions with each of the
+exposed services. +
+ +
+
+===== Composing Infinispan
+
+Our Docker Compose file to assemble the application is given below: +
+ +
+
+It contains two services: +
+
+* one called *_oracle_* that uses the
+https://hub.docker.com/r/wnameless/oracle-xe-11g/[wnameless/oracle-xe-11g]
+Docker image, with an environment variable to allow remote connections.
+*  another one called _*infinispan*_ that uses version 8.2.5.Final of
+the
+https://store.docker.com/community/images/jboss/infinispan-server[Infinispan
+Server image]. It is launched with a custom command pointing to the
+changed configuration file and it also mounts two volumes in the
+container: one for the driver and its module.xml and another for the
+folder holding our server xml configuration.
+
+===== Launching
+
+To start the application, just execute +
+ +
+
+ +
+To inspect the status of the containers: +
+ +
+
+ +
+To follow the Infinispan server logs, use: +
+ +
+
+ +
+Infinispan usually starts faster than the database, and since the server
+waits until the database is ready (more on that later), keep an eye in
+the log output for "Infinispan Server 8.2.5.Final (WildFly Core
+2.0.10.Final) started". After that, both Infinispan and Oracle are
+properly initialized. +
+
+===== Testing it
+
+Let's insert a value using the Rest endpoint from Infinispan and verify
+it was saved to the Oracle database: +
+ +
+
+ +
+To check the Oracle database, we can attach to the container and use
+Sqlplus: +
+ +
+
+ +
+
+===== Other operations
+
+ +
+It's also possible to increase and decrease the number of containers for
+each of the services: +
+ +
+
+ +
+ +
+
+=== A thing or two about startup order
+
+===  
+
+When dealing with dependent containers in Docker based environments,
+it's highly recommended to make the connection obtention between parties
+robust enough so that the fact that one dependency is not totally
+initialized doesn't cause the whole application to fail when starting. +
+ +
+Although Compose does have a *_depends_on_* instruction, it simply
+starts the containers in the declared order but it has no means to
+detected when a certain container is fully initialized and ready to
+serve requests before launching a dependent one. +
+ +
+One may be tempted to simply write some glue script to detect if a
+certain port is open, but that does not work in practice: the network
+socket may be opened, but the background service could still be in
+transient initialization state. +
+ +
+The recommended solution for this it to make whoever depends on a
+service to retry periodically until the dependency is ready. On the
+Infinispan + Oracle case, we specifically configured the data source
+with retries to avoid failing at once if the database is not ready: +
+ +
+
+When starting the application via Compose you'll notice that Infinispan
+print some WARN with connection exceptions until Oracle is available:
+don't panic, this is expected! +
+ +
+ +
+
+=== Conclusion
+
+ +
+Docker Compose is a powerful and easy to use tool to launch applications
+involving multiple containers: in this post it allowed to start
+Infinispan plus Oracle with custom configurations with a single
+command. +
+It's also a handy tool to have during development and testing phase of a
+project, specially when using/evaluating Infinispan with its many
+possible integrations. +
+ +
+Be sure to check other examples of using Docker Compose involving
+Infinispan: the
+https://github.com/infinispan/infinispan-spark/tree/master/examples/twitter[Infinispan+Spark
+Twitter demo], and the
+https://github.com/infinispan/infinispan-hadoop/tree/master/samples/flink[Infinispan+Apache
+Flink] demo. +
+ +
+ +

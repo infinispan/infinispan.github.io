@@ -1,0 +1,57 @@
+---
+layout: post
+title: Fewer deadlocks, higher throughput
+date: '2011-11-10T17:20:00.000-08:00'
+author: Mircea Markus
+tags:
+- transactions
+- locking
+- deadlock detection
+modified_time: '2015-09-28T06:01:20.983-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-9085832372211986870
+blogger_orig_url: https://blog.infinispan.org/2011/11/fewer-deadlocks-higher-throughput.html
+---
+Here's the problem: first transaction (_T1_) writes to key a and b in
+this order. Second transaction (_T2_) writes to key b and a - again
+order is relevant. Now with some "right timing" _T1_ manages to acquire
+lock on _a_ and _T2_ acquires lock on b. And then they wait one for the
+other to release locks so that they can progress. This is what is called
+a deadlock and is really bad for your system throughput - but I won't
+insist on this aspect, as I've mentioned it a lot in my previous posts.
+
+ +
+What I want to talk about though is a way to solve this problem. Quit a
+simple way - just force an order on your transaction writes and you're
+guaranteed not to deadlock: if both _T1_ and _T2_ write to a then __b
+(__lexicographical order) there won't be any deadlock. Ever.
+
+But there's a catch. It's not always possible to define this order,
+simply because you can't or because you don't know all your keys at the
+very beginning of the transaction.
+
+ +
+
+Now here's the good news: Infinispan orders the keys touched in a
+transaction for you. And it even defines an order so that you won't have
+to do that. Actually you don't have to anything, not even enable this
+feature, as it is already enabled for you by default.
+
+Does it sound too good to be true? That's because it's only partially
+true. That is lock reordering only works if you're using optimistic
+locking. For pessimistic locking you still have to do it the old way -
+order your locks (that's of course if you can).
+
+ +
+
+Wanna know more about it? Read
+http://community.jboss.org/wiki/LockReorderingForAvoidingDeadlocks[this].
+
+ +
+
+Expect and enjoy this feature in our next release 5.1.0.BETA5.
+
+ +
+
+Stay tunned!
+
+Mircea

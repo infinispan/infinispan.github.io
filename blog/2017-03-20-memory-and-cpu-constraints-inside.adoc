@@ -1,0 +1,95 @@
+---
+layout: post
+title: Memory and CPU constraints inside a Docker Container
+date: '2017-03-20T01:40:00.000-07:00'
+author: Sebastian Łaskawiec
+tags:
+- docker
+- openshift
+- kubernetes
+modified_time: '2017-03-20T01:40:09.564-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7557678252341598874
+blogger_orig_url: https://blog.infinispan.org/2017/03/memory-and-cpu-constraints-inside.html
+---
+In one of the
+http://blog.infinispan.org/2016/07/improved-infinispan-docker-image.html[previous
+blog posts] we wrote about different configuration options for our
+Docker image. Now we did another step adding auto-configuration steps
+for memory and CPU constraints. +
+ +
+
+== Before we dig in...
+
+ +
+Setting memory and CPU constraints to containers is very popular
+technique especially for public cloud offerings (such as
+https://docs.openshift.org/latest/dev_guide/compute_resources.html[OpenShift]).
+Behind the scenes everything works based on adding
+https://docs.docker.com/engine/admin/resource_constraints/[additional
+Docker settings] to the containers. There are two very popular
+switches: _--memory_ (which is responsible for setting the amount of
+available memory) and _--cpu-quota_ (which throttles CPU usage). +
+ +
+Now here comes the best part... JDK has no idea about those settings! We
+will probably need to wait until
+http://hg.openjdk.java.net/jdk9/jdk9/hotspot/rev/5f1d1df0ea49[JDK9] for
+getting full CGroups support. +
+ +
+
+== What can we do about it?
+
+ +
+The answer is very simple, we need to tell JDK what is the available
+memory (at least by setting _Xmx_) and available number of CPUs (by
+setting http://www.oracle.com/technetwork/articles/java/g1gc-1984535.html[_XX:ParallelGCThreads_, _XX:ConcGCThreads_]
+and _https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ForkJoinPool.html[Djava.util.concurrent.ForkJoinPool.common.parallelism]_). +
+ +
+And we have some very good news! We already did it for you! +
+ +
+
+== Let's test it out!
+
+ +
+At first you need to pull our latest Docker image: +
+ +
+
+Then run it with CPU and memory limits using the following command: +
+ +
+
+Note that JAVA_OPTS variable was overridden. Let's have a look what had
+happened: +
+
+* -Xms64m -Xmx350m - it is always a good idea to
+https://developers.redhat.com/blog/2014/07/15/dude-wheres-my-paas-memory-tuning-javas-footprint-in-openshift-part-1/[set
+_Xmn_] inside a Docker container. Next we set _Xmx_ to 70% of available
+memory. 
+* -XX:ParallelGCThreads=6 -XX:ConcGCThreads=6
+-Djava.util.concurrent.ForkJoinPool.common.parallelism=6 - The next
+thing is setting CPU throttling as I explained above.
+
+There might be some cases where you wouldn't like to set those
+properties automatically. In that case, just pass _-n_ switch to the
+starter script:
+
+ +
+
+ +
+
+ +
+
+=== More reading
+
+ +
+
+If this topic sounds interesting to you, do not forget to have a look at
+those links:
+
+* A great series of articles about memory and CPU in the containers by
+Andrew Dinn
+[https://developers.redhat.com/blog/2014/07/15/dude-wheres-my-paas-memory-tuning-javas-footprint-in-openshift-part-1/[1]][https://developers.redhat.com/blog/2014/07/22/dude-wheres-my-paas-memory-tuning-javas-footprint-in-openshift-part-2/[2]]
+* A practical implementation by Fabric8 Team
+[https://github.com/fabric8io-images/run-java-sh/blob/master/fish-pepper/run-java-sh/fp-files/container-limits[3]]
+* A great article about memory limits by Rafael Benevides
+[https://developers.redhat.com/blog/2017/03/14/java-inside-docker/[4]]
+* OpenShift guidelines for creating Docker images
+[https://docs.openshift.com/container-platform/3.4/creating_images/guidelines.html[5]]

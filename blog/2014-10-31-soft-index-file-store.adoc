@@ -1,0 +1,124 @@
+---
+layout: post
+title: Soft-Index File Store
+date: '2014-10-31T07:14:00.000-07:00'
+author: Unknown
+tags: 
+modified_time: '2014-10-31T07:14:06.642-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-9086839281399482868
+blogger_orig_url: https://blog.infinispan.org/2014/10/soft-index-file-store.html
+---
+Recently, Infinispan got a new local file-based cache store, called
+Soft-Index File Store. Why have we created just another cache store,
+what problems is it solving, what are its limitations and how is it
+designed? +
+ +
+** Single File Store is a well performing cache store, but it stores all
+keys in-memory; that limits the number of keys you can store. File
+fragmentation could be even more of an issue: if you store larger and
+larger values (that happens quite a lot, as users e.g. add stuff into
+their shopping carts), the space is not reused and instead the entry is
+appended at the end of the file. The space (now empty) is reused only if
+you write entry that can fit there. Also, even if you remove all entries
+from the cache, the file won't shrink, and neither won't be
+de-fragmented. +
+ +
+LevelDB uses quite well performing Google's library written in native
+code. The major drawback is the native code - if LevelDB has a bug that
+ends in segfault, whole JVM crashes, bringing you application server
+down. +
+ +
+Our new Soft Index File Store is pure Java implementation that tries to
+get around Single File Store's drawbacks by implementing a variant of
+*B+ tree* that is cached in-memory using Java's *soft references* -
+here's where the name Soft Index File Store comes from. This B+ tree
+(called Index) is offloaded on filesystem to single file: in fact, this
+has theoretically similar problems with fragmentation as Single File
+Store - but in practice it shouldn't cause such problems. This index
+file does not need to be persisted - it is purged and rebuilt when the
+cache store restarts, its purpose is only offloading. +
+ +
+The data that should be persisted are stored in a set of files that are
+written in append-only way - that means that if you store this on
+conventional magnetic disk, it does not have to seek when writing a
+burst of entries. It is not stored in a single file but in a set of
+files. When any of these files drops below 50% of usage (the entries are
+marked as removed or overwritten), the file starts being collected,
+moving live entries into another file and in the end removing the old
+file from disk. +
+ +
+Most of the in-memory structures in Soft Index File Store are bounded,
+therefore you don't have to be afraid of OOMEs. You can also configure
+the limits for concurrently open files as well (so that you don't run
+out of file descriptors). +
+
+== How to configure SIFS
+
+The configuration is no different from regular cache store: +
+
+ +
+
+== Implementation details
+
+The Index does not use single file, in fact it can be split into
+multiple segments. That's because the algorithm updating this B+ tree is
+designed as single writer - multiple readers, but that could make the
+writer thread (called 'Index Updater') the bottleneck. Therefore, you
+can set how many segments should the Index be split into (according to
+keys' hashCode()). +
+ +
+Each node in the Index stores 'prefix' of all keys (or rather the
+serialized forms) used in the node in order to reduce the space required
+for the node. This comes with the assumption that the prefixes are often
+similar (e.g. when you use key "user000001" and "user000002"). If you
+can change how the keys are serialized, it is encouraged to move the
+changing part of the key to the end of the serialized data. +
+ +
+The data are written by single thread as well, the 'Log Appender'.
+There's no reason to let threads that access the cache store compete
+over file-system - Log Appender queues the write results, writes them
+into the file and wakes up the waiting thread. There are 2 possibly
+unnecessary context-switches, but in the original design we wanted to
+allow the write request to return only after the data have been fsynced.
+By batching the writes, Log Appender allows this as a configuration
+option - then you can be sure that the data are already on disk when the
+call returns. +
+ +
+When the entry is modified, the Index needs to be updated. The request
+is sent to Index Updater via bounded queue and the newest entry location
+is stored in Temporary Table until this is stored in the Index. The
+updated nodes are eventually offloaded onto disk in this way. +
+
+== Known limitations
+
+Size of a node in the Index is limited, by default it is 4096 bytes,
+though it can be configured. This size also limits the key length (or
+rather the length of the serialized form): you can't use keys longer
+than size of the node - 15 bytes. Moreover, the key length is stored as
+'short', limiting it to 32767 bytes. There's no way how you can use
+longer keys - SIFS throws an exception when the key is longer after
+serialization. +
+ +
+When entries are stored with expiration, SIFS does not discover the a
+file is full of expired entries and the compaction of old data files may
+not be started ever (method AdvancedStore.purgeExpired() is not
+implemented). This can lead to excessive file-system space usage. +
+
+== Future work
+
+What we need to do know is to benchmark SIFS in many configurations and
+set the optimal values as defaults. However, we run mostly synthetic
+benchmarks - and that's where you can help. Let's play with Soft Index
+File Store a bit and tell us what configuration works best for you! +
+ +
+For storing large keys, building the B+ tree of hashCodes could perform
+better that storing the whole keys, though it would need additional
+handling for collisions. Tell us what keys do you use, please! +
+ +
+Currently, each index update needs to be eventually stored, and that
+means one or more writes into the file-system even when this is not
+necessary. In the future, we might try to use phantom references instead
+of soft references to write the Index only when it needs to release some
+memory. However, this requires a lot of further work, so test SIFS today
+and let us now how do you like it! +
+ +

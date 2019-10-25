@@ -1,0 +1,148 @@
+---
+layout: post
+title: Transaction remake in Infinispan 5.1
+date: '2011-10-03T10:32:00.000-07:00'
+author: Mircea Markus
+tags:
+- transactions
+- locking
+- deadlock detection
+- infinispan
+- performance
+modified_time: '2015-09-28T22:22:15.760-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-3726929761213348534
+blogger_orig_url: https://blog.infinispan.org/2011/10/transaction-remake-in-infinispan-51.html
+---
+If you ever used Infinispan in a transactional way you might be very
+interested in this article as it describes some very significant
+improvements in version 5.1 "Brahma" (released with 5.1.Beta1): +
+
+* starting with this release an Infinispan cache can accessed either
+transactionally or non-transactionally. The mixed access mode is no
+longer supported (backward compatibility still maintained, see below).
+There are
+http://www.cis.upenn.edu/acg/papers/cal06_atomic_semantics.pdf[several
+reasons] for going this path, but one of them most important result of
+this decision is a cleaner semantic on how concurrency is managed
+between multiple requestors for the same cache entry.
+* starting with 5.1 the supported transaction models are *optimistic*
+and *pessimistic*. Optimistic model is an improvement over the existing
+default transaction model by completely deferring lock acquisition to
+transaction prepare time. That reduces lock acquisition duration and
+increases throughput; also avoids deadlocks. With pessimistic model,
+cluster wide-locks are being acquired on each write and only being
+released after the transaction completed (see below).
+
+ +
+
+== Transactional or non transactional cache?
+
+ +
+It's up to you as an user to decide weather you want to define a cache
+as transactional or not. By default, infinispan caches are non
+transactional. A cache can be made transactional by changing the
+_transactionMode_ attribute: +
+
+ +
+_transactionMode_ can only take two values: _TRANSACTIONAL_ and
+_NON_TRANSACTIONAL_. Same thing can be also achieved programatically: +
+
+ +
+**Important:**for transactional caches it is required to
+https://docs.jboss.org/author/x/FAY5[configure a
+TransactionManagerLookup]. +
+ +
+
+== Backward compatibility
+
+ +
+The _autoCommit_ attribute was added in order to assure backward
+compatibility. If a cache is transactional and _autoCommit_ is enabled
+(defaults to true) then any call that is performed outside of a
+transaction's scope is transparently wrapped within a transaction. In
+other words Infinispan adds the logic for starting a transaction before
+the call and committing it after the call. +
+So if your code accesses a cache both transactionally and
+non-transactionally, all you have to do when migrating to Infinispan 5.1
+is mark the cache as transactional and enable _autoCommit_ (that's
+actually enabled by default, so just don't disable it :) +
+The _autoCommit_ feature can be managed through configuration: +
+
+ +
+or programatically: +
+
+ +
+ +
+
+== Optimistic Transactions
+
+ +
+With optimistic transactions locks are being acquired at transaction
+prepare time and are only being held up to the point the transaction
+commits (or rollbacks). This is different from the 5.0 default locking
+model where local locks are being acquire on writes and cluster locks
+are being acquired during prepare time. +
+Optimistic transactions can be enabled in the configuration file: +
+
+ +
+or programatically: +
+
+ +
+By default, a transactional cache is optimistic. +
+ +
+
+== Pessimistic Transactions
+
+ +
+From a lock acquisition perspective, pessimistic transactions obtain
+locks on keys at the time the key is written. E.g. +
+
+ +
+When _cache.put(k1,v1)_ returns k1 is locked and no other transaction
+running anywhere in the cluster can write to it. Reading k1 is still
+possible. The lock on k1 is released when the transaction completes
+(commits or rollbacks). +
+ +
+Pessimistic transactions can be enabled in the configuration file: +
+
+ +
+or programatically: +
+
+ +
+ +
+
+== What do I need - pessimistic or optimistic transactions?
+
+ +
+From a use case perspective, optimistic transactions should be used when
+there's not a lot of contention between multiple transactions running at
+the same time. That is because the optimistic transactions rollback if
+data has changed between the time it was read and the time it was
+committed (_writeSkewCheck_). +
+On the other hand, pessimistic transactions might be a better fit when
+there is high contention on the keys and transaction rollbacks are less
+desirable. Pessimistic transactions are more costly by their nature:
+each write operation potentially involves a RPC for lock acquisition. +
+ +
+
+== The path ahead
+
+ +
+This major transaction rework has opened the way for several other
+transaction related improvements: +
+
+* http://community.jboss.org/wiki/SingleNodeLockingModel[Single node
+locking model] is a major step forward in avoiding deadlocks and
+increasing throughput by only acquiring locks on a single node in the
+cluster, disregarding the number of redundant copies (_numOwners_) on
+which data is replicated
+* http://community.jboss.org/wiki/LockReorderingForAvoidingDeadlocks[Lock
+acquisition reordering] is a deadlock avoidance technique that will be
+used for optimistic transactions
+* http://community.jboss.org/wiki/IncrementalOptimisticLocking[Incremental
+locking] is another technique for minimising deadlocks.
+
+ +
+ +
+Stay tuned! +
+Mircea

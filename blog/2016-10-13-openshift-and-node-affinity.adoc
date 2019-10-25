@@ -1,0 +1,146 @@
+---
+layout: post
+title: OpenShift and Node Affinity
+date: '2016-10-13T06:40:00.000-07:00'
+author: Sebastian Łaskawiec
+tags:
+- openshift
+- affinity
+modified_time: '2016-10-13T06:41:31.067-07:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-3808154661837147870
+blogger_orig_url: https://blog.infinispan.org/2016/10/openshift-and-node-affinity.html
+---
+OpenShift (and Kubernetes) has a great feature called
+https://docs.openshift.org/latest/admin_guide/scheduler.html#affinity[Affinity].
+In some scenarios, it might be beneficial to configure it along with
+http://infinispan.org/docs/stable/user_guide/user_guide.html#ServerHinting[Infinispan
+node affinity]. +
+ +
+Before we start... this tutorial is heavily based on our
+http://blog.infinispan.org/2016/08/running-infinispan-cluster-on-openshift.html[previous
+blog post about deploying Infinispan on Openshift] and OpenShift
+https://docs.openshift.org/latest/admin_guide/scheduler.html[Scheduler
+functionality]. It is highly recommended to read those articles before
+continuing this tutorial. +
+
+== 
+
+== 
+
+==  +
+
+== How does the Affinity feature work... in short?
+
+ +
+
+In order to decide on which node given Pod should be running, OpenShift
+looks at so called
+https://docs.openshift.org/latest/admin_guide/scheduler.html#configurable-predicates[Predicates]
+and
+https://docs.openshift.org/latest/admin_guide/scheduler.html#available-priority-functions[Priority
+Functions]. A predicate must match the one configured in
+_DeploymentConfiguration_ and Priority Function is responsible for
+choosing the best node for running Pods.
+
+ +
+
+Let's assume that we have a sample policy (similar to
+https://docs.openshift.org/latest/admin_guide/scheduler.html#scheduler-sample-policies[one
+provided in OpenShift manual]), that uses _site_ as a Predicate along
+with _rack and machine_ as Priority Functions. Now let's assume we have
+two nodes:
+
+* Node 1 - site=EU, rack=R1, machine=VM1
+* Node 2 - site=US, rack=R2, machine=VM2
+
+And two DeploymentConfiguration with Node Selectors (this tells
+OpenShift on which nodes given _DeploymentConfiguration_ wishes to run)
+defined as follows:
+
+* DeploymentConfiguration 1 - site=EU, rack=R5, machine=VM5
+* DeploymentConfiguration 2 - site=JAP, rack=R5, machine=VM5
+
+With the above example only DeploymentConfiguration 1 will be scheduled
+(on Node 1), since _site_ matches the predicate. In this case _rack_ and
+_machine_ parameters are not used (because we have only one node).
+
+ +
+
+Note that the default OpenShift's configuration uses _region_ (as a
+Predicate) and _zone_ (as a Priority Function). However it can be
+reconfigured
+https://docs.openshift.org/latest/admin_guide/scheduler.html[very
+easily]. 
+
+ +
+
+== 
+
+== And I need it because....
+
+ +
+
+Some OpenShift deployments might span multiple racks in a data center or
+even multiple sites. It is important to tell Infinispan where physical
+machines are located, which will allow to choose better nodes for
+backing up your data (in distribution mode). 
+
+ +
+
+As the matter of fact, Infinispan uses _site_, _rack_ and _machine_. The
+main goal is to avoid backing up data on the same host__.__
+
+ +
+
+=== 
+
+=== The implementation
+
+ +
+
+The implementation is pretty straightforward but there are several
+gotchas. 
+
+ +
+
+The first one is that OpenShift uses _regions_ and _zones_ by default
+and Infinispan uses _sites_, _racks_ and _machines_. The good news is
+that all those three are optional, so you have two options - reuse
+existing _region_ and _zone_ (map them to rack and site for example)_,_
+or adjust OpenShift scheduler settings. In my example I used the former
+approach.
+
+ +
+
+The second one is the need of hardcoding those parameters into
+_DeploymentConfiguration_. Unfortunately Node Selectors are not exposed
+through http://kubernetes.io/docs/user-guide/downward-api/[Downward
+API], so there's no other way.
+
+ +
+
+So let's have a look at our DeploymentConfiguration:
+
+ +
+
+* Line 26 - Zone _default_ used as a rack
+* Line 27 - Region _primary_ used as a site
+* Lines 57 - 59 - Node Selector for scheduling Pods
+
+ +
+
+ +
+
+=== Conclusion
+
+ +
+
+Combining OpenShift Affinity Service and Infinispan Server Hinting
+allows to optimize data distribution across the cluster. Keep in mind
+that your configuration might be totally different (OpenShift Scheduler
+is a highly configurable thing). But once you understand how it works,
+you can adjust the hinting strategy for your needs. 
+
+ +
+
+Happy Scaling!

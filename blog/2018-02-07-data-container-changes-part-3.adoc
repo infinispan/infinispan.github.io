@@ -1,0 +1,141 @@
+---
+layout: post
+title: 'Data Container Changes Part 3 '
+date: '2018-02-07T23:00:00.000-08:00'
+author: Unknown
+tags:
+- off-heap
+- '9.2'
+- eviction
+- configuration
+modified_time: '2018-02-07T23:00:16.149-08:00'
+blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-402072241702515040
+blogger_orig_url: https://blog.infinispan.org/2018/02/data-container-changes-part-3.html
+---
+Just over a year ago we detailed some improvements to the data
+container, including the availability of Off Heap storage in
+http://blog.infinispan.org/2017/01/data-container-changes-part-2.html[part
+2]. There have been quite a
+https://issues.jboss.org/browse/ISPN-8454?jql=project%20%3D%20ISPN%20AND%20resolution%20%3D%20Done%20AND%20component%20%3D%20%22Off%20Heap%22[few
+fixes] for Off Heap especially around memory size estimations with
+Infinispan 9.2. There is also a brand new "eviction" strategy that has a
+bit of a twist. +
+ +
+
+== Eviction Strategy Resurrected
+
+ +
+Some of you may have remembered that Infinispan used to have an eviction
+strategy. This was originally used to decide what eviction algorithm was
+used, such as LRU or LIRS. This was removed when the new data container
+was introduced. Well... it is back again, but it will be used for a
+slightly different purpose. +
+ +
+The eviction strategy still has *NONE* & *MANUAL* which are exactly the
+same as before. +
+ +
+
+=== Remove strategy
+
+ +
+There is a new *REMOVE* strategy that is configured by default if
+eviction size is greater than 0. This strategy essentially enables
+eviction and removes old entries as new ones are inserted. +
+ +
+
+=== Exception strategy
+
+ +
+We have a brand new "eviction" strategy that provides new functionality.
+It is unique in that it doesn't really evict, but rather prevent entries
+from being inserted.  This is the *EXCEPTION* strategy which blocks new
+entries from being inserted (or updated if they exceed memory size) by
+throwing a ContainerFullException when the size is reached. +
+ +
+This strategy only works on transactional caches that always have 2
+phase commit enabled. This can be useful if you want to always have only
+so many entries and to give priority to currently inserted entries. This
+strategy has better performance than *REMOVE* since it doesn't have to
+bookkeep all entries to know what to remove as well. +
+ +
+Note this strategy works across all storage types: OBJECT, BINARY and
+OFFHEAP and works with both MEMORY and SIZE based "eviction types. This
+makes it just as flexible as the *REMOVE* eviction strategy and hope it
+finds some uses by people. +
+ +
+
+=== How to Configure EXCEPTION Strategy
+
+ +
+This is how you can enable MEMORY based EXCEPTION "eviction" using xml
+configuration. +
+
+This is how you configure the same thing but programmatically. +
+
+ +
+
+== Off Heap Memory Size Allocations & Estimations
+
+ +
+Before the off heap memory based eviction only counted the allocated
+memory chunks for the stored entries themselves. This unfortunately
+meant that the size estimate is a bit less than what it should have
+been. There are a few things that we improved since then, including
+reducing the overhead of our allocations. Note all of the below things
+require no configuration changes and users should just get the
+benefits. +
+ +
+
+=== Reduced per object overhead
+
+ +
+Prior the overhead for immutable entries with eviction, Infinispan
+itself use to allocate 2 chunks of memory with one being 28 bytes and
+adding 8 bytes to the actual object. Now we only allocate an additional
+16 bytes to the object memory block itself (saving the extra allocation
+and requiring less on the object) when using eviction. Due to memory
+allocation overhead this saves much more than the 20 bytes as the
+allocator also has its own overhead. +
+ +
+We also shaved off 4 bytes off of all entries if expiration was not
+used, meaning overhead for an immutable cache entry without eviction
+only requires 21 bytes of overhead from ISPN when using off heap
+(retained in the same allocation block). +
+ +
+
+=== Per allocation memory sizing estimations
+
+ +
+Internally ISPN allocates a new chunk of memory for each object. This is
+done currently to leverage the underlying OS allocator to handle
+features such as fragmentation or compaction (if the allocator does so).
+Unfortunately this means that each object has its own overhead from the
+allocator. Thus we now take that into account when estimating the memory
+used by adding 8 bytes overhead and aligning to 16 bytes. This seems to
+be a pretty common way for allocators to work. If possible we could
+allow for tweaking these values, but they are hard coded currently. +
+ +
+
+=== Accounting for Address Count
+
+ +
+As was mentioned in the prior blog post about off heap, we allocate a
+single block of memory to hold address counters for our lookups when
+using Off Heap. Unfortunately we didn't account for that in the memory
+eviction count. We now account for that in the eviction mechanism, thus
+your memory eviction size must be greater than the address count rounded
+up to the nearest power of 2, multiplied by 8. What a mouthful... +
+ +
+
+=== Wrap up
+
+ +
+Off heap has been overhauled quite a bit to try to reduce memory usage,
+fix bugs and more accurately estimate the memory used. We hope that
+along with the new eviction strategy are welcome additions to various
+applications. +
+ +
+Please make sure to contact us if you have any feedback, find any bugs
+or have any questions! You can get in contact with various places listed
+on our http://infinispan.org/community/[website]. +
+ +
