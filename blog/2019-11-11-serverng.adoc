@@ -1,0 +1,88 @@
+---
+layout: blog
+title: Infinispan's new server
+date: '2019-11-01T12:00:00.000-00:00'
+author: Tristan Tarrant
+tags: [ "server" ]
+---
+One of the biggest changes in Infinispan 10 is the new server, which replaces the WildFly-based server we had been using up until 9.x.
+
+This is the first of a series of blog posts which will describe the new server, how to use it, how to configure it and how to deploy it in your environment. More specifically, this post will focus mostly on the reasons behind the change, while the next ones will be of a more practical nature.
+
+== A history of servers
+
+Infinispan has had a server implementing the Hot Rod protocol since 4.1. Originally it was just a main class which bootstrapped the server protocol. It was configured via the same configuration file used by the embedded library, it had no security and only handled Hot Rod.
+
+Over time both a RESTful HTTP and a Memcached protocol were added and could be bootstrapped in the same way.
+
+While the server bootstrap code was trivial, it was not going to scale to support all the things we needed (security, management, provisioning, etc). We therefore decided to build our next server on top of the very robust foundation provided by WildFly (aka, the application server previously known as JBoss AS 7), which made its first appearance in 5.3.
+
+Integration with WildFly's management model was not trivial but it gave us all of the things we were looking for and more, such as deployments, data sources, CLI, console, etc. It also came with a way to provision multiple nodes and manage them from a central controller, i.e. domain mode. All of these facilities however came at the cost of a lot of extra integration code to maintain as well as a larger footprint, both in terms of memory and storage use, caused by a number of subsystems which we had to carry along, even though we didn't use them directly.
+
+== A different server
+
+Fast-forward several versions, and the computing landscape has changed considerably: services are containerized, they are provisioned and managed via advanced orchestration tools like Kubernetes or via configuration management tools like Ansible and the model we were using was overlapping (if not altogether clashing) with the container model, where global configuration is immutable and managed externally.
+
+With the above in mind, we have therefore decided to _reboot_ our server implementation. During planning and development it has been known affectionately as _ServerNG_, but nowadays it is just the _Infinispan Server_. The WildFly-based server is now the _legacy server_.
+
+=== Configuration
+
+The new server separates global configuration (clustering, endpoints, security) from the configuration of dynamic resources like caches, counters, etc. This means that global configuration can be made immutable while the ,mutable configuration is stored separately in the global persistence location. In a containerized environment you will place the persistence location onto a volume that will survive restarts.
+
+= A quick two-node cluster with Docker
+
+Starting a two-node cluster using the latest version of the server image is easy:
+
+----
+$ docker run --name ispn1 --hostname ispn1 -e USER=admin -e PASS=admin -p 11222:11222 infinispan/server
+$ docker run --name ispn2 --hostname ispn2 -e USER=admin -e PASS=admin -p 11322:11222 infinispan/server
+----
+
+The two nodes will discover each other, as can be seen from the logs:
+
+----
+15:58:21,201 INFO  [org.infinispan.CLUSTER] (jgroups-5,ispn-1-42736) ISPN000094: Received new cluster view for channel infinispan: [ispn-1-42736|1] (2) [ispn-1-42736, ispn-2-51789]
+15:58:21,206 INFO  [org.infinispan.CLUSTER] (jgroups-5,ispn-1-42736) ISPN100000: Node ispn-2-51789 joined the cluster
+----
+
+Next we will connect to the cluster using the CLI:
+
+----
+$ docker run -it --rm infinispan/server /opt/infinispan/bin/cli.sh
+[disconnected]> connect http://172.17.0.2:11222
+Username: admin
+Password: *****
+[ispn-1-42736@infinispan//containers/DefaultCacheManager]>
+----
+
+Next we will create a distributed cache and select it for future operations:
+
+----
+[ispn-1-42736@infinispan//containers/DefaultCacheManager]> create cache --template=org.infinispan.DIST_SYNC distcache
+[ispn-1-42736@infinispan//containers/DefaultCacheManager]> cache distcache
+[ispn-1-42736@infinispan//containers/DefaultCacheManager/caches/distcache]>
+----
+
+Let's insert some data now:
+
+----
+[ispn-1-42736@infinispan//containers/DefaultCacheManager/caches/distcache]> put k1 v1
+[ispn-1-42736@infinispan//containers/DefaultCacheManager/caches/distcache]> put k2 v2
+[ispn-1-42736@infinispan//containers/DefaultCacheManager/caches/distcache]> ls
+k2
+k1
+[ispn-1-42736@infinispan//containers/DefaultCacheManager/caches/distcache]> get k1
+v1
+----
+
+Now let's use the RESTful API to fetch one of the entries:
+
+----
+$ curl --digest -u admin:admin http://localhost:11222/rest/v2/caches/distcache/k2
+v2
+----
+
+Since we didn't map persistent volumes to our containers, both the cache and its contents will be lost when we terminate the containers.
+
+In the next blog post we will look at configuration and persistence in more depth.
+
