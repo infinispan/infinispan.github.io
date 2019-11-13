@@ -476,10 +476,21 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 </ul>
 </li>
-<li><a href="#operator_reference">5. Reference</a>
+<li><a href="#configuring_backup_sites">5. Configuring Cross-Site Replication</a>
 <ul class="sectlevel2">
-<li><a href="#ref_services-operator_reference">5.1. Services</a></li>
-<li><a href="#ref_pv-operator_reference">5.2. Persistent Volume Claims</a></li>
+<li><a href="#creating_minikube_secrets-xsite">5.1. Creating Minikube Site Access Secrets</a></li>
+<li><a href="#creating_sa_tokens-xsite">5.2. Creating Service Account Tokens</a></li>
+<li><a href="#configuring_backup_sites-xsite">5.3. Adding Site Definitions to Infinispan</a>
+<ul class="sectlevel3">
+<li><a href="#ref_xsite_crd-xsite">5.3.1. Cross-Site Replication Resources</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#operator_reference">6. Reference</a>
+<ul class="sectlevel2">
+<li><a href="#ref_services-operator_reference">6.1. Services</a></li>
+<li><a href="#ref_pv-operator_reference">6.2. Persistent Volume Claims</a></li>
 </ul>
 </li>
 </ul>
@@ -647,6 +658,10 @@ spec:
 </tr>
 </table>
 </div>
+<div class="paragraph">
+<div class="title">Reference</div>
+<p><a href="https://docs.openshift.com/container-platform/4.2/operators/crds/crd-managing-resources-from-crds.html">Managing resources from Custom Resource Definitions</a>.</p>
+</div>
 <div class="sect3">
 <h4 id="container_resources-create_cluster">2.2.1. Pod Resources</h4>
 <div class="paragraph">
@@ -806,6 +821,25 @@ ISPN000094: Received new cluster view for channel infinispan: \
 </li>
 </ul>
 </div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Use <code>oc wait</code> with the <code>wellFormed</code> condition for automated scripts.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ oc wait --for condition=wellFormed --timeout=240s infinispan/example-infinispan</code></pre>
+</div>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </div>
 </div>
 </div>
@@ -882,7 +916,7 @@ credentials:
 <li>
 <p>Create an authentication secret.</p>
 <div class="paragraph">
-<p>For example, to create <code>connect_secret.yaml</code> see <a href="#ref_auth_secret-cluster_auth">Credentials Secret</a>.</p>
+<p>For example, to create <code>connect_secret.yaml</code> see <a href="#ref_auth_secret-auth">Credentials Secret</a>.</p>
 </div>
 </li>
 <li>
@@ -1200,13 +1234,316 @@ data:
 </div>
 </div>
 <div class="sect1">
-<h2 id="operator_reference">5. Reference</h2>
+<h2 id="configuring_backup_sites">5. Configuring Cross-Site Replication</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan allows you to back up data across geographic locations. For
+example, you have a Infinispan cluster running on Red Hat OpenShift in a data
+center in New York (SiteA). You have another Infinispan cluster running on
+Red Hat OpenShift in a data center in San Francisco (SiteB).</p>
+</div>
+<div class="paragraph">
+<p>Configuring cross-site replication enables the Infinispan cluster at SiteA to
+back up data to the Infinispan cluster at SiteB.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Either install the Infinispan Operator from <a href="https://www.operatorhub.io/">OperatorHub.io</a> or <a href="#deploying_operator_manually">deploy it manually</a>.</p>
+</li>
+<li>
+<p>Have a <code>kubectl</code> client in your <code>$PATH</code>.</p>
+</li>
+<li>
+<p>If you are running on OpenShift, ensure that a load balancer service is available. This service allows external access to OpenShift Container Platform clusters. See <a href="https://docs.openshift.com/container-platform/4.2/networking/configuring-ingress-cluster-traffic/configuring-ingress-cluster-traffic-load-balancer.html">Configuring ingress cluster traffic using a load balancer</a>.</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="creating_minikube_secrets-xsite">5.1. Creating Minikube Site Access Secrets</h3>
+<div class="paragraph">
+<p>If you run the Infinispan Operator in Minikube, you should create secrets that
+contain the files that allow different instances of Minikube to authenticate
+with each other.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create secrets on each site that contain <code>ca.crt</code>, <code>client.crt</code>, and <code>client.key</code> from your Minikube installation.</p>
+<div class="paragraph">
+<p>For example, do the following on SiteB:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>kubectl create secret generic site-a-secret \
+    --from-file=certificate-authority=/opt/minikube/.minikube/ca.crt \
+    --from-file=client-certificate=/opt/minikube/.minikube/client.crt \
+    --from-file=client-key=/opt/minikube/.minikube/client.key</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="creating_sa_tokens-xsite">5.2. Creating Service Account Tokens</h3>
+<div class="paragraph">
+<p>Traffic between independent OpenShift installations occurs through a Kubernetes API. OpenShift Container Platform clusters use tokens to authenticate with and access the API.</p>
+</div>
+<div class="paragraph">
+<p>To enable cross-site replication between Infinispan clusters you must add tokens to the namespace on each site. For example, SiteA needs a secret with the token for SiteB. SiteB also needs a secret with the token for SiteA.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create service account tokens on each OpenShift instance.</p>
+<div class="paragraph">
+<p>For example, on SiteA create a token for SiteB as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ oc create sa site-a
+serviceaccount/site-a created</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Find the token in the list of secrets in your OpenShift namespace.</p>
+<div class="paragraph">
+<p>The following example shows two <code>site-a</code> tokens:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ oc get secrets
+
+NAME                       TYPE
+...
+site-a-token-8j6d8         kubernetes.io/service-account-token
+site-a-token-g2brv         kubernetes.io/service-account-token</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Retrieve a token to allow backup sites to authenticate with the local
+OpenShift cluster.</p>
+<div class="paragraph">
+<p>The following example shows an encoded string in the <code>token</code> field:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ oc describe secret site-a-token-8j6d8
+
+Name:         site-a-token-8j6d8
+Namespace:    local-operators
+Labels:       &lt;none&gt;
+Annotations:  kubernetes.io/created-by: openshift.io/create-dockercfg-secrets
+              kubernetes.io/service-account.name: site-a
+              kubernetes.io/service-account.uid: c22bc8d6-ffd8-11e9-adb6-0a8e23c49339
+
+Type:  kubernetes.io/service-account-token
+
+Data
+====
+ca.crt:          4634 bytes
+namespace:       15 bytes
+service-ca.crt:  5750 bytes
+token:           eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9...</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Create secrets on each site that contain service account tokens for the corresponding backup site.</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Log in to OpenShift Container Platform at SiteB.</p>
+</li>
+<li>
+<p>Add the service account token to a <code>site-a-token</code> secret.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>oc create secret generic site-a-token --from-literal=token=eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9...</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Repeat the preceding steps to create a <code>site-b-token</code> secret on SiteA.</p>
+</li>
+</ol>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>After you add service account tokens to each backup site, the
+OpenShift instances can authenticate with each other so that Infinispan
+clusters can form cross-site views.</p>
+</div>
+<div class="paragraph">
+<div class="title">Reference</div>
+<p><a href="https://docs.openshift.com/container-platform/4.2/authentication/using-service-accounts-in-applications.html">Using service accounts in applications</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuring_backup_sites-xsite">5.3. Adding Site Definitions to Infinispan</h3>
+<div class="paragraph">
+<p>Configure Infinispan clusters as sites so that they can communicate over a
+dedicated JGroups transport channel for replicating data.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create custom resources for Infinispan at each site.</p>
+<div class="paragraph">
+<p>You must configure each site as a backup for the other. For example, you create
+<code>site_a.yaml</code> to configure SiteA as the local site and SiteB as the backup
+site. You must also then create <code>site_b.yaml</code> to configure SiteB as the local
+site and SiteA as the backup site. See <a href="#ref_xsite_crd-xsite">Cross-Site Replication Resources</a>.</p>
+</div>
+</li>
+<li>
+<p>Configure Infinispan clusters at each site, for example:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Log in to OpenShift Container Platform at SiteA.</p>
+</li>
+<li>
+<p>Apply the custom resources for SiteA.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ oc apply -f site_a.yaml</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Log in to OpenShift Container Platform at SiteB.</p>
+</li>
+<li>
+<p>Apply the custom resources for SiteB.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ oc apply -f site_b.yaml</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>Verify that Infinispan clusters form a cross-site view.</p>
+<div class="paragraph">
+<p>For example, do the following on SiteA:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ oc logs example-infinispan-0 | grep x-site
+
+INFO  [org.infinispan.XSITE] (jgroups-5,example-infinispan-0-&lt;id&gt;) ISPN000439: Received new x-site view: [SiteB]
+INFO  [org.infinispan.XSITE] (jgroups-7,example-infinispan-0-&lt;id&gt;) ISPN000439: Received new x-site view: [SiteB, SiteA]</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<div class="sect3">
+<h4 id="ref_xsite_crd-xsite">5.3.1. Cross-Site Replication Resources</h4>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>spec:
+  ...
+  service:
+    type: DataGrid <i class="conum" data-value="1"></i><b>(1)</b>
+    sites:
+      local:
+        name: SiteA <i class="conum" data-value="2"></i><b>(2)</b>
+        expose:
+          type: LoadBalancer <i class="conum" data-value="3"></i><b>(3)</b>
+      backups:
+      - name: SiteB <i class="conum" data-value="4"></i><b>(4)</b>
+        url: openshift://api.site-b.devcluster.openshift.com:6443 <i class="conum" data-value="5"></i><b>(5)</b>
+        secretName: site-b-token <i class="conum" data-value="6"></i><b>(6)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>specifies the DataGrid service. Infinispan supports cross-site replication with the DataGrid service only.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>names the site where the Infinispan cluster runs, the local site.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>defines the externally exposed service.
+<div class="ulist">
+<ul>
+<li>
+<p>Use <code>NodePort</code> for local clusters on the same network. For example, if you use Minikube for testing purposes.</p>
+</li>
+<li>
+<p>Use <code>LoadBalancer</code> for independent OpenShift clusters.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>names the site to which the Infinispan cluster replicates data, the backup site.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>specifies the URL to access the backup site.
+<div class="ulist">
+<ul>
+<li>
+<p>Use <code>minikube://</code> if the backup site is a Minikube instance.</p>
+</li>
+<li>
+<p>Use <code>openshift://</code> if the backup site is an OpenShift cluster. You should specify the URL of the Kubernetes API for the backup site.</p>
+</li>
+</ul>
+</div></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>specifies the secret to access backup sites.
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This secret contains different authentication objects, depending on your
+Kubernetes environment.</p>
+</div>
+</td>
+</tr>
+</table>
+</div></td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="operator_reference">6. Reference</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Find useful information for Infinispan clusters that you create with the Infinispan Operator.</p>
 </div>
 <div class="sect2">
-<h3 id="ref_services-operator_reference">5.1. Services</h3>
+<h3 id="ref_services-operator_reference">6.1. Services</h3>
 <div class="paragraph">
 <p>The Infinispan Operator automatically creates services to route network traffic.
 These services use the names that you give to your Infinispan clusters.</p>
@@ -1288,7 +1625,7 @@ These services use the names that you give to your Infinispan clusters.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="ref_pv-operator_reference">5.2. Persistent Volume Claims</h3>
+<h3 id="ref_pv-operator_reference">6.2. Persistent Volume Claims</h3>
 <div class="paragraph">
 <p>The Infinispan Operator creates persistent volume claims for each Infinispan pod at:<br>
 <code>/opt/infinispan/server/data</code></p>
@@ -1315,7 +1652,7 @@ These services use the names that you give to your Infinispan clusters.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2019-10-28 15:15:08 UTC
+Last updated 2019-11-11 13:19:26 UTC
 </div>
 </div>
 </body>
