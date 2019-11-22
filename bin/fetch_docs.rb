@@ -69,7 +69,8 @@ def get_docs(tmp, name, repo, branch, loc, docroot, docbase, verbose, attr_heade
 end
 
 def extract_maven_artifact(artifact, target)
-  %x( mvn org.apache.maven.plugins:maven-dependency-plugin:2.10:copy -DoutputDirectory=#{target} -DrepoUrl=https://repository.jboss.org/nexus/content/groups/public-jboss/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
+  puts "Downloading #{artifact} to #{target}"
+  %x( mvn org.apache.maven.plugins:maven-dependency-plugin:3.1.1:copy -DoutputDirectory=#{target} -DrepoUrl=https://repository.jboss.org/nexus/content/groups/public-jboss/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
   %x( unzip -q #{target}/*.zip -d #{target} )
   FileUtils.rm Dir.glob("#{target}/*.zip")
 end
