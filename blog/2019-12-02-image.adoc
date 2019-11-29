@@ -1,0 +1,101 @@
+---
+layout: blog
+title: Infinispan's new image
+date: '2019-12-02T12:00:00.000-00:00'
+author: Ryan Emerson
+tags: [ "docker" ]
+---
+Infinispan 10 introduced a https://infinispan.org/blog/2019/11/11/serverng/[new server], which does not utilise the same
+launch commands and configuration as the legacy 9.4 wildfly based server. Therefore, we decided that this was an excellent
+opportunity to rewrite our container image from scratch to better suite the capabilities of the new server and to provide
+all the functionality required by the https://infinispan.org/blog/2019/11/25/infinispan-operator-1/[Infinispan Operator].
+
+This post focuses on the server image's architecture. Future blog posts will focus on more advanced configurations, as well as
+example usage and deployment scenarios such as deploying a cluster using Kubernetes StatefulSets.
+
+== Show me the code!
+The source code for the Infinispan image has a new home. The image can be found at https://github.com/infinispan/infinispan-images.
+Currently this repository only contains the server image, however our intention is for this to also be the home for all
+future Infinispan related images.
+
+=== Where's the Dockerfile?
+The most noticable change when looking at the repository is that there is no `Dockerfile` in the source tree. This is because
+we decided to utilise the open-source tool https://cekit.io/[CEKit] to build our images. CEKit is an image creation tool
+that allows container images to be created using multiple build engines (e.g. docker, https://buildah.io/[Buildah], https://podman.io/[Podman])
+with a single configuration. Installation instructions can be found https://docs.cekit.io/en/latest/handbook/installation/instructions.html[here],
+but the basic command to create a Docker based image is as follows.
+
+----
+cekit build docker
+----
+
+CEKit leverages `.yaml` files for all configuration, opposed to a Dockerfile, as this allows for build time overriding of
+image properties. For example, with CEKit it's possible to override the server artifact version without modifying any files,
+instead the following is passed as a build parameter.
+
+----
+cekit build --overrides '{"artifacts": [{"name": "server.zip", "path": "infinispan-server-10.0.0-SNAPSHOT.zip"}]}' docker
+----
+
+More detailed instructions about how to build the server image from source can be found in the
+https://github.com/infinispan/infinispan-images/tree/10.0.x#creating-images[image's documentation].
+
+== Ok so where can I get a pre-built image?
+Previously the Infinispan images were deployed exclusively under the `jboss` namespace at https://hub.docker.com/r/jboss/infinispan-server/[jboss/infinispan-server],
+however this repository has now been deprecated and will be removed eventually.
+
+Instead, all Infinispan images will now be released under the `infinispan` namespace and are hosted at both https://quay.io/infinispan/server[Quay.io]
+and https://hub.docker.com/r/infinispan/server[Docker Hub], as `quay.io/infinispan/server` and `infinispan/server`.
+
+== Getting Started
+To get started with infinispan server on your local machine simply execute:
+
+----
+docker run -p 11222:11222 infinispan/server
+----
+
+By default the image has authentication enabled on all exposed endpoints. When executing the above command the image
+automatically generates a username/password combo, prints the values to stdout and then starts the Infinispan server with
+the authenticated Hotrod and Rest endpoints exposed on port 11222. Therefore, it's necessary to utilise the printed
+credentials when attempting to access the exposed endpoints via clients.
+
+It's also possible to provide a username/password combination via environment variables like so:
+
+----
+docker run -p 11222:11222 -e USER="Titus Bramble" -e PASS="Shambles" infinispan/server
+----
+
+
+=== Connecting via Hotrod
+Using the credentials passed in the command above, it is now possible to connect via the HotRod client using the following
+`hotrod-client.properties` file. Note, that the following SASL properties must be configured on your client, with the
+username and password properties changed as required, otherwise the connection will fail:
+
+----
+infinispan.remote.auth-realm=default
+infinispan.remote.auth-server-name=infinispan
+infinispan.remote.auth-username=Titus Bramble
+infinispan.remote.auth-password=Shambles
+----
+
+=== Connecting via REST
+The REST endpoint is configured to utilise the DIGEST protocol, therefore it's necessary for the HTTP client to authenticate
+requests. For example, the name of all caches can be retrieved via the following curl command:
+
+----
+ curl --digest -u "Titus Bramble:Shambles" http://localhost:11222/rest/v2/cache
+----
+
+
+== Further Reading
+For more detailed information abou how to use the image, please consult the
+https://github.com/infinispan/infinispan-images/blob/10.0.x/README.md[official documentation].
+
+In the next blog post we will look at how the server can be configured for more advanced use-cases by supplying configuration
+and identity `.yaml` files.
+
+== Get it, Use it, Ask us!
+Please http://infinispan.org/download/[download],
+https://issues.jboss.org/projects/ISPN[report bugs],
+https://infinispan.zulipchat.com/[chat with us],
+ask questions on https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest[StackOverflow].
