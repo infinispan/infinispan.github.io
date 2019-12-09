@@ -16,4 +16,6 @@ gem 'json', '~> 1.8.2'
 gem 'git', '~> 1.2.6'
 gem 'optimist', '~> 3.0.0'
 gem 'coderay', '~> 1.1.0'
+gem 'opal', '~> 0.10.5'
+gem 'pandoc-ruby', '~> 2.0.2'
 
