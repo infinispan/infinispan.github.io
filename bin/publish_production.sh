@@ -1,4 +1,9 @@
 #!/bin/sh
+
+if [ -x "/usr/bin/scl_source" ]; then
+  source scl_source enable rh-ruby22
+fi
+
 rm -rf _site
 bin/fetch_docs.rb
 
