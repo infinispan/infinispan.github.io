@@ -505,7 +505,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#creating_minikube_secrets-xsite">8.1. Creating Minikube Site Access Secrets</a></li>
 <li><a href="#creating_sa_tokens-xsite">8.2. Creating Service Account Tokens</a></li>
-<li><a href="#configuring_backup_sites-xsite">8.3. Adding Site Definitions to Infinispan</a>
+<li><a href="#configuring_sites-xsite">8.3. Adding Backup Locations to Infinispan Clusters</a>
 <ul class="sectlevel3">
 <li><a href="#ref_xsite_crd-xsite">8.3.1. Cross-Site Replication Resources</a></li>
 </ul>
@@ -525,6 +525,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#operator_reference">10. Reference</a>
 <ul class="sectlevel2">
 <li><a href="#ref_services-reference">10.1. Services</a></li>
+<li><a href="#ref_upgrades-reference">10.2. Infinispan Operator Upgrades</a></li>
 </ul>
 </li>
 </ul>
@@ -1265,6 +1266,17 @@ and create new ones.</p>
 </tr>
 </table>
 </div>
+<div class="paragraph">
+<div class="title">Garbage collection logging</div>
+<p>By default, the Infinispan Operator does not log garbage collection (GC) messages.
+You can optionally add the following JVM options to direct GC messages to
+stdout:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>extraJvmOpts: "-Xlog:gc*:stdout:time,level,tags"</code></pre>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="storage_resources-pods">4.2. Storage Resources</h3>
@@ -1760,10 +1772,10 @@ Infinispan to use it for endpoint encryption.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="#ref_tls_cert_secret-security_endpoints">Certificate Secret</a></p>
+<p><a href="#ref_tls_cert_secret-security">Certificate Secret</a></p>
 </li>
 <li>
-<p><a href="#ref_tls_cert_secret-security_endpoints">Keystore Secret</a></p>
+<p><a href="#ref_tls_keystore_secret-security">Keystore Secret</a></p>
 </li>
 </ul>
 </div>
@@ -1834,14 +1846,14 @@ data:
 <h2 id="configuring_backup_sites">8. Configuring Cross-Site Replication</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan allows you to back up data across geographic locations. For
-example, you have a Infinispan cluster running on Red Hat OpenShift in a data
-center in New York (SiteA). You have another Infinispan cluster running on
-Red Hat OpenShift in a data center in San Francisco (SiteB).</p>
+<p>Set up cross-site replication to back up data between Infinispan clusters
+running in different locations.</p>
 </div>
 <div class="paragraph">
-<p>Configuring cross-site replication enables the Infinispan cluster at SiteA to
-back up data to the Infinispan cluster at SiteB.</p>
+<p>For example, you use the Infinispan Operator to manage a Infinispan cluster at a
+data center in London, <strong>LON</strong>. At another data center in New York City,
+<strong>NYC</strong>, you also use the Infinispan Operator to manage a Infinispan cluster. In
+this case, you can add <strong>LON</strong> and <strong>NYC</strong> as backup locations for each other.</p>
 </div>
 <div class="ulist">
 <div class="title">Prerequisites</div>
@@ -1884,7 +1896,7 @@ with each other.</p>
 <p>Traffic between independent OpenShift installations occurs through a Kubernetes API. OpenShift Container Platform clusters use tokens to authenticate with and access the API.</p>
 </div>
 <div class="paragraph">
-<p>To enable cross-site replication between Infinispan clusters you must add tokens to the namespace on each site. For example, SiteA needs a secret with the token for SiteB. SiteB also needs a secret with the token for SiteA.</p>
+<p>To enable cross-site replication between Infinispan clusters you must add tokens to the namespace on each site. For example, <strong>LON</strong> needs a secret with the token for <strong>NYC</strong>. <strong>NYC</strong> also needs a secret with the token for <strong>LON</strong>.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -1892,19 +1904,19 @@ with each other.</p>
 <li>
 <p>Create service account tokens on each OpenShift instance.</p>
 <div class="paragraph">
-<p>For example, on SiteA create a token for SiteB as follows:</p>
+<p>For example, on <strong>LON</strong> create a token for <strong>NYC</strong> as follows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>$ oc create sa site-a
-serviceaccount/site-a created</code></pre>
+<pre class="highlight nowrap"><code>$ oc create sa lon
+serviceaccount/lon created</code></pre>
 </div>
 </div>
 </li>
 <li>
 <p>Find the token in the list of secrets in your OpenShift namespace.</p>
 <div class="paragraph">
-<p>The following example shows two <code>site-a</code> tokens:</p>
+<p>The following example shows two <code>lon</code> tokens:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1912,26 +1924,26 @@ serviceaccount/site-a created</code></pre>
 
 NAME                       TYPE
 ...
-site-a-token-8j6d8         kubernetes.io/service-account-token
-site-a-token-g2brv         kubernetes.io/service-account-token</code></pre>
+lon-token-8j6d8         kubernetes.io/service-account-token
+lon-token-g2brv         kubernetes.io/service-account-token</code></pre>
 </div>
 </div>
 </li>
 <li>
-<p>Retrieve a token to allow backup sites to authenticate with the local
+<p>Retrieve a token to allow backup locations to authenticate with the local
 OpenShift cluster.</p>
 <div class="paragraph">
 <p>The following example shows an encoded string in the <code>token</code> field:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>$ oc describe secret site-a-token-8j6d8
+<pre class="highlight nowrap"><code>$ oc describe secret lon-token-8j6d8
 
-Name:         site-a-token-8j6d8
+Name:         lon-token-8j6d8
 Namespace:    local-operators
 Labels:       &lt;none&gt;
 Annotations:  kubernetes.io/created-by: openshift.io/create-dockercfg-secrets
-              kubernetes.io/service-account.name: site-a
+              kubernetes.io/service-account.name: lon
               kubernetes.io/service-account.uid: c22bc8d6-ffd8-11e9-adb6-0a8e23c49339
 
 Type:  kubernetes.io/service-account-token
@@ -1946,22 +1958,22 @@ token:           eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9...</code></pre>
 </div>
 </li>
 <li>
-<p>Create secrets on each site that contain service account tokens for the corresponding backup site.</p>
+<p>Create secrets that contain service account tokens for the backup locations.</p>
 <div class="olist loweralpha">
 <ol class="loweralpha" type="a">
 <li>
-<p>Log in to OpenShift Container Platform at SiteB.</p>
+<p>Log in to OpenShift Container Platform at <strong>NYC</strong>.</p>
 </li>
 <li>
-<p>Add the service account token to a <code>site-a-token</code> secret.</p>
+<p>Add the service account token to a <code>lon-token</code> secret.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>oc create secret generic site-a-token --from-literal=token=eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9...</code></pre>
+<pre class="highlight nowrap"><code>oc create secret generic lon-token --from-literal=token=eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9...</code></pre>
 </div>
 </div>
 </li>
 <li>
-<p>Repeat the preceding steps to create a <code>site-b-token</code> secret on SiteA.</p>
+<p>Repeat the preceding steps to create a <code>nyc-token</code> secret on <strong>LON</strong>.</p>
 </li>
 </ol>
 </div>
@@ -1969,7 +1981,7 @@ token:           eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9...</code></pre>
 </ol>
 </div>
 <div class="paragraph">
-<p>After you add service account tokens to each backup site, the
+<p>After you add service account tokens to each backup location, the
 OpenShift instances can authenticate with each other so that Infinispan
 clusters can form cross-site views.</p>
 </div>
@@ -1979,10 +1991,10 @@ clusters can form cross-site views.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring_backup_sites-xsite">8.3. Adding Site Definitions to Infinispan</h3>
+<h3 id="configuring_sites-xsite">8.3. Adding Backup Locations to Infinispan Clusters</h3>
 <div class="paragraph">
-<p>Configure Infinispan clusters as sites so that they can communicate over a
-dedicated JGroups transport channel for replicating data.</p>
+<p>Configure Infinispan clusters as backup locations so that they can communicate
+over a dedicated JGroups transport channel for replicating data.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -1990,10 +2002,21 @@ dedicated JGroups transport channel for replicating data.</p>
 <li>
 <p>Create custom resources for Infinispan at each site.</p>
 <div class="paragraph">
-<p>You must configure each site as a backup for the other. For example, you create
-<code>site_a.yaml</code> to configure SiteA as the local site and SiteB as the backup
-site. You must also then create <code>site_b.yaml</code> to configure SiteB as the local
-site and SiteA as the backup site. See <a href="#ref_xsite_crd-xsite">Cross-Site Replication Resources</a>.</p>
+<p>For example, create <code>lon.yaml</code> to configure <strong>LON</strong> and <code>nyc.yaml</code> to
+configure <strong>NYC</strong>. Both configurations must include the following resource
+definitions:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>.spec.service.sites.local</code> names the local site for Infinispan clusters.</p>
+</li>
+<li>
+<p><code>.spec.service.sites.locations</code> provides the location of all site masters.
+Infinispan pods use this information to connect with each other and form
+cross-site views.</p>
+</li>
+</ul>
 </div>
 </li>
 <li>
@@ -2001,24 +2024,24 @@ site and SiteA as the backup site. See <a href="#ref_xsite_crd-xsite">Cross-Site
 <div class="olist loweralpha">
 <ol class="loweralpha" type="a">
 <li>
-<p>Log in to OpenShift Container Platform at SiteA.</p>
+<p>Log in to OpenShift Container Platform at <strong>LON</strong>.</p>
 </li>
 <li>
-<p>Apply the custom resources for SiteA.</p>
+<p>Apply the custom resources for <strong>LON</strong>.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>$ oc apply -f site_a.yaml</code></pre>
+<pre class="highlight nowrap"><code>$ oc apply -f lon.yaml</code></pre>
 </div>
 </div>
 </li>
 <li>
-<p>Log in to OpenShift Container Platform at SiteB.</p>
+<p>Log in to OpenShift Container Platform at <strong>NYC</strong>.</p>
 </li>
 <li>
-<p>Apply the custom resources for SiteB.</p>
+<p>Apply the custom resources for <strong>NYC</strong>.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>$ oc apply -f site_b.yaml</code></pre>
+<pre class="highlight nowrap"><code>$ oc apply -f nyc.yaml</code></pre>
 </div>
 </div>
 </li>
@@ -2028,18 +2051,22 @@ site and SiteA as the backup site. See <a href="#ref_xsite_crd-xsite">Cross-Site
 <li>
 <p>Verify that Infinispan clusters form a cross-site view.</p>
 <div class="paragraph">
-<p>For example, do the following on SiteA:</p>
+<p>For example, do the following on <strong>LON</strong>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>$ oc logs example-infinispan-0 | grep x-site
 
-INFO  [org.infinispan.XSITE] (jgroups-5,example-infinispan-0-&lt;id&gt;) ISPN000439: Received new x-site view: [SiteB]
-INFO  [org.infinispan.XSITE] (jgroups-7,example-infinispan-0-&lt;id&gt;) ISPN000439: Received new x-site view: [SiteB, SiteA]</code></pre>
+INFO  [org.infinispan.XSITE] (jgroups-5,example-infinispan-0-&lt;id&gt;) ISPN000439: Received new x-site view: [NYC]
+INFO  [org.infinispan.XSITE] (jgroups-7,example-infinispan-0-&lt;id&gt;) ISPN000439: Received new x-site view: [NYC, LON]</code></pre>
 </div>
 </div>
 </li>
 </ol>
+</div>
+<div class="paragraph">
+<div class="title">Reference</div>
+<p><a href="#ref_xsite_crd-xsite">Cross-Site Replication Resources</a></p>
 </div>
 <div class="sect3">
 <h4 id="ref_xsite_crd-xsite">8.3.1. Cross-Site Replication Resources</h4>
@@ -2051,13 +2078,16 @@ INFO  [org.infinispan.XSITE] (jgroups-7,example-infinispan-0-&lt;id&gt;) ISPN000
     type: DataGrid <i class="conum" data-value="1"></i><b>(1)</b>
     sites:
       local:
-        name: SiteA <i class="conum" data-value="2"></i><b>(2)</b>
+        name: LON <i class="conum" data-value="2"></i><b>(2)</b>
         expose:
           type: LoadBalancer <i class="conum" data-value="3"></i><b>(3)</b>
-      backups:
-      - name: SiteB <i class="conum" data-value="4"></i><b>(4)</b>
-        url: openshift://api.site-b.devcluster.openshift.com:6443 <i class="conum" data-value="5"></i><b>(5)</b>
-        secretName: site-b-token <i class="conum" data-value="6"></i><b>(6)</b></code></pre>
+      locations: <i class="conum" data-value="4"></i><b>(4)</b>
+      - name: LON <i class="conum" data-value="5"></i><b>(5)</b>
+        url: openshift://api.site-a.devcluster.openshift.com:6443 <i class="conum" data-value="6"></i><b>(6)</b>
+        secretName: lon-token <i class="conum" data-value="7"></i><b>(7)</b>
+      - name: NYC
+        url: openshift://api.site-b.devcluster.openshift.com:6443
+        secretName: nyc-token</code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2068,7 +2098,7 @@ INFO  [org.infinispan.XSITE] (jgroups-7,example-infinispan-0-&lt;id&gt;) ISPN000
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>names the site where the Infinispan cluster runs, the local site.</td>
+<td>names the local site for a Infinispan cluster.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
@@ -2086,25 +2116,29 @@ INFO  [org.infinispan.XSITE] (jgroups-7,example-infinispan-0-&lt;id&gt;) ISPN000
 </tr>
 <tr>
 <td><i class="conum" data-value="4"></i><b>4</b></td>
-<td>names the site to which the Infinispan cluster replicates data, the backup site.</td>
+<td>provides connection information for all backup locations.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="5"></i><b>5</b></td>
-<td>specifies the URL to access the backup site.
+<td>name of a backup location that matches the <code>.spec.service.sites.local.name</code> resource.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>specifies a backup location.
 <div class="ulist">
 <ul>
 <li>
-<p>Use <code>minikube://</code> if the backup site is a Minikube instance.</p>
+<p>Use <code>minikube://</code> if the backup location is a Minikube instance.</p>
 </li>
 <li>
-<p>Use <code>openshift://</code> if the backup site is an OpenShift cluster. You should specify the URL of the Kubernetes API for the backup site.</p>
+<p>Use <code>openshift://</code> if the backup location is an OpenShift cluster. You should specify the URL of the Kubernetes API.</p>
 </li>
 </ul>
 </div></td>
 </tr>
 <tr>
-<td><i class="conum" data-value="6"></i><b>6</b></td>
-<td>specifies the secret to access backup sites.
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>specifies the access secret for a site.
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -2360,12 +2394,38 @@ are not available by default.</p>
 Available to External Traffic</a></p>
 </div>
 </div>
+<div class="sect2">
+<h3 id="ref_upgrades-reference">10.2. Infinispan Operator Upgrades</h3>
+<div class="paragraph">
+<p>The Infinispan Operator upgrades Infinispan when new versions become available.</p>
+</div>
+<div class="paragraph">
+<p>To upgrade Infinispan clusters, the Infinispan Operator checks the version of the
+image for Infinispan pods. If the Infinispan Operator determines that a new
+version of the image is available, it gracefully shuts down all pods, applies
+the new image, and then restarts the pods.</p>
+</div>
+<div class="paragraph">
+<p>The Infinispan Operator requires the Operator Lifecycle Manager to perform cluster upgrades.</p>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://github.com/operator-framework/operator-lifecycle-manager">Operator Lifecycle Manager</a></p>
+</li>
+<li>
+<p><a href="https://github.com/operator-framework/operator-lifecycle-manager/blob/master/doc/design/architecture.md">OLM Architecture</a></p>
+</li>
+</ul>
+</div>
+</div>
 </div>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2019-12-19 18:44:05 +0100
+Last updated 2020-01-17 08:05:40 UTC
 </div>
 </div>
 </body>
