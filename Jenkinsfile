@@ -11,10 +11,6 @@ pipeline {
         PATH = "$MAVEN_HOME:$JAVA_HOME/bin:$HOME/bin:$PATH"
     }
 
-    parameters {
-        choice(choices: 'production\nstaging', description: 'Site ?', name: 'site')
-    }
-
     options {
         timeout(time: 3, unit: 'HOURS')
     }
@@ -39,7 +35,7 @@ pipeline {
         stage('Publish') {
             steps {
                 echo "Using PATH = ${env.PATH}"
-                sh "./bin/publish_${params.site}.sh"
+                sh "./bin/publish_production.sh"
             }
         }        
     }
