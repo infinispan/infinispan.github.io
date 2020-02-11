@@ -1,0 +1,127 @@
+---
+layout: blog
+title: Infinispan Server configuration
+date: '2020-02-20T12:00:00.000-00:00'
+author: Tristan Tarrant
+tags: [ "server" ]
+---
+The new Infinispan Server introduced in version 10.0 is quite different from the WildFly-based one we had up to 9.x. 
+One of the big differences is that the new server's configuration is just an extension of the embedded configuration.
+
+The XML snippet below shows the configuration used by the server "out-of-the-box":
+
+[source,xml,options="nowrap",subs=attributes+]
+----
+<infinispan
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="urn:infinispan:config:10.1 https://infinispan.org/schemas/infinispan-config-10.1.xsd
+                            urn:infinispan:server:10.1 https://infinispan.org/schemas/infinispan-server-10.1.xsd"
+        xmlns="urn:infinispan:config:10.1"
+        xmlns:server="urn:infinispan:server:10.1">
+
+   <cache-container name="default" statistics="true"> <1>
+      <transport cluster="${infinispan.cluster.name}" stack="${infinispan.cluster.stack:tcp}" node-name="${infinispan.node.name:}"/>
+   </cache-container>
+
+   <server xmlns="urn:infinispan:server:10.1"> <2>
+      <interfaces>
+         <interface name="public"> <3>
+            <inet-address value="${infinispan.bind.address:127.0.0.1}"/>
+         </interface>
+      </interfaces>
+
+      <socket-bindings default-interface="public" port-offset="${infinispan.socket.binding.port-offset:0}"> <4>
+         <socket-binding name="default" port="${infinispan.bind.port:11222}"/>
+         <socket-binding name="memcached" port="11221"/>
+      </socket-bindings>
+
+      <security> <5>
+         <security-realms>
+            <security-realm name="default">
+               <!-- Uncomment to enable TLS on the realm -->
+               <!-- server-identities>
+                  <ssl>
+                     <keystore path="application.keystore" relative-to="infinispan.server.config.path"
+                               keystore-password="password" alias="server" key-password="password"
+                               generate-self-signed-certificate-host="localhost"/>
+                  </ssl>
+               </server-identities-->
+               <properties-realm groups-attribute="Roles">
+                  <user-properties path="users.properties" relative-to="infinispan.server.config.path" plain-text="true"/>
+                  <group-properties path="groups.properties" relative-to="infinispan.server.config.path" />
+               </properties-realm>
+            </security-realm>
+         </security-realms>
+      </security>
+
+      <endpoints socket-binding="default" security-realm="default"> <6>
+         <hotrod-connector name="hotrod"/>
+         <rest-connector name="rest"/>
+      </endpoints>
+   </server>
+</infinispan>
+----
+
+Let's have a look at the various elements, describing their purposes:
+
+<1> The `cache-container` element is a standard Infinispan cache manager configuration like you'd use in embedded deployments. You can decide to leave it empty and create any caches at runtime using the CLI, Console or Hot Rod and RESTful APIs, or statically predefine your caches here.
+<2> The `server` element holds the server-specific configuration which includes network, security and protocols.
+<3> The `interface` element declares named interfaces which are associated with specific addresses/interfaces. The default `public` interface will use the loopback address `127.0.0.1` unless overridden with the `-b` switch or the `infinispan.bind.address` system property. Refer to https://infinispan.org/docs/stable/titles/server/server.html#server_interfaces-server[server interfaces] documentation for a detailed list of all possible ways of selecting an address.
+<4> The `socket-bindings` element associates addresses and ports with unique names you can use later on configuring the protocol endpoints. For convenience, a _port offset_ can be added to all port numbers to ease starting multiple servers on the same host. Use the `-o` switch or the `infinispan.socket.binding.port-offset` system property to change the offset.
+<5> The `security` element configures the server's realms and identities. We will ignore this for now as this deserves its own dedicated blog post in the near future.
+<6> The `endpoints` element configures the various protocol servers. Unless overridden, all sub protocols are aggregated into a _single-port_ endpoint which, as its name suggests, listens on a single port and automatically detects the incoming protocol, delegating to the appropriate handler.
+
+The `rest-connector` has a special role in the new server, since it now also handles administrative tasks. It is therefore required if you want to use the CLI or the Console. You may wish to have the protocols listen on different ports, as outlined in the configuration below:
+
+[source,xml,options="nowrap",subs=attributes+]
+----
+<infinispan
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="urn:infinispan:config:10.1 https://infinispan.org/schemas/infinispan-config-10.1.xsd
+                            urn:infinispan:server:10.1 https://infinispan.org/schemas/infinispan-server-10.1.xsd"
+        xmlns="urn:infinispan:config:10.1"
+        xmlns:server="urn:infinispan:server:10.1">
+
+   <cache-container name="default" statistics="true">
+      <transport cluster="${infinispan.cluster.name}" stack="${infinispan.cluster.stack:tcp}" node-name="${infinispan.node.name:}"/>
+   </cache-container>
+
+   <server xmlns="urn:infinispan:server:10.1">
+      <interfaces>
+         <interface name="public">
+            <match-interface value="eth0"/>
+         </interface>
+         <interface name="admin">
+            <loopback/>
+         </interface>
+      </interfaces>
+
+      <socket-bindings default-interface="public" port-offset="${infinispan.socket.binding.port-offset:0}">
+         <socket-binding name="public" port="${infinispan.bind.port:11222}"/>
+         <socket-binding name="admin" interface="admin" port="${infinispan.bind.port:11222}"/>
+      </socket-bindings>
+
+      <security>
+         <security-realms>
+            <security-realm name="default">
+               <properties-realm groups-attribute="Roles">
+                  <user-properties path="users.properties" relative-to="infinispan.server.config.path" plain-text="true"/>
+                  <group-properties path="groups.properties" relative-to="infinispan.server.config.path" />
+               </properties-realm>
+            </security-realm>
+         </security-realms>
+      </security>
+
+      <endpoints socket-binding="admin" security-realm="default">
+         <hotrod-connector name="hotrod" socket-binding="public"/>
+         <rest-connector name="rest"/>
+      </endpoints>
+   </server>
+</infinispan>
+----
+
+This creates two _socket bindings_, one named *public* bound to the `eth0` interface and one named *admin* bound to the loopback interface. The server will therefore listen for Hot Rod traffic only on the *public* network and for HTTP/REST traffic on the *admin* network.
+
+For more details on how to configure Infinispan Server, refer to our https://infinispan.org/docs/stable/titles/server/server.html[documentation].
+
+In the next blog post we will have an in-depth look at security.
