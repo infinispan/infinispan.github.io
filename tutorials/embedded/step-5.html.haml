@@ -41,10 +41,21 @@ title: Embedded Step-by-Step Tutorial
           = preserve do
             :escaped
               config.clustering().cacheMode(CacheMode.DIST_SYNC);
-      Since the entries we will be inserting will need to be transferred between the nodes over the network, we need to make sure both keys and values implement the
-      %i java.io.Serializable
-      interface. The entries will be distributed among the cluster members according to the hash of their keys. Since we asked for two owners, each entry will have a primary owner
-      and a backup owner. It is now time to fire up your multiple terminals and try this for yourself:
+      The entries will be distributed among the cluster members according to the hash of their keys. Since we asked for two owners, each entry will have a primary owner
+      and a backup owner.
+
+      Since the entries we will be inserting will need to be transferred between the nodes over the network, we need to make sure both keys and values can
+      be serialized with the default Infinispan marshaller - ProtoStream. As the Cache utilise a String for the key, we don't have to do anything for the key
+      as Strings are supported natively by ProtoStream. For the value, LocationWeather, it's necessary to annotate the class with %i @ProtoField annotations,
+      and generate a %i SerializationContextInitializer implementation, which is then registered with the GlobalConfigurationBuidler.
+
+      %pre
+        %code.java
+          = preserve do
+            :escaped
+              serialization().addContextInitializers(new SerializationContextInitializerImpl());
+
+      It is now time to fire up your multiple terminals and try this for yourself:
       %pre
         %code.nohighlight
           = preserve do
