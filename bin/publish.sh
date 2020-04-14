@@ -1,15 +1,13 @@
 #!/bin/sh
 
 rm -rf _site
-bundle exec bin/fetch_docs.rb
-
-# Update gems
+# Put bundles in a known path
 bundle config set path $HOME/.bundle
+# Update gems
 bundle install
-
-# The awestruct github_pages deployer doesn't work on the CI machine ATM, it deletes everything on the master branch
-# so we deploy manually instead
-#bundle exec awestruct -gw -Pproduction --deploy
+# Fetch docs
+bundle exec bin/fetch_docs.rb
+# Build the site
 bundle exec awestruct -gw -Pproduction
 
 git checkout -f master
