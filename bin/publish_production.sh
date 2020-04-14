@@ -1,13 +1,10 @@
 #!/bin/sh
 
-if [ -x "/usr/bin/scl_source" ]; then
-  source scl_source enable rh-ruby22
-fi
-
 rm -rf _site
 bin/fetch_docs.rb
 
 # Update gems
+bundle config set path '$HOME/.bundle'
 bundle install
 
 # The awestruct github_pages deployer doesn't work on the CI machine ATM, it deletes everything on the master branch
