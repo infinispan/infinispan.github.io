@@ -35,7 +35,7 @@ pipeline {
         stage('Publish') {
             steps {
                 echo "Using PATH = ${env.PATH}"
-                sh "./bin/publish_production.sh"
+                sh "./bin/publish.sh"
             }
         }        
     }
