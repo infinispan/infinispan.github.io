@@ -6,5 +6,6 @@ gem 'cssminify', '~> 1.0', '>= 1.0.2'
 gem 'htmlcompressor', '~> 0.4.0'
 gem 'opal', '~> 0.10.5'
 gem 'optimist', '~> 3.0.0'
+gem 'therubyracer', '~> 0.12.3'
 gem 'uglifier', '~> 4.2'
 

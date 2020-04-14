@@ -7,8 +7,8 @@ pipeline {
     
     environment {
         MAVEN_HOME = tool('Maven')
-        JAVA_HOME = tool('JDK 8')
-        PATH = "$MAVEN_HOME:$JAVA_HOME/bin:$HOME/bin:$PATH"
+        JAVA_HOME = tool('JDK 11')
+        PATH = "$MAVEN_HOME/bin:$JAVA_HOME/bin:$HOME/bin:$PATH"
     }
 
     options {
