@@ -17,8 +17,6 @@ tags: [
 blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-6924153057805410893
 blogger_orig_url: https://blog.infinispan.org/2016/12/meet-ickle.html
 ---
-[[docs-internal-guid-04619441-de6b-024f-1a8e-a4977a23b5c6]]
-
 
 As you’ve already learned from an earlier post this week, Infinispan 9
 is on its final approach to landing and is bringing a new query
@@ -72,40 +70,27 @@ language, conspicuously resembling JP-QL.
 
 Ickle:
 
-is a light and small subset of JP-QL, hence the lovely name
-
-queries Java classes and supports Protocol Buffers too
-
-queries can target a single entity type
-
-queries can filter on properties of embedded objects too, including
+* is a light and small subset of JP-QL, hence the lovely name
+* queries Java classes and supports Protocol Buffers too
+* queries can target a *single* entity type
+* queries can filter on properties of embedded objects too, including
 collections
-
-supports projections, aggregations, sorting, named parameters
-
-supports indexed and non-indexed execution
-
-supports complex boolean expressions
-
-does not support computations in expressions (eg. user.age >
-sqrt(user.shoeSize + 3) is not allowed but user.age >= 18 is fine)
-
-does not support joins
-
+* supports projections, aggregations, sorting, named parameters
+* supports indexed and non-indexed execution
+* supports complex boolean expressions
+* does not support computations in expressions (eg. `user.age >
+sqrt(user.shoeSize + 3)` is not allowed but `user.age >= 18` is fine)
+* does not support joins
 * but, navigations along embedded entities are implicit joins and are
 allowed
 * joining on embedded collections is allowed
 * other join types not supported
-
-subqueries are not supported
-
-besides the normal relational operators it offers full-text operators,
+* subqueries are not supported
+* besides the normal relational operators it offers full-text operators,
 similar to Lucene’s  query parser
-
-is now supported across various Infinispan APIs, wherever a Query
+* is now supported across various Infinispan APIs, wherever a Query
 produced by the QueryBuilder is accepted (even for continuous queries or
 in event filters for listeners!)
-
 
 
 That is to say we squeezed JP-QL to the bare minimum and added full-text
@@ -119,32 +104,30 @@ If you are familiar with JPA/JP-QL then the following example will speak
 for itself:
 
 
-
+[source,sql]
+----
 select accountId, sum(amount) from com.acme.Transaction
     where amount < 20.0
     group by accountId
     having sum(amount) > 1000.0
     order by accountId
-
-
+----
 
 The same query can be written using the QueryBuilder:
 
-
-
+[source,java]
+----
 Query query = queryFactory.from(Transaction.class)
 .select(Expression.property("accountId"), Expression.sum("amount"))
 .having("amount").lt(20.0)
 .groupBy("accountId")
 .having(Expression.sum("amount")).gt(1000.0)
 .orderBy("accountId").build();
-
+----
 
 
 Both examples look nice but I hope you will agree the first one is
 better.
-
-
 
 Ickle supports several new predicates for full-text matching that the
 QueryBuilder is missing. These predicates use the : operator that you
@@ -152,10 +135,11 @@ are probably familiar from Lucene’s own query language.  This example
 demonstrates a simple full-text term query:
 
 
-
+[source,sql]
+----
 select transactionId, amount, description from com.acme.Transaction
 where amount > 10 and description : "coffee"
-
+----
 
 
 As you can see, relational predicates and full-text predicates can be
@@ -175,15 +159,14 @@ here].
 
 Besides term queries we support several more:
 
-* Term                     description : "coffee"
-* Fuzzy                    description : "cofee"~2
-* Range                   amount : [40 to 90}
-* Phrase                  description : "hello world"
-* Proximity               description : "canceling fee"~3
-* Wildcard                description : "te?t"
-* Regexp                 description : /[mb]oat/
-* Boosting                description : "beer"^3 and description :
-"books"
+* Term                     `description : "coffee"`
+* Fuzzy                    `description : "cofee"~2`
+* Range                    `amount : [40 to 90}``
+* Phrase                   `description : "hello world"`
+* Proximity                `description : "canceling fee"~3`
+* Wildcard                 `description : "te?t"`
+* Regexp                   `description : /[mb]oat/`
+* Boosting                 `description : "beer"^3 and description :"books"`
 
 You can read all about them starting from
 https://lucene.apache.org/core/6_2_1/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#package.description[here].
@@ -214,10 +197,10 @@ full-text features like spatial queries and faceting, but that’s a
 subject for another major version. Until then, why not grab the current
 9.0 Beta1 and test drive the new query language yourself? We’d love to
 hear your feedback on
-thehttps://developer.jboss.org/en/infinispan/content[ forum], on
-ourhttps://issues.jboss.org/projects/ISPN[ issue tracker] or on IRC on
+the https://developer.jboss.org/en/infinispan/content[ forum], on
+our https://issues.jboss.org/projects/ISPN[ issue tracker] or on IRC on
 the #infinispan channel
-onhttp://webchat.freenode.net/?channels=%23infinispan[ Freenode].
+on http://webchat.freenode.net/?channels=%23infinispan[ Freenode].
 
 
 
