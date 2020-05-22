@@ -1,0 +1,76 @@
+---
+layout: blog
+title: Server Data Sources
+date: '2020-06-05T12:00:00.000-00:00'
+author: Tristan Tarrant
+tags: [ "server", "database", "persistence", "jdbc" ]
+---
+
+= Server data sources
+
+When we moved our server architecture away from WildFly, we lost the ability to configure data sources which could be shared by multiple cache stores.
+It was still possible to create individual database connection pools for each cache, but this meant 
+that resource usage could be suboptimal, since these connections could not be shared.
+
+Infinispan 11 restores the ability to configure data sources, backed by the high performance https://agroal.github.io/[Agroal] connection pool.
+
+The first step is to put the jars required by your database JDBC driver into the `server/lib` directory. Then you add one or more `data-source` elements to the server configuration file:
+
+[source,xml]
+----
+<infinispan>
+    ...
+    <data-sources>
+        <data-source name="h2" jndi-name="jdbc/h2" statistics="true">
+            <connection-factory driver="org.h2.Driver"
+                                username="username"
+                                password="password"
+                                url="jdbc:h2:tcp://127.0.0.1:1521/test"
+                                new-connection-sql="SELECT 1" />
+            <connection-pool max-size="10" background-validation="1000" idle-removal="1" initial-size="1" leak-detection="10000"/>
+        </data-source>
+        <data-source name="mariadb" jndi-name="jdbc/mariadb" statistics="true">
+            <connection-factory driver="org.mariadb.jdbc.Driver"
+                                username="username"
+                                password="password"
+                                url="jdbc:mariadb://127.0.0.1:3306/test"
+                                new-connection-sql="SELECT 1" />
+            <connection-pool max-size="10" background-validation="1000" idle-removal="1" initial-size="1" leak-detection="10000"/>
+        </data-source>
+        <data-source name="postgres" jndi-name="jdbc/postgres" statistics="true">
+            <connection-factory driver="org.postgresql.Driver"
+                                username="username"
+                                password="password"
+                                url="jdbc:postgresql://127.0.0.1:5432/test"
+                                new-connection-sql="SELECT 1" />
+            <connection-pool max-size="10" background-validation="1000" idle-removal="1" initial-size="1" leak-detection="10000"/>
+        </data-source>
+    </data-sources>
+    ...
+</infinispan>
+----
+
+Then in the persistence section of your cache configuration you reference the JNDI name:
+
+[source,xml]
+----
+<distributed-cache-configuration name="persistent-cache">
+    <persistence>
+        <string-keyed-jdbc-store>
+            <data-source jndi-url="jdbc/h2"/>
+            <string-keyed-table drop-on-exit="true"
+                          create-on-start="true"
+                          prefix="TBL">
+                <id-column name="ID" type="VARCHAR(255)"/>
+                <data-column name="DATA" type="BINARY"/>
+                <timestamp-column name="TS" type="BIGINT"/>
+                <segment-column name="S" type="INT"/>
+            </string-keyed-table>
+        </string-keyed-jdbc-store>
+    </persistence>
+</distributed-cache-configuration>
+----
+
+= Further reading
+
+You can find additional information in our https://infinispan.org/docs/dev/titles/server/server.html#datasources[server documentation].
