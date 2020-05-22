@@ -1,0 +1,60 @@
+---
+layout: blog
+title: Hot Rod URI
+date: '2020-05-26T12:00:00.000-00:00'
+author: Tristan Tarrant
+tags: [ "documentation" ]
+---
+
+= Hot Rod URI
+
+Traditionally, the Java Hot Rod client has always been configured either via a properties file or through a programmatic builder API.
+
+While both approaches offer a great amount of flexibility, they always felt a bit too complex for straightforward scenarios.
+
+Starting with Infinispan 11 you will be able to specify the connection to an Infinispan Server via a URI, just like you'd connect to a database via a JDBC driver URL.
+
+The Hot Rod URI allows you to specify the addresses of the server cluster, authentication parameters and any other property in a simple compact String format.
+
+The URI specification is:
+
+`hotrod[s]://[username:password]@host[:port][,host[:port]...][?property=value[&property=value...]]`
+
+* the protocol can be either `hotrod` (plain, unencrypted) or `hotrods` (TLS/SSL, encrypted)
+* if username and password are specified, they will be used to authenticate with the server
+* one or more addresses. If a port is not specified, the default `11222` will be used
+* zero or more https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/client/hotrod/configuration/package-summary.html[properties], without the `infinispan.client.hotrod` prefix, through which you can configure all other aspects such as connection pooling, authentication mechanisms, near caching, etc.
+
+Here are some examples:
+
+`hotrod://localhost`::
+simple connection to a server running on `localhost` using the default port
+
+`hotrod://joe:secret@infinispan-host-1:11222,infinispan-host-2:11222`::
+authenticated connection to `infinispan-host-1` and `infinispan-host-2` with explicit port
+
+`hotrods://infinispan-host-1?socket_timeout=1000&connect_timeout=2000`::
+TLS/SSL connection to `infinispan-host-1` using the default port and with custom connection and socket timeouts
+
+The URI format can also be used as a starting point in your usual properties file or API configuration and further enriched using the traditional methods:
+
+[source]
+----
+infinispan.client.hotrod.uri=hotrod://joe:secret@infinispan-host-1:11222,infinispan-host-2:11222
+infinispan.client.hotrod.connect_timeout=100
+infinispan.client.hotrod.socket_timeout=100
+infinispan.client.hotrod.tcp_keep_alive=true
+----
+
+[source,java]
+----
+ConfigurationBuilder builder = new ConfigurationBuilder()
+    .uri("hotrod://joe:secret@infinispan-host-1:11222,infinispan-host-2:11222")
+    .socketTimeout(100)
+    .connectionTimeout(100)
+    tcpKeepAlive(true);
+----
+
+We hope this makes configuration simpler.
+
+Happy coding!
