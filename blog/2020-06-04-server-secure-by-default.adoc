@@ -1,0 +1,164 @@
+---
+layout: blog
+title: Secure server by default
+date: '2020-06-04T12:00:00.000-00:00'
+author: Tristan Tarrant
+tags: [ "server", "security" ]
+---
+
+= Secure Infinispan server by default
+
+The Infinispan server we introduced in 10.0 exposes a single port through which both Hot Rod and HTTP clients can connect.
+
+While Infinispan has had *very* extensive security support since 7.0, the out-of-the-box default configuration did not enable authentication.
+
+Infinispan 11.0's server's default configuration, instead, requires authentication. 
+We have made several improvements to how authentication is configured and the tooling we provide to make the experience as smooth as possible.
+
+== Automatic authentication mechanism selection
+
+Previously, when enabling authentication, you had to explicitly define which mechanisms had to be enabled per-protocol, with all of the peculiarities specific to each one (i.e. SASL for Hot Rod, HTTP for REST). Here is an example configuration with Infinispan 10.1 that enables DIGEST authentication:
+
+[source,xml]
+----
+<endpoints socket-binding="default" security-realm="default">
+   <hotrod-connector name="hotrod">
+      <authentication>
+         <sasl mechanisms="DIGEST-MD5" server-name="infinispan"/>
+      </authentication>
+   </hotrod-connector>
+   <rest-connector name="rest">
+      <authentication mechanisms="DIGEST"/>
+   </rest-connector>
+</endpoints>
+----
+
+In Infinispan 11.0, the mechanisms are automatically selected based on the capabilities of the security realm. Using the following configuration:
+
+[source,xml]
+----
+<endpoints socket-binding="default" security-realm="default">
+   <hotrod-connector name="hotrod" />
+   <rest-connector name="rest"/>
+</endpoints>
+----
+
+together with a properties security realm, will enable DIGEST for HTTP and SCRAM-+*+, DIGEST-+*+ and CRAM-MD5 for Hot Rod. BASIC/PLAIN will only be implicitly enabled when the security realm has a TLS/SSL identity.
+
+The following tables summarize the mapping between realm type and implicitly enabled mechanisms.
+
+.SASL Authentication Mechanisms (Hot Rod)
+
+|===
+|Security Realm |SASL Authentication Mechanism
+
+|Property Realms and LDAP Realms
+|SCRAM-+*+, DIGEST-+*+, CRAM-MD5
+
+|Token Realms
+|OAUTHBEARER
+
+|Trust Realms
+|EXTERNAL
+
+|Kerberos Identities
+|GSSAPI, GS2-KRB5
+
+|SSL/TLS Identities
+|PLAIN
+|===
+
+
+.HTTP Authentication Mechanisms (REST)
+
+|===
+|Security Realm |HTTP Authentication Mechanism
+
+|Property Realms and LDAP Realms
+|DIGEST
+
+|Token Realms
+|BEARER_TOKEN
+
+|Trust Realms
+|CLIENT_CERT
+
+|Kerberos Identities
+|SPNEGO
+
+|SSL/TLS Identities
+|BASIC
+|===
+
+== Automatic encryption
+
+If the security realm has a TLS/SSL identity, the endpoint will automatically enable TLS for all protocols.
+
+== Encrypted properties security realm
+
+The properties realm that is part of the default configuration has been greatly improved in Infinispan 11. The passwords are now stored in multiple encrypted formats in order to support the various DIGEST, SCRAM and PLAIN/BASIC mechanisms.
+
+The `user` functionality that is now built into the CLI allows easy creation and manipulation of users, passwords and groups:
+
+[source]
+----
+[disconnected]> user create --password=secret --groups=admin admin
+[disconnected]> connect --username=admin --password=secret
+[ispn-29934@cluster//containers/default]> user ls
+[ "admin" ]
+[ispn-29934@cluster//containers/default]> user describe admin
+{ username: "admin", realm: "default", groups = [admin] }
+[ispn-29934@cluster//containers/default]> user password admin
+Set a password for the user: ******
+Confirm the password for the user: ******
+[ispn-29934@cluster//containers/default]>
+----
+
+== Authorization: simplified
+
+Authorization is another security aspect of Infinispan. In previous versions, setting up authorization was complicated by the need to add all the needed roles to each cache:
+
+[source,xml]
+----
+<infinispan>
+   <cache-container name="default">
+      <security>
+         <authorization>
+            <identity-role-mapper/>
+            <role name="AdminRole" permissions="ALL"/>
+            <role name="ReaderRole" permissions="READ"/>
+            <role name="WriterRole" permissions="WRITE"/>
+            <role name="SupervisorRole" permissions="READ WRITE EXEC BULK_READ"/>
+         </authorization>
+      </security>
+      <distributed-cache name="secured">
+         <security>
+            <authorization roles="AdminRole ReaderRole WriterRole SupervisorRole"/>
+         </security>
+      </distributed-cache>
+   </cache-container>
+   ...
+</infinispan>
+----
+
+With Infinispan 11 you can avoid specifying all the roles at the cache level: just enable authorization and all roles will implicitly apply. As you can see, the cache definition is much more concise:
+
+[source,xml]
+----
+<infinispan>
+   <cache-container name="default">
+      ...
+      <distributed-cache name="secured">
+         <security>
+            <authorization/>
+         </security>
+      </distributed-cache>
+   </cache-container>
+   ...
+</infinispan>
+----
+
+= Conclusions
+
+We hope that the changes we've made to improve security will make your servers more secure and easier to configure.
+For more information read the https://infinispan.org/docs/dev/titles/server/server.html#security[server security documentation].
