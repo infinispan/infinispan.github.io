@@ -1,0 +1,86 @@
+---
+layout: blog
+title: Cross Site Replication improvements
+date: '2020-06-05T12:00:00.000-00:00'
+author: Pedro Ruivo
+tags: [ "xsite", "cross site replication" ]
+---
+
+= Cross Site Replication Improvements
+
+Infinispan introduced Cross Site Replication functionality in version 5.2 and Infinispan 7 extended it to
+support state transfer.
+With an increase of popularity, Infinispan 11 brings two major improvements to Cross Site Replication.
+Let's take a look at them.
+
+
+== Support for multiple site masters
+
+Infinispan uses JGroups' http://www.jgroups.org/manual4/index.html#Relay2Advanced[RELAY2]
+protocol to enable inter-site communication.
+Each site has Site Masters: these are nodes with special roles, and are responsible for the communication between sites.
+
+RELAY2 can use more than one Site Master per site allowing load balancing of the inter-site requests.
+The new algorithm is now able to take advantage of multiple Site Masters.
+
+The attribute `max_site_masters` configures the number of Site Masters, and it defaults to 1.
+To take advantage of the new algorithm, increase the number of Site Masters in RELAY2 configuration by changing
+`max_site_masters` to a value higher than 1.
+A number greater than the number of nodes can be used, and it enables the Site Master role in all nodes.
+
+[source,xml]
+----
+<relay.RELAY2 site="<LOCAL_SITE_NAME>" max_site_masters="<PUT_VALUE_HERE>"/>
+----
+
+More information about RELAY2 is available in http://www.jgroups.org/manual4/index.html#RELAY2[JGroups' Manual].
+
+
+== Conflict detection and resolution for Asynchronous Cross-Site Replication
+
+Infinispan is able to detect conflicts in asynchronous mode by taking advantage of vector clocks.
+A conflict happens when 2 or more sites update the same key at the same time.
+Let's look at an example between 2 sites (_LON_ and _NYC_):
+
+[source,options="nowrap"]
+----
+            LON       NYC
+
+k1=(n/a)    0,0       0,0
+
+k1=2        1,0  -->  1,0   k1=2
+
+k1=3        1,1  <--  1,1   k1=3
+
+k1=5        2,1       1,2   k1=8
+
+                 -->  2,1 (conflict)
+(conflict)  1,2  <--
+
+k1=5        2,1  <->  2,1   k1=5
+----
+
+* _LON_ puts `k1=2`, with vector clock `1,0`, and replicates it to _NYC_.
+* _NYC_ puts `k1=3`, with vector clock `1,1`, and replicates it to _LON_.
+* However if _LON_ puts `k1=5` (with vector `2,1`), and _NYC_ puts `k1=8` in _NYC_ (with vector clock `1,2`)
+at the same time, Infinispan detects the conflict since none of the vector clocks are greater than the other.
+
+Infinispan resolves the conflicts by comparing using the site names in lexicographical order.
+The site's name lower in lexicographical order takes priority.
+In the example above, both _LON_ and _NYC_ end up with `k1=5` since _LON_ < _NYC_.
+
+You can choose the priority by prepending a number to the site name.
+For example, if you want updates from _NYC_ to take priority over _LON_ updates,
+you can prepend a number to the site name, example: _1NYC_, _2LON_ and so on.
+
+// TODO! check the document link when the documentation is live!
+For more information check the
+https://infinispan.org/docs/dev/titles/xsite/xsite.html#conflicting_entries-xsite[Infinispan Documentation].
+
+//TODO FOOTER?
+== Get it, Use it, Ask us!
+
+Please https://infinispan.org/download/[download],
+https://issues.jboss.org/projects/ISPN[report bugs],
+https://infinispan.zulipchat.com/[chat with us],
+ask questions on https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest[StackOverflow].
