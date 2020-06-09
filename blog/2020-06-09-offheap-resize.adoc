@@ -1,0 +1,84 @@
+---
+layout: blog
+title: Off Heap enhancements
+date: '2020-06-09T12:00:00.000-00:00'
+author: William Burns
+tags: [ "off-heap", "storage" ]
+---
+
+= Off Heap enhancements
+
+The off heap implementation in Infinispan has become much more widely used since its introduction.
+There have been some issues and improvements identified to get this storage type more in line with
+its heap counterpart.
+For those of you that are unware the off-heap setting is actually only "off" the JVM heap and still resides in
+the native memory of the application.
+
+The best part of all the below changes is the user does not need to change anything, other than
+configuring Off Heap storage.
+
+== Resizing Off Heap Container
+
+For those of you that have used/configured off heap storage before you may have noticed that there
+was a configuration option named address count.
+This setting allowed you to configure how many address pointers the container had.
+You can think of this as essentially how many buckets you have in a HashMap.
+Unfortunately the number of pointers was fixed and therefore the user would have to know
+how many elements they expected to have.
+
+This setting also had another problem.
+If the user required a larger size of elements this would increase startup time
+as the container can be iterated upon multiple times when it is empty.
+Iterating over a container of one million empty pointers would be much slower
+than iterating over one of only 1024 for example.
+
+I am glad to say as of Infinispan 10.0.0.Final this setting and the performance of
+iteration have been greatly improved.
+
+=== Configuration
+
+The address count variable is now ignored and instead the off heap based
+container will start at smaller amount of "buckets" in the range of 128 or 256.
+We then apply a load factor of .75, which means we will automatically increase
+the size of the underlying "buckets" once we have inserted a number of entries
+being 75% or larger than the current "bucket" size.
+
+The resize operation will grow to have double the amount of "buckets" it had prior.
+The resize operation will be performed concurrently with other operations, providing
+minimal blocking as we have locks equal to the number of CPUs times two.
+
+This will allow for a cache with off heap to be started significantly faster and
+relieves some configuration options that were unneeded.
+Note that the map, just like a java.util.HashMap, will not decrease the number of
+"buckets" once it grows to a given size.
+
+=== Iteration changes
+
+I mentioned that iteration was slower during startup of larger number of "buckets".
+This was due to it possibly having a large number of them, however it was also
+plauged by an ineffecient way of iterating over them.
+In addition to rewriting the resize operation, we have also optimized the memory
+layout so that "buckets" can be iterated sequentially which provides more mechanical
+sympathy.
+
+== Hash changes
+
+This one is rather short and sweet, but the old hash algorithm we used would cause
+too many collisions for objects that had hash functions that returned values in a
+similar range, such as java.lang.Integer and java.util.String (with shared startubg
+characters).
+
+Therefore it has been changed to provide a bit better spreading. This is part
+of ISPN 10.0.0.Final.
+
+== Expiration bugs
+
+Unfortunately off heap had a few issues with expiration.
+It didn't support max idle and expiration metadata was not properly transferred
+to new nodes during state transfer.
+
+In addition to max idle algorithm being rewritten, Off heap now properly supports
+max idle as of 10.1.4.Final and 11.0.0.Final.
+
+Off heap metadata transferred to new nodes has been fixed in 10.1.8.Final and
+11.0.0.Final.
