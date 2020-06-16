@@ -1,0 +1,87 @@
+---
+layout: blog
+title: Infinispan Native Server Image
+date: '2020-06-16T12:00:00.000-00:00'
+author: Ryan Emerson
+tags: [ "docker", "native", "quarkus" ]
+---
+Starting with Infinispan 11, it's now possible to create a natively compiled version of the Infinispan server.
+
+== TL;DR
+We have a new image that contains a natively compiled Infinispan server and has a footprint of only 286MB. Try it now:
+
+----
+docker run -p 11222:11222 quay.io/infinispan/server-native:11.0
+----
+
+== Infinispan Quarkus Extensions
+
+https://quarkus.io/[Quarkus] provides built in support for generating native executables, providing several
+abstractions to improve the development experience of creating native binaries. Building upon the
+https://infinispan.org/blog/2019/11/11/serverng/[new server], the Infinispan team have created a
+https://github.com/infinispan/infinispan-quarkus[Quarkus extension] for both embedded and server use-cases.
+These extensions allow a native binary version of the server to be compiled and ran by simply executing:
+
+----
+mvn clean install -Dnative
+./server-runner/target/infinispan-quarkus-server-runner-11.0.0.Final-runner
+    -Dquarkus.infinispan-server.config-file=infinispan.xml \
+    -Dquarkus.infinispan-server.config-path=server/conf \
+    -Dquarkus.infinispan-server.data-path=data \
+    -Dquarkus.infinispan-server.server-path=/opt/infinispan &
+----
+
+== Native Server Image
+For many developers compiling your own Infinispan native binary manually is not desirable, therefore we
+provide the `infinispan/server-native` image that uses a native server binary. The advantage of this over our JVM
+based `infinispan/server` image is that we can no provide a much smaller image, 286 vs 468 MB, as we no longer need to
+include an openjdk JVM in the image.
+
+The `server-native` image is configured exactly the same as the JVM based `infinispan/server` image. We can run an authenticated Infinispan server with
+a single user with the following command:
+
+----
+docker run -p 11222:11222 -e USER="user" -e PASS="pass" quay.io/infinispan/server-native:11.0
+----
+
+From the output below, you can see the Quarkus banner as well various `io.quarkus` logs indicating which extensions are being used.
+
+----
+################################################################################
+#                                                                              #
+# IDENTITIES_PATH not specified                                                #
+# Generating Identities yaml using USER and PASS env vars.                     #
+################################################################################
+2020-06-16 09:27:39,638 INFO  [io.quarkus] (main) config-generator 2.0.0.Final native (powered by Quarkus 1.5.0.Final) started in 0.069s. 
+2020-06-16 09:27:39,643 INFO  [io.quarkus] (main) Profile prod activated. 
+2020-06-16 09:27:39,643 INFO  [io.quarkus] (main) Installed features: [cdi, qute]
+2020-06-16 09:27:39,671 INFO  [io.quarkus] (main) config-generator stopped in 0.001s
+2020-06-16 09:27:40,306 INFO  [ListenerBean] (main) The application is starting...
+2020-06-16 09:27:40,481 INFO  [org.inf.CONTAINER] (main) ISPN000128: Infinispan version: Infinispan 'Corona Extra' 11.0.0.Final
+2020-06-16 09:27:40,489 INFO  [org.inf.CLUSTER] (main) ISPN000078: Starting JGroups channel infinispan with stack image-tcp
+2020-06-16 09:27:45,560 INFO  [org.inf.CLUSTER] (main) ISPN000094: Received new cluster view for channel infinispan: [82914efa63fe-12913|0] (1) [82914efa63fe-12913]
+2020-06-16 09:27:45,562 INFO  [org.inf.CLUSTER] (main) ISPN000079: Channel infinispan local address is 82914efa63fe-12913, physical addresses are [10.0.2.100:7800]
+2020-06-16 09:27:45,566 INFO  [org.inf.CONTAINER] (main) ISPN000390: Persisted state, version=11.0.0.Final timestamp=2020-06-16T09:27:45.563303Z
+2020-06-16 09:27:45,584 INFO  [org.inf.CONTAINER] (main) ISPN000104: Using EmbeddedTransactionManager
+2020-06-16 09:27:45,617 INFO  [org.inf.SERVER] (ForkJoinPool.commonPool-worker-3) ISPN080018: Protocol HotRod (internal)
+2020-06-16 09:27:45,618 INFO  [org.inf.SERVER] (main) ISPN080018: Protocol REST (internal)
+2020-06-16 09:27:45,629 INFO  [org.inf.SERVER] (main) ISPN080004: Protocol SINGLE_PORT listening on 10.0.2.100:11222
+2020-06-16 09:27:45,629 INFO  [org.inf.SERVER] (main) ISPN080034: Server '82914efa63fe-12913' listening on http://10.0.2.100:11222
+2020-06-16 09:27:45,629 INFO  [org.inf.SERVER] (main) ISPN080001: Infinispan Server 11.0.0.Final started in 5457ms
+2020-06-16 09:27:45,629 INFO  [io.quarkus] (main) infinispan-quarkus-server-runner 11.0.0.Final native (powered by Quarkus 1.5.0.Final) started in 5.618s. 
+2020-06-16 09:27:45,629 INFO  [io.quarkus] (main) Profile prod activated. 
+2020-06-16 09:27:45,629 INFO  [io.quarkus] (main) Installed features: [cdi, infinispan-embedded, infinispan-server]
+----
+
+== Further Reading
+For more detailed information abou how to use the `infinispan/server` and `infinispan/server-native` image, please consult the
+https://github.com/infinispan/infinispan-images/blob/master/README.md[official documentation].
+
+== Get it, Use it, Ask us!
+The Quarkus extension and the `server-native` image are currently provided as a tech preview, so please try them out and let us know
+if you run into any issues.
+
+Please http://infinispan.org/download/[download],
+https://issues.jboss.org/projects/ISPN[report bugs],
+https://infinispan.zulipchat.com/[chat with us],
+ask questions on https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest[StackOverflow].
