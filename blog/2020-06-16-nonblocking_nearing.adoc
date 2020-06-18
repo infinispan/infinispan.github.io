@@ -1,0 +1,124 @@
+---
+layout: blog
+title: Non Blocking Saga
+date: '2020-06-09T12:00:00.000-00:00'
+author: William Burns
+tags: [ "non-blocking", "server", "embedded" ]
+---
+
+= Non Blocking Journey
+
+As many you are probably aware recent trends have shown that making applications non blocking
+provides quite a few benefits allowing for greater scalability with less resources. Infinispan
+has been written and rewriting parts to take advantage of this as we can for
+both embedded and server use cases.
+
+== Before Infinispan 11
+
+The Infinispan Server has always utilized netty, however we may not have been the best about
+ensuring we didn't block the event loop.
+The HotRod Client in 9.2.0 also utilizes netty to provide for non blocking operations.
+The internal embedded interceptors were rewritten in 9.0.0 to provide for non blocking support for
+internal cache operations, which include put/get.
+Cache store operations in 10.0.0 were offloaded to a blocking thread pool to provide non
+blocking support.
+
+== Infinispan 11 Non Blocking Changes
+
+With the newest release we have rewritten lots of the internals of Infinispan to take advantage
+of non blocking as much as possible.
+The amount of changes is quite large and a bit hard to describe them all in this blog post.
+The various JIRA can be seen from https://issues.redhat.com/browse/ISPN-10309,
+which isn't even complete yet despite how many different changes we have done.
+
+The persistence SPI was completely rewritten in 11 with non blocking in mind as well and this will
+be covered in a future post as it has much more detailing it.
+For now you can rest assure that all prior stores will still work, however they may have or
+can be optimized to take into account non blocking support.
+
+=== Conversions
+
+Pretty much every module in the Infinispan code base has been changed to support non blocking.
+If code relies upon an API that is blocking that is known to be blocking, we offload those calls
+to a blocking thread pool to ensure we never block the non blocking thread.
+
+Unfortunately some modules have not yet been updated and those are ones related to query.
+Query is in the middle of a giant refactoring and doing so would have caused massive
+conflicts and thus has been delayed to Infinispan 12.
+The server works around this by ensuring write operations performed upon a cache with
+query are always done in a blocking thread to ensure safety.
+
+=== Thread Pools
+
+Infinispan utilizes various thread pools for handling of operations.
+This table details how many thread pools each version of
+Infinispan can have.
+
+.Thread Pools
+|===
+| Version | Embedded | Server
+
+| ISPN 10
+| 5
+| 7
+
+| ISPN 11
+| 2
+| 3
+|===
+
+As you can see there is more than a 50 percent reduction of the number of thread pools in
+both embedded and server modes. This in turn has allowed for a reduction of the default
+number of threads as well as seen in the next table. Note that N is how many cores that
+are available to the JVM.
+
+.Maximum Default Thread Count
+|===
+| Version | Embedded | Server
+
+| ISPN 10
+| 310 + N
+| 470 + (2 * N)
+
+| ISPN 11
+| 150 + (2 * N)
+| 150 + (4 * N)
+|===
+
+After this consolidation we have non blocking and blocking thread pools.
+As you can see this allows us to reduce the maximum number of threads in embedded by about half and
+the server to a third of what it used to be before.
+
+The server has an additional thread pool for the netty event loop and unfortunately we cannot
+consolidate this thread pool, but it is planned for Infinispan 12, which will get us to the
+same number of threads and thread pools for both embedded and server modes.
+
+Note that this doesn't talk about the JGroups thread pool as this is unchanged and is the same.
+
+=== BlockHound
+
+If you are familiar with making code non blocking it can be a very difficult task as even the
+most mundane call can be hiding something blocking, even if it is very brief.
+We could write something to do detect such calls, but there is already an open source tool that
+does exactly what we needed.
+This tool is BlockHound, which can detect blocking calls at runtime.
+More information about it can be found at https://github.com/reactor/BlockHound.
+
+Infinispan takes advantage of blockhound in that we configure it at the module level.
+This allows the end user to even add block hound with Infinispan in embedded mode
+and it should work to test out to ensure that interactions with Infinispan are not blocking
+when needed.
+Note that we do not yet support block hound for the client, despite many methods
+are not blocking today.
+
+== What remains for Infinispan 12
+
+Infinispan 12 should bring the entire non blocking saga to its hopfully final completion.
+
+# The aforementioned query modules need to be revamped
+# Existing supported cache stores need to be rewritten to directly support non blocking
+# Cache retrieval needs to be offloaded to a blocking thread
+# Combine server event loop with non blocking thread pool
+
+Also if time permits the Infinispan Client would be ensured to be fully non blocking and
+integrate with BlockHound to ensure client apps behave properly.
