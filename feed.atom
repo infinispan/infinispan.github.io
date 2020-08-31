@@ -2,13 +2,224 @@
 <feed xml:lang="en-US" xmlns="http://www.w3.org/2005/Atom">
 <id>//infinispan.org/</id>
 <title>Infinispan</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-31T03:36:23-04:00</updated>
 <link href="//infinispan.org/feed.atom" rel="self" type="application/atom+xml" />
 <link href="//infinispan.org/" rel="alternate" type="text/html" />
 <entry>
+<id>//infinispan.org/blog/2020/08/31/nonblocking_nearing/</id>
+<title>Non Blocking Saga</title>
+<updated>2020-08-31T03:36:23-04:00</updated>
+<published>2020-08-31T12:00:00+00:00</published>
+<link href="//infinispan.org/blog/2020/08/31/nonblocking_nearing/" rel="alternate" type="text/html" />
+<author>
+<name>William Burns</name>
+</author>
+<category term="non-blocking"></category>
+<category term="server"></category>
+<category term="embedded"></category>
+<summary>
+As many you are probably aware recent trends have shown that making applications non blocking
+provides quite a few benefits allowing for greater scalability with less resources. Infinispan
+has been written and rewriting parts to take advantage of this as we can for
+both embedded and server use cases.
+
+
+
+
+Before Infinispan 11
+
+
+The Infinispan Server has always utilized netty, however we may not have been the best about
+ensuring we didn&#8217;t block the event loop.
+The HotRod Client in 9.2.0 also utilizes netty to provide for non blocking operations.
+The internal embedded interceptors were rewritten in 9.0.0 to provide for non blocking support for
+internal cache operations, which include...
+</summary>
+<content type="html">
+&lt;div id=&quot;preamble&quot;&gt;
+&lt;div class=&quot;sectionbody&quot;&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;As many you are probably aware recent trends have shown that making applications non blocking
+provides quite a few benefits allowing for greater scalability with less resources. Infinispan
+has been written and rewriting parts to take advantage of this as we can for
+both embedded and server use cases.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;sect1&quot;&gt;
+&lt;h2 id=&quot;_before_infinispan_11&quot;&gt;&lt;a class=&quot;anchor&quot; href=&quot;#_before_infinispan_11&quot; /&gt;Before Infinispan 11&lt;/h2&gt;
+&lt;div class=&quot;sectionbody&quot;&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;The Infinispan Server has always utilized netty, however we may not have been the best about
+ensuring we didn’t block the event loop.
+The HotRod Client in 9.2.0 also utilizes netty to provide for non blocking operations.
+The internal embedded interceptors were rewritten in 9.0.0 to provide for non blocking support for
+internal cache operations, which include put/get.
+Cache store operations in 10.0.0 were offloaded to a blocking thread pool to provide non
+blocking support.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;sect1&quot;&gt;
+&lt;h2 id=&quot;_infinispan_11_non_blocking_changes&quot;&gt;&lt;a class=&quot;anchor&quot; href=&quot;#_infinispan_11_non_blocking_changes&quot; /&gt;Infinispan 11 Non Blocking Changes&lt;/h2&gt;
+&lt;div class=&quot;sectionbody&quot;&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;With the newest release we have rewritten lots of the internals of Infinispan to take advantage
+of non blocking as much as possible.
+The amount of changes is quite large and a bit hard to describe them all in this blog post.
+The various JIRA can be seen from &lt;a href=&quot;https://issues.redhat.com/browse/ISPN-10309&quot; class=&quot;bare&quot;&gt;https://issues.redhat.com/browse/ISPN-10309&lt;/a&gt;,
+which isn’t even complete yet despite how many different changes we have done.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;The persistence SPI was completely rewritten in 11 with non blocking in mind as well and this will
+be covered in a future post as it has much more detailing it.
+For now you can rest assure that all prior stores will still work, however they may have or
+can be optimized to take into account non blocking support.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;sect2&quot;&gt;
+&lt;h3 id=&quot;_conversions&quot;&gt;&lt;a class=&quot;anchor&quot; href=&quot;#_conversions&quot; /&gt;Conversions&lt;/h3&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Pretty much every module in the Infinispan code base has been changed to support non blocking.
+If code relies upon an API that is blocking that is known to be blocking, we offload those calls
+to a blocking thread pool to ensure we never block the non blocking thread.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Unfortunately some modules have not yet been updated and those are ones related to query.
+Query is in the middle of a giant refactoring and doing so would have caused massive
+conflicts and thus has been delayed to Infinispan 12.
+The server works around this by ensuring write operations performed upon a cache with
+query are always done in a blocking thread to ensure safety.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;sect2&quot;&gt;
+&lt;h3 id=&quot;_thread_pools&quot;&gt;&lt;a class=&quot;anchor&quot; href=&quot;#_thread_pools&quot; /&gt;Thread Pools&lt;/h3&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Infinispan utilizes various thread pools for handling of operations.
+This table details how many thread pools each version of
+Infinispan can have.&lt;/p&gt;
+&lt;/div&gt;
+&lt;table class=&quot;tableblock frame-all grid-all stretch&quot;&gt;
+&lt;caption class=&quot;title&quot;&gt;Table 1. Thread Pools&lt;/caption&gt;
+&lt;colgroup&gt;
+&lt;col style=&quot;width: 33.3333%;&quot;&gt;
+&lt;col style=&quot;width: 33.3333%;&quot;&gt;
+&lt;col style=&quot;width: 33.3334%;&quot;&gt;
+&lt;/col&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th class=&quot;tableblock halign-left valign-top&quot;&gt;Version&lt;/th&gt;
+&lt;th class=&quot;tableblock halign-left valign-top&quot;&gt;Embedded&lt;/th&gt;
+&lt;th class=&quot;tableblock halign-left valign-top&quot;&gt;Server&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;ISPN 10&lt;/p&gt;&lt;/td&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;5&lt;/p&gt;&lt;/td&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;7&lt;/p&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;ISPN 11&lt;/p&gt;&lt;/td&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;2&lt;/p&gt;&lt;/td&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;3&lt;/p&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/col&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;As you can see there is more than a 50 percent reduction of the number of thread pools in
+both embedded and server modes. This in turn has allowed for a reduction of the default
+number of threads as well as seen in the next table. Note that N is how many cores that
+are available to the JVM.&lt;/p&gt;
+&lt;/div&gt;
+&lt;table class=&quot;tableblock frame-all grid-all stretch&quot;&gt;
+&lt;caption class=&quot;title&quot;&gt;Table 2. Maximum Default Thread Count&lt;/caption&gt;
+&lt;colgroup&gt;
+&lt;col style=&quot;width: 33.3333%;&quot;&gt;
+&lt;col style=&quot;width: 33.3333%;&quot;&gt;
+&lt;col style=&quot;width: 33.3334%;&quot;&gt;
+&lt;/col&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th class=&quot;tableblock halign-left valign-top&quot;&gt;Version&lt;/th&gt;
+&lt;th class=&quot;tableblock halign-left valign-top&quot;&gt;Embedded&lt;/th&gt;
+&lt;th class=&quot;tableblock halign-left valign-top&quot;&gt;Server&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;ISPN 10&lt;/p&gt;&lt;/td&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;310 + N&lt;/p&gt;&lt;/td&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;470 + (2 * N)&lt;/p&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;ISPN 11&lt;/p&gt;&lt;/td&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;150 + (2 * N)&lt;/p&gt;&lt;/td&gt;
+&lt;td class=&quot;tableblock halign-left valign-top&quot;&gt;&lt;p class=&quot;tableblock&quot;&gt;150 + (4 * N)&lt;/p&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/col&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;After this consolidation we have non blocking and blocking thread pools.
+As you can see this allows us to reduce the maximum number of threads in embedded by about half and
+the server to a third of what it used to be before.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;The server has an additional thread pool for the netty event loop and unfortunately we cannot
+consolidate this thread pool, but it is planned for Infinispan 12, which will get us to the
+same number of threads and thread pools for both embedded and server modes.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Note that this doesn’t talk about the JGroups thread pool as this is unchanged and is the same.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/col&gt;
+&lt;div class=&quot;sect2&quot;&gt;
+&lt;h3 id=&quot;_blockhound&quot;&gt;&lt;a class=&quot;anchor&quot; href=&quot;#_blockhound&quot; /&gt;BlockHound&lt;/h3&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;If you are familiar with making code non blocking it can be a very difficult task as even the
+most mundane call can be hiding something blocking, even if it is very brief.
+We could write something to do detect such calls, but there is already an open source tool that
+does exactly what we needed.
+This tool is BlockHound, which can detect blocking calls at runtime.
+More information about it can be found at &lt;a href=&quot;https://github.com/reactor/BlockHound&quot; class=&quot;bare&quot;&gt;https://github.com/reactor/BlockHound&lt;/a&gt;.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Infinispan takes advantage of blockhound in that we configure it at the module level.
+This allows the end user to even add block hound with Infinispan in embedded mode
+and it should work to test out to ensure that interactions with Infinispan are not blocking
+when needed.
+Note that we do not yet support block hound for the client, despite many methods
+are not blocking today.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/colgroup&gt;
+&lt;/table&gt;
+&lt;div class=&quot;sect1&quot;&gt;
+&lt;h2 id=&quot;_what_remains_for_infinispan_12&quot;&gt;&lt;a class=&quot;anchor&quot; href=&quot;#_what_remains_for_infinispan_12&quot; /&gt;What remains for Infinispan 12&lt;/h2&gt;
+&lt;div class=&quot;sectionbody&quot;&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Infinispan 12 should bring the entire non blocking saga to its hopfully final completion.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;h1 id=&quot;_the_aforementioned_query_modules_need_to_be_revamped&quot; class=&quot;sect0&quot;&gt;&lt;a class=&quot;anchor&quot; href=&quot;#_the_aforementioned_query_modules_need_to_be_revamped&quot; /&gt;The aforementioned query modules need to be revamped&lt;/h1&gt;
+
+&lt;h1 id=&quot;_existing_supported_cache_stores_need_to_be_rewritten_to_directly_support_non_blocking&quot; class=&quot;sect0&quot;&gt;&lt;a class=&quot;anchor&quot; href=&quot;#_existing_supported_cache_stores_need_to_be_rewritten_to_directly_support_non_blocking&quot; /&gt;Existing supported cache stores need to be rewritten to directly support non blocking&lt;/h1&gt;
+
+&lt;h1 id=&quot;_cache_retrieval_needs_to_be_offloaded_to_a_blocking_thread&quot; class=&quot;sect0&quot;&gt;&lt;a class=&quot;anchor&quot; href=&quot;#_cache_retrieval_needs_to_be_offloaded_to_a_blocking_thread&quot; /&gt;Cache retrieval needs to be offloaded to a blocking thread&lt;/h1&gt;
+
+&lt;h1 id=&quot;_combine_server_event_loop_with_non_blocking_thread_pool&quot; class=&quot;sect0&quot;&gt;&lt;a class=&quot;anchor&quot; href=&quot;#_combine_server_event_loop_with_non_blocking_thread_pool&quot; /&gt;Combine server event loop with non blocking thread pool&lt;/h1&gt;
+&lt;div class=&quot;openblock partintro&quot;&gt;
+&lt;div class=&quot;content&quot;&gt;
+Also if time permits the Infinispan Client would be ensured to be fully non blocking and
+integrate with BlockHound to ensure client apps behave properly.
+&lt;/div&gt;
+&lt;/div&gt;&lt;/col&gt;&lt;/colgroup&gt;&lt;/table&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+</content>
+</entry>
+<entry>
 <id>//infinispan.org/blog/2020/08/28/infinispan-tdc-sp/</id>
 <title>The developer Conference Sao Paulo</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-08-28T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/08/28/infinispan-tdc-sp/" rel="alternate" type="text/html" />
 <author>
@@ -105,7 +316,7 @@ We will have an Infinispan presentation showing some important features, what’
 <entry>
 <id>//infinispan.org/blog/2020/07/28/infinispan-server-tutorial/</id>
 <title>Infinispan Server Tutorial</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-07-28T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/07/28/infinispan-server-tutorial/" rel="alternate" type="text/html" />
 <author>
@@ -223,7 +434,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2020/07/27/infinispan-12/</id>
 <title>Infinispan 12.0.0.Dev01</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-07-27T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/07/27/infinispan-12/" rel="alternate" type="text/html" />
 <author>
@@ -276,7 +487,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2020/07/22/anchored-keys/</id>
 <title>Anchored keys - scaling up a cluster without transferring values</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-07-22T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/07/22/anchored-keys/" rel="alternate" type="text/html" />
 <author>
@@ -576,7 +787,7 @@ but also in server mode, if the client is not &lt;code&gt;HASH_DISTRIBUTION_AWAR
 <entry>
 <id>//infinispan.org/blog/2020/07/03/infinispan-11/</id>
 <title>Infinispan 11.0.1.Final</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-07-03T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/07/03/infinispan-11/" rel="alternate" type="text/html" />
 <author>
@@ -718,7 +929,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2020/06/16/native-server-announce/</id>
 <title>Infinispan Native Server Image</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-06-16T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/06/16/native-server-announce/" rel="alternate" type="text/html" />
 <author>
@@ -884,7 +1095,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2020/06/15/infinispan-11/</id>
 <title>Infinispan 11.0.0.Final</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-06-15T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/06/15/infinispan-11/" rel="alternate" type="text/html" />
 <author>
@@ -1110,7 +1321,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2020/06/09/offheap-resize/</id>
 <title>Off Heap enhancements</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-06-09T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/06/09/offheap-resize/" rel="alternate" type="text/html" />
 <author>
@@ -1248,7 +1459,7 @@ max idle as of 10.1.4.Final and 11.0.0.Final.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2020/06/08/infinispan-operator-1/</id>
 <title>Infinispan Operator 1.1.2 is out!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-06-08T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/06/08/infinispan-operator-1/" rel="alternate" type="text/html" />
 <author>
@@ -1365,7 +1576,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2020/06/05/xsite-improvements/</id>
 <title>Cross Site Replication improvements</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-06-05T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/06/05/xsite-improvements/" rel="alternate" type="text/html" />
 <author>
@@ -1507,7 +1718,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2020/06/04/server-secure-by-default/</id>
 <title>Secure server by default</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-06-04T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/06/04/server-secure-by-default/" rel="alternate" type="text/html" />
 <author>
@@ -1751,7 +1962,7 @@ For more information read the &lt;a href=&quot;https://infinispan.org/docs/dev/t
 <entry>
 <id>//infinispan.org/blog/2020/05/30/hotrod-percache-configuration/</id>
 <title>Hot Rod per-cache configuration</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-05-30T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/05/30/hotrod-percache-configuration/" rel="alternate" type="text/html" />
 <author>
@@ -1855,7 +2066,7 @@ infinispan.client.hotrod.cache.mydistcache.template=org.infinispan.DIST_SYNC&lt;
 <entry>
 <id>//infinispan.org/blog/2020/05/28/cli/</id>
 <title>CLI enhancements</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-05-28T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/05/28/cli/" rel="alternate" type="text/html" />
 <author>
@@ -1993,7 +2204,7 @@ this feature currently only works on Linux/Unix systems.
 <entry>
 <id>//infinispan.org/blog/2020/05/26/hotrod-uri/</id>
 <title>Hot Rod URI</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-05-26T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/05/26/hotrod-uri/" rel="alternate" type="text/html" />
 <author>
@@ -2112,7 +2323,7 @@ infinispan.client.hotrod.tcp_keep_alive=true&lt;/code&gt;&lt;/pre&gt;
 <entry>
 <id>//infinispan.org/blog/2020/05/25/infinispan-11/</id>
 <title>Infinispan 11.0.0.CR1</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-05-25T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/05/25/infinispan-11/" rel="alternate" type="text/html" />
 <author>
@@ -2393,7 +2604,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2020/03/03/infinispan-11/</id>
 <title>Infinispan 11.0.0.Alpha2 and 10.1.3.Final</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-03-03T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/03/03/infinispan-11/" rel="alternate" type="text/html" />
 <author>
@@ -2458,7 +2669,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2020/03/03/documentation-strategy/</id>
 <title>Infinispan Documentation Strategy</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-03-03T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/03/03/documentation-strategy/" rel="alternate" type="text/html" />
 <author>
@@ -2712,7 +2923,7 @@ conversation going.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2020/02/24/infinispan-operator-1/</id>
 <title>Infinispan Operator 1.1.1 is out!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-02-24T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/02/24/infinispan-operator-1/" rel="alternate" type="text/html" />
 <author>
@@ -2856,7 +3067,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2020/02/20/server-config/</id>
 <title>Infinispan Server configuration</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-02-20T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/02/20/server-config/" rel="alternate" type="text/html" />
 <author>
@@ -3037,7 +3248,7 @@ One of the big differences is that the new server’s configuration is just an e
 <entry>
 <id>//infinispan.org/blog/2020/02/10/spring-boot-release-2/</id>
 <title>Infinispan Spring Boot Starter released with Spring Boot 2.2.4.RELEASE</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-02-10T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/02/10/spring-boot-release-2/" rel="alternate" type="text/html" />
 <author>
@@ -3165,7 +3376,7 @@ shape up our next release.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2020/01/24/infinispan-operator-1/</id>
 <title>Infinispan Operator 1.1.0 is out!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2020-01-24T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2020/01/24/infinispan-operator-1/" rel="alternate" type="text/html" />
 <author>
@@ -3327,7 +3538,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2019/12/23/infinispan-10/</id>
 <title>Infinispan 10.1.0.Final</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-12-23T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2019/12/23/infinispan-10/" rel="alternate" type="text/html" />
 <author>
@@ -3574,7 +3785,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2019/12/09/infinispan-10/</id>
 <title>Infinispan 10.1.0.CR1</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-12-09T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2019/12/09/infinispan-10/" rel="alternate" type="text/html" />
 <author>
@@ -3760,7 +3971,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2019/12/02/image/</id>
 <title>Infinispan&#39;s new image</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-12-02T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2019/12/02/image/" rel="alternate" type="text/html" />
 <author>
@@ -3936,7 +4147,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2019/11/25/infinispan-operator-1/</id>
 <title>Infinispan Operator 1.0.1</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-11-25T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2019/11/25/infinispan-operator-1/" rel="alternate" type="text/html" />
 <author>
@@ -4033,7 +4244,7 @@ Infinispan&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/11/18/infinispan-1010beta1/</id>
 <title>Infinispan 10.1.0.Beta1</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-11-18T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2019/11/18/infinispan-1010beta1/" rel="alternate" type="text/html" />
 <author>
@@ -4193,7 +4404,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2019/11/11/serverng/</id>
 <title>Infinispan&#39;s new server</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-11-11T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2019/11/11/serverng/" rel="alternate" type="text/html" />
 <author>
@@ -4338,7 +4549,7 @@ v2&lt;/pre&gt;
 <entry>
 <id>//infinispan.org/blog/2019/11/01/infinispan-10/</id>
 <title>Infinispan 10.0.1.Final</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-11-01T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2019/11/01/infinispan-10/" rel="alternate" type="text/html" />
 <author>
@@ -4384,7 +4595,7 @@ Please report any bugs you find on our
 <entry>
 <id>//infinispan.org/blog/2019/10/28/infinispan-10-final/</id>
 <title>Infinispan 10.0.0.Final</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-10-28T12:00:00+00:00</published>
 <link href="//infinispan.org/blog/2019/10/28/infinispan-10-final/" rel="alternate" type="text/html" />
 <author>
@@ -4854,7 +5065,7 @@ ask questions on &lt;a href=&quot;https://stackoverflow.com/questions/tagged/?ta
 <entry>
 <id>//infinispan.org/blog/2019/07/15/infinispan-1000beta4/</id>
 <title>Infinispan 10.0.0.Beta4</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-07-15T03:02:00-07:00</published>
 <link href="//infinispan.org/blog/2019/07/15/infinispan-1000beta4/" rel="alternate" type="text/html" />
 <author>
@@ -5129,7 +5340,7 @@ three weeks from now.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/07/12/infinispan-operator-030-expands/</id>
 <title>Infinispan Operator 0.3.0 expands container and security configuration!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-07-12T02:58:00-07:00</published>
 <link href="//infinispan.org/blog/2019/07/12/infinispan-operator-030-expands/" rel="alternate" type="text/html" />
 <author>
@@ -5277,7 +5488,7 @@ Galder&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/04/15/infinispan-on-tour-march-april-2019/</id>
 <title>Infinispan on tour, March-April 2019</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-04-15T04:08:00-07:00</published>
 <link href="//infinispan.org/blog/2019/04/15/infinispan-on-tour-march-april-2019/" rel="alternate" type="text/html" />
 <author>
@@ -5596,7 +5807,7 @@ Infinispan 10&lt;/strong&gt;, so my main focus will be there for a bit.&lt;/p&gt
 <entry>
 <id>//infinispan.org/blog/2019/04/08/operator-021-out-with-dns-ping-and/</id>
 <title>Operator 0.2.1 out with DNS ping and expanded customizations</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-04-08T01:00:00-07:00</published>
 <link href="//infinispan.org/blog/2019/04/08/operator-021-out-with-dns-ping-and/" rel="alternate" type="text/html" />
 <author>
@@ -5699,7 +5910,7 @@ Galder&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/04/05/infinispan-spring-boot-starter-215final/</id>
 <title>Infinispan Spring Boot Starter 2.1.5.Final and 1.0.7.Final are out!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-04-05T02:48:00-07:00</published>
 <link href="//infinispan.org/blog/2019/04/05/infinispan-spring-boot-starter-215final/" rel="alternate" type="text/html" />
 <author>
@@ -5877,7 +6088,7 @@ shape up our next release.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/03/07/subatomic-infinspan-client/</id>
 <title>Subatomic Infinispan Client</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-03-07T06:08:00-08:00</published>
 <link href="//infinispan.org/blog/2019/03/07/subatomic-infinspan-client/" rel="alternate" type="text/html" />
 <author>
@@ -5986,7 +6197,7 @@ enhancing this extension and would love to have any feedback.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/03/06/triple-cachestore-release-cloud-mongodb/</id>
 <title>Triple cachestore release: Cloud, MongoDB and Cassandra</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-03-06T07:07:00-08:00</published>
 <link href="//infinispan.org/blog/2019/03/06/triple-cachestore-release-cloud-mongodb/" rel="alternate" type="text/html" />
 <author>
@@ -6082,7 +6293,7 @@ SPI.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/03/05/enhanced-jgroups-configuration/</id>
 <title>Enhanced JGroups configuration</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-03-05T05:27:00-08:00</published>
 <link href="//infinispan.org/blog/2019/03/05/enhanced-jgroups-configuration/" rel="alternate" type="text/html" />
 <author>
@@ -6211,7 +6422,7 @@ Tristan&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/03/04/first-openshfit-operator-pre-release/</id>
 <title>First OpenShift Operator pre-release for Infinispan is here!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-03-04T01:14:00-08:00</published>
 <link href="//infinispan.org/blog/2019/03/04/first-openshfit-operator-pre-release/" rel="alternate" type="text/html" />
 <author>
@@ -6302,7 +6513,7 @@ Galder&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/02/22/infinispan-spring-boot-starter-214final/</id>
 <title>Infinispan Spring Boot Starter 2.1.4.Final is out!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-02-22T04:06:00-08:00</published>
 <link href="//infinispan.org/blog/2019/02/22/infinispan-spring-boot-starter-214final/" rel="alternate" type="text/html" />
 <author>
@@ -6374,7 +6585,7 @@ shape up our next release.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/02/21/infinispan-1000beta2-and-948/</id>
 <title>Infinispan 10.0.0.Beta2 and 9.4.8</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-02-21T08:31:00-08:00</published>
 <link href="//infinispan.org/blog/2019/02/21/infinispan-1000beta2-and-948/" rel="alternate" type="text/html" />
 <author>
@@ -6488,7 +6699,7 @@ Please report any bugs you find on our
 <entry>
 <id>//infinispan.org/blog/2019/01/31/infinispan-spring-boot-starter-213final/</id>
 <title>Infinispan Spring Boot Starter 2.1.3.Final is out!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-01-31T08:55:00-08:00</published>
 <link href="//infinispan.org/blog/2019/01/31/infinispan-spring-boot-starter-213final/" rel="alternate" type="text/html" />
 <author>
@@ -6560,7 +6771,7 @@ shape up our next release.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/01/28/1000alpha3-and-946final/</id>
 <title>10.0.0.Alpha3 and 9.4.6.Final</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-01-28T01:35:00-08:00</published>
 <link href="//infinispan.org/blog/2019/01/28/1000alpha3-and-946final/" rel="alternate" type="text/html" />
 <author>
@@ -6714,7 +6925,7 @@ shape up our next release.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2019/01/15/infinispan-spring-boot-starter-212final/</id>
 <title>Infinispan Spring Boot Starter 2.1.2.Final is out!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2019-01-15T01:52:00-08:00</published>
 <link href="//infinispan.org/blog/2019/01/15/infinispan-spring-boot-starter-212final/" rel="alternate" type="text/html" />
 <author>
@@ -6795,7 +7006,7 @@ shape up our next release.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2018/12/11/infinispan-spring-boot-211final-and/</id>
 <title>Infinispan Spring Boot Starter 2.1.1.Final and 1.0.4.Final are out!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2018-12-11T04:43:00-08:00</published>
 <link href="//infinispan.org/blog/2018/12/11/infinispan-spring-boot-211final-and/" rel="alternate" type="text/html" />
 <author>
@@ -6897,7 +7108,7 @@ shape up our next release.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2018/12/10/infinispan-944final-and-1000alpha2-out/</id>
 <title>Infinispan 9.4.4.Final and 10.0.0.Alpha2 out with Spring 5 support!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2018-12-10T00:05:00-08:00</published>
 <link href="//infinispan.org/blog/2018/12/10/infinispan-944final-and-1000alpha2-out/" rel="alternate" type="text/html" />
 <author>
@@ -7021,7 +7232,7 @@ shape up our next release.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2018/11/21/the-road-to-infinispan-10-alpha1/</id>
 <title>The road to Infinispan 10 (Alpha1)</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2018-11-21T00:57:00-08:00</published>
 <link href="//infinispan.org/blog/2018/11/21/the-road-to-infinispan-10-alpha1/" rel="alternate" type="text/html" />
 <author>
@@ -7209,7 +7420,7 @@ shape up our next release.&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2018/11/19/quick-start-infinispan-on-kubernetes/</id>
 <title>Quick start Infinispan on Kubernetes</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2018-11-19T04:14:00-08:00</published>
 <link href="//infinispan.org/blog/2018/11/19/quick-start-infinispan-on-kubernetes/" rel="alternate" type="text/html" />
 <author>
@@ -7364,7 +7575,7 @@ Galder&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2018/11/15/hotrod-clients-c-and-c-830final-are-out/</id>
 <title>Hotrod clients C++ and C# 8.3.0.Final are out!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2018-11-15T01:18:00-08:00</published>
 <link href="//infinispan.org/blog/2018/11/15/hotrod-clients-c-and-c-830final-are-out/" rel="alternate" type="text/html" />
 <author>
@@ -7466,7 +7677,7 @@ code for 8.3.0.Final&lt;/a&gt;&lt;/p&gt;
 <entry>
 <id>//infinispan.org/blog/2018/11/12/the-fastest-path-to-running-infinispan/</id>
 <title>The fastest path to running Infinispan on OpenShift!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
+<updated>2020-08-28T08:41:19-04:00</updated>
 <published>2018-11-12T00:41:00-08:00</published>
 <link href="//infinispan.org/blog/2018/11/12/the-fastest-path-to-running-infinispan/" rel="alternate" type="text/html" />
 <author>
@@ -7548,212 +7759,6 @@ this &lt;a href=&quot;https://infinispan.zulipchat.com/&quot;&gt;Zulip chat&lt;/
 &lt;div class=&quot;paragraph&quot;&gt;
 &lt;p&gt;Cheers,
 Galder&lt;/p&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-</content>
-</entry>
-<entry>
-<id>//infinispan.org/blog/2018/11/09/infinispan-941final-and-infinispan/</id>
-<title>Infinispan 9.4.1.Final and Infinispan Spring Boot Starter 2.1.0.Final are out!</title>
-<updated>2020-08-28T08:39:27-04:00</updated>
-<published>2018-11-09T03:18:00-08:00</published>
-<link href="//infinispan.org/blog/2018/11/09/infinispan-941final-and-infinispan/" rel="alternate" type="text/html" />
-<author>
-<name>Katia Aresti</name>
-</author>
-<category term=" release"></category>
-<category term="spring boot"></category>
-<summary>
-Dear Infinispan and Spring Boot users,
-
-
-We have just released
-Infinispan 9.4.1.Final
-and Infinispan
-Spring Boot 2.1.0.Final.
-
-
-Highlights of the Infinispan release include:
-
-
-
-
-Export Data Grid stats to Prometheus
-(ISPN-9558)
-
-
-Upgrade RocksDB version
-(ISPN-9603)
-
-
-Upgrade Narayana to version 5.9.0.Final
-(ISPN-9639)
-
-
-Upgrade to
-protostream-4.2.2.Final
-(ISPN-9654)
-
-
-Update Cassandra Store to Infinispan
-9.4(ISPN-9595)
-
-
-Handle ClientCacheEntryExpired into InvalidatedNearCacheListener
-(ISPN-7087)
-
-
-Bug fixes
-
-
-Additional
-code simple
-examples such as remote multimap or near caching 
-
-
-
-
-Complete release notes can be
-read here.
-
-
-Highlights of the Infinispan-Spring-Boot release include:
-
-
-
-
-Upgrade Spring-Boot version to
-2.1.0
-
-
-Upgrade Infinispan version to 9.4.1
-
-
-Integration with Spring Actuator, to expose production ready metrics
-(ISPN-9668)
-
-
-Bug fixes
-
-
-Additional
-code
-examples
-
-
-
-
-You can find these releases in the maven central repository.
-
-
-Please report any issues in
-our issue tracker and join the
-conversation in our Zulip Chat to
-shape up our next release.
-
-
-Enjoy,
-
-
-The Infinispan Team...
-</summary>
-<content type="html">
-&lt;div id=&quot;preamble&quot;&gt;
-&lt;div class=&quot;sectionbody&quot;&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;Dear Infinispan and Spring Boot users,&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;We have just released
-&lt;a href=&quot;https://github.com/infinispan/infinispan&quot;&gt;Infinispan&lt;/a&gt; &lt;strong&gt;9.4.1.Final&lt;/strong&gt;
-and &lt;a href=&quot;https://github.com/infinispan/infinispan-spring-boot&quot;&gt;Infinispan
-Spring Boot&lt;/a&gt; &lt;strong&gt;2.1.0.Final&lt;/strong&gt;.&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;Highlights of the &lt;strong&gt;Infinispan&lt;/strong&gt; release include:&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;ulist&quot;&gt;
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p&gt;Export Data Grid stats to &lt;a href=&quot;https://prometheus.io/&quot;&gt;Prometheus&lt;/a&gt;
-(&lt;a href=&quot;https://issues.jboss.org/browse/ISPN-9558&quot;&gt;ISPN-9558&lt;/a&gt;)&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;Upgrade &lt;a href=&quot;https://rocksdb.org/&quot;&gt;RocksDB&lt;/a&gt; version
-(&lt;a href=&quot;https://issues.jboss.org/browse/ISPN-9603&quot;&gt;ISPN-9603&lt;/a&gt;)&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;Upgrade &lt;a href=&quot;http://narayana.io/&quot;&gt;Narayana&lt;/a&gt; to version 5.9.0.Final
-(&lt;a href=&quot;https://issues.jboss.org/browse/ISPN-9639&quot;&gt;ISPN-9639&lt;/a&gt;)&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;Upgrade to
-&lt;a href=&quot;https://github.com/infinispan/protostream&quot;&gt;protostream-4.2.2.Final&lt;/a&gt;
-(&lt;a href=&quot;https://issues.jboss.org/browse/ISPN-9654&quot;&gt;ISPN-9654&lt;/a&gt;)&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;Update Cassandra Store to Infinispan
-9.4(&lt;a href=&quot;https://issues.jboss.org/browse/ISPN-9595&quot;&gt;ISPN-9595&lt;/a&gt;)&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;Handle ClientCacheEntryExpired into InvalidatedNearCacheListener
-(&lt;a href=&quot;https://issues.jboss.org/browse/ISPN-7087&quot;&gt;ISPN-7087&lt;/a&gt;)&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;Bug fixes&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;Additional
-&lt;a href=&quot;https://github.com/infinispan/infinispan-simple-tutorials&quot;&gt;code simple
-examples&lt;/a&gt; such as remote multimap or near caching &lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/div&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;Complete release notes can be
-read &lt;a href=&quot;https://issues.jboss.org/secure/ReleaseNote.jspa?projectId=12310799&amp;amp;version=12339377&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;Highlights of the &lt;strong&gt;Infinispan-Spring-Boot&lt;/strong&gt; release include:&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;ulist&quot;&gt;
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p&gt;Upgrade &lt;strong&gt;Spring-Boot&lt;/strong&gt; version to
-&lt;a href=&quot;https://spring.io/blog/2018/10/30/spring-boot-2-1-0&quot;&gt;2.1.0&lt;/a&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;Upgrade &lt;strong&gt;Infinispan&lt;/strong&gt; version to 9.4.1&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;Integration with Spring Actuator, to expose production ready metrics
-(&lt;a href=&quot;https://issues.jboss.org/browse/ISPN-9668&quot;&gt;ISPN-9668&lt;/a&gt;)&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;Bug fixes&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;Additional
-&lt;a href=&quot;https://github.com/infinispan/infinispan-spring-boot/tree/master/infinispan-spring-boot-samples&quot;&gt;code
-examples&lt;/a&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/div&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;You can find these releases in the maven central repository.&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;Please report any issues in
-our &lt;a href=&quot;https://issues.jboss.org/projects/ISPN&quot;&gt;issue tracker&lt;/a&gt; and join the
-conversation in our &lt;a href=&quot;https://infinispan.zulipchat.com/&quot;&gt;Zulip Chat&lt;/a&gt; to
-shape up our next release.&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;Enjoy,&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;The Infinispan Team&lt;/p&gt;
 &lt;/div&gt;
 &lt;/div&gt;
 &lt;/div&gt;
