@@ -1,0 +1,64 @@
+---
+layout: blog
+title: Hot Rod per-cache configuration
+author: Tristan Tarrant
+tags: [ "hot rod", "configuration" ]
+---
+
+= Hot Rod per-cache configuration
+
+Aside from being able to configure a Java Hot Rod client through a https://infinispan.org/blog/[compact URI] representation, Infinispan 11 brings some additional changes to remote cache configuration.
+
+While remote caches did have some client-side configuration, this was never implemented cleanly, resorting to multiple overloaded variations on the `getCache()` method, for example to obtain a transactional cache, or enabling near-caching.
+
+Infinispan 11 now allows specifying per-cache configuration both through the API and through the declarative properties file.
+
+Let's look at a few examples.
+
+[source,java]
+----
+ConfigurationBuilder builder = new ConfigurationBuilder()
+    .uri("hotrod://127.0.0.1");
+    .remoteCache("closecache")
+        .nearCacheMode(NearCacheMode.INVALIDATED)
+        .nearCacheMaxEntries(10000)
+    .remoteCache("txcache")
+        .transactionMode(TransactionMode.NON_XA);
+RemoteCacheManager manager = new RemoteCacheManager(builder.build());
+----
+
+In the above code snippet, we enable near-caching for the cache `closecache` and we enable NON_XA transactions on the cache `txcache`.
+
+The equivalent `hotrod-client.properties` file:
+
+[source]
+----
+infinispan.client.hotrod.uri=hotrod://127.0.0.1
+infinispan.client.hotrod.cache.closecache.near_cache.mode=INVALIDATED
+infinispan.client.hotrod.cache.closecache.near_cache.max_entries=10000
+infinispan.client.hotrod.cache.txcache.transaction.transaction_mode=NON_XA
+----
+
+== Automatic cache creation
+
+A neat feature that has been implemented as part of per-cache configuration, is the ability to automatically create a cache on the server on first use, if it is missing, by supplying either an existing template or a full-blown configuration.
+
+[source,java]
+----
+ConfigurationBuilder builder = new ConfigurationBuilder()
+    .uri("hotrod://127.0.0.1");
+    .remoteCache("mydistcache")
+        .templateName("org.infinispan.DIST_SYNC");
+RemoteCacheManager manager = new RemoteCacheManager(builder.build());
+Cache<String, String> cache = manager.getCache("mydistcache");
+...
+----
+
+The above example using a properties file would look like:
+
+[source]
+----
+infinispan.client.hotrod.uri=hotrod://127.0.0.1
+infinispan.client.hotrod.cache.mydistcache.template=org.infinispan.DIST_SYNC
+----
+

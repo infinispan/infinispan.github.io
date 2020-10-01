@@ -1,0 +1,62 @@
+---
+layout: tutorial-extended
+title: The Weather App
+---
+
+{% assign tutorial_github_url = "https://github.com/infinispan/infinispan-embedded-tutorial" %}
+{% assign @tutorial_steps = "The Weather Application, Initializing the CacheManager, Putting stuff in the cache, Making entries expire, Configuring the default cache, Clustering the application, Listen to changes in the cluster, Listen to changes in the cache, Grouping entries together, Temperature averages with streams, Declarative configuration" | split: ", " %}
+{% assign tutorial_step = 5 %}
+
+<div class="grid-wrapper">
+  <div class="width-3-12 width-12-12-m">
+    {% include embedded-tutorial-menu.html tutorial_steps=tutorial_steps tutorial_step=tutorial_step %}
+  </div>
+  <div class="width-9-12 width-12-12-m">
+    <h4>{{page.title}}</h4>
+    <p>
+      In this step we will unleash the power of Infinispan's clustering, showing how it can be used to share data among multiple nodes. These nodes can either be on the same physical host, or running in containers or on dedicated VMs or on separate machines. Obviously, for the purposes of this tutorial, running all nodes on the same host is easiest since it doesn't require messing around with networks and firewalls. To achieve this, just launch the application from separate terminal instances. For best results use a terminal which supports vertical splitting (such as Tilix on Linux, iTerm2 on OSX or ConEmu on Windows).
+    </p>
+    <p>
+      In order to turn a CacheManager into a clustered one, we need to supply a special "global" configuration to it with an enabled transport:
+      <pre>
+        <code class="java">
+          = preserve do
+            :escaped
+              GlobalConfigurationBuilder global = GlobalConfigurationBuilder.defaultClusteredBuilder();
+              global.transport().clusterName("WeatherApp");
+              cacheManager = new DefaultCacheManager(global.build());
+        </code>
+      </pre>
+      We went the easy route by using the convenience <i>defaultClusteredBuilder()</i> method, but we can achieve the same result by constructing a plain <i>GlobalConfigurationBuidler</i> and tweaking the necessary parameters. Making the CacheManager clustered is not enough: we also want a clustered cache. For this example we will use a distributed synchronous cache with two owners (the default), by changing the default cache configuration:
+      <pre>
+        <code class="java">
+          = preserve do
+            :escaped
+              config.clustering().cacheMode(CacheMode.DIST_SYNC);
+        </code>
+      </pre>
+      The entries will be distributed among the cluster members according to the hash of their keys. Since we asked for two owners, each entry will have a primary owner and a backup owner.
+      <br/>
+      Since the entries we will be inserting will need to be transferred between the nodes over the network, we need to make sure both keys and values can be serialized with the default Infinispan marshaller - ProtoStream. As the Cache utilise a String for the key, we don't have to do anything for the key as Strings are supported natively by ProtoStream. For the value, LocationWeather, it's necessary to annotate the class with <i>@ProtoField annotations,</i> and generate a <i>SerializationContextInitializer</i> implementation, which is then registered with the GlobalConfigurationBuidler.
+
+      <pre>
+        <code class="java">
+          = preserve do
+            :escaped
+              serialization().addContextInitializers(new SerializationContextInitializerImpl());
+        </code>
+      </pre>
+      It is now time to fire up your multiple terminals and try this for yourself:
+      <pre>
+        <code class="nohighlight">
+          = preserve do
+            :escaped
+              $ git checkout -f step-5
+              $ mvn clean package exec:exec # from terminal 1
+              $ mvn exec:exec # from terminal 2
+        </code>
+      </pre>
+      Make sure you start the second instance soon after the first one has started, because we have not told either instance to "wait" for the other. While the end result will be similar to the previous run (obviously multiplied by two) you will see some extra logging related to the node discovery. We want to control this behaviour, so we'll be looking at listeners in the next step.
+    </p>
+  </div>
+</div>

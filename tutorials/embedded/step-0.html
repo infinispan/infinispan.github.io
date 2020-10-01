@@ -1,0 +1,130 @@
+---
+layout: tutorial-extended
+title: The Weather App
+---
+
+{% assign tutorial_github_url = "https://github.com/infinispan/infinispan-embedded-tutorial" %}
+{% assign @tutorial_steps = "The Weather Application, Initializing the CacheManager, Putting stuff in the cache, Making entries expire, Configuring the default cache, Clustering the application, Listen to changes in the cluster, Listen to changes in the cache, Grouping entries together, Temperature averages with streams, Declarative configuration" | split: ", " %}
+{% assign tutorial_step = 0 %}
+
+
+<div class="grid-wrapper">
+  <div class="width-3-12 width-12-12-m">
+    {% include embedded-tutorial-menu.html tutorial_steps=tutorial_steps tutorial_step=tutorial_step %}
+  </div>
+  <div class="width-9-12 width-12-12-m">
+    <h4>{{page.title}}</h4>
+    <p>
+      Let's begin by checking out the project. Fire up your terminal and type:
+    </p>
+    <pre>
+      <code class="nohighlight">
+        = preserve do
+          :escaped
+            $ git clone https://github.com/infinispan/infinispan-embedded-tutorial.git
+            $ cd infinispan-embedded-tutorial
+      </code>
+    </pre>
+    <p>
+      The above commands will create a local copy (clone) of the git repository and change the current directory so that all subsequent commands will run from the project root directory. We now want to move to "Step 0" in the project:
+    </p>
+    <pre>
+      <code class="nohighlight">
+        = preserve do
+          :escaped
+            $ git checkout -f step-0
+      </code>
+    </pre>
+    <p>
+      The initial step is just a plain Maven Java project with an implementation of our Weather Application. The application connects to the <a href="http://openweathermap.org">OpenWeatherMap</a> API to retrieve current weather data for a variety of cities. Usage of the OpenWeatherMap API requires registering for a free API key. Before launching the application, ensure you've set the OWMAPIKEY environment variable to your API key:
+      <pre>
+        <code class="nohighlight">
+          = preserve do
+            :escaped
+              $ export OWMAPIKEY=111111
+        </code>
+      </pre>
+      <p>
+        In Windows you'd use:
+      </p>
+      <pre>
+        <code class="nohighlight">
+          = preserve do
+            :escaped
+              C:\> set OWMAPIKEY=111111
+        </code>
+      </pre>
+    </p>
+    <p>
+      If you'd rather not register, if you don't have an Internet connection or you are having trouble connecting to the service, don't worry: the application will use a random weather service. This initial step has no dependencies and uses JDK logging. The following image shows the layout of the project:
+    </p>
+    %img{:src => "../infinispan-embedded-tree.png"}
+    <p>
+      Let's compile and run it:
+    </p>
+    <pre>
+      <code class="nohighlight">
+        = preserve do
+          :escaped
+            $ mvn clean package
+      </code>
+    </pre>
+    <p>
+      Maven will run both goals specified on the command-line in order. The first goal (clean) just cleans any previously generated files and the second one (package) compiles the project, runs any unit tests and packages the resulting code into a Jar file. At this point we can also run the code. The <i>main()</i> method of the <i>WeatherApp</i> class initializes the WeatherService and retrieves the current temperature for the list of cities twice and prints the elapsed time after each retrieval. Since no caching is being done at this stage, the application is quite slow on both runs, since it always has to retrieve the information.
+    </p>
+    <pre>
+      <code class="nohighlight">
+        = preserve do
+          :escaped
+            $ mvn exec:exec
+      </code>
+    </pre>
+
+    <details>
+      <summary>Output</summary>
+      <div>
+        <pre>
+          <code class="nohighlight">
+            = preserve do
+              :escaped
+                ---- Fetching weather information ----
+                Rome, Italy - Temperature: 12.9° C, Conditions: light rain
+                Como, Italy - Temperature: 6.3° C, Conditions: Sky is Clear
+                Basel, Switzerland - Temperature: 0.8° C, Conditions: overcast clouds
+                Bern, Switzerland - Temperature: -1.6° C, Conditions: broken clouds
+                London, UK - Temperature: 1.8° C, Conditions: light rain
+                Newcastle, UK - Temperature: 2.6° C, Conditions: scattered clouds
+                Bucharest, Romania - Temperature: 9.3° C, Conditions: scattered clouds
+                Cluj-Napoca, Romania - Temperature: 6.4° C, Conditions: scattered clouds
+                Ottawa, Canada - Temperature: -7.0° C, Conditions: overcast clouds
+                Toronto, Canada - Temperature: -7.0° C, Conditions: broken clouds
+                Lisbon, Portugal - Temperature: 14.6° C, Conditions: overcast clouds
+                Porto, Portugal - Temperature: 12.2° C, Conditions: moderate rain
+                Raleigh, USA - Temperature: 3.9° C, Conditions: Sky is Clear
+                Washington, USA - Temperature: 3.4° C, Conditions: light rain
+                ---- Fetched in 2210ms ----
+                ---- Fetching weather information ----
+                Rome, Italy - Temperature: 12.9° C, Conditions: light rain
+                Como, Italy - Temperature: 6.3° C, Conditions: Sky is Clear
+                Basel, Switzerland - Temperature: 0.8° C, Conditions: overcast clouds
+                Bern, Switzerland - Temperature: -1.6° C, Conditions: broken clouds
+                London, UK - Temperature: 1.8° C, Conditions: light rain
+                Newcastle, UK - Temperature: 2.6° C, Conditions: scattered clouds
+                Bucharest, Romania - Temperature: 9.3° C, Conditions: scattered clouds
+                Cluj-Napoca, Romania - Temperature: 6.4° C, Conditions: scattered clouds
+                Ottawa, Canada - Temperature: -7.0° C, Conditions: overcast clouds
+                Toronto, Canada - Temperature: -7.0° C, Conditions: broken clouds
+                Lisbon, Portugal - Temperature: 14.6° C, Conditions: overcast clouds
+                Porto, Portugal - Temperature: 12.2° C, Conditions: moderate rain
+                Raleigh, USA - Temperature: 3.9° C, Conditions: Sky is Clear
+                Washington, USA - Temperature: 3.4° C, Conditions: light rain
+                ---- Fetched in 1820ms ----
+          </code>
+        </pre>
+      </div>
+    </details>
+    <p>
+      Things will get more interesting in the next step.
+    </p>
+  </div>
+</div>

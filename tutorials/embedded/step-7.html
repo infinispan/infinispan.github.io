@@ -1,0 +1,168 @@
+---
+layout: tutorial-extended
+title: The Weather App
+---
+
+{% assign tutorial_github_url = "https://github.com/infinispan/infinispan-embedded-tutorial" %}
+{% assign @tutorial_steps = "The Weather Application, Initializing the CacheManager, Putting stuff in the cache, Making entries expire, Configuring the default cache, Clustering the application, Listen to changes in the cluster, Listen to changes in the cache, Grouping entries together, Temperature averages with streams, Declarative configuration" | split: ", " %}
+{% assign tutorial_step = 7 %}
+
+<div class="grid-wrapper">
+  <div class="width-3-12 width-12-12-m">
+    {% include embedded-tutorial-menu.html tutorial_steps=tutorial_steps tutorial_step=tutorial_step %}
+  </div>
+  <div class="width-9-12 width-12-12-m">
+    <h4>{{page.title}}</h4>
+    <p>
+      Now that we know how to react on changes in the cluster topology, we can also react to changes to the data within the cluster. To better show how this work, we will separate the roles of our two nodes: the coordinator will take care of putting data in the cache, and the other node will show the cache modifications. 
+      <pre>
+        <code class="java">
+          = preserve do
+            :escaped
+              @Listener(clustered = true)
+              public class CacheListener {
+                 @CacheEntryCreated
+                 public void entryCreated(CacheEntryCreatedEvent<String, LocationWeather> event) {
+                    if (!event.isOriginLocal()) {
+                       System.out.printf("-- Entry for %s modified by another node in the cluster\n", event.getKey());
+                    }
+                 }
+              }
+        </code>
+      </pre>
+      Usually a cache listener only listens to "local events", i.e. events which happen on the same node. For our example, however, we want to listen to events which happen on all nodes, and therefore we use the <i>"clustered = true"</i> parameter on the annotation. Let's see the event notifications:
+      <pre>
+        <code class="nohighlight">
+          = preserve do
+            :escaped
+              $ git checkout -f step-7
+              $ mvn clean package exec:exec # on terminal 1
+              $ mvn exec:exec # on terminal 2
+	      </code>
+      </pre>
+      <details>
+        <summary>Coordinator Node Output</summary>
+        <div>
+          <pre>
+            <code class="nohighlight">
+              = preserve do
+                :escaped        
+                  ---- View changed: [hoth-1712] ----
+                  ---- Waiting for cluster to form ----
+                  ---- View changed: [hoth-1712, hoth-9822] ----
+                  ---- Fetching weather information ----
+                  -- Entry for Rome, Italy modified by another node in the cluster
+                  Rome, Italy - Temperature: 11.6° C, Conditions: Sky is Clear
+                  Como, Italy - Temperature: 5.6° C, Conditions: Sky is Clear
+                  -- Entry for Basel, Switzerland modified by another node in the cluster
+                  Basel, Switzerland - Temperature: 2.9° C, Conditions: broken clouds
+                  Bern, Switzerland - Temperature: -2.1° C, Conditions: scattered clouds
+                  -- Entry for London, UK modified by another node in the cluster
+                  London, UK - Temperature: 4.8° C, Conditions: light rain
+                  -- Entry for Newcastle, UK modified by another node in the cluster
+                  Newcastle, UK - Temperature: 1.8° C, Conditions: Sky is Clear
+                  -- Entry for Bucharest, Romania modified by another node in the cluster
+                  Bucharest, Romania - Temperature: 8.4° C, Conditions: few clouds
+                  Cluj-Napoca, Romania - Temperature: 5.8° C, Conditions: broken clouds
+                  -- Entry for Ottawa, Canada modified by another node in the cluster
+                  Ottawa, Canada - Temperature: -12.3° C, Conditions: overcast clouds
+                  -- Entry for Toronto, Canada modified by another node in the cluster
+                  Toronto, Canada - Temperature: -10.1° C, Conditions: few clouds
+                  Lisbon, Portugal - Temperature: 15.0° C, Conditions: light rain
+                  -- Entry for Porto, Portugal modified by another node in the cluster
+                  Porto, Portugal - Temperature: 12.1° C, Conditions: moderate rain
+                  Raleigh, USA - Temperature: 6.0° C, Conditions: Sky is Clear
+                  Washington, USA - Temperature: 3.5° C, Conditions: light rain
+                  ---- Fetched in 5466ms ----
+                  ---- Fetching weather information ----
+                  Rome, Italy - Temperature: 11.6° C, Conditions: Sky is Clear
+                  Como, Italy - Temperature: 5.6° C, Conditions: Sky is Clear
+                  Basel, Switzerland - Temperature: 2.9° C, Conditions: broken clouds
+                  Bern, Switzerland - Temperature: -2.1° C, Conditions: scattered clouds
+                  London, UK - Temperature: 4.8° C, Conditions: light rain
+                  Newcastle, UK - Temperature: 1.8° C, Conditions: Sky is Clear
+                  Bucharest, Romania - Temperature: 8.4° C, Conditions: few clouds
+                  Cluj-Napoca, Romania - Temperature: 5.8° C, Conditions: broken clouds
+                  Ottawa, Canada - Temperature: -12.3° C, Conditions: overcast clouds
+                  Toronto, Canada - Temperature: -10.1° C, Conditions: few clouds
+                  Lisbon, Portugal - Temperature: 15.0° C, Conditions: light rain
+                  Porto, Portugal - Temperature: 12.1° C, Conditions: moderate rain
+                  Raleigh, USA - Temperature: 6.0° C, Conditions: Sky is Clear
+                  Washington, USA - Temperature: 3.5° C, Conditions: light rain
+                  ---- Fetched in 2ms ----
+                  ---- Fetching weather information ----
+                  -- Entry for Rome, Italy modified by another node in the cluster
+                  Rome, Italy - Temperature: 11.6° C, Conditions: Sky is Clear
+                  Como, Italy - Temperature: 5.6° C, Conditions: Sky is Clear
+                  -- Entry for Basel, Switzerland modified by another node in the cluster
+                  Basel, Switzerland - Temperature: 2.9° C, Conditions: broken clouds
+                  Bern, Switzerland - Temperature: -2.1° C, Conditions: scattered clouds
+                  -- Entry for London, UK modified by another node in the cluster
+                  London, UK - Temperature: 4.8° C, Conditions: light rain
+                  -- Entry for Newcastle, UK modified by another node in the cluster
+                  Newcastle, UK - Temperature: 1.8° C, Conditions: Sky is Clear
+                  -- Entry for Bucharest, Romania modified by another node in the cluster
+                  Bucharest, Romania - Temperature: 8.4° C, Conditions: few clouds
+                  Cluj-Napoca, Romania - Temperature: 5.8° C, Conditions: broken clouds
+                  -- Entry for Ottawa, Canada modified by another node in the cluster
+                  Ottawa, Canada - Temperature: -12.3° C, Conditions: overcast clouds
+                  -- Entry for Toronto, Canada modified by another node in the cluster
+                  Toronto, Canada - Temperature: -10.1° C, Conditions: few clouds
+                  Lisbon, Portugal - Temperature: 15.0° C, Conditions: light rain
+                  -- Entry for Porto, Portugal modified by another node in the cluster
+                  Porto, Portugal - Temperature: 12.1° C, Conditions: moderate rain
+                  Raleigh, USA - Temperature: 6.0° C, Conditions: Sky is Clear
+                  Washington, USA - Temperature: 3.5° C, Conditions: light rain
+                  ---- Fetched in 1248ms ----
+            </code>
+          </pre>
+        </div>
+      </details>
+      <details>
+        <summary>Other Node Output</summary>
+        <div>
+          <pre>
+            <code class="nohighlight">
+              = preserve do
+                :escaped
+                  ---- View changed: [hoth-1712, hoth-9822] ----
+                  ---- Waiting for cluster to form ----
+                  -- Entry for Rome, Italy modified by another node in the cluster
+                  -- Entry for Como, Italy modified by another node in the cluster
+                  -- Entry for Basel, Switzerland modified by another node in the cluster
+                  -- Entry for Bern, Switzerland modified by another node in the cluster
+                  -- Entry for London, UK modified by another node in the cluster
+                  -- Entry for Newcastle, UK modified by another node in the cluster
+                  -- Entry for Bucharest, Romania modified by another node in the cluster
+                  -- Entry for Cluj-Napoca, Romania modified by another node in the cluster
+                  -- Entry for Ottawa, Canada modified by another node in the cluster
+                  -- Entry for Toronto, Canada modified by another node in the cluster
+                  -- Entry for Lisbon, Portugal modified by another node in the cluster
+                  -- Entry for Porto, Portugal modified by another node in the cluster
+                  -- Entry for Raleigh, USA modified by another node in the cluster
+                  -- Entry for Washington, USA modified by another node in the cluster
+                  -- Entry for Rome, Italy modified by another node in the cluster
+                  -- Entry for Como, Italy modified by another node in the cluster
+                  -- Entry for Basel, Switzerland modified by another node in the cluster
+                  -- Entry for Bern, Switzerland modified by another node in the cluster
+                  -- Entry for London, UK modified by another node in the cluster
+                  -- Entry for Newcastle, UK modified by another node in the cluster
+                  -- Entry for Bucharest, Romania modified by another node in the cluster
+                  -- Entry for Cluj-Napoca, Romania modified by another node in the cluster
+                  -- Entry for Ottawa, Canada modified by another node in the cluster
+                  -- Entry for Toronto, Canada modified by another node in the cluster
+                  -- Entry for Lisbon, Portugal modified by another node in the cluster
+                  -- Entry for Porto, Portugal modified by another node in the cluster
+                  -- Entry for Raleigh, USA modified by another node in the cluster
+                  -- Entry for Washington, USA modified by another node in the cluster
+                  ---- View changed: [hoth-9822] ----
+            </code>
+          </pre>
+        </div>
+      </details>
+    </p>
+    <p>
+      You'll notice that the coordinator, i.e. the one actually touching the cache, is also logging some events, indicating that another node has modified some entries. This demonstrates the entries which are owned by the other node, because of the consistent hashing algorithm. The next step will demonstrate how we can exert some control on the distribution.
+    </p>
+  </div>
+</div>

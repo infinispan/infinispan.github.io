@@ -1,0 +1,106 @@
+---
+layout: tutorial-extended
+title: The Weather App
+---
+
+{% assign tutorial_github_url = "https://github.com/infinispan/infinispan-embedded-tutorial" %}
+{% assign @tutorial_steps = "The Weather Application, Initializing the CacheManager, Putting stuff in the cache, Making entries expire, Configuring the default cache, Clustering the application, Listen to changes in the cluster, Listen to changes in the cache, Grouping entries together, Temperature averages with streams, Declarative configuration" | split: ", " %}
+{% assign tutorial_step = 3 %}
+
+<div class="grid-wrapper">
+  <div class="width-3-12 width-12-12-m">
+    {% include embedded-tutorial-menu.html tutorial_steps=tutorial_steps tutorial_step=tutorial_step %}
+  </div>
+  <div class="width-9-12 width-12-12-m">
+    <h4>{{page.title}}</h4>
+    <p>
+      Typical applications store in the cache data that is the result of an expensive computation or has been retrieved from a slower data-source (e.g. a database or a webservice). If such data is immutable (or mostly immutable), such as names of cities, types of product, etc, it makes sense to store it such as if the data needs to be periodically regenerated/re-retrieved, it is desirable to set an expiration time, thus making the cache entries <i>mortal.</i> In Infinispan entry expiration can happen in two ways:
+      <ul>
+        <li>a certain time after the data was inserted into the cache (i.e. lifespan)</li>
+        <li>a certain time after the data was last accessed (i.e. maximum idle time)</li>
+      </ul>
+      The <i>Cache</i> interface offers overloaded versions of the <i>put()</i> method that allow specifying either or both expiration properties. The following example shows how to insert an entry which will expire after 5 seconds:
+      <pre>
+        <code class="java">
+          = preserve do
+            :escaped
+              cache.put(location, weather, 5, TimeUnit.SECONDS);
+        </code>
+      </pre>
+      With this in mind let's run our application again:
+      <pre>
+        <code class="nohighlight">
+          = preserve do
+            :escaped
+              $ git checkout -f step-3
+              $ mvn clean package exec:exec
+        </code>
+      </pre>
+      <details>
+        <summary>Output</summary>
+        <div>
+          <pre>
+            <code class="nohighlight">
+              = preserve do
+                :escaped
+                  ---- Fetching weather information ----
+                  Rome, Italy - Temperature: 12.9° C, Conditions: light rain
+                  Como, Italy - Temperature: 6.3° C, Conditions: Sky is Clear
+                  Basel, Switzerland - Temperature: 0.8° C, Conditions: overcast clouds
+                  Bern, Switzerland - Temperature: -1.6° C, Conditions: broken clouds
+                  London, UK - Temperature: 1.8° C, Conditions: light rain
+                  Newcastle, UK - Temperature: 2.6° C, Conditions: scattered clouds
+                  Bucharest, Romania - Temperature: 9.3° C, Conditions: scattered clouds
+                  Cluj-Napoca, Romania - Temperature: 6.4° C, Conditions: scattered clouds
+                  Ottawa, Canada - Temperature: -7.0° C, Conditions: overcast clouds
+                  Toronto, Canada - Temperature: -7.0° C, Conditions: broken clouds
+                  Lisbon, Portugal - Temperature: 14.6° C, Conditions: overcast clouds
+                  Porto, Portugal - Temperature: 12.2° C, Conditions: moderate rain
+                  Raleigh, USA - Temperature: 3.9° C, Conditions: Sky is Clear
+                  Washington, USA - Temperature: 3.4° C, Conditions: light rain
+                  ---- Fetched in 1205ms ----
+                  ---- Fetching weather information ----
+                  Rome, Italy - Temperature: 12.9° C, Conditions: light rain
+                  Como, Italy - Temperature: 6.3° C, Conditions: Sky is Clear
+                  Basel, Switzerland - Temperature: 0.8° C, Conditions: overcast clouds
+                  Bern, Switzerland - Temperature: -1.6° C, Conditions: broken clouds
+                  London, UK - Temperature: 1.8° C, Conditions: light rain
+                  Newcastle, UK - Temperature: 2.6° C, Conditions: scattered clouds
+                  Bucharest, Romania - Temperature: 9.3° C, Conditions: scattered clouds
+                  Cluj-Napoca, Romania - Temperature: 6.4° C, Conditions: scattered clouds
+                  Ottawa, Canada - Temperature: -7.0° C, Conditions: overcast clouds
+                  Toronto, Canada - Temperature: -7.0° C, Conditions: broken clouds
+                  Lisbon, Portugal - Temperature: 14.6° C, Conditions: overcast clouds
+                  Porto, Portugal - Temperature: 12.2° C, Conditions: moderate rain
+                  Raleigh, USA - Temperature: 3.9° C, Conditions: Sky is Clear
+                  Washington, USA - Temperature: 3.4° C, Conditions: light rain
+                  ---- Fetched in 2ms ----
+                  ---- Fetching weather information ----
+                  Rome, Italy - Temperature: 12.9° C, Conditions: light rain
+                  Como, Italy - Temperature: 6.3° C, Conditions: Sky is Clear
+                  Basel, Switzerland - Temperature: 0.8° C, Conditions: overcast clouds
+                  Bern, Switzerland - Temperature: -1.6° C, Conditions: broken clouds
+                  London, UK - Temperature: 1.8° C, Conditions: light rain
+                  Newcastle, UK - Temperature: 2.6° C, Conditions: scattered clouds
+                  Bucharest, Romania - Temperature: 9.3° C, Conditions: scattered clouds
+                  Cluj-Napoca, Romania - Temperature: 6.4° C, Conditions: scattered clouds
+                  Ottawa, Canada - Temperature: -7.0° C, Conditions: overcast clouds
+                  Toronto, Canada - Temperature: -7.0° C, Conditions: broken clouds
+                  Lisbon, Portugal - Temperature: 14.6° C, Conditions: overcast clouds
+                  Porto, Portugal - Temperature: 12.2° C, Conditions: moderate rain
+                  Raleigh, USA - Temperature: 3.9° C, Conditions: Sky is Clear
+                  Washington, USA - Temperature: 3.4° C, Conditions: light rain
+                  ---- Fetched in 1048ms ----
+            </code>
+          </pre>
+        </div>
+      </details>
+    </p>
+    <p>
+      To show how expiration works, we've added a 5-second sleep time and we print out the weather conditions a third time. As you can see the timing of the third run is in the same order of magnitude as the first (uncached) run: all of our entries have expired. In Infinispan expiration is verified lazily, i.e. if an attempt to retrieve an expired entry is made, that entry will be removed from the cache. It is also possible to enable pro-active removal using eviction.
+    </p>
+    <p>
+      Since we want all of the entries in the cache to expire by default, we can configure the cache to do so without using a special <i>put()</i> method invocation. This will be explained in the next step.
+    </p>
+  </div>
+</div>
