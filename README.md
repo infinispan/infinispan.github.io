@@ -1,57 +1,67 @@
-# Introduction
+# Upstream Community Theme
 
-This is the source code for the [Infinispan.org](http://www.infinispan.org) website.  This is based on templates created by the JBoss Community using [Awestruct](http://awestruct.org) and [Bootstrap](http://twitter.github.com/bootstrap).
+The Upstream Community Theme is a ready-to-use [Jekyll](https://jekyllrb.com/) theme to help you create a basic static site for your project. It was designed with the Red Hat Upstream Community in mind, but can be used by anyone looking to create a simple, lightweight site.
 
-# System Requirements
-* Ruby 1.9.2 or above
-   * Use the instructions from [Awestruct](http://awestruct.org/getting_started/) to install Ruby, Awestruct and Bundler
-* GNU WGet 1.14
+## Getting Started
 
-**Note:** If you are using Mac OS X, you need to have the following setup:
-   1. [XCode](https://itunes.apple.com/us/app/xcode/id497799835?ls=1&mt=12). After installing XCode, you should go to `XCode -> Preferences -> Download` and install the command line (CLI) tools.
-   1. [MacPorts](http://www.macports.org/)
-   1. You can install WGet using MacPorts: `sudo port install wget`
-   1. You need `libxml2` and `libxslt`: `sudo port install libxml2 libxslt`
-   1. You will need Ruby >= 1.9.2.  Mac OS _Mountain Lion_ comes with 1.8.x.  Using [RVM](https://rvm.io/) and [JewelryBox](http://jewelrybox.unfiniti.com/) is probably the best way to manage and install several different versions of Ruby on OS X.
+These instructions will get you a copy of the project up and running on your local machine for development purposes. See deployment for notes on how to deploy the project on [GitHub Pages](https://pages.github.com/).
 
-## 1. Build the website
-Run Awestruct in development mode from the top-level directory to build the website and host it using a local web server:
+### Prerequisites
 
-`$ bin/run_dev.sh`
+ - Install a full [Ruby development environment](https://www.ruby-lang.org/en/downloads/). Ruby version 2.4.0 or above is required, including all development headers. You can run `ruby -v` to check your current Ruby version.
+ - [RubyGems](https://rubygems.org/pages/download). You can run `gem -v` to check if you have RubyGems installed.
+ - [GCC](https://gcc.gnu.org/install/) and [Make](https://www.gnu.org/software/make/). You can run `gcc -v`,`g++ -v` and `make -v` to see if your system already has them installed.
 
-## 2. View the website locally
-Use a web browser to visit [http://localhost:4242](http://localhost:4242) where you can see the site.
+### Installing the theme
 
-## 3. Stage the website
-Staging is published on OpenShift.  To do this, you *must* have SSH access to Infinispan's OpenShift account.  After that, you must:
+*[Jekyll documentation pages](https://jekyllrb.com/docs/)*
 
-* Run `$ bin/publish_staging.sh`
-* Browse to `http://stg-ispn.rhcloud.com` to test
+1. The Jekyll site provides detailed installation instructions for each operating system:
+ 
+  - [Mac](https://jekyllrb.com/docs/installation/macos/)
+  - [Linux distributions including Red Hat Linux](https://jekyllrb.com/docs/installation/other-linux)
+  - [Ubuntu Linux](https://jekyllrb.com/docs/installation/ubuntu/)
+  - [Windows](https://jekyllrb.com/docs/installation/windows/)
+    
+3. Fork this repository by clicking the _Fork_ button at the top right corner of this page.
+4. Clone your fork (please ensure you have current version of git installed) by running: 
+  `git clone git@github.com:YOUR_USER_NAME/community-theme.git`
+5. Change into the project directory
+  `cd community-theme`
+6. Build the site and make it available on a local server
+  `bundle exec jekyll serve`
+7. To preview your site, browse to http://localhost:4000
 
-### Permissions.
-To be able to publish to staging, you must:
-* Have the following in your `~/.ssh/config`:
+> If you encounter any unexpected errors during the above, please refer to the [troubleshooting](https://jekyllrb.com/docs/troubleshooting/#configuration-problems) page or the [requirements](https://jekyllrb.com/docs/installation/#requirements) page, as you might be missing development headers or other prerequisites.
+
+_For more information regarding the use of Jekyll, please refer to the [Jekyll Step by Step Tutorial](https://jekyllrb.com/docs/step-by-step/01-setup/)._
+
+## Deployment on GitHub Pages
+
+To deploy your site using GitHub Pages you will need to add the [github-pages gem](https://github.com/github/pages-gem).
+
+> Note that GitHub Pages runs in `safe` mode and only allows a set of [whitelisted plugins](https://help.github.com/articles/configuring-jekyll-plugins/#default-plugins).
+
+To use the github-pages gem, you'll need to add the following on your `Gemfile`:
 
 ```
-    Host *.rhcloud.com
-        IdentityFile ~/.ssh/libra_id_rsa
-        VerifyHostKeyDNS yes
-        StrictHostKeyChecking no
-        UserKnownHostsFile ~/.ssh/libra_known_hosts
+source "https://rubygems.org"
+gem "github-pages", group: :jekyll_plugins
 ```
+And then run `bundle update`.
 
-* Have `libra_id_rsa`, `libra_id_rsa.pub` and `libra_known_hosts` in your `~/.ssh` directory.
-Contact Infinispan project leads for these files.
+To deploy a project page that is kept in the same repository as the project they are for, please refer to the *Project Pages* section in [Deploying Jekyll to GitHub Pages](https://jekyllrb.com/docs/github-pages/#deploying-jekyll-to-github-pages).
 
-## 4. Publish the website
-If everyone is happy with staging then:
 
-* Run `$ bin/publish_production.sh`
-* Browse to `http://www.infinispan.org`
+## Contributing
 
-### Permissions.
-To be able to publish to production, you must have git push rights on *http://github.com/infinispan/infinispan.github.io*.
-Contact Infinispan project leads for such permissions.
+Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on the process for submitting pull requests to us.
 
-# Contribute to issues on Infinispan.org
-Feel like contributing?  Great!  Read [this page](https://github.com/infinispan/infinispan.github.io/blob/develop/CONTRIBUTING.md) on how to contribute.
+## Authors
+
+* [**Adela Sofia A.**](https://github.com/adelasofia) - *Initial theme implementation*
+* [**James Cobb**](https://github.com/insectengine) - *Visual Designer*
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.

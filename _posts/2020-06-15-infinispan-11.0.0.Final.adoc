@@ -1,0 +1,111 @@
+---
+layout: blog
+title: Infinispan 11.0.0.Final
+date: '2020-06-15T12:00:00.000-00:00'
+author: Tristan Tarrant
+tags: [ "release" ]
+---
+
+= Infinispan 11.0.0.Final "Corona Extra"
+
+Dear Infinispan community,
+
+We're proud to announce the release of Infinispan 11. In the tradition of assigning beer codenames to our releases, we decided that "Corona Extra" would be a significant representation of the period during which most of the development has happened.
+We hope that you, your families and friends have not been impacted by the pandemic.
+
+== But didn't you release 10.x not long ago ?
+
+Indeed, but version numbers are just that: numbers. We are still continuing our near-quarterly releases, but, from now on, these will be identified by major version numbers.
+
+
+== So, what's new in Infinispan 11 ?
+As usual we added new features, improved existing ones and prepared the groundwork for upcoming features.
+
+
+=== Conflict detection and resolution for Asynchronous Cross-Site Replication
+Cross-site replication is one of our most used features, as it enables a number of very useful use-cases such as geographical load distribution, zero-downtime disaster recovery and follow-the-sun data centers.
+
+In this release we completely overhauled the way we implement asynchronous cross-site replication by introducing conflict resolution, based on vector clocks, as well as multiple site masters to increase throughput and reliability.
+This means that you can have multiple active sites safely replicating data between each other.
+
+
+=== Server security overhaul
+Infinispan Server's security, while very powerful, was also tricky to set up because of the configuration complexity.
+Since we wanted to make the link:/blog/2020/06/04/server-secure-by-default/[server secure by default], we put a lot of work in simplifying the configuration and removing all of the boilerplate.
+Additionally, if you are securing the server with https://keycloak.org[Keycloak], accessing the console will correctly obtain credentials through the realm login page.
+
+
+=== Non-blocking internals
+Our quest to make better use of the available hardware resources in all deployment models (bare-metal, containerized, virtualized) continues as we've now consolidated a lot of thread-pools into just two: non-blocking and blocking.
+Most of the code now makes use of the non-blocking pool. Paths which may block, such as certain persistent stores, use the blocking pool so that they don't hold up work that may be processed without blocking. 
+This release also includes a new non-blocking Store SPI, so that you can take advantage of stores with real non-blocking I/O.
+
+
+=== Clustering
+As Infinispan is participating in https://cloudbutton.eu/[CloudButton], a Serverless Data Analytics Platform which is part of the
+https://ec.europa.eu/programmes/horizon2020/[European Union's Horizon 2020 research and innovation programme], we have introduced a new optional feature which allows scaling by adding new nodes to a cluster without state-transfer. This means that you can add capacity with zero-impact to your operations. Obviously this comes at the cost of reduced resilience in case of failures, but, for scenarios where high availability is not required, this gives you a highly scalable in-memory storage solution.
+
+If high availability is your thing, the rebalancing algorithm which decides how segments (our subdivision of the data space) are mapped to nodes has been overhauled to be much more accurate and fairer.
+
+
+=== Query/Indexing
+Querying and indexing will be the major focus in Infinispan 12 (with the long awaited upgrade to https://hibernate.org/search/[Hibernate Search 6] and https://lucene.apache.org/[Lucene 8]). 
+In preparation for that, *a lot* of work has gone into deprecations, usability, clean ups and documentation. 
+
+
+=== Hot Rod Client improvements
+Many usability changes have been added to our Java Hot Rod client:
+
+* a Hot Rod URI as a compact way to configure a connection
+* automatic creation of caches on demand using supplied configurations/templates with support for wildcards
+* improved iteration of entries by concurrently splitting work across segments/nodes
+
+=== Other Server changes
+If you are using the JDBC cache store to persist your cache entries to a database, Infinispan Server now restores the ability to create shared datasources which was lost when we abandoned the WildFly base.
+
+=== CLI
+The CLI received a number of new features such as logging manipulation, obtaining sever reports and user management, superseding the `user-tool` script.
+
+[caption="CLI",link=/blog/img/ispn110cli.png]
+image::ispn101welcome.png[CLI]
+
+=== Console
+Our console overhaul, which started in 10, continues with lots of new features, integrations and polishing.
+Highlights are:
+
+* entry creation dialog box
+* querying
+* KeyCloak integration
+
+[caption="Console",link=/blog/img/ispn110console.png]
+image::ispn110console.png[onsole]
+
+=== Clouds, containers and operators
+
+Our Infinispan Server image is now based on `ubi-minimal:8.2`.
+
+And thanks to our friends over at https://quarkus.io[Quarkus], Infinispan Server is now also available as a native image built using https://graalvm.org[GraalVM]. This image is available on Quay.io and Docker Hub.
+
+The Kubernetes Operator adds a new Cache Custom Resource and the ability to expose services via Ingress and Routes.
+
+=== Documentation
+Documentation has also received a lot of love in all areas:
+
+* Added procedural content for rolling upgrades, Cache CR with the Operator, server patching, misc CLI commands, using RemoteCacheConfigurationBuilder.
+* Procedural content for different upgrade and migration tasks included in Upgrade Guide.
+* Operator and Spring Boot Starter guides now provide stable and development versions from the index page.
+* Updated index.html and throughout documentation to improve high-level context and aid retrievability.
+* Getting Started content updated and streamlined.
+* Applied several modifications, additions, and removals to documentation via community feedback.
+
+== What's next ?
+
+As briefly mentioned above, Infinispan 12 will be our next release, scheduled for this autumn. We will be working on query/index improvements, backup/restore capabilities as well as the usual load of improvements, clean-ups across the board. We will keep you posted with development release and blogs about upcoming highlights. If you'd like to contribute, just get in touch.
+
+== Get it, Use it, Ask us!
+
+Please https://infinispan.org/download/[download],
+https://issues.jboss.org/projects/ISPN[report bugs],
+https://infinispan.zulipchat.com/[chat with us],
+ask questions on https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest[StackOverflow].
+
