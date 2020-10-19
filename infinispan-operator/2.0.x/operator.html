@@ -553,7 +553,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#prometheus">11. Monitoring Infinispan with Prometheus</a>
 <ul class="sectlevel2">
-<li><a href="#_setting_up_prometheus">11.1. Setting Up Prometheus</a></li>
+<li><a href="#creating_service_monitor-monitor">11.1. Creating a Prometheus Service Monitor</a></li>
 </ul>
 </li>
 <li><a href="#logging">12. Monitoring Infinispan Logs</a>
@@ -2333,7 +2333,7 @@ serviceaccount/lon created</code></pre>
 </div>
 <div class="paragraph">
 <div class="title">Reference</div>
-<p><a href="https://docs.openshift.com/container-platform/4.4/authentication/using-service-accounts-in-applications.html">Using service accounts in applications</a></p>
+<p><a href="https://docs.openshift.com/container-platform/4.5/authentication/using-service-accounts-in-applications.html">Using service accounts in applications</a></p>
 </div>
 </div>
 <div class="sect2">
@@ -3564,18 +3564,16 @@ the <code>persistence</code> element as follows:</p>
 Prometheus.</p>
 </div>
 <div class="sect2">
-<h3 id="_setting_up_prometheus">11.1. Setting Up Prometheus</h3>
+<h3 id="creating_service_monitor-monitor">11.1. Creating a Prometheus Service Monitor</h3>
 <div class="paragraph">
-<p>Set up Prometheus so it can authenticate with and monitor Infinispan clusters.</p>
+<p>Define a service monitor instances that configures Prometheus to monitor your
+Infinispan cluster.</p>
 </div>
 <div class="ulist">
 <div class="title">Prerequisites</div>
 <ul>
 <li>
-<p>Install the Prometheus Operator.</p>
-</li>
-<li>
-<p>Create a running Prometheus instance.</p>
+<p>Set up a Prometheus stack on your Kubernetes cluster.</p>
 </li>
 </ul>
 </div>
@@ -3583,10 +3581,7 @@ Prometheus.</p>
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Add an authentication secret to your Prometheus namespace.</p>
-<div class="paragraph">
-<p>This secret allows Prometheus to authenticate with your Infinispan cluster. You can find Infinispan credentials in the authentication secret in your Infinispan Operator namespace.</p>
-</div>
+<p>Create an authentication secret that contains Infinispan credentials so that Prometheus can authenticate with your Infinispan cluster.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>apiVersion: v1
@@ -3603,17 +3598,25 @@ type: Opaque</code></pre>
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Specifies an application user. <code>developer</code> is the default application user.</td>
+<td>Specifies an application user. <code>developer</code> is the default.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Specifies a corresponding password.</td>
+<td>Specifies the corresponding password.</td>
 </tr>
 </table>
 </div>
 </li>
 <li>
-<p>Create a service monitor instance that configures Prometheus to monitor your Infinispan cluster.</p>
+<p>Add the authentication secret to your Prometheus namespace.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ kubectl apply -f basic-auth.yaml</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Create a service monitor that configures Prometheus to monitor your Infinispan cluster.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>apiVersion: monitoring.coreos.com/v1
@@ -3625,65 +3628,94 @@ metadata:
   namespace: infinispan-monitoring <i class="conum" data-value="2"></i><b>(2)</b>
 spec:
   endpoints:
-    - basicAuth:
+    - targetPort: 11222 <i class="conum" data-value="3"></i><b>(3)</b>
+      path: /metrics <i class="conum" data-value="4"></i><b>(4)</b>
+      honorLabels: true
+      basicAuth:
         username:
           key: username
-          name: basic-auth <i class="conum" data-value="3"></i><b>(3)</b>
+          name: basic-auth <i class="conum" data-value="5"></i><b>(5)</b>
         password:
           key: password
-          name: basic-auth <i class="conum" data-value="4"></i><b>(4)</b>
+          name: basic-auth
       interval: 30s
-      scheme: https <i class="conum" data-value="5"></i><b>(5)</b>
+      scrapeTimeout: 10s
+      scheme: https <i class="conum" data-value="6"></i><b>(6)</b>
       tlsConfig:
         insecureSkipVerify: true
-        serverName: certificate-CN <i class="conum" data-value="6"></i><b>(6)</b>
+        serverName: example-infinispan <i class="conum" data-value="7"></i><b>(7)</b>
   namespaceSelector:
     matchNames:
-      - infinispan <i class="conum" data-value="7"></i><b>(7)</b>
+      - infinispan <i class="conum" data-value="8"></i><b>(8)</b>
   selector:
     matchLabels:
       app: infinispan-service
-      clusterName: cluster-name <i class="conum" data-value="8"></i><b>(8)</b></code></pre>
+      clusterName: example-infinispan <i class="conum" data-value="9"></i><b>(9)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Names the service monitor.</td>
+<td>Names the service monitor instances.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Specifies your Prometheus namespace.</td>
+<td>Specifies the namespace of your Prometheus stack.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>Specifies the name of the authentication secret that has Infinispan credentials.</td>
+<td>Sets the port of <code>11222</code> for the Infinispan metrics endpoint.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="4"></i><b>4</b></td>
-<td>Specifies the name of the authentication secret that has Infinispan credentials.</td>
+<td>Sets the path where Infinispan exposes metrics.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="5"></i><b>5</b></td>
-<td>Specifies that Infinispan endpoints use encryption. If you do not use TLS, remove <code>spec.endpoints.scheme</code>.</td>
+<td>Specifies the authentication secret with Infinispan credentials.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="6"></i><b>6</b></td>
-<td>Specifies the Common Name (CN) of the TLS certificate for Infinispan encryption. If you use an OpenShift service certificate, the CN matches the <code>metadata.name</code> resource for your Infinispan cluster. If you do not use TLS, remove <code>spec.endpoints.tlsConfig</code>.</td>
+<td>Specifies that Infinispan clusters use endpoint encryption.
+If you do not use endpoint encryption, remove <code>spec.endpoints.scheme</code>.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="7"></i><b>7</b></td>
-<td>specifies the Infinispan Operator namespace.</td>
+<td>Specifies the Common Name (CN) of the TLS certificate for Infinispan encryption. If you use an OpenShift service certificate, the CN matches the <code>metadata.name</code> resource for your Infinispan cluster.
+If you do not use endpoint encryption, remove <code>spec.endpoints.tlsConfig</code>.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="8"></i><b>8</b></td>
-<td>specifies the name of the Infinispan cluster.</td>
+<td>Specifies the namespace of your Infinispan cluster.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>Specifies the name of your Infinispan cluster.</td>
 </tr>
 </table>
 </div>
 </li>
+<li>
+<p>Add the service monitor instance to your Prometheus namespace.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ kubectl apply -f service-monitor.yaml</code></pre>
+</div>
+</div>
+</li>
 </ol>
+</div>
+<div class="ulist">
+<div class="title">References</div>
+<ul>
+<li>
+<p><a href="https://github.com/prometheus-operator/prometheus-operator">Prometheus Operator</a></p>
+</li>
+<li>
+<p><a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/4.5/html/monitoring/monitoring-your-own-services">Monitoring Services with the OpenShift Cluster Monitoring Stack</a></p>
+</li>
+</ul>
 </div>
 </div>
 </div>
@@ -3945,7 +3977,7 @@ by default.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2020-09-25 05:22:33 -0400
+Last updated 2020-10-14 12:14:42 -0400
 </div>
 </div>
 </body>
