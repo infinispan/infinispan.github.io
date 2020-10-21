@@ -155,6 +155,8 @@ cfg["ispn_operator"].each do |version, sub|
   end
   %x( mkdir -p _site/infinispan-operator/#{version}/ )
   %x( mv _optmp/*.html "_site/infinispan-operator/#{version}/" )
+  %x( mkdir -p _site/infinispan-operator/topics/images/ )
+  %x( mv _optmp/*.svg "_site/infinispan-operator/topics/images/" )
   %x( rm -rf _optmp* )
 end
 
