@@ -1,0 +1,115 @@
+---
+layout: blog
+title: A new Infinispan-based Spring Session implementation
+date: '2021-03-16T12:00:00.000-00:00'
+author: Paul Ferraro
+tags: [ "spring", "spring session", "httpsession", "wildfly" ]
+---
+
+= Introducing wildfly-clustering-spring-session
+
+Dear Infinispan community,
+
+Last week I released version 3.0.0.Final of wildfly-clustering-spring-session, a new Spring Session implementation based on WildFly's distributed HttpSession manager and Infinispan.
+
+== Doesn't Infinispan already provide a Spring Session implementation?
+
+https://infinispan.org/docs/stable/titles/integrating/integrating.html#spring_externalize_sessions[Yes.]
+Infinispan's existing Spring Session implementation stores instances of `org.springframework.session.MapSession` into a Spring cache, which is backed by either an embedded or remote cache.
+
+However, like many `MapSession` based `SessionRepository` implementations, it suffers from a common set of problems/limitations:
+
+* The `MapSession` object, including all session metadata and attributes must be serialized and replicated/persisted on every request, regardless of the extent to which the session was modified.
+** Because Spring Session triggers session persistence from a `ServletFilter`, this cost is borne per request.
+* Since each request for a given session operates on a copy of the `MapSession`, and since the `MapSession` is not persisted/replicated until the end of the request:
+** Session modifications in one requests are not visible to concurrent requests for the same session.
+** A given session modification can be overwritten by a previous modification of the same session from a concurrent request if that request finishes first.
+* Session attributes implementing `HttpSessionActivationListener` are never notified before/after they are marshalled/unmarshalled.
+
+== How does it work?
+
+wildfly-clustering-spring-session is implemented as a Spring `SessionRepository` facade to a container-independent `SessionManager` implementation that persists session attributes and metadata to either an embedded Infinispan cache or a remote Infinispan server cluster via HotRod.
+This grants all of the features to Spring Session that one would normally expect when deploying a distributed web application to WildFly, including:
+
+* Minimal persistence payloads using configurable persistence granularity.
+* Consistent view of a given session from multiple concurrent request threads on a given server
+* Mutable session attribute semantics (emulates the semantics of local session manager)
+** Ability to treat specific session attributes as immutable
+* Configurable limit for the number of active sessions to retain in memory
+* Proper `HttpSessionActivationListener` notifications.
+* Configurable session attribute marshaller (ProtoStream, JBoss Marshalling, or Java Serialization)
+
+
+== How do I use it?
+
+In this example, we'll use a remote Infinispan cluster containing a single member, deployed to the localhost, using its default configuration.
+See the project https://github.com/wildfly-clustering/wildfly-clustering-spring-session/blob/master/README.md[README] for details on the available configuration annotations and their attributes.
+
+1. Create a class containing the session repository configuration.
+e.g.
++
+[source,java]
+----
+@org.wildfly.clustering.web.spring.hotrod.annotation.EnableHotRodHttpSession(@HotRod(uri = "hotrod://127.0.0.1:11222"), manager = @SessionManager(granularity = ATTRIBUTE))
+public class Config {
+	// ...
+}
+----
+
+1. Ensure your `/WEB-INF/applicationContext.xml` will process you configuration annotation:
++
+[source,xml]
+----
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+	<context:annotation-config/>
+</beans>
+----
+
+1. Create an application initializer class that will auto-register the requisite servlet filters required by Spring Session:
++
+[source,java]
+----
+public class MyHttpSessionApplicationInitializer extends AbstractHttpSessionApplicationInitializer { 
+	public MyHttpSessionApplicationInitializer() {
+		// Not not call super constructor (see project README for details)
+	}
+}
+----
+
+1. Create a `@WebListener` that bootstraps our session repository configuration:
++
+[source,java]
+----
+@javax.servlet.annotation.WebListener
+public class MyContextLoaderListener extends org.wildfly.clustering.web.spring.context.ContextLoaderListener { 
+	public MyContextLoaderListener() {
+		super(Config.class);
+	}
+}
+----
+
+Deploying your application will automatically create a new cache instance in the Infinispan cluster named according to the the host and context of the web application.
+
+
+== Can I use wildfly-clustering-spring-session outside of WildFly?
+
+Of course!
+Like most Spring Session repository implementations, it is meant to work with any implementation of the Jakarta Servlet 4.0 specification.
+The project https://github.com/wildfly-clustering/wildfly-clustering-spring-session[README] contains sample instructions for installing on Tomcat.
+
+
+== Where can I find it?
+
+You can find the source code on https://github.com/wildfly-clustering/wildfly-clustering-spring-session[github].
+Contributions are always welcome!
+
+File any issues with the https://github.com/wildfly-clustering/wildfly-clustering-spring-session/issues[github issue tracker].
+
+Checkout the https://github.com/wildfly-clustering/wildfly-clustering-spring-session/blob/master/README.md[README] for more details.
+
+Enjoy!
+
+Paul Ferraro
