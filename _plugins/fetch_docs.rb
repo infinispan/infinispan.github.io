@@ -154,7 +154,10 @@ cfg["ispn_operator"].each do |version, sub|
     %x( cp -r #{f} _optmp )
   end
   %x( mkdir -p docs/infinispan-operator/#{version}/ )
+  %x( mkdir -p docs/infinispan-operator/topics/images/ )
   %x( mv _optmp/*.html "docs/infinispan-operator/#{version}/" )
+  #Use images only on master. Causes harmless "cannot stat" messages.
+  %x( cp -r _optmp/infinispan-operator-master/documentation/asciidoc/topics/images/* "docs/infinispan-operator/topics/images/" )
   %x( rm -rf _optmp* )
 end
 
