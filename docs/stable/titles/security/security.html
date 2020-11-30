@@ -1,4 +1,13 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <meta name="generator" content="Asciidoctor 2.0.10"> <title>Security Guide for Infinispan 11.0</title> <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700"> <style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>Security Guide for Infinispan 11.0</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
+<style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
 /* Uncomment @import statement to use as custom stylesheet */
 /*@import "https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700";*/
@@ -425,8 +434,343 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 #footer{background:none}
 #footer-text{color:rgba(0,0,0,.6);font-size:.9em}}
 @media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
-</style> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"> <link rel="canonical" href="http://infinispan.org/docs/stable/user_guide/user_guide.html"> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/themes/default/style.min.css"> <link rel="stylesheet" href="../../css/css.css"> <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script> <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script> <script src="../../js/js.js"></script> </head> <body class="book toc2 toc-left"> <div id="header"> <h1>Security Guide for Infinispan 11.0</h1> <div id="toc" class="toc2"> <div id="toctitle">Table of Contents</div> <ul class="sectlevel1"> <li><a href="#security">1. Infinispan Security</a></li> <li><a href="#authorization">2. Configuring Infinispan Authorization</a> <ul class="sectlevel2"> <li><a href="#con_authz-authz">2.1. Infinispan Authorization</a> <ul class="sectlevel3"> <li><a href="#authz_permissions-authz">2.1.1. Permissions</a></li> <li><a href="#authz_role_mappers-authz">2.1.2. Role Mappers</a></li> </ul> </li> <li><a href="#prog_authz_config-authz">2.2. Programmatically Configuring Authorization</a></li> <li><a href="#dec_authz_config-authz">2.3. Declaratively Configuring Authorization</a></li> <li><a href="#executing_secure_caches-authz">2.4. Code Execution with Secure Caches</a></li> </ul> </li> <li><a href="#cluster_security">3. Securing JGroups</a> <ul class="sectlevel2"> <li><a href="#jgroups_authentication">3.1. Configuring JGroups Authentication</a></li> </ul> </li> <li><a href="#ports_protocols">4. Infinispan Ports and Protocols</a> <ul class="sectlevel2"> <li><a href="#server_ports-network">4.1. Infinispan Server Ports and Protocols</a> <ul class="sectlevel3"> <li><a href="#configuring_firewalls-network">4.1.1. Configuring Network Firewalls for Remote Connections</a></li> </ul> </li> <li><a href="#jgroups_ports-network">4.2. TCP and UDP Ports for Cluster Traffic</a></li> </ul> </li> </ul> </div> </div> <div id="content"> <div class="sect1"> <h2 id="security"><a class="anchor" href="#security"></a>1. Infinispan Security</h2> <div class="sectionbody"> <div class="paragraph"> <p>Infinispan provides security for components as well as data across different layers:</p> </div> <div class="ulist"> <ul> <li> <p>Within the core library to provide role-based access control (RBAC) to CacheManagers, Cache instances, and stored data.</p> </li> <li> <p>Over remote protocols to authenticate client requests and encrypt network traffic.</p> </li> <li> <p>Across nodes in clusters to authenticate new cluster members and encrypt the cluster transport.</p> </li> </ul> </div> <div class="paragraph"> <p>The Infinispan core library uses standard Java security libraries such as JAAS, JSSE, JCA, JCE, and SASL to ease integration and improve compatibility with custom applications and container environments. For this reason, the Infinispan core library provides only interfaces and a set of basic implementations.</p> </div> <div class="paragraph"> <p>Infinispan servers support a wide range of security standards and mechanisms to readily integrate with enterprise-level security frameworks.</p> </div> </div> </div> <div class="sect1"> <h2 id="authorization"><a class="anchor" href="#authorization"></a>2. Configuring Infinispan Authorization</h2> <div class="sectionbody"> <div class="paragraph"> <p>Authorization restricts the ability to perform operations with Infinispan and access data. You assign users with roles that have different permission levels.</p> </div> <div class="sect2"> <h3 id="con_authz-authz"><a class="anchor" href="#con_authz-authz"></a>2.1. Infinispan Authorization</h3> <div class="paragraph"> <p>Infinispan lets you configure authorization to secure Cache Managers and cache instances. When user applications or clients attempt to perform an operation on secured Cached Managers and caches, they must provide an identity with a role that has sufficient permissions to perform that operation.</p> </div> <div class="paragraph"> <p>For example, you configure authorization on a specific cache instance so that invoking <code>Cache.get()</code> requires an identity to be assigned a role with read permission while <code>Cache.put()</code> requires a role with write permission.</p> </div> <div class="paragraph"> <p>In this scenario, if a user application or client with the <code>reader</code> role attempts to write an entry, Infinispan denies the request and throws a security exception. If a user application or client with the <code>writer</code> role sends a write request, Infinispan validates authorization and issues a token for subsequent operations.</p> </div> <div class="paragraph"> <div class="title">Identity to Role Mapping</div> <p>Identities are security Principals of type <code>java.security.Principal</code>. Subjects, implemented with the <code>javax.security.auth.Subject</code> class, represent a group of security Principals. In other words, a Subject represents a user and all groups to which it belongs.</p> </div> <div class="paragraph"> <p>Infinispan uses role mappers so that security principals correspond to roles, which represent one or more permissions.</p> </div> <div class="paragraph"> <p>The following image illustrates how security principals map to roles:</p> </div> <div class="imageblock"> <div class="content"> <img src="../../topics/images/SecurityRolesPermissions.svg" alt="Roles/Permissions mapping"> </div> </div> <div class="sect3"> <h4 id="authz_permissions-authz"><a class="anchor" href="#authz_permissions-authz"></a>2.1.1. Permissions</h4> <div class="paragraph"> <p>Permissions control access to Cache Managers and caches by restricting the actions that you can perform. Permissions can also apply to specific entities such as named caches.</p> </div> <table class="tableblock frame-all grid-all stretch"> <caption class="title">Table 1. Cache Manager Permissions</caption> <colgroup> <col style="width: 33.3333%;"> <col style="width: 33.3333%;"> <col style="width: 33.3334%;"> </colgroup> <thead> <tr> <th class="tableblock halign-left valign-top">Permission</th> <th class="tableblock halign-left valign-top">Function</th> <th class="tableblock halign-left valign-top">Description</th> </tr> </thead> <tbody> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">CONFIGURATION</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>defineConfiguration</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Defines new cache configurations.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">LISTEN</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>addListener</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Registers listeners against a Cache Manager.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">LIFECYCLE</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>stop</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Stops the Cache Manager.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">ALL</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Includes all Cache Manager permissions.</p></td> </tr> </tbody> </table> <table class="tableblock frame-all grid-all stretch"> <caption class="title">Table 2. Cache Permissions</caption> <colgroup> <col style="width: 33.3333%;"> <col style="width: 33.3333%;"> <col style="width: 33.3334%;"> </colgroup> <thead> <tr> <th class="tableblock halign-left valign-top">Permission</th> <th class="tableblock halign-left valign-top">Function</th> <th class="tableblock halign-left valign-top">Description</th> </tr> </thead> <tbody> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>READ</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>get</code>, <code>contains</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Retrieves entries from a cache.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">WRITE</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>put</code>, <code>putIfAbsent</code>, <code>replace</code>, <code>remove</code>, <code>evict</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Writes, replaces, removes, evicts data in a cache.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">EXEC</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>distexec</code>, <code>streams</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Allows code execution against a cache.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">LISTEN</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>addListener</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Registers listeners against a cache.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">BULK_READ</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>keySet</code>, <code>values</code>, <code>entrySet</code>, <code>query</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Executes bulk retrieve operations.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">BULK_WRITE</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>clear</code>, <code>putAll</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Executes bulk write operations.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">LIFECYCLE</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>start</code>, <code>stop</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Starts and stops a cache.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">ADMIN</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>getVersion</code>, <code>addInterceptor*</code>, <code>removeInterceptor</code>, <code>getInterceptorChain</code>, <code>getEvictionManager</code>, <code>getComponentRegistry</code>, <code>getDistributionManager</code>, <code>getAuthorizationManager</code>, <code>evict</code>, <code>getRpcManager</code>, <code>getCacheConfiguration</code>, <code>getCacheManager</code>, <code>getInvocationContextContainer</code>, <code>setAvailability</code>, <code>getDataContainer</code>, <code>getStats</code>, <code>getXAResource</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Allows access to underlying components and internal structures.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">ALL</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Includes all cache permissions.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">ALL_READ</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Combines the READ and BULK_READ permissions.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock">ALL_WRITE</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Combines the WRITE and BULK_WRITE permissions.</p></td> </tr> </tbody> </table> <div class="paragraph"> <div class="title">Combining permissions</div> <p>You might need to combine permissions so that they are useful. For example, to allow "supervisors" to run stream operations but restrict "standard" users to puts and gets only, you can define the following mappings:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;role</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">standard</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">permission</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">READ WRITE</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
-<span class="tag">&lt;role</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">supervisors</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">permission</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">READ WRITE EXEC BULK</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre> </div> </div> <div class="ulist"> <div class="title">Reference</div> <ul> <li> <p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/security/package-summary.html">Infinispan Security API</a></p> </li> </ul> </div> </div> <div class="sect3"> <h4 id="authz_role_mappers-authz"><a class="anchor" href="#authz_role_mappers-authz"></a>2.1.2. Role Mappers</h4> <div class="paragraph"> <p>Infinispan includes a <code>PrincipalRoleMapper</code> API that maps security Principals in a Subject to authorization roles. There are two role mappers available by default:</p> </div> <div class="dlist"> <dl> <dt class="hdlist1">IdentityRoleMapper</dt> <dd> <p>Uses the Principal name as the role name.</p> <div class="ulist"> <ul> <li> <p>Java class: <code>org.infinispan.security.mappers.IdentityRoleMapper</code></p> </li> <li> <p>Declarative configuration: <code>&lt;identity-role-mapper /&gt;</code></p> </li> </ul> </div> </dd> <dt class="hdlist1">CommonNameRoleMapper</dt> <dd> <p>Uses the Common Name (CN) as the role name if the Principal name is a Distinguished Name (DN). For example the <code>cn=managers,ou=people,dc=example,dc=com</code> DN maps to the <code>managers</code> role.</p> <div class="ulist"> <ul> <li> <p>Java class: <code>org.infinispan.security.mappers.CommonRoleMapper</code></p> </li> <li> <p>Declarative configuration: <code>&lt;common-name-role-mapper /&gt;</code></p> </li> </ul> </div> </dd> </dl> </div> <div class="paragraph"> <p>You can also use custom role mappers that implement the <code>org.infinispan.security.PrincipalRoleMapper</code> interface. To configure custom role mappers declaratively, use: <code>&lt;custom-role-mapper class="my.custom.RoleMapper" /&gt;</code></p> </div> <div class="ulist"> <div class="title">Reference</div> <ul> <li> <p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/security/package-summary.html">Infinispan Security API</a></p> </li> <li> <p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/security/PrincipalRoleMapper.html">org.infinispan.security.PrincipalRoleMapper</a></p> </li> </ul> </div> </div> </div> <div class="sect2"> <h3 id="prog_authz_config-authz"><a class="anchor" href="#prog_authz_config-authz"></a>2.2. Programmatically Configuring Authorization</h3> <div class="paragraph"> <p>When using Infinispan as an embedded library, you can configure authorization with the <code>GlobalSecurityConfigurationBuilder</code> and <code>ConfigurationBuilder</code> classes.</p> </div> <div class="olist arabic"> <div class="title">Procedure</div> <ol class="arabic"> <li> <p>Construct a <code>GlobalConfigurationBuilder</code> that enables authorization, specifies a role mapper, and defines a set of roles and permissions.</p> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight"><code data-lang="java">GlobalConfigurationBuilder global = <span class="keyword">new</span> GlobalConfigurationBuilder();
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="canonical" href="http://infinispan.org/docs/stable/user_guide/user_guide.html">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/themes/default/style.min.css">
+<link rel="stylesheet" href="../../css/css.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
+<script src="../../js/js.js"></script>
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<h1>Security Guide for Infinispan 11.0</h1>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#security">1. Infinispan Security</a></li>
+<li><a href="#authorization">2. Configuring Infinispan Authorization</a>
+<ul class="sectlevel2">
+<li><a href="#con_authz-authz">2.1. Infinispan Authorization</a>
+<ul class="sectlevel3">
+<li><a href="#authz_permissions-authz">2.1.1. Permissions</a></li>
+<li><a href="#authz_role_mappers-authz">2.1.2. Role Mappers</a></li>
+</ul>
+</li>
+<li><a href="#prog_authz_config-authz">2.2. Programmatically Configuring Authorization</a></li>
+<li><a href="#dec_authz_config-authz">2.3. Declaratively Configuring Authorization</a></li>
+<li><a href="#executing_secure_caches-authz">2.4. Code Execution with Secure Caches</a></li>
+</ul>
+</li>
+<li><a href="#cluster_security">3. Securing JGroups</a>
+<ul class="sectlevel2">
+<li><a href="#jgroups_authentication">3.1. Configuring JGroups Authentication</a></li>
+</ul>
+</li>
+<li><a href="#ports_protocols">4. Infinispan Ports and Protocols</a>
+<ul class="sectlevel2">
+<li><a href="#server_ports-network">4.1. Infinispan Server Ports and Protocols</a>
+<ul class="sectlevel3">
+<li><a href="#configuring_firewalls-network">4.1.1. Configuring Network Firewalls for Remote Connections</a></li>
+</ul>
+</li>
+<li><a href="#jgroups_ports-network">4.2. TCP and UDP Ports for Cluster Traffic</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="security"><a class="anchor" href="#security"></a>1. Infinispan Security</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan provides security for components as well as data across different layers:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Within the core library to provide role-based access control (RBAC) to CacheManagers, Cache instances, and stored data.</p>
+</li>
+<li>
+<p>Over remote protocols to authenticate client requests and encrypt network traffic.</p>
+</li>
+<li>
+<p>Across nodes in clusters to authenticate new cluster members and encrypt the cluster transport.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The Infinispan core library uses standard Java security libraries such as
+JAAS, JSSE, JCA, JCE, and SASL to ease integration and improve compatibility
+with custom applications and container environments. For this reason, the
+Infinispan core library provides only interfaces and a set of basic
+implementations.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan servers support a wide range of security standards and mechanisms
+to readily integrate with enterprise-level security frameworks.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="authorization"><a class="anchor" href="#authorization"></a>2. Configuring Infinispan Authorization</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Authorization restricts the ability to perform operations with Infinispan and
+access data. You assign users with roles that have different permission levels.</p>
+</div>
+<div class="sect2">
+<h3 id="con_authz-authz"><a class="anchor" href="#con_authz-authz"></a>2.1. Infinispan Authorization</h3>
+<div class="paragraph">
+<p>Infinispan lets you configure authorization to secure Cache Managers and cache
+instances. When user applications or clients attempt to perform an operation on
+secured Cached Managers and caches, they must provide an identity with a role
+that has sufficient permissions to perform that operation.</p>
+</div>
+<div class="paragraph">
+<p>For example, you configure authorization on a specific cache instance so that
+invoking <code>Cache.get()</code> requires an identity to be assigned a role with read
+permission while <code>Cache.put()</code> requires a role with write permission.</p>
+</div>
+<div class="paragraph">
+<p>In this scenario, if a user application or client with the <code>reader</code> role
+attempts to write an entry, Infinispan denies the request and throws a
+security exception. If a user application or client with the <code>writer</code> role
+sends a write request, Infinispan validates authorization and issues a token
+for subsequent operations.</p>
+</div>
+<div class="paragraph">
+<div class="title">Identity to Role Mapping</div>
+<p>Identities are security Principals of type <code>java.security.Principal</code>. Subjects,
+implemented with the <code>javax.security.auth.Subject</code> class, represent a group of
+security Principals. In other words, a Subject represents a user and all groups
+to which it belongs.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan uses role mappers so that security principals correspond to roles,
+which represent one or more permissions.</p>
+</div>
+<div class="paragraph">
+<p>The following image illustrates how security principals map to roles:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/SecurityRolesPermissions.svg" alt="Roles/Permissions mapping">
+</div>
+</div>
+<div class="sect3">
+<h4 id="authz_permissions-authz"><a class="anchor" href="#authz_permissions-authz"></a>2.1.1. Permissions</h4>
+<div class="paragraph">
+<p>Permissions control access to Cache Managers and caches by restricting the
+actions that you can perform. Permissions can also apply to specific entities
+such as named caches.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Cache Manager Permissions</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Permission</th>
+<th class="tableblock halign-left valign-top">Function</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CONFIGURATION</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>defineConfiguration</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Defines new cache configurations.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LISTEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addListener</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Registers listeners against a Cache Manager.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LIFECYCLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>stop</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stops the Cache Manager.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Includes all Cache Manager permissions.</p></td>
+</tr>
+</tbody>
+</table>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Cache Permissions</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Permission</th>
+<th class="tableblock halign-left valign-top">Function</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>READ</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>get</code>, <code>contains</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Retrieves entries from a cache.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>put</code>, <code>putIfAbsent</code>, <code>replace</code>, <code>remove</code>, <code>evict</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writes, replaces, removes, evicts data in a cache.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">EXEC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>distexec</code>, <code>streams</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Allows code execution against a cache.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LISTEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addListener</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Registers listeners against a cache.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BULK_READ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>keySet</code>, <code>values</code>, <code>entrySet</code>, <code>query</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Executes bulk retrieve operations.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BULK_WRITE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clear</code>, <code>putAll</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Executes bulk write operations.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LIFECYCLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>start</code>, <code>stop</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Starts and stops a cache.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ADMIN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>getVersion</code>, <code>addInterceptor*</code>, <code>removeInterceptor</code>, <code>getInterceptorChain</code>, <code>getEvictionManager</code>, <code>getComponentRegistry</code>, <code>getDistributionManager</code>, <code>getAuthorizationManager</code>, <code>evict</code>, <code>getRpcManager</code>, <code>getCacheConfiguration</code>, <code>getCacheManager</code>, <code>getInvocationContextContainer</code>, <code>setAvailability</code>, <code>getDataContainer</code>, <code>getStats</code>, <code>getXAResource</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Allows access to underlying components and internal structures.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Includes all cache permissions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL_READ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Combines the READ and BULK_READ permissions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL_WRITE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Combines the WRITE and BULK_WRITE permissions.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<div class="title">Combining permissions</div>
+<p>You might need to combine permissions so that they are useful. For example, to
+allow "supervisors" to run stream operations but restrict "standard" users to
+puts and gets only, you can define the following mappings:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;role</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">standard</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">permission</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">READ WRITE</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+<span class="tag">&lt;role</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">supervisors</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">permission</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">READ WRITE EXEC BULK</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/security/package-summary.html">Infinispan Security API</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="authz_role_mappers-authz"><a class="anchor" href="#authz_role_mappers-authz"></a>2.1.2. Role Mappers</h4>
+<div class="paragraph">
+<p>Infinispan includes a <code>PrincipalRoleMapper</code> API that maps security Principals
+in a Subject to authorization roles. There are two role mappers available by
+default:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">IdentityRoleMapper</dt>
+<dd>
+<p>Uses the Principal name as the role name.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Java class: <code>org.infinispan.security.mappers.IdentityRoleMapper</code></p>
+</li>
+<li>
+<p>Declarative configuration: <code>&lt;identity-role-mapper /&gt;</code></p>
+</li>
+</ul>
+</div>
+</dd>
+<dt class="hdlist1">CommonNameRoleMapper</dt>
+<dd>
+<p>Uses the Common Name (CN) as the role name if the
+Principal name is a Distinguished Name (DN). For example the
+<code>cn=managers,ou=people,dc=example,dc=com</code> DN maps to the <code>managers</code> role.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Java class: <code>org.infinispan.security.mappers.CommonRoleMapper</code></p>
+</li>
+<li>
+<p>Declarative configuration: <code>&lt;common-name-role-mapper /&gt;</code></p>
+</li>
+</ul>
+</div>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>You can also use custom role mappers that implement the
+<code>org.infinispan.security.PrincipalRoleMapper</code> interface. To configure custom
+role mappers declaratively, use: <code>&lt;custom-role-mapper class="my.custom.RoleMapper" /&gt;</code></p>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/security/package-summary.html">Infinispan Security API</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/security/PrincipalRoleMapper.html">org.infinispan.security.PrincipalRoleMapper</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="prog_authz_config-authz"><a class="anchor" href="#prog_authz_config-authz"></a>2.2. Programmatically Configuring Authorization</h3>
+<div class="paragraph">
+<p>When using Infinispan as an embedded library, you can configure authorization
+with the <code>GlobalSecurityConfigurationBuilder</code> and <code>ConfigurationBuilder</code>
+classes.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Construct a <code>GlobalConfigurationBuilder</code> that enables authorization, specifies a role mapper, and defines a set of roles and permissions.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">GlobalConfigurationBuilder global = <span class="keyword">new</span> GlobalConfigurationBuilder();
 global
    .security()
       .authorization().enable() <i class="conum" data-value="1"></i><b>(1)</b>
@@ -440,18 +784,101 @@ global
          .role(<span class="string"><span class="delimiter">&quot;</span><span class="content">supervisor</span><span class="delimiter">&quot;</span></span>)
             .permission(AuthorizationPermission.READ)
             .permission(AuthorizationPermission.WRITE)
-            .permission(AuthorizationPermission.EXEC);</code></pre> </div> </div> <div class="colist arabic"> <table> <tr> <td><i class="conum" data-value="1"></i><b>1</b></td> <td>Enables Infinispan authorization for the Cache Manager.</td> </tr> <tr> <td><i class="conum" data-value="2"></i><b>2</b></td> <td>Specifies an implementation of <code>PrincipalRoleMapper</code> that maps Principals to roles.</td> </tr> <tr> <td><i class="conum" data-value="3"></i><b>3</b></td> <td>Defines roles and their associated permissions.</td> </tr> </table> </div> </li> <li> <p>Enable authorization in the <code>ConfigurationBuilder</code> for caches to restrict access based on user roles.</p> <div class="listingblock"> <div class="content"> <pre>ConfigurationBuilder config = new ConfigurationBuilder();
+            .permission(AuthorizationPermission.EXEC);</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Enables Infinispan authorization for the Cache Manager.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Specifies an implementation of <code>PrincipalRoleMapper</code> that maps Principals
+to roles.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Defines roles and their associated permissions.</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>Enable authorization in the <code>ConfigurationBuilder</code> for caches to restrict access based on user roles.</p>
+<div class="listingblock">
+<div class="content">
+<pre>ConfigurationBuilder config = new ConfigurationBuilder();
 config
    .security()
       .authorization()
-         .enable(); <i class="conum" data-value="1"></i><b>(1)</b></pre> </div> </div> <div class="colist arabic"> <table> <tr> <td><i class="conum" data-value="1"></i><b>1</b></td> <td>Implicitly adds all roles from the global configuration.</td> </tr> </table> </div> <div class="paragraph"> <p>If you do not want to apply all roles to a cache, explicitly define the roles that are authorized for caches as follows:</p> </div> <div class="listingblock"> <div class="content"> <pre>ConfigurationBuilder config = new ConfigurationBuilder();
+         .enable(); <i class="conum" data-value="1"></i><b>(1)</b></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Implicitly adds all roles from the global configuration.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>If you do not want to apply all roles to a cache, explicitly define the roles
+that are authorized for caches as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>ConfigurationBuilder config = new ConfigurationBuilder();
 config
    .security()
       .authorization()
          .enable()
          .role("admin") <i class="conum" data-value="1"></i><b>(1)</b>
          .role("supervisor")
-         .role("reader");</pre> </div> </div> <div class="colist arabic"> <table> <tr> <td><i class="conum" data-value="1"></i><b>1</b></td> <td>Defines authorized roles for the cache. In this example, users who have the <code>writer</code> role only are not authorized for the "secured" cache. Infinispan denies any access requests from those users.</td> </tr> </table> </div> </li> </ol> </div> <div class="ulist"> <div class="title">Reference</div> <ul> <li> <p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/configuration/global/GlobalSecurityConfigurationBuilder.html">org.infinispan.configuration.global.GlobalSecurityConfigurationBuilder</a></p> </li> <li> <p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/configuration/cache/ConfigurationBuilder.html">org.infinispan.configuration.cache.ConfigurationBuilder</a></p> </li> </ul> </div> </div> <div class="sect2"> <h3 id="dec_authz_config-authz"><a class="anchor" href="#dec_authz_config-authz"></a>2.3. Declaratively Configuring Authorization</h3> <div class="paragraph"> <p>Configure authorization in your <code>infinispan.xml</code> file.</p> </div> <div class="olist arabic"> <div class="title">Procedure</div> <ol class="arabic"> <li> <p>Configure the global authorization settings in the <code>cache-container</code> that specify a role mapper, and define a set of roles and permissions.</p> </li> <li> <p>Configure authorization for caches to restrict access based on user roles.</p> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+         .role("reader");</pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Defines authorized roles for the cache. In this example, users who have the <code>writer</code> role only are not authorized for the "secured" cache. Infinispan denies any access requests from those users.</td>
+</tr>
+</table>
+</div>
+</li>
+</ol>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/configuration/global/GlobalSecurityConfigurationBuilder.html">org.infinispan.configuration.global.GlobalSecurityConfigurationBuilder</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/configuration/cache/ConfigurationBuilder.html">org.infinispan.configuration.cache.ConfigurationBuilder</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="dec_authz_config-authz"><a class="anchor" href="#dec_authz_config-authz"></a>2.3. Declaratively Configuring Authorization</h3>
+<div class="paragraph">
+<p>Configure authorization in your <code>infinispan.xml</code> file.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Configure the global authorization settings in the <code>cache-container</code> that specify a role mapper, and define a set of roles and permissions.</p>
+</li>
+<li>
+<p>Configure authorization for caches to restrict access based on user roles.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
    <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">secured</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">secured</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
       <span class="tag">&lt;security&gt;</span>
          <span class="tag">&lt;authorization&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
@@ -468,7 +895,37 @@ config
          <span class="tag">&lt;/security&gt;</span>
       <span class="tag">&lt;/local-cache&gt;</span>
    <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre> </div> </div> <div class="colist arabic"> <table> <tr> <td><i class="conum" data-value="1"></i><b>1</b></td> <td>Enables Infinispan authorization for the Cache Manager.</td> </tr> <tr> <td><i class="conum" data-value="2"></i><b>2</b></td> <td>Specifies an implementation of <code>PrincipalRoleMapper</code> that maps Principals to roles.</td> </tr> <tr> <td><i class="conum" data-value="3"></i><b>3</b></td> <td>Defines roles and their associated permissions.</td> </tr> <tr> <td><i class="conum" data-value="4"></i><b>4</b></td> <td>Implicitly adds all roles from the global configuration.</td> </tr> </table> </div> <div class="paragraph"> <p>If you do not want to apply all roles to a cache, explicitly define the roles that are authorized for caches as follows:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Enables Infinispan authorization for the Cache Manager.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Specifies an implementation of <code>PrincipalRoleMapper</code> that maps Principals
+to roles.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Defines roles and their associated permissions.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Implicitly adds all roles from the global configuration.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>If you do not want to apply all roles to a cache, explicitly define the roles
+that are authorized for caches as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
    <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">secured</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">secured</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
       <span class="tag">&lt;security&gt;</span>
          <span class="tag">&lt;authorization&gt;</span>
@@ -486,18 +943,128 @@ config
       <span class="tag">&lt;/local-cache&gt;</span>
    <span class="tag">&lt;/cache-container&gt;</span>
 
-<span class="tag">&lt;/infinispan&gt;</span></code></pre> </div> </div> <div class="colist arabic"> <table> <tr> <td><i class="conum" data-value="1"></i><b>1</b></td> <td>Defines authorized roles for the cache. In this example, users who have the <code>writer</code> role only are not authorized for the "secured" cache. Infinispan denies any access requests from those users.</td> </tr> </table> </div> </li> </ol> </div> <div class="ulist"> <div class="title">Reference</div> <ul> <li> <p><a href="https://docs.jboss.org/infinispan/11.0/configdocs/">Infinispan Configuration Schema Reference</a></p> </li> </ul> </div> </div> <div class="sect2"> <h3 id="executing_secure_caches-authz"><a class="anchor" href="#executing_secure_caches-authz"></a>2.4. Code Execution with Secure Caches</h3> <div class="paragraph"> <p>When you configure Infinispan authorization and then construct a <code>DefaultCacheManager</code>, it returns a <code>SecureCache</code> that checks the security context before invoking any operations on the underlying caches. A <code>SecureCache</code> also ensures that applications cannot retrieve lower-level insecure objects such as <code>DataContainer</code>. For this reason, you must execute code with an identity that has the required authorization.</p> </div> <div class="paragraph"> <p>In Java, executing code with a specific identity usually means wrapping the code to be executed within a <code>PrivilegedAction</code> as follows:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">import</span> <span class="include">org.infinispan.security.Security</span>;
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Defines authorized roles for the cache. In this example, users who have the <code>writer</code> role only are not authorized for the "secured" cache. Infinispan denies any access requests from those users.</td>
+</tr>
+</table>
+</div>
+</li>
+</ol>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/11.0/configdocs/">Infinispan Configuration Schema Reference</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="executing_secure_caches-authz"><a class="anchor" href="#executing_secure_caches-authz"></a>2.4. Code Execution with Secure Caches</h3>
+<div class="paragraph">
+<p>When you configure Infinispan authorization and then construct a
+<code>DefaultCacheManager</code>, it returns a <code>SecureCache</code> that checks the security
+context before invoking any operations on the underlying caches. A
+<code>SecureCache</code> also ensures that applications cannot retrieve lower-level
+insecure objects such as <code>DataContainer</code>. For this reason, you must execute
+code with an identity that has the required authorization.</p>
+</div>
+<div class="paragraph">
+<p>In Java, executing code with a specific identity usually means wrapping the
+code to be executed within a <code>PrivilegedAction</code> as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">import</span> <span class="include">org.infinispan.security.Security</span>;
 
 <span class="predefined-type">Security</span>.doAs(subject, <span class="keyword">new</span> <span class="predefined-type">PrivilegedExceptionAction</span>&lt;<span class="predefined-type">Void</span>&gt;() {
 <span class="directive">public</span> <span class="predefined-type">Void</span> run() <span class="directive">throws</span> <span class="exception">Exception</span> {
     cache.put(<span class="string"><span class="delimiter">&quot;</span><span class="content">key</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">value</span><span class="delimiter">&quot;</span></span>);
 }
-});</code></pre> </div> </div> <div class="paragraph"> <p>With Java 8, you can simplify the preceding call as follows:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight"><code data-lang="java"><span class="predefined-type">Security</span>.doAs(mySubject, <span class="predefined-type">PrivilegedAction</span>&lt;<span class="predefined-type">String</span>&gt;() -&gt; cache.put(<span class="string"><span class="delimiter">&quot;</span><span class="content">key</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">value</span><span class="delimiter">&quot;</span></span>));</code></pre> </div> </div> <div class="paragraph"> <p>The preceding call uses the <code>Security.doAs()</code> method instead of <code>Subject.doAs()</code>. You can use either method with Infinispan, however <code>Security.doAs()</code> provides better performance.</p> </div> <div class="paragraph"> <p>If you need the current Subject, use the following call to retrieve it from the Infinispan context or from the AccessControlContext:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight"><code data-lang="java"><span class="predefined-type">Security</span>.getSubject();</code></pre> </div> </div> </div> </div> </div> <div class="sect1"> <h2 id="cluster_security"><a class="anchor" href="#cluster_security"></a>3. Securing JGroups</h2> <div class="sectionbody"> <div class="paragraph"> <p>Configure JGroups to secure Infinispan clusters.</p> </div> <div class="sect2"> <h3 id="jgroups_authentication"><a class="anchor" href="#jgroups_authentication"></a>3.1. Configuring JGroups Authentication</h3> <div class="paragraph"> <p>Configure JGroups authentication to restrict Infinispan cluster membership. When joining or merging, nodes must authenticate with the cluster.</p> </div> <div class="ulist"> <div class="title">Procedure</div> <ul> <li> <p>Add the SASL mechanism to your JGroups configuration before the <code>GMS</code> protocol, as in the following example:</p> </li> </ul> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;SASL</span> <span class="attribute-name">mech</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">DIGEST-MD5</span><span class="delimiter">&quot;</span></span>
+});</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>With Java 8, you can simplify the preceding call as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="predefined-type">Security</span>.doAs(mySubject, <span class="predefined-type">PrivilegedAction</span>&lt;<span class="predefined-type">String</span>&gt;() -&gt; cache.put(<span class="string"><span class="delimiter">&quot;</span><span class="content">key</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">value</span><span class="delimiter">&quot;</span></span>));</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The preceding call uses the <code>Security.doAs()</code> method instead of
+<code>Subject.doAs()</code>. You can use either method with Infinispan, however
+<code>Security.doAs()</code> provides better performance.</p>
+</div>
+<div class="paragraph">
+<p>If you need the current Subject, use the following call to retrieve it from the
+Infinispan context or from the AccessControlContext:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="predefined-type">Security</span>.getSubject();</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cluster_security"><a class="anchor" href="#cluster_security"></a>3. Securing JGroups</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Configure JGroups to secure Infinispan clusters.</p>
+</div>
+<div class="sect2">
+<h3 id="jgroups_authentication"><a class="anchor" href="#jgroups_authentication"></a>3.1. Configuring JGroups Authentication</h3>
+<div class="paragraph">
+<p>Configure JGroups authentication to restrict Infinispan cluster membership.
+When joining or merging, nodes must authenticate with the cluster.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Add the SASL mechanism to your JGroups configuration before the <code>GMS</code>
+protocol, as in the following example:</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;SASL</span> <span class="attribute-name">mech</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">DIGEST-MD5</span><span class="delimiter">&quot;</span></span>
     <span class="attribute-name">client_name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">node_user</span><span class="delimiter">&quot;</span></span>
     <span class="attribute-name">client_password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">node_password</span><span class="delimiter">&quot;</span></span>
     <span class="attribute-name">server_callback_handler_class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.example.infinispan.security.JGroupsSaslServerCallbackHandler</span><span class="delimiter">&quot;</span></span>
     <span class="attribute-name">client_callback_handler_class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.example.infinispan.security.JGroupsSaslClientCallbackHandler</span><span class="delimiter">&quot;</span></span>
-    <span class="attribute-name">sasl_props</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.sun.security.sasl.digest.realm=test_realm</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span></code></pre> </div> </div> <div class="paragraph"> <p>The preceding example uses <code>DIGEST-MD5</code> so that each node must declare valid credentials when joining a Infinispan cluster.</p> </div> <div class="paragraph"> <p>Within the cluster, coordinator nodes act as SASL servers. All other nodes act as SASL clients. For this reason you need two different <code>CallbackHandlers</code>, a server_callback_handler_class for the coordinator and a client_callback_handler_class for the other nodes.</p> </div> <div class="paragraph"> <div class="title">Cluster authorization</div> <p>To implement node authorization, configure the server callback handler to throw an exception as in the following example:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight"><code data-lang="java"><span class="directive">public</span> <span class="type">class</span> <span class="class">AuthorizingServerCallbackHandler</span> <span class="directive">implements</span> <span class="predefined-type">CallbackHandler</span> {
+    <span class="attribute-name">sasl_props</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.sun.security.sasl.digest.realm=test_realm</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The preceding example uses <code>DIGEST-MD5</code> so that each node must declare valid
+credentials when joining a Infinispan cluster.</p>
+</div>
+<div class="paragraph">
+<p>Within the cluster, coordinator nodes act as SASL servers. All other nodes act
+as SASL clients. For this reason you need two different <code>CallbackHandlers</code>, a
+server_callback_handler_class for the coordinator and a
+client_callback_handler_class for the other nodes.</p>
+</div>
+<div class="paragraph">
+<div class="title">Cluster authorization</div>
+<p>To implement node authorization, configure the server callback handler to throw
+an exception as in the following example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="directive">public</span> <span class="type">class</span> <span class="class">AuthorizingServerCallbackHandler</span> <span class="directive">implements</span> <span class="predefined-type">CallbackHandler</span> {
 
     <span class="annotation">@Override</span>
     <span class="directive">public</span> <span class="type">void</span> handle(<span class="predefined-type">Callback</span><span class="type">[]</span> callbacks) <span class="directive">throws</span> <span class="exception">IOException</span>, <span class="exception">UnsupportedCallbackException</span> {
@@ -513,10 +1080,132 @@ config
             ...
         }
     }
-}</code></pre> </div> </div> </div> </div> </div> <div class="sect1"> <h2 id="ports_protocols"><a class="anchor" href="#ports_protocols"></a>4. Infinispan Ports and Protocols</h2> <div class="sectionbody"> <div class="paragraph"> <p>As Infinispan distributes data across your network and can establish connections for external client requests, you should be aware of the ports and protocols that Infinispan uses to handle network traffic.</p> </div> <div class="paragraph"> <p>If run Infinispan as a remote server then you might need to allow remote clients through your firewall. Likewise, you should adjust ports that Infinispan nodes use for cluster communication to prevent conflicts or network issues.</p> </div> <div class="sect2"> <h3 id="server_ports-network"><a class="anchor" href="#server_ports-network"></a>4.1. Infinispan Server Ports and Protocols</h3> <div class="paragraph"> <p>Infinispan Server exposes endpoints on your network for remote client access.</p> </div> <table class="tableblock frame-all grid-all stretch"> <colgroup> <col style="width: 33.3333%;"> <col style="width: 33.3333%;"> <col style="width: 33.3334%;"> </colgroup> <thead> <tr> <th class="tableblock halign-left valign-top">Port</th> <th class="tableblock halign-left valign-top">Protocol</th> <th class="tableblock halign-left valign-top">Description</th> </tr> </thead> <tbody> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>11222</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">TCP</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Hot Rod and REST endpoint</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>11221</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">TCP</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Memcached endpoint, which is disabled by default.</p></td> </tr> </tbody> </table> <div class="sect3"> <h4 id="configuring_firewalls-network"><a class="anchor" href="#configuring_firewalls-network"></a>4.1.1. Configuring Network Firewalls for Remote Connections</h4> <div class="paragraph"> <p>Adjust any firewall rules to allow traffic between the server and external clients.</p> </div> <div class="paragraph"> <div class="title">Procedure</div> <p>On Red Hat Enterprise Linux (RHEL) workstations, for example, you can allow traffic to port <code>11222</code> with firewalld as follows:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="bash"># firewall-cmd --add-port=11222/tcp --permanent
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="ports_protocols"><a class="anchor" href="#ports_protocols"></a>4. Infinispan Ports and Protocols</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>As Infinispan distributes data across your network and can establish
+connections for external client requests, you should be aware of the ports and
+protocols that Infinispan uses to handle network traffic.</p>
+</div>
+<div class="paragraph">
+<p>If run Infinispan as a remote server then you might need to allow remote
+clients through your firewall. Likewise, you should adjust ports that
+Infinispan nodes use for cluster communication to prevent conflicts or network
+issues.</p>
+</div>
+<div class="sect2">
+<h3 id="server_ports-network"><a class="anchor" href="#server_ports-network"></a>4.1. Infinispan Server Ports and Protocols</h3>
+<div class="paragraph">
+<p>Infinispan Server exposes endpoints on your network for remote client access.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Port</th>
+<th class="tableblock halign-left valign-top">Protocol</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>11222</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hot Rod and REST endpoint</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>11221</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memcached endpoint, which is disabled by default.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect3">
+<h4 id="configuring_firewalls-network"><a class="anchor" href="#configuring_firewalls-network"></a>4.1.1. Configuring Network Firewalls for Remote Connections</h4>
+<div class="paragraph">
+<p>Adjust any firewall rules to allow traffic between the server and external
+clients.</p>
+</div>
+<div class="paragraph">
+<div class="title">Procedure</div>
+<p>On Red Hat Enterprise Linux (RHEL) workstations, for example, you can allow
+traffic to port <code>11222</code> with firewalld as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash"># firewall-cmd --add-port=11222/tcp --permanent
 success
 # firewall-cmd --list-ports | grep 11222
-11222/tcp</code></pre> </div> </div> <div class="paragraph"> <p>To configure firewall rules that apply across a network, you can use the nftables utility.</p> </div> </div> </div> <div class="sect2"> <h3 id="jgroups_ports-network"><a class="anchor" href="#jgroups_ports-network"></a>4.2. TCP and UDP Ports for Cluster Traffic</h3> <div class="paragraph"> <p>Infinispan uses the following ports by default:</p> </div> <table class="tableblock frame-all grid-all stretch"> <colgroup> <col style="width: 33.3333%;"> <col style="width: 33.3333%;"> <col style="width: 33.3334%;"> </colgroup> <thead> <tr> <th class="tableblock halign-left valign-top">Default Port</th> <th class="tableblock halign-left valign-top">Protocol</th> <th class="tableblock halign-left valign-top">Description</th> </tr> </thead> <tbody> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>7800</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">TCP/UDP</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">JGroups cluster bind port</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>46655</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">UDP</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">JGroups multicast</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>7200</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">TCP</p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">JGroups RELAY2 for cross-site replication</p></td> </tr> </tbody> </table> <div class="paragraph"> <div class="title">Reference</div> <p><a href="../configuring/configuring.html#cluster_transport">Setting Up Cluster Transport</a></p> </div> </div> </div> </div> </div> <div id="footer"> <div id="footer-text"> Last updated 2020-11-09 16:43:00 -0500 </div> </div> <style>
+11222/tcp</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To configure firewall rules that apply across a network, you can use the
+nftables utility.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="jgroups_ports-network"><a class="anchor" href="#jgroups_ports-network"></a>4.2. TCP and UDP Ports for Cluster Traffic</h3>
+<div class="paragraph">
+<p>Infinispan uses the following ports by default:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Default Port</th>
+<th class="tableblock halign-left valign-top">Protocol</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>7800</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCP/UDP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JGroups cluster bind port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>46655</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UDP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JGroups multicast</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>7200</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JGroups RELAY2 for cross-site replication</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<div class="title">Reference</div>
+<p><a href="../configuring/configuring.html#cluster_transport">Setting Up Cluster Transport</a></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2020-11-09 16:43:00 -0500
+</div>
+</div>
+<style>
 /* Stylesheet for CodeRay to match GitHub theme | MIT License | http://foundation.zurb.com */
 pre.CodeRay{background:#f7f7f8}
 .CodeRay .line-numbers{border-right:1px solid currentColor;opacity:.35;padding:0 .5em 0 0}
@@ -604,7 +1293,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 .CodeRay .delete .delete{color:#800}
 .CodeRay .change .change{color:#66f}
 .CodeRay .head .head{color:#f4f}
-</style> <script type="text/x-mathjax-config">
+</style>
+<script type="text/x-mathjax-config">
 MathJax.Hub.Config({
   messageStyle: "none",
   tex2jax: {
@@ -626,7 +1316,9 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
     return data
   })
 })
-</script> <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script> <script>
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+<script>
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
@@ -635,4 +1327,7 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
   ga('create', 'UA-8601422-1', 'auto');
   ga('send', 'pageview');
 
-</script> </body> </html>
+</script>
+
+</body>
+</html>

@@ -1,4 +1,13 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]--> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <meta name="generator" content="Asciidoctor 1.5.8"> <title>Setting Up Cross-Site Replication with Infinispan 10.0</title> <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700"> <style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.8">
+<title>Setting Up Cross-Site Replication with Infinispan 10.0</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
+<style>
 /* Asciidoctor default stylesheet | MIT License | http://asciidoctor.org */
 /* Uncomment @import statement below to use as custom stylesheet */
 /*@import "https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700";*/
@@ -419,7 +428,9 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 #footer{background:none}
 #footer-text{color:rgba(0,0,0,.6);font-size:.9em}}
 @media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
-</style> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"> <style>
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<style>
 /* Stylesheet for CodeRay to match GitHub theme | MIT License | http://foundation.zurb.com */
 /*pre.CodeRay {background-color:#f7f7f8;}*/
 .CodeRay .line-numbers{border-right:1px solid #d8d8d8;padding:0 0.5em 0 .25em}
@@ -509,14 +520,208 @@ table.CodeRay td.code>pre{padding:0}
 .CodeRay .delete .delete{color:#800}
 .CodeRay .change .change{color:#66f}
 .CodeRay .head .head{color:#f4f}
-</style> <link rel="canonical" href="http://infinispan.org/docs/stable/user_guide/user_guide.html"> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/themes/default/style.min.css"> <link rel="stylesheet" href="../../css/css.css"> <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script> <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script> <script src="../../js/js.js"></script> </head> <body class="book toc2 toc-left"> <div id="header"> <h1>Setting Up Cross-Site Replication with Infinispan 10.0</h1> <div id="toc" class="toc2"> <div id="toctitle">Table of Contents</div> <ul class="sectlevel1"> <li><a href="#x_site_replication">1. Cross site replication</a> <ul class="sectlevel2"> <li><a href="#sample_deployment">1.1. Sample deployment</a> <ul class="sectlevel3"> <li><a href="#local_clusters_jgroups_xml_configuration">1.1.1. Local cluster&#8217;s jgroups .xml configuration</a></li> <li><a href="#relay2_configuration_file">1.1.2. RELAY2 configuration file</a></li> </ul> </li> <li><a href="#data_replication">1.2. Data replication</a> <ul class="sectlevel3"> <li><a href="#non_transactional_caches">1.2.1. Non transactional caches</a></li> <li><a href="#transactional_caches">1.2.2. Transactional caches</a> <ul class="sectlevel4"> <li><a href="#synchronous_local_cluster_with_async_backup">Synchronous local cluster with async backup</a></li> <li><a href="#synchronous_local_cluster_with_sync_backup">Synchronous local cluster with sync backup</a></li> <li><a href="#asynchronous_local_cluster">Asynchronous local cluster</a></li> <li><a href="#replication_of_expired_cache_entries_across_sites">Replication of expired cache entries across sites</a></li> </ul> </li> </ul> </li> <li><a href="#taking_a_site_offline">1.3. Taking a site offline</a> <ul class="sectlevel3"> <li><a href="#configuration">1.3.1. Configuration</a></li> <li><a href="#bringing_sites_back_online">1.3.2. Bringing Sites Back Online</a></li> </ul> </li> <li><a href="#pushing_state_transfer_to_sites">1.4. Pushing State Transfer to Sites</a> <ul class="sectlevel3"> <li><a href="#handling_joinleave_nodes">1.4.1. Handling join/leave nodes</a></li> <li><a href="#handling_broken_link_between_sites">1.4.2. Handling broken link between sites</a></li> <li><a href="#system_administrator_operations">1.4.3. System Administrator Operations</a></li> <li><a href="#x_site_st_configuration">1.4.4. Configuration</a></li> </ul> </li> <li><a href="#x_site_reference">1.5. Reference</a></li> </ul> </li> </ul> </div> </div> <div id="content"> <div class="sect1"> <h2 id="x_site_replication"><a class="anchor" href="#x_site_replication"></a>1. Cross site replication</h2> <div class="sectionbody"> <div class="paragraph"> <p>Cross site (x-site) replication allows backing up the data from one cluster to other clusters, potentially situated in different geographical location. The cross-site replication is built on top of JGroups' <a href="http://www.jgroups.org/manual-3.x/html/user-advanced.html#Relay2Advanced">RELAY2 protocol</a> . <a href="https://community.jboss.org/wiki/DesignForCrossSiteReplication">This document</a> describes the technical design of cross site replication in more detail.</p> </div> <div class="admonitionblock note"> <table> <tr> <td class="icon"> <i class="fa icon-note" title="Note"></i> </td> <td class="content"> Cross site replication needs the backup cache running in the site master node(s) (i.e. node which receives the backup and applies it). The backup cache starts automatically when it receives the first backup request. </td> </tr> </table> </div> <div class="sect2"> <h3 id="sample_deployment"><a class="anchor" href="#sample_deployment"></a>1.1. Sample deployment</h3> <div class="paragraph"> <p>The diagram below depicts a possible setup of replicated sites, followed by a description of individual elements present in the deployment. Options are then explained at large in future paragraphs. Comments on the diagram above:</p> </div> <div class="imageblock"> <div class="content"> <img src="./../../topics/images/xdc.png" alt="Cross-site datacenters"> </div> </div> <div class="ulist"> <ul> <li> <p>there are 3 sites: LON, NYC and SFO.</p> </li> <li> <p>in each site there is a running Infinispan cluster with a (potentially) different number of physical nodes: 3 nodes in LON, 4 nodes in NYC and 3 nodes in SFO</p> </li> <li> <p>the "users" cache is active in LON, NYC and SFO. Updates on the "users" cache in any of these sites gets replicated to the other sites as well</p> </li> <li> <p>it is possible to use different replication mechanisms between sites. E.g. One can configure SFO to backup data synchronously to NYC and asynchronously to LON</p> </li> <li> <p>the "users" cache can have a different configuration from one site to the other. E.g. it might be configured as distributed with numOwners=2 in the LON site, REPL in the NYC site and distributed with numOwners=1 in the SFO site</p> </li> <li> <p>JGroups is used for both inter-site and intra-site communication. <a href="http://www.jgroups.org/manual-3.x/html/user-advanced.html#Relay2Advanced">RELAY2</a> is used for inter-site communication</p> </li> <li> <p>"orders" is a site local to LON, i.e. updates to the data in "orders" don&#8217;t get replicated to the remote sites The following sections discuss specific aspects of cross site replication into more detail. The foundation of the cross-site replication functionality is RELAY2 so it highly recommended to read JGroups' <a href="http://www.jgroups.org/manual-3.x/html/user-advanced.html#Relay2Advanced">RELAY2</a> documentation before moving on into cross-site. Configuration</p> </li> </ul> </div> <div class="paragraph"> <p>The cross-site replication configuration spreads over the following files:</p> </div> <div class="olist arabic"> <ol class="arabic"> <li> <p>the backup policy for each individual cache is defined in the Infinispan .xml configuration file (<a href="https://gist.github.com/maniksurtani/cdd5420af764c907e342">infinispan.xml</a>)</p> </li> <li> <p>cluster&#8217;s JGroups xml configuration file: <a href="http://www.jgroups.org/manual-3.x/html/user-advanced.html#Relay2Advanced">RELAY2</a> protocol needs to be added to the JGroups protocol stack (<a href="https://gist.github.com/maniksurtani/409fe5ece5fe4bcf679f">jgroups.xml</a>)</p> </li> <li> <p>RELAY2 configuration file: RELAY2 has an own configuration file ( <a href="https://gist.github.com/maniksurtani/8c7238dae7921d2c883e">relay2.xml</a> )</p> </li> <li> <p>the JGroups channel that is used by RELAY2 has its own configuration file (<a href="https://gist.github.com/maniksurtani/cbc1a297a367b1176feb">jgroups-relay2.xml</a>) Infinispan XML configuration file</p> </li> </ol> </div> <div class="paragraph"> <p>The local site is defined in the the global configuration section. The local is the site where the node using this configuration file resides (in the example above local site is "LON").</p> </div> <div class="listingblock"> <div class="title">infinispan.xml</div> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;transport</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span></code></pre> </div> </div> <div class="paragraph"> <p>The same setup can be achieved programmatically:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight"><code data-lang="java">GlobalConfigurationBuilder lonGc = GlobalConfigurationBuilder.defaultClusteredBuilder();
-lonGc.site().localSite(<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>);</code></pre> </div> </div> <div class="paragraph"> <p>The names of the site (case sensitive) should match the name of a site as defined within JGroups' RELAY2 protocol configuration file. Besides the global configuration, each cache specifies its backup policy in the "site" element:</p> </div> <div class="listingblock"> <div class="title">infinispan.xml</div> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">users</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+</style>
+<link rel="canonical" href="http://infinispan.org/docs/stable/user_guide/user_guide.html">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/themes/default/style.min.css">
+<link rel="stylesheet" href="../../css/css.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
+<script src="../../js/js.js"></script>
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<h1>Setting Up Cross-Site Replication with Infinispan 10.0</h1>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#x_site_replication">1. Cross site replication</a>
+<ul class="sectlevel2">
+<li><a href="#sample_deployment">1.1. Sample deployment</a>
+<ul class="sectlevel3">
+<li><a href="#local_clusters_jgroups_xml_configuration">1.1.1. Local cluster&#8217;s jgroups .xml configuration</a></li>
+<li><a href="#relay2_configuration_file">1.1.2. RELAY2 configuration file</a></li>
+</ul>
+</li>
+<li><a href="#data_replication">1.2. Data replication</a>
+<ul class="sectlevel3">
+<li><a href="#non_transactional_caches">1.2.1. Non transactional caches</a></li>
+<li><a href="#transactional_caches">1.2.2. Transactional caches</a>
+<ul class="sectlevel4">
+<li><a href="#synchronous_local_cluster_with_async_backup">Synchronous local cluster with async backup</a></li>
+<li><a href="#synchronous_local_cluster_with_sync_backup">Synchronous local cluster with sync backup</a></li>
+<li><a href="#asynchronous_local_cluster">Asynchronous local cluster</a></li>
+<li><a href="#replication_of_expired_cache_entries_across_sites">Replication of expired cache entries across sites</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#taking_a_site_offline">1.3. Taking a site offline</a>
+<ul class="sectlevel3">
+<li><a href="#configuration">1.3.1. Configuration</a></li>
+<li><a href="#bringing_sites_back_online">1.3.2. Bringing Sites Back Online</a></li>
+</ul>
+</li>
+<li><a href="#pushing_state_transfer_to_sites">1.4. Pushing State Transfer to Sites</a>
+<ul class="sectlevel3">
+<li><a href="#handling_joinleave_nodes">1.4.1. Handling join/leave nodes</a></li>
+<li><a href="#handling_broken_link_between_sites">1.4.2. Handling broken link between sites</a></li>
+<li><a href="#system_administrator_operations">1.4.3. System Administrator Operations</a></li>
+<li><a href="#x_site_st_configuration">1.4.4. Configuration</a></li>
+</ul>
+</li>
+<li><a href="#x_site_reference">1.5. Reference</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="x_site_replication"><a class="anchor" href="#x_site_replication"></a>1. Cross site replication</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Cross site (x-site) replication allows backing up the data from one cluster to other clusters, potentially situated in different geographical location. The cross-site replication is built on top of JGroups' <a href="http://www.jgroups.org/manual-3.x/html/user-advanced.html#Relay2Advanced">RELAY2 protocol</a> . <a href="https://community.jboss.org/wiki/DesignForCrossSiteReplication">This document</a> describes the technical design of cross site replication in more detail.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Cross site replication needs the backup cache running in the site master node(s) (i.e. node which receives the backup and applies it). The backup cache starts automatically when it receives the first backup request.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect2">
+<h3 id="sample_deployment"><a class="anchor" href="#sample_deployment"></a>1.1. Sample deployment</h3>
+<div class="paragraph">
+<p>The diagram below depicts a possible setup of replicated sites, followed by a description of individual elements present in the deployment. Options are then explained at large in future paragraphs. Comments on the diagram above:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./../../topics/images/xdc.png" alt="Cross-site datacenters">
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>there are 3 sites: LON, NYC and SFO.</p>
+</li>
+<li>
+<p>in each site there is a running Infinispan cluster with a (potentially) different number of physical nodes: 3 nodes in LON, 4 nodes in NYC and 3 nodes in SFO</p>
+</li>
+<li>
+<p>the "users" cache is active in LON, NYC and SFO. Updates on the "users" cache in any of these sites gets replicated to the other sites as well</p>
+</li>
+<li>
+<p>it is possible to use different replication mechanisms between sites. E.g. One can configure SFO to backup data synchronously to NYC and asynchronously to LON</p>
+</li>
+<li>
+<p>the "users" cache can have a different configuration from one site to the other. E.g. it might be configured as distributed with numOwners=2 in the LON site, REPL in the NYC site and distributed with numOwners=1 in the SFO site</p>
+</li>
+<li>
+<p>JGroups is used for both inter-site and intra-site communication. <a href="http://www.jgroups.org/manual-3.x/html/user-advanced.html#Relay2Advanced">RELAY2</a> is used for inter-site communication</p>
+</li>
+<li>
+<p>"orders" is a site local to LON, i.e. updates to the data in "orders" don&#8217;t get replicated to the remote sites The following sections discuss specific aspects of cross site replication into more detail. The foundation of the cross-site replication functionality is RELAY2 so it highly recommended to read JGroups' <a href="http://www.jgroups.org/manual-3.x/html/user-advanced.html#Relay2Advanced">RELAY2</a> documentation before moving on into cross-site. Configuration</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The cross-site replication configuration spreads over the following files:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>the backup policy for each individual cache is defined in the Infinispan .xml configuration file (<a href="https://gist.github.com/maniksurtani/cdd5420af764c907e342">infinispan.xml</a>)</p>
+</li>
+<li>
+<p>cluster&#8217;s JGroups xml configuration file: <a href="http://www.jgroups.org/manual-3.x/html/user-advanced.html#Relay2Advanced">RELAY2</a> protocol needs to be added to the JGroups protocol stack (<a href="https://gist.github.com/maniksurtani/409fe5ece5fe4bcf679f">jgroups.xml</a>)</p>
+</li>
+<li>
+<p>RELAY2 configuration file: RELAY2 has an own configuration file ( <a href="https://gist.github.com/maniksurtani/8c7238dae7921d2c883e">relay2.xml</a> )</p>
+</li>
+<li>
+<p>the JGroups channel that is used by RELAY2 has its own configuration file (<a href="https://gist.github.com/maniksurtani/cbc1a297a367b1176feb">jgroups-relay2.xml</a>) Infinispan XML configuration file</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The local site is defined in the the global configuration section. The local is the site where the node using this configuration file resides (in the example above local site is "LON").</p>
+</div>
+<div class="listingblock">
+<div class="title">infinispan.xml</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;transport</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The same setup can be achieved programmatically:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">GlobalConfigurationBuilder lonGc = GlobalConfigurationBuilder.defaultClusteredBuilder();
+lonGc.site().localSite(<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The names of the site (case sensitive) should match the name of a site as defined within JGroups' RELAY2 protocol configuration file. Besides the global configuration, each cache specifies its backup policy in the "site" element:</p>
+</div>
+<div class="listingblock">
+<div class="title">infinispan.xml</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">users</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;backups&gt;</span>
     <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">failure-policy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">WARN</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">12000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
     <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SFO</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">failure-policy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">IGNORE</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
     <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">enabled</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
   <span class="tag">&lt;/backups&gt;</span>
-<span class="tag">&lt;/distributed-cache&gt;</span></code></pre> </div> </div> <div class="paragraph"> <p>The "users" cache backups its data to the "NYC" and "SFO" sites. Even though the "LON" appears as a backup site, it has the "enabled" attribute set to <em>false</em> so it will be ignored . For each site backup, the following configuration attributes can be specified:</p> </div> <div class="ulist"> <ul> <li> <p><em>strategy</em> - the strategy used for backing up data, either "SYNC" or "ASYNC". Defaults to "ASYNC".</p> </li> <li> <p><em>failure-policy</em> - Decides what the system would do in case of failure during backup. Possible values are:</p> <div class="ulist"> <ul> <li> <p><em>IGNORE</em> - allow the local operation/transaction to succeed</p> </li> <li> <p><em>WARN</em> - same as IGNORE but also logs a warning message. Default.</p> </li> <li> <p><em>FAIL</em> - only in effect if "strategy" is "SYNC" - fails local cluster operation/transaction by throwing an exception to the user</p> </li> <li> <p><em>CUSTOM</em> - user provided, see "failurePolicyClass" below</p> </li> </ul> </div> </li> <li> <p>failurePolicyClass - If the 'failure-policy' is set to 'CUSTOM' then this attribute is required and should contain the fully qualified name of a class implementing org.infinispan.xsite.CustomFailurePolicy</p> </li> <li> <p>timeout - The timeout(milliseconds) to be used when backing up data remotely. Defaults to 10000 (10 seconds)</p> </li> </ul> </div> <div class="paragraph"> <p>The same setup can be achieved programatically:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight"><code data-lang="java">ConfigurationBuilder lon = <span class="keyword">new</span> ConfigurationBuilder();
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The "users" cache backups its data to the "NYC" and "SFO" sites. Even though the "LON" appears as a backup site, it has the "enabled" attribute set to <em>false</em> so it will be ignored . For each site backup, the following configuration attributes can be specified:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><em>strategy</em> - the strategy used for backing up data, either "SYNC" or "ASYNC". Defaults to "ASYNC".</p>
+</li>
+<li>
+<p><em>failure-policy</em> - Decides what the system would do in case of failure during backup. Possible values are:</p>
+<div class="ulist">
+<ul>
+<li>
+<p><em>IGNORE</em> - allow the local operation/transaction to succeed</p>
+</li>
+<li>
+<p><em>WARN</em> - same as IGNORE but also logs a warning message. Default.</p>
+</li>
+<li>
+<p><em>FAIL</em> - only in effect if "strategy" is "SYNC" - fails local cluster operation/transaction by throwing an exception to the user</p>
+</li>
+<li>
+<p><em>CUSTOM</em> - user provided, see "failurePolicyClass" below</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>failurePolicyClass - If the 'failure-policy' is set to 'CUSTOM' then this attribute is required and should contain the fully qualified name of a class implementing org.infinispan.xsite.CustomFailurePolicy</p>
+</li>
+<li>
+<p>timeout - The timeout(milliseconds) to be used when backing up data remotely. Defaults to 10000 (10 seconds)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The same setup can be achieved programatically:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">ConfigurationBuilder lon = <span class="keyword">new</span> ConfigurationBuilder();
 lon.sites().addBackup()
       .site(<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span>)
       .backupFailurePolicy(BackupFailurePolicy.WARN)
@@ -527,14 +732,42 @@ lon.sites().addBackup()
       .site(<span class="string"><span class="delimiter">&quot;</span><span class="content">SFO</span><span class="delimiter">&quot;</span></span>)
       .backupFailurePolicy(BackupFailurePolicy.IGNORE)
       .strategy(BackupConfiguration.BackupStrategy.ASYNC)
-      .sites().addInUseBackupSite(<span class="string"><span class="delimiter">&quot;</span><span class="content">SFO</span><span class="delimiter">&quot;</span></span>)</code></pre> </div> </div> <div class="paragraph"> <p>The "users" cache above doesn&#8217;t know on which cache on the remote sites its data is being replicated. By default the remote site writes the backup data to a cache having the same name as the originator, i.e. "users". This behaviour can be overridden with an "backupFor" element. For example the following configuration in SFO makes the "usersLONBackup" cache act as the backup cache for the "users" cache defined above in the LON site:</p> </div> <div class="listingblock"> <div class="title">infinispan.xml</div> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+      .sites().addInUseBackupSite(<span class="string"><span class="delimiter">&quot;</span><span class="content">SFO</span><span class="delimiter">&quot;</span></span>)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The "users" cache above doesn&#8217;t know on which cache on the remote sites its data is being replicated. By default the remote site writes the backup data to a cache having the same name as the originator, i.e. "users". This behaviour can be overridden with an "backupFor" element. For example the following configuration in SFO makes the "usersLONBackup" cache act as the backup cache for the "users" cache defined above in the LON site:</p>
+</div>
+<div class="listingblock">
+<div class="title">infinispan.xml</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
   <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
      <span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">usersLONBackup</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;backup-for</span> <span class="attribute-name">remote-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">users</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">remote-site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
      <span class="tag">&lt;/distributed-cache&gt;</span>
   <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre> </div> </div> <div class="paragraph"> <p>The same setup can be achieved programatically:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight"><code data-lang="java">ConfigurationBuilder cb = <span class="keyword">new</span> ConfigurationBuilder();
-cb.sites().backupFor().remoteCache(<span class="string"><span class="delimiter">&quot;</span><span class="content">users</span><span class="delimiter">&quot;</span></span>).remoteSite(<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>);</code></pre> </div> </div> <div class="sect3"> <h4 id="local_clusters_jgroups_xml_configuration"><a class="anchor" href="#local_clusters_jgroups_xml_configuration"></a>1.1.1. Local cluster&#8217;s jgroups .xml configuration</h4> <div class="paragraph"> <p>This is the configuration file for the local (intra-site) Infinispan cluster. It is referred from the Infinispan configuration file, see "configurationFile" below:</p> </div> <div class="listingblock"> <div class="title">infinispan.xml</div> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The same setup can be achieved programatically:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">ConfigurationBuilder cb = <span class="keyword">new</span> ConfigurationBuilder();
+cb.sites().backupFor().remoteCache(<span class="string"><span class="delimiter">&quot;</span><span class="content">users</span><span class="delimiter">&quot;</span></span>).remoteSite(<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>);</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="local_clusters_jgroups_xml_configuration"><a class="anchor" href="#local_clusters_jgroups_xml_configuration"></a>1.1.1. Local cluster&#8217;s jgroups .xml configuration</h4>
+<div class="paragraph">
+<p>This is the configuration file for the local (intra-site) Infinispan cluster. It is referred from the Infinispan configuration file, see "configurationFile" below:</p>
+</div>
+<div class="listingblock">
+<div class="title">infinispan.xml</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
   <span class="tag">&lt;jgroups&gt;</span>
      <span class="comment">&lt;!-- Add custom JGroups stacks in external files. --&gt;</span>
      <span class="tag">&lt;stack-file</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">prod-tcp</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">prod-jgroups-tcp.xml</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
@@ -545,7 +778,116 @@ cb.sites().backupFor().remoteCache(<span class="string"><span class="delimiter">
     <span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">replicatedCache</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
   <span class="tag">&lt;/cache-container&gt;</span>
   ...
-<span class="tag">&lt;/infinispan&gt;</span></code></pre> </div> </div> <div class="paragraph"> <p>In order to allow inter-site calls, the RELAY2 protocol needs to be added to the protocol stack defined in the jgroups configuration (see attached <a href="https://gist.github.com/maniksurtani/409fe5ece5fe4bcf679f">jgroups.xml</a> for an example).</p> </div> </div> <div class="sect3"> <h4 id="relay2_configuration_file"><a class="anchor" href="#relay2_configuration_file"></a>1.1.2. RELAY2 configuration file</h4> <div class="paragraph"> <p>The RELAY2 configuration file is linked from the jgroups.xml (see attached <a href="https://gist.github.com/maniksurtani/8c7238dae7921d2c883e">relay2.xml</a>). It defines the sites seen by this cluster and also the JGroups configuration file that is used by RELAY2 in order to communicate with the remote sites.</p> </div> </div> </div> <div class="sect2"> <h3 id="data_replication"><a class="anchor" href="#data_replication"></a>1.2. Data replication</h3> <div class="paragraph"> <p>For both transactional and non-transactional caches, the backup calls are performed in parallel with local cluster calls, e.g. if we write data to node N1 in LON then replication to the local nodes N2 and N3 and remote backup sites SFO and NYC happen in parallel.</p> </div> <div class="sect3"> <h4 id="non_transactional_caches"><a class="anchor" href="#non_transactional_caches"></a>1.2.1. Non transactional caches</h4> <div class="paragraph"> <p>In the case of non-transactional caches the replication happens during each operation. Given that data is sent in parallel to backups and local caches, it is possible for the operations to succeed locally and fail remotely, or the other way, causing inconsistencies</p> </div> </div> <div class="sect3"> <h4 id="transactional_caches"><a class="anchor" href="#transactional_caches"></a>1.2.2. Transactional caches</h4> <div class="paragraph"> <p>For synchronous transactional caches, Infinispan internally uses a two phase commit protocol: lock acquisition during the 1st phase (prepare) and apply changes during the 2nd phase (commit). For asynchronous caches the two phases are merged, the "apply changes" message being sent asynchronously to the owners of data. This 2PC protocol maps to 2PC received from the JTA transaction manager. For transactional caches, both optimistic and pessimistic, the backup to remote sites happens during the prepare and commit phase only.</p> </div> <div class="sect4"> <h5 id="synchronous_local_cluster_with_async_backup"><a class="anchor" href="#synchronous_local_cluster_with_async_backup"></a>Synchronous local cluster with async backup</h5> <div class="paragraph"> <p>In this scenario the backup call happens during local commit phase(2nd phase). That means that if the local prepare fails, no remote data is being sent to the remote backup.</p> </div> </div> <div class="sect4"> <h5 id="synchronous_local_cluster_with_sync_backup"><a class="anchor" href="#synchronous_local_cluster_with_sync_backup"></a>Synchronous local cluster with sync backup</h5> <div class="paragraph"> <p>In this case there are two backup calls:</p> </div> <div class="ulist"> <ul> <li> <p>during prepare a message is sent across containing all the modifications that happened within this transaction</p> </li> <li> <p>if the remote backup cache is transactional then a transaction is started remotely and all these modifications are being written within this transaction&#8217;s scope. The transaction is not committed yet (see below)</p> </li> <li> <p>if the remote backup cache is not transactional, then the changes are applied remotely</p> </li> <li> <p>during the commit/rollback, a commit/rollback message is sent across</p> </li> <li> <p>if the remote backups cache is transactional then the transaction started at the previous phase is committed/rolled back</p> </li> <li> <p>if the remote backup is not transactional then this call is ignored</p> </li> </ul> </div> <div class="paragraph"> <p>Both the local and the backup call(if the "backupFailurePolicy" is set to "FAIL") can veto transaction&#8217;s prepare outcome</p> </div> </div> <div class="sect4"> <h5 id="asynchronous_local_cluster"><a class="anchor" href="#asynchronous_local_cluster"></a>Asynchronous local cluster</h5> <div class="paragraph"> <p>In the case of asynchronous local clusters, the backup data is sent during the commit phase. If the backup call fails and the "backupFailurePolicy" is set to "FAIL" then the user is notified through an exception.</p> </div> </div> <div class="sect4"> <h5 id="replication_of_expired_cache_entries_across_sites"><a class="anchor" href="#replication_of_expired_cache_entries_across_sites"></a>Replication of expired cache entries across sites</h5> <div class="paragraph"> <p>You can configure Infinispan to expire entries, which controls the amount of time entries remain in the cache.</p> </div> <div class="ulist"> <ul> <li> <p><code>lifespan</code> expiration is suitable for cross-site replication because entries expire without the need for Infinispan to determine if the entries have expired in clusters on other sites.</p> </li> <li> <p><code>max-idle</code> expiration does not work with cross-site replication because Infinispan cannot determine if cache entries have reached the idle timeout in clusters on other sites.</p> </li> </ul> </div> </div> </div> </div> <div class="sect2"> <h3 id="taking_a_site_offline"><a class="anchor" href="#taking_a_site_offline"></a>1.3. Taking a site offline</h3> <div class="paragraph"> <p>If backing up to a site fails for a certain number of times during a time interval, then it is possible to automatically mark that site as offline. When a site is marked as offline the local site won&#8217;t try to backup data to it anymore. In order to be taken online a system administrator intervention being required.</p> </div> <div class="sect3"> <h4 id="configuration"><a class="anchor" href="#configuration"></a>1.3.1. Configuration</h4> <div class="paragraph"> <p>The following configuration provides an example for taking sites offline:</p> </div> <div class="listingblock"> <div class="title">infinispan.xml</div> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">bestEffortBackup</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In order to allow inter-site calls, the RELAY2 protocol needs to be added to the protocol stack defined in the jgroups configuration (see attached <a href="https://gist.github.com/maniksurtani/409fe5ece5fe4bcf679f">jgroups.xml</a> for an example).</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="relay2_configuration_file"><a class="anchor" href="#relay2_configuration_file"></a>1.1.2. RELAY2 configuration file</h4>
+<div class="paragraph">
+<p>The RELAY2 configuration file is linked from the jgroups.xml (see attached <a href="https://gist.github.com/maniksurtani/8c7238dae7921d2c883e">relay2.xml</a>). It defines the sites seen by this cluster and also the JGroups configuration file that is used by RELAY2 in order to communicate with the remote sites.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="data_replication"><a class="anchor" href="#data_replication"></a>1.2. Data replication</h3>
+<div class="paragraph">
+<p>For both transactional and non-transactional caches, the backup calls are performed in parallel with local cluster calls, e.g. if we write data to node N1 in LON then replication to the local nodes N2 and N3 and remote backup sites SFO and NYC happen in parallel.</p>
+</div>
+<div class="sect3">
+<h4 id="non_transactional_caches"><a class="anchor" href="#non_transactional_caches"></a>1.2.1. Non transactional caches</h4>
+<div class="paragraph">
+<p>In the case of non-transactional caches the replication happens during each operation. Given that data is sent in parallel to backups and local caches, it is possible for the operations to succeed locally and fail remotely, or the other way, causing inconsistencies</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="transactional_caches"><a class="anchor" href="#transactional_caches"></a>1.2.2. Transactional caches</h4>
+<div class="paragraph">
+<p>For synchronous transactional caches, Infinispan internally uses a two phase commit protocol: lock acquisition during the 1st phase (prepare) and apply changes during the 2nd phase (commit). For asynchronous caches the two phases are merged, the "apply changes" message being sent asynchronously to the owners of data. This 2PC protocol maps to 2PC received from the JTA transaction manager. For transactional caches, both optimistic and pessimistic, the backup to remote sites happens during the prepare and commit phase only.</p>
+</div>
+<div class="sect4">
+<h5 id="synchronous_local_cluster_with_async_backup"><a class="anchor" href="#synchronous_local_cluster_with_async_backup"></a>Synchronous local cluster with async backup</h5>
+<div class="paragraph">
+<p>In this scenario the backup call happens during local commit phase(2nd phase). That means that if the local prepare fails, no remote data is being sent to the remote backup.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="synchronous_local_cluster_with_sync_backup"><a class="anchor" href="#synchronous_local_cluster_with_sync_backup"></a>Synchronous local cluster with sync backup</h5>
+<div class="paragraph">
+<p>In this case there are two backup calls:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>during prepare a message is sent across containing all the modifications that happened within this transaction</p>
+</li>
+<li>
+<p>if the remote backup cache is transactional then a transaction is started remotely and all these modifications are being written within this transaction&#8217;s scope. The transaction is not committed yet (see below)</p>
+</li>
+<li>
+<p>if the remote backup cache is not transactional, then the changes are applied remotely</p>
+</li>
+<li>
+<p>during the commit/rollback, a commit/rollback message is sent across</p>
+</li>
+<li>
+<p>if the remote backups cache is transactional then the transaction started at the previous phase is committed/rolled back</p>
+</li>
+<li>
+<p>if the remote backup is not transactional then this call is ignored</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Both the local and the backup call(if the "backupFailurePolicy" is set to "FAIL") can veto transaction&#8217;s prepare outcome</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="asynchronous_local_cluster"><a class="anchor" href="#asynchronous_local_cluster"></a>Asynchronous local cluster</h5>
+<div class="paragraph">
+<p>In the case of asynchronous local clusters, the backup data is sent during the commit phase. If the backup call fails and the "backupFailurePolicy" is set to "FAIL" then the user is notified through an exception.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="replication_of_expired_cache_entries_across_sites"><a class="anchor" href="#replication_of_expired_cache_entries_across_sites"></a>Replication of expired cache entries across sites</h5>
+<div class="paragraph">
+<p>You can configure Infinispan to expire entries, which controls the amount of
+time entries remain in the cache.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>lifespan</code> expiration is suitable for cross-site replication because entries
+expire without the need for Infinispan to determine if the entries have
+expired in clusters on other sites.</p>
+</li>
+<li>
+<p><code>max-idle</code> expiration does not work with cross-site replication because
+Infinispan cannot determine if cache entries have reached the idle timeout in
+clusters on other sites.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="taking_a_site_offline"><a class="anchor" href="#taking_a_site_offline"></a>1.3. Taking a site offline</h3>
+<div class="paragraph">
+<p>If backing up to a site fails for a certain number of times during a time interval, then it is possible to automatically mark that site as offline. When a site is marked as offline the local site won&#8217;t try to backup data to it anymore. In order to be taken online a system administrator intervention being required.</p>
+</div>
+<div class="sect3">
+<h4 id="configuration"><a class="anchor" href="#configuration"></a>1.3.1. Configuration</h4>
+<div class="paragraph">
+<p>The following configuration provides an example for taking sites offline:</p>
+</div>
+<div class="listingblock">
+<div class="title">infinispan.xml</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">bestEffortBackup</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    ...
    <span class="tag">&lt;backups&gt;</span>
      <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">failure-policy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">FAIL</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
@@ -553,13 +895,186 @@ cb.sites().backupFor().remoteCache(<span class="string"><span class="delimiter">
      <span class="tag">&lt;/backup&gt;</span>
    <span class="tag">&lt;/backups&gt;</span>
     ...
-<span class="tag">&lt;/replicated-cache&gt;</span></code></pre> </div> </div> <div class="paragraph"> <p>The <em>take-offline</em> element under the <em>backup</em> configures the taking offline of a site:</p> </div> <div class="ulist"> <ul> <li> <p><em>after-failures</em> - the number of failed backup operations after which this site should be taken offline. Defaults to 0 (never). A negative value would mean that the site will be taken offline after <em>minTimeToWait</em></p> </li> <li> <p><em>min-wait</em> - the number of milliseconds in which a site is not marked offline even if it is unreachable for 'afterFailures' number of times. If smaller or equal to 0, then only <em>afterFailures</em> is considered.</p> </li> </ul> </div> <div class="paragraph"> <p>The equivalent programmatic configuration is:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight"><code data-lang="java">lon.sites().addBackup()
+<span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <em>take-offline</em> element under the <em>backup</em> configures the taking offline of a site:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><em>after-failures</em> - the number of failed backup operations after which this site should be taken offline. Defaults to 0 (never). A negative value would mean that the site will be taken offline after <em>minTimeToWait</em></p>
+</li>
+<li>
+<p><em>min-wait</em> - the number of milliseconds in which a site is not marked offline even if it is unreachable for 'afterFailures' number of times. If smaller or equal to 0, then only <em>afterFailures</em> is considered.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The equivalent programmatic configuration is:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">lon.sites().addBackup()
       .site(<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span>)
       .backupFailurePolicy(BackupFailurePolicy.FAIL)
       .strategy(BackupConfiguration.BackupStrategy.SYNC)
       .takeOffline()
          .afterFailures(<span class="integer">500</span>)
-         .minTimeToWait(<span class="integer">10000</span>);</code></pre> </div> </div> </div> <div class="sect3"> <h4 id="bringing_sites_back_online"><a class="anchor" href="#bringing_sites_back_online"></a>1.3.2. Bringing Sites Back Online</h4> <div class="paragraph"> <p>After taking sites offline, invoke the <code>bringSiteOnline(siteName)</code> operation via the following JMX MBeans to bring sites back online:</p> </div> <div class="ulist"> <ul> <li> <p><code>XSiteAdmin</code> enables replication on caches across clusters in a remote site.</p> </li> <li> <p><code>GlobalXSiteAdminOperations</code> enables replication on cache containers across clusters in a remote site.</p> </li> </ul> </div> <div class="paragraph"> <p>The <code>bringSiteOnline(siteName)</code> operation enables replication only and does not do a full update. For this reason, when you bring sites back online, they only contain new entries. You should push transfer to sites after you bring them online to synchronize the most recent data.</p> </div> <div class="admonitionblock tip"> <table> <tr> <td class="icon"> <i class="fa icon-tip" title="Tip"></i> </td> <td class="content"> <div class="paragraph"> <p>Pushing state transfer brings sites back online. You can do that instead of invoking <code>bringSiteOnline(siteName)</code>.</p> </div> </td> </tr> </table> </div> </div> </div> <div class="sect2"> <h3 id="pushing_state_transfer_to_sites"><a class="anchor" href="#pushing_state_transfer_to_sites"></a>1.4. Pushing State Transfer to Sites</h3> <div class="paragraph"> <p>Transferring state from one site to another synchronizes the data between the two sites.</p> </div> <div class="paragraph"> <p>You should always transfer state from the currently active site, which contains the most up-to-date data, to another site. The site to which you push state transfer can be online or offline. If you push state transfer to an offline site, it brings that site back online.</p> </div> <div class="paragraph"> <p>Caches on sites to which you transfer state from another site do not need to be empty. However, state transfer only overwrites existing keys on receiving sites and does not delete keys.</p> </div> <div class="paragraph"> <p>For example, key K exists on site A and site B. You transfer state from site A to site B. In this case, Infinispan overwrites key K. However, key Y exists on site B but not site A. After you transfer state from site A to site B, key Y still exists on site B.</p> </div> <div class="admonitionblock note"> <table> <tr> <td class="icon"> <i class="fa icon-note" title="Note"></i> </td> <td class="content"> <div class="paragraph"> <p>You can receive state transfer from only one site at a time. Likewise, if you invoke a state transfer operation on a site, Infinispan ignores subsequent invocations on that site.</p> </div> </td> </tr> </table> </div> <div class="paragraph"> <p>Invoke the <code>pushState(String)</code> operation via the following JMX MBeans to bring sites back online:</p> </div> <div class="ulist"> <ul> <li> <p><code>XSiteAdminOperations</code> synchronizes state for caches between the site on which you invoke the operation and a remote site. Brings the site online if it is offline.</p> </li> <li> <p><code>GlobalXSiteAdminOperations</code> synchronizes state for cache containers between the site on which you invoke the operation and a remote site. Brings the site online if it is offline.</p> </li> </ul> </div> <div class="paragraph"> <p>When you invoke the <code>pushState(String)</code> operation on the site that transfers state, you specify the name of the site that receives the state.</p> </div> <div class="paragraph"> <p>The following figure shows the pushState(String) operation in JConsole:</p> </div> <div class="imageblock text-center"> <div class="content"> <img src="./../../topics/images/xsite-state-transfer.png" alt="xsite state transfer"> </div> <div class="title">Figure 1. Pushing state via JConsole</div> </div> <div class="sect3"> <h4 id="handling_joinleave_nodes"><a class="anchor" href="#handling_joinleave_nodes"></a>1.4.1. Handling join/leave nodes</h4> <div class="paragraph"> <p>The current implementation automatically handles the topology changes in producer or consumer site. Also, the cross-site state transfer can run in parallel with a local site state transfer.</p> </div> </div> <div class="sect3"> <h4 id="handling_broken_link_between_sites"><a class="anchor" href="#handling_broken_link_between_sites"></a>1.4.2. Handling broken link between sites</h4> <div class="paragraph"> <p>A System Administrator action is needed if the link between the producer and consumer site is broken during the cross-site state transfer (data consistency is not ensured in consumer site). The producer site retries for a while before giving up. Then, it gets back to normal state. However, the consumer site is not able to get back to normal state and, here, an action from System Administrator is need. The System Administrator should use the operation cancelReceiveState(String siteName) to bring the consumer site to normal state.</p> </div> </div> <div class="sect3"> <h4 id="system_administrator_operations"><a class="anchor" href="#system_administrator_operations"></a>1.4.3. System Administrator Operations</h4> <div class="paragraph"> <p>A set of operations can be performed to control the cross-site state transfer:</p> </div> <div class="ulist"> <ul> <li> <p>pushState(String siteName) - It starts the cross-site state transfer to the site name specified;</p> </li> <li> <p>cancelPushState(String siteName) - It cancels the cross-site state transfer to the site name specified;</p> </li> <li> <p>getRunningStateTransfer() - It returns a list of site name to which this site is pushing the state;</p> </li> <li> <p>getSendingSiteName() - It returns the site name that is pushing state to this site;</p> </li> <li> <p>cancelReceiveState(String siteName) - It restores the site to normal state. Should be used when the link between the sites is broken during the state transfer (as described above);</p> </li> <li> <p>getPushStateStatus() - It returns the status of completed cross-site state transfer;</p> </li> <li> <p>clearPushStateStatus() - It clears the status of completed cross-site state transfer.</p> </li> </ul> </div> <div class="paragraph"> <p>For more technical information, you can check the Cross Site design document. See <a href="#x_site_reference">Reference</a>.</p> </div> </div> <div class="sect3"> <h4 id="x_site_st_configuration"><a class="anchor" href="#x_site_st_configuration"></a>1.4.4. Configuration</h4> <div class="paragraph"> <p>State transfer between sites cannot be enabled or disabled but it allows to tune some parameters. The values shown below are the default values:</p> </div> <div class="listingblock"> <div class="title">infinispan.xml</div> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">xSiteStateTransfer</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+         .minTimeToWait(<span class="integer">10000</span>);</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="bringing_sites_back_online"><a class="anchor" href="#bringing_sites_back_online"></a>1.3.2. Bringing Sites Back Online</h4>
+<div class="paragraph">
+<p>After taking sites offline, invoke the <code>bringSiteOnline(siteName)</code> operation via the following JMX MBeans to bring sites back online:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>XSiteAdmin</code> enables replication on caches across clusters in a remote site.</p>
+</li>
+<li>
+<p><code>GlobalXSiteAdminOperations</code> enables replication on cache containers across clusters in a remote site.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>bringSiteOnline(siteName)</code> operation enables replication only and does not do a full update. For this reason, when you bring sites back online, they only contain new entries. You should push transfer to sites after you bring them online to synchronize the most recent data.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Pushing state transfer brings sites back online. You can do that instead of invoking <code>bringSiteOnline(siteName)</code>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="pushing_state_transfer_to_sites"><a class="anchor" href="#pushing_state_transfer_to_sites"></a>1.4. Pushing State Transfer to Sites</h3>
+<div class="paragraph">
+<p>Transferring state from one site to another synchronizes the data between the two sites.</p>
+</div>
+<div class="paragraph">
+<p>You should always transfer state from the currently active site, which contains the most up-to-date data, to another site. The site to which you push state transfer can be online or offline. If you push state transfer to an offline site, it brings that site back online.</p>
+</div>
+<div class="paragraph">
+<p>Caches on sites to which you transfer state from another site do not need to be empty. However, state transfer only overwrites existing keys on receiving sites and does not delete keys.</p>
+</div>
+<div class="paragraph">
+<p>For example, key K exists on site A and site B. You transfer state from site A to site B. In this case, Infinispan overwrites key K. However, key Y exists on site B but not site A. After you transfer state from site A to site B, key Y still exists on site B.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>You can receive state transfer from only one site at a time. Likewise, if you invoke a state transfer operation on a site, Infinispan ignores subsequent invocations on that site.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Invoke the <code>pushState(String)</code> operation via the following JMX MBeans to bring sites back online:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>XSiteAdminOperations</code> synchronizes state for caches between the site on which you invoke the operation and a remote site. Brings the site online if it is offline.</p>
+</li>
+<li>
+<p><code>GlobalXSiteAdminOperations</code> synchronizes state for cache containers between the site on which you invoke the operation and a remote site. Brings the site online if it is offline.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>When you invoke the <code>pushState(String)</code> operation on the site that transfers state, you specify the name of the site that receives the state.</p>
+</div>
+<div class="paragraph">
+<p>The following figure shows the pushState(String) operation in JConsole:</p>
+</div>
+<div class="imageblock text-center">
+<div class="content">
+<img src="./../../topics/images/xsite-state-transfer.png" alt="xsite state transfer">
+</div>
+<div class="title">Figure 1. Pushing state via JConsole</div>
+</div>
+<div class="sect3">
+<h4 id="handling_joinleave_nodes"><a class="anchor" href="#handling_joinleave_nodes"></a>1.4.1. Handling join/leave nodes</h4>
+<div class="paragraph">
+<p>The current implementation automatically handles the topology changes in producer or consumer site. Also, the cross-site
+state transfer can run in parallel with a local site state transfer.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="handling_broken_link_between_sites"><a class="anchor" href="#handling_broken_link_between_sites"></a>1.4.2. Handling broken link between sites</h4>
+<div class="paragraph">
+<p>A System Administrator action is needed if the link between the producer and consumer site is broken during the
+cross-site state transfer (data consistency is not ensured in consumer site). The producer site retries for a while
+before giving up. Then, it gets back to normal state. However, the consumer site is not able to get back to normal state
+and, here, an action from System Administrator is need. The System Administrator should use the operation
+cancelReceiveState(String siteName) to bring the consumer site to normal state.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="system_administrator_operations"><a class="anchor" href="#system_administrator_operations"></a>1.4.3. System Administrator Operations</h4>
+<div class="paragraph">
+<p>A set of operations can be performed to control the cross-site state transfer:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>pushState(String siteName) - It starts the cross-site state transfer to the site name specified;</p>
+</li>
+<li>
+<p>cancelPushState(String siteName) - It cancels the cross-site state transfer to the site name specified;</p>
+</li>
+<li>
+<p>getRunningStateTransfer() - It returns a list of site name to which this site is pushing the state;</p>
+</li>
+<li>
+<p>getSendingSiteName() - It returns the site name that is pushing state to this site;</p>
+</li>
+<li>
+<p>cancelReceiveState(String siteName) - It restores the site to normal state. Should be used when the link between
+the sites is broken during the state transfer (as described above);</p>
+</li>
+<li>
+<p>getPushStateStatus() - It returns the status of completed cross-site state transfer;</p>
+</li>
+<li>
+<p>clearPushStateStatus() - It clears the status of completed cross-site state transfer.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For more technical information, you can check the Cross Site design document. See <a href="#x_site_reference">Reference</a>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="x_site_st_configuration"><a class="anchor" href="#x_site_st_configuration"></a>1.4.4. Configuration</h4>
+<div class="paragraph">
+<p>State transfer between sites cannot be enabled or disabled but it allows to tune some parameters. The values shown
+below are the default values:</p>
+</div>
+<div class="listingblock">
+<div class="title">infinispan.xml</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">xSiteStateTransfer</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    ...
    <span class="tag">&lt;backups&gt;</span>
       <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">failure-policy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">FAIL</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
@@ -567,7 +1082,15 @@ cb.sites().backupFor().remoteCache(<span class="string"><span class="delimiter">
       <span class="tag">&lt;/backup&gt;</span>
    <span class="tag">&lt;/backups&gt;</span>
     ...
-<span class="tag">&lt;/replicated-cache&gt;</span></code></pre> </div> </div> <div class="paragraph"> <p>The equivalent programmatic configuration is:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight"><code data-lang="java">lon.sites().addBackup()
+<span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The equivalent programmatic configuration is:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">lon.sites().addBackup()
       .site(<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span>)
       .backupFailurePolicy(BackupFailurePolicy.FAIL)
       .strategy(BackupConfiguration.BackupStrategy.SYNC)
@@ -575,7 +1098,49 @@ cb.sites().backupFor().remoteCache(<span class="string"><span class="delimiter">
          .chunkSize(<span class="integer">512</span>)
          .timeout(<span class="integer">1200000</span>)
          .maxRetries(<span class="integer">30</span>)
-         .waitingTimeBetweenRetries(<span class="integer">2000</span>);</code></pre> </div> </div> <div class="paragraph"> <p>Below, it is the parameters description:</p> </div> <div class="ulist"> <ul> <li> <p><em>chunk-size</em> - The number of keys to batch before sending them to the consumer site. A negative or a zero value is <strong>not</strong> a valid value. Default value is 512 keys.</p> </li> <li> <p><em>timeout</em> - The time (in milliseconds) to wait for the consumer site acknowledge the reception and appliance of a state chunk. A negative or zero value is <strong>not</strong> a valid value. Default value is 20 minutes.</p> </li> <li> <p><em>max-retries</em> - The maximum number of retries when a push state command fails. A negative or a zero value means that the command will not retry in case of failure. Default value is 30.</p> </li> <li> <p><em>wait-time</em> - The waiting time (in milliseconds) between each retry. A negative or a zero value is <strong>not</strong> a valid value. Default value is 2 seconds.</p> </li> </ul> </div> </div> </div> <div class="sect2"> <h3 id="x_site_reference"><a class="anchor" href="#x_site_reference"></a>1.5. Reference</h3> <div class="paragraph"> <p><a href="https://community.jboss.org/wiki/DesignForCrossSiteReplication">This document</a> describes the technical design of cross site replication in more detail.</p> </div> </div> </div> </div> </div> <div id="footer"> <div id="footer-text"> Last updated 2019-10-27 08:15:43 UTC </div> </div> <script>
+         .waitingTimeBetweenRetries(<span class="integer">2000</span>);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Below, it is the parameters description:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><em>chunk-size</em> - The number of keys to batch before sending them to the consumer site. A negative or a zero value is
+<strong>not</strong> a valid value. Default value is 512 keys.</p>
+</li>
+<li>
+<p><em>timeout</em> - The time (in milliseconds) to wait for the consumer site acknowledge the reception and appliance of a
+state chunk. A negative or zero value is <strong>not</strong> a valid value. Default value is 20 minutes.</p>
+</li>
+<li>
+<p><em>max-retries</em> - The maximum number of retries when a push state command fails. A negative or a zero value means that
+the command will not retry in case of failure. Default value is 30.</p>
+</li>
+<li>
+<p><em>wait-time</em> - The waiting time (in milliseconds) between each retry. A negative or a zero value is <strong>not</strong> a valid
+value. Default value is 2 seconds.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="x_site_reference"><a class="anchor" href="#x_site_reference"></a>1.5. Reference</h3>
+<div class="paragraph">
+<p><a href="https://community.jboss.org/wiki/DesignForCrossSiteReplication">This document</a> describes the technical design of cross site replication in more detail.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2019-10-27 08:15:43 UTC
+</div>
+</div>
+<script>
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
@@ -584,7 +1149,9 @@ cb.sites().backupFor().remoteCache(<span class="string"><span class="delimiter">
   ga('create', 'UA-8601422-1', 'auto');
   ga('send', 'pageview');
 
-</script> <script type="text/x-mathjax-config">
+</script>
+
+<script type="text/x-mathjax-config">
 MathJax.Hub.Config({
   messageStyle: "none",
   tex2jax: {
@@ -598,4 +1165,7 @@ MathJax.Hub.Config({
   },
   TeX: { equationNumbers: { autoNumber: "none" } }
 });
-</script> <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script> </body> </html>
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Fine-grained replication in Infinispan</title>
+  <!-- <script id="adobe_dtm" src="//www.redhat.com/dtm.js" type="text/javascript"></script> -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/styles/github.min.css">
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/highlight.min.js"></script>
+  <script charset="UTF-8"
+          src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/languages/java.min.js"></script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+<!--   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-125236544-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+ 
+    gtag('config', 'UA-125236544-1');
+  </script> -->
+
+
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> Fine-grained replication in Infinispan
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Fine-grained replication in Infinispan</h1>
+    <div class="post-date">June 21, 2012
+      Tags: <a href="/blog/tag/replication">replication</a> <a href="/blog/tag/fine grained">fine grained</a> <a href="/blog/tag/state transfer">state transfer</a> 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/mgencur.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By Martin Genčúr</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div class="sect1">
+<h2 id="underline">[.underline]##</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Sometimes we have a large object, possibly with lots of attributes or
+holding some binary data, and we would like to tell Infinispan to
+replicate only certain part of the object across the cluster. Typically,
+we wanna replicate only that part which we&#8217;ve just updated. This is
+where DeltaAware and Delta interfaces come to play. By providing
+implementations of these interfaces we can define fine-grained
+replication. When we put some effort into such such an enhancements, we
+would also like to speed up object marshalling and unmarshalling.
+Therefore, we&#8217;re going to define our own externalizers - to avoid slow
+default Java serialization.</p>
+</div>
+<div class="paragraph">
+<p>The following code snippets are gathered in a complete example at
+<a href="https://github.com/mgencur/infinispan-examples/tree/master/partial-state-transfer" class="bare">https://github.com/mgencur/infinispan-examples/tree/master/partial-state-transfer</a>
+This project contains a readme file with instructions on how to build
+and run the example. It is based on clustered-cache quickstart in
+Infinispan.</p>
+</div>
+<div class="sect2">
+<h3 id="implementing-deltaaware-interface">Implementing DeltaAware interface</h3>
+<div class="paragraph">
+<p>So let&#8217;s look at our main object. For the purpose of this exercise, I
+defined a Bicycle class that consists of many components like frame,
+fork, rearShock, etc. This object is stored in a cache as a value under
+certain (not important) key. It might happen in our scenario that we
+update only certain components of the bike and in such case we want to
+replicate just those component changes.</p>
+</div>
+<div class="paragraph">
+<p>Important methods here are (description taken from javadocs):</p>
+</div>
+<div class="paragraph">
+<p>commit() - Indicates that all deltas collected to date has been
+extracted (via a
+                 call to delta()) and can be discarded. Often used as an
+optimization if
+                 the delta isn&#8217;t really needed, but the cleaning and
+resetting of       
+                 internal state is desirable.</p>
+</div>
+<div class="paragraph">
+<p>delta() - Extracts changes made to implementations, in an efficient
+format that
+             can easily and cheaply be serialized and deserialized. 
+This method will
+             only be called once for each changeset as it is assumed
+that any
+             implementation&#8217;s internal changelog is wiped and reset
+after generating
+             and submitting the delta to the caller.
+         
+We also need to define setters and getters for our members. Setter
+methods are, among other things, responsible for registering changes to
+the changelog that will be later used to reconstruct the object&#8217;s state.
+The externalizer for this class is only needed when cache stores are
+used. For the sake of simplicity, I don&#8217;t mention it here.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="implementing-delta-interface">Implementing Delta interface</h3>
+<div class="paragraph">
+<p>Actual object that will be replicated across the cluster is the
+implementation of Delta interface. Let&#8217;s look at the class. First, we
+need a field that will hold the changes - changeLog. Second, we need to
+define a merge() method. This method must be implemented so that
+Infinispan knows how to merge an existing object with incoming changes.
+The parameter of this method represents an object that is already stored
+in a cache, incoming changes will be applied to this object. We&#8217;re using
+a reflection here to apply the changes to the actual object but it is
+not necessary. We could easily call setter methods. The advantage of
+using reflection is that we can set those fields in a loop.</p>
+</div>
+<div class="paragraph">
+<p>Another piece is a registerComponentChange() method. This is called by
+an object of the Bicycle class - to record changes to that object. The
+name of this method is not important.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="defining-our-own-externalizer">Defining our own externalizer</h3>
+<div class="paragraph">
+<p>Alright, so what remains is the externalizer definition for the Delta
+implementation. We implement AdvancedExternalizer interface and say that
+only changeLog object should be marshalled and unmarshalled when
+transfering data over the wire. A complete (almost) implementation of
+Delta interface is the following.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="tell-infinispan-about-the-extra-externalizer">Tell Infinispan about the extra externalizer</h3>
+<div class="paragraph">
+<p>We also need to configure Infinispan to use our special externalizer to
+marshall/unmarshall our objects. We can do it e.g. programatically by
+calling .addAdvancedExternalizer() on the serialization configuration
+builder.</p>
+</div>
+<div class="paragraph">
+<p>You can see we&#8217;re also configuring transactions here. This is not
+necessary, though. We just aim to provide a richer example, removing
+transactional behavior is trully easy.</p>
+</div>
+<div class="paragraph">
+<p>And here comes the "usage" part. Enclose cache calls by a transaction,
+retrieve a bicycle object from the cache, do some changes and commit
+them.</p>
+</div>
+<div class="paragraph">
+<p>That&#8217;s it. What is eventually transferred over the wire is just the
+changeLog object. The actual bicycle object is reconstructed from
+incomming updates.</p>
+</div>
+<div class="paragraph">
+<p>If all of this seem to be too complex to you, I have good news.
+Infinispan provides one implementation of DeltaAware interface whish is
+called AtomicHashMap (package org.infinispan.atomic). If this map is
+used as a value in key/value pairs stored in the cache, only
+puts/gets/removes performed to this map during a transaction are
+replicated to other nodes. Classes like Bicycle and BicycleDelta are not
+need then. Even registering the externalizer for AtomicHashMap is not
+needed, this is done automatically during registration of internal
+externalizers. However, one might want a class emulating a real-world
+object, not just a map. That&#8217;s the case when your own implementations of
+DeltaAware and Delta interfaces are the only way.</p>
+</div>
+</div>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://jira.jboss.org/browse/ISPN" target="_blank">JIRA issues tracker</a>.
+        If you don’t find any, <a href="https://jira.jboss.org/browse/ISPN" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest"
+                       target="_blank">StackOverflow</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/">Home</a></li>
+          
+            <li><a href="/features">Features</a></li>
+          
+            <li><a href="/documentation">Docs</a></li>
+          
+            <li><a href="/tutorials">Tutorials</a></li>
+          
+            <li><a href="/videos">Videos</a></li>
+          
+            <li><a href="/use-cases">Use Cases</a></li>
+          
+            <li><a href="/community">Community</a></li>
+          
+            <li><a href="/download">Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://issues.jboss.org/browse/ISPN">Submit a Bug</a></li>
+          
+            <li><a href="https://github.com/infinispan">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/blog">Blog</a></li>
+          
+            <li><a href="https://twitter.com/infinispan">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="http://www.cloudtm.eu/" target="_blank"><img src="/assets/images/footer/cloud-tm.png"></a>
+          <img src="/assets/images/footer/leads.png">
+          <br/>
+          <a href="http://cloudbutton.eu/" target="_blank"><img src="/assets/images/footer/cloud-button.png"></a>
+
+        </div>
+        <div class="width-6-12">
+
+          <b>Thanks to</b><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank">JetBrains Intellj IDEA</a><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank"><img src="/assets/images/footer/jetbrains.png">
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+      | <a href="https://www.redhat.com/en/about/privacy-policy">Red Hat Privacy Policy</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>

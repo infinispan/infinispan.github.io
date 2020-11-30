@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Infinispan EC2 Demo</title>
+  <!-- <script id="adobe_dtm" src="//www.redhat.com/dtm.js" type="text/javascript"></script> -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/styles/github.min.css">
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/highlight.min.js"></script>
+  <script charset="UTF-8"
+          src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/languages/java.min.js"></script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+<!--   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-125236544-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+ 
+    gtag('config', 'UA-125236544-1');
+  </script> -->
+
+
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> Infinispan EC2 Demo
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Infinispan EC2 Demo</h1>
+    <div class="post-date">May 26, 2010
+      Tags: <a href="/blog/tag/ec2">ec2</a> <a href="/blog/tag/amazon">amazon</a> <a href="/blog/tag/jgroups">jgroups</a> <a href="/blog/tag/s3">s3</a> <a href="/blog/tag/demo">demo</a> <a href="/blog/tag/aws">aws</a> 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/infinispan.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By Infinispan</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div class="paragraph">
+<p>Infinispan&#8217;s distributed mode is well suited to handling large datasets
+and scaling the clustered cache by adding nodes as required. These days
+when inexpensive scaling is thought of, cloud computing immediately
+comes to mind.</p>
+</div>
+<div class="paragraph">
+<p>One of the largest providers of cloud computing is Amazon with its
+Amazon Web Services (AWS) offering. AWS provides computing capacity on
+demand with its EC2 services and storage on demand with its S3 and EBS
+offerings. EC2 provides just an operating system to run on and it is a
+relatively straightforward process to get an Infinispan cluster running
+on EC2. However there is one gotcha, EC2 does not support UDP
+multicasting at this time and this is the default node discovery
+approach used by Infinispan to detect nodes running in a cluster.</p>
+</div>
+<div class="paragraph">
+<p>Some background on network communications</p>
+</div>
+<div class="paragraph">
+<p>Infinispan uses the JGroups library to handle all network
+communications. JGroups enables cluster node detection, a process called
+discovery, and reliable data transfer between nodes. JGroups also
+handles the process of nodes entering and exiting the cluster and master
+node determination for the cluster.</p>
+</div>
+<div class="paragraph">
+<p><strong>Configuring JGroups in Infinispan</strong>
+The JGroups configuration details are passed to Infinispan in the
+infinispan configuration file</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-xml" data-lang="xml">&lt;transport clusterName="infinispan-cluster" distributedSyncTimeout="50000"
+        transportClass="org.infinispan.remoting.transport.jgroups.JGroupsTransport"&gt;
+    &lt;properties&gt;
+       &lt;property name="configurationFile" value="jgroups-s3_ping-aws.xml" /&gt;
+    &lt;/properties&gt;
+ &lt;/transport&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Node Discovery</strong></p>
+</div>
+<div class="paragraph">
+<p>JGroups has three discovery options which can be used for node discovery
+on EC2.</p>
+</div>
+<div class="paragraph">
+<p>The first is to statically configure the address of each node in the
+cluster in each of the nodes peers. This simplifies discovery but is not
+suitable when the IP addresses of each node is dynamic or nodes are
+added and removed on demand.</p>
+</div>
+<div class="paragraph">
+<p>The second method is to use a Gossip Router. This is an external Java
+process which runs and waits for connections from potential cluster
+nodes. Each node in the cluster needs to be configured with the ip
+address and port that the Gossip Router is listening on. At node
+initialization, the node connects to the gossip router and retrieves the
+list of other nodes in the cluster.</p>
+</div>
+<div class="paragraph">
+<p>Example JGroups gossip router configuration</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-xml" data-lang="xml">&lt;config&gt;
+   &lt;TCP bind_port="7800" /&gt;
+   &lt;TCPGOSSIP timeout="3000" initial_hosts="192.168.1.20[12000]"
+                  num_initial_members="3" /&gt;
+   &lt;MERGE2 max_interval="30000" min_interval="10000" /&gt;
+   &lt;FD_SOCK start_port="9777" /&gt;
+   ...
+&lt;/config&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>infinispan-4.1.0-SNAPSHOT/etc/config-samples/</code> directory has sample
+configuration files for use with the Gossip Router. The approach works
+well but the dependency on an external process can be limiting.</p>
+</div>
+<div class="paragraph">
+<p>The third method is to use the new <code>S3_PING</code> protocol that has been
+added to JGroups. Using this the user configures a S3 bucket (location)
+where each node in the cluster will store its connection details and
+upon startup each node will see the other nodes in the cluster. This
+avoids having to have a separate process for node discovery and gets
+around the static configuration of nodes.</p>
+</div>
+<div class="paragraph">
+<p>Example JGroups configuration using the <code>S3_PING</code> protocol:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-xml" data-lang="xml">&lt;config&gt;
+    &lt;TCP bind_port="7800" /&gt;
+    &lt;S3_PING secret_access_key="secretaccess_key" access_key="access_key"
+                location=s3_bucket_location" /&gt;
+    &lt;MERGE2 max_interval="30000" min_interval="10000" /&gt;
+    &lt;FD_SOCK start_port="9777" /&gt;
+    ...
+&lt;/config&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>EC2 demo</p>
+</div>
+<div class="paragraph">
+<p>The purpose of this demo is to show how an Infinispan cache running on
+EC2 can easily form a cluster and retrieve data seamlessly across the
+nodes in the cluster. The addition of any subsequent Infinispan nodes to
+the cluster automatically distribute the existing data and offer higher
+availability in the case of node failure.</p>
+</div>
+<div class="paragraph">
+<p>To demonstrate Infinispan, data is required to be added to nodes in the
+cluster. We will use one of the many public datasets that Amazon host on
+AWS, the
+<a href="http://developer.amazonwebservices.com/connect/entry.jspa?externalID=2419&amp;categoryID=246">influenza
+virus</a> dataset publicly made available by Amazon.</p>
+</div>
+<div class="paragraph">
+<p>This dataset has a number components which make it suitable for the
+demo. First of all it is not a trivial dataset, there are over 200,000
+records. Secondly there are internal relationships within the data which
+can be used to demonstrate retrieving data from different cache nodes.
+The data is made up for viruses, nucleotides and proteins, each
+influenza virus has a related nucleotide and each nucleotide has one or
+more proteins. Each are stored in their own cache instance.</p>
+</div>
+<div class="paragraph">
+<p><span class="image"><img src="http://3.bp.blogspot.com/_Ak-ywrHZki4/S_zQaw1dcqI/AAAAAAAAA7A/KOxIqwwmzhw/s320/infib1.png" alt="image"></span></p>
+</div>
+<div class="paragraph">
+<p>The caches are populated as follows :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>InfluenzaCache</strong> - populated with data read from the <code>Influenza.dat</code>
+file, approx 82,000 entries</p>
+</li>
+<li>
+<p><strong>ProteinCache</strong> - populated with data read from the <code>Influenza_aa.dat</code>
+file, approx 102,000 entries</p>
+</li>
+<li>
+<p><strong>NucleotideCache</strong> - populated with data read from the
+<code>Influenza_na.dat</code> file, approx 82,000 entries</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The demo requires 4 small EC2 instances running Linux, one instance for
+each cache node and one for the Jboss application server which runs the
+UI. Each node has to have <a href="http://java.sun.com/javase/6/">Sun JDK 1.6</a>
+installed in order to run the demos. In order to use the Web-based GUI,
+<a href="http://www.jboss.org/jbossas/downloads.html">JBoss AS 5</a> should also be
+installed on one node.</p>
+</div>
+<div class="paragraph">
+<p>In order for the nodes to communicate with each other the EC2 firewall
+needs to be modified. Each node should have the following ports open:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>TCP 22 – For SSH access</p>
+</li>
+<li>
+<p>TCP 7800 to TCP 7810 – used for JGroups cluster communications</p>
+</li>
+<li>
+<p>TCP 8080 – Only required for the node running the AS5 instance in
+order to access the Web UI.</p>
+</li>
+<li>
+<p>TCP 9777 - Required for FD_SOCK, the socket based failure detection
+module of the JGroups stack.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>To run the demo,
+<a href="http://sourceforge.net/projects/infinispan/files/">download</a> the
+Infinispan "all" distribution, (<code>infinispan-xxx-all.zip</code>) to a directory
+on each node and unzip the archive.</p>
+</div>
+<div class="paragraph">
+<p>Edit the <code>etc/config-samples/ec2-demo/jgroups-s3_ping-aws.xml</code> file to
+add the correct AWS S3 security credentials and bucket name.</p>
+</div>
+<div class="paragraph">
+<p>Start the one of the cache instances on each node using one of the
+following scripts from the <code>bin</code> directory:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>runEC2Demo-influenza.sh</code></p>
+</li>
+<li>
+<p><code>runEC2Demo-nucleotide.sh</code></p>
+</li>
+<li>
+<p><code>runEC2Demo-protein.sh</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Each script will startup and display the following information :</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>[tmp\] ./runEC2Demo-nucleotide.shCacheBuilder called with /opt/infinispan-4.1.0-SNAPSHOT/etc/config-samples/ec2-demo/infinispan-ec2-config.xml
+-------------------------------------------------------------------
+GMS: address=redlappie-37477, cluster=infinispan-cluster, physical address=192.168.122.1:7800
+-------------------------------------------------------------------
+Caches created....
+Starting CacheManagerCache
+Address=redlappie-57930Cache
+Address=redlappie-37477Cache
+Address=redlappie-18122
+Parsing files....Parsing [/opt/infinispan-4.1.0-SNAPSHOT/etc/Amazon-TestData/influenza_na.dat]
+About to load 81904 nucleotide elements into NucleiodCache
+Added 5000 Nucleotide records
+Added 10000 Nucleotide records
+Added 15000 Nucleotide records
+Added 20000 Nucleotide records
+Added 25000 Nucleotide records
+Added 30000 Nucleotide records
+Added 35000 Nucleotide records
+Added 40000 Nucleotide records
+Added 45000 Nucleotide records
+Added 50000 Nucleotide records
+Added 55000 Nucleotide records
+Added 60000 Nucleotide records
+Added 65000 Nucleotide records
+Added 70000 Nucleotide records
+Added 75000 Nucleotide records
+Added 80000 Nucleotide records
+Loaded 81904 nucleotide elements into NucleotidCache
+Parsing files....Done
+Protein/Influenza/Nucleotide Cache Size--&gt;9572/10000/81904
+Protein/Influenza/Nucleotide Cache Size--&gt;9572/20000/81904
+Protein/Influenza/Nucleotide Cache Size--&gt;9572/81904/81904
+Protein/Influenza/Nucleotide Cache Size--&gt;9572/81904/81904</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Items of interest in the output are the <strong>Cache Address</strong> lines which
+display the address of the nodes in the cluster. Also of note is the
+<strong>Protein/Influenza/Nucleotide</strong> line which displays the number of entries
+in each cache. As other caches are starting up these numbers will change
+as cache entries are dynamically moved around through out the Infinispan
+cluster.</p>
+</div>
+<div class="paragraph">
+<p>To use the web based UI we first of all need to let the server know
+where the Infinispan configuration files are kept. To do this edit the
+<code>jboss-5.1.0.GA/bin/run.conf</code> file and add the line</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sh" data-lang="sh">JAVA_OPTS="$JAVA_OPTS -DCFGPath=/opt/infinispan-4.1.0-SNAPSHOT/etc/config-samples/ec2-demo/"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>at the bottom. Replace the path as appropriate.</p>
+</div>
+<div class="paragraph">
+<p>Now start the Jboss application server using the default profile e.g.
+<code>run.sh -c default -b xxx.xxx.xxx.xxx</code>, where “xxx.xxx.xxx.xxx” is the
+public IP address of the node that the AS is running on.</p>
+</div>
+<div class="paragraph">
+<p>Then drop the <code>infinispan-ec2-demoui.war</code> into the jboss-5.1.0.GA
+<code>/server/default/deploy</code> directory.</p>
+</div>
+<div class="paragraph">
+<p>Finally point your web browser to
+<code><a href="http://public-ip-address:8080/infinispan-ec2-demoui" class="bare">http://public-ip-address:8080/infinispan-ec2-demoui</a></code> and the following
+page will appear.</p>
+</div>
+<div class="paragraph">
+<p><a href="http://2.bp.blogspot.com/_Ak-ywrHZki4/S_zRHqENE-I/AAAAAAAAA7I/Ovii36qX3vU/s1600/Screenshot2.png"><span class="image"><img src="http://2.bp.blogspot.com/_Ak-ywrHZki4/S_zRHqENE-I/AAAAAAAAA7I/Ovii36qX3vU/s320/Screenshot2.png" alt="image"></span></a></p>
+</div>
+<div class="paragraph">
+<p>The search criteria is the values in the first column of the
+<code>/etc/Amazon-TestData/influenza.dat</code> file e.g. <code>AB000604</code>, <code>AB000612</code>,
+etc.</p>
+</div>
+<div class="paragraph">
+<p><a href="http://1.bp.blogspot.com/_Ak-ywrHZki4/S_zRrJHi2nI/AAAAAAAAA7Q/F-JHBC08yWw/s1600/Screenshot1.png"><span class="image"><img src="http://1.bp.blogspot.com/_Ak-ywrHZki4/S_zRrJHi2nI/AAAAAAAAA7Q/F-JHBC08yWw/s320/Screenshot1.png" alt="image"></span></a></p>
+</div>
+<div class="paragraph">
+<p>Note that this demo will be available in Infinispan 4.1.0.BETA2 onwards.
+If you are impatient, you can always build it yourself from Infinispan&#8217;s
+source code repository.</p>
+</div>
+<div class="paragraph">
+<p>Enjoy,
+Noel</p>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://jira.jboss.org/browse/ISPN" target="_blank">JIRA issues tracker</a>.
+        If you don’t find any, <a href="https://jira.jboss.org/browse/ISPN" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest"
+                       target="_blank">StackOverflow</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+      <div class="width-12-12 callout orange margin-tb-xs">
+    <div class="grid-wrapper">
+        <div class="width-4-12 width-12-12-m block-image">
+            <img src="/assets/images/blog/authors/infinispan.jpg" class="author-img">
+        </div>
+        <div class="width-8-12 width-12-12-m block-content">
+            <h5>Infinispan</h5>
+            <p>Boosting the performace since 2009.</p>
+            <div class="width-3-12 width-6-12-m bio-block">
+                <a href="http://github.com/infinispan"><img src="/assets/images/community/icon-github.png"></a>
+                
+                <a href="http://twitter.com/infinispan"><img src="/assets/images/community/icon-twitter.png"></a>
+                
+            </div>
+        </div>
+    </div>
+</div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/">Home</a></li>
+          
+            <li><a href="/features">Features</a></li>
+          
+            <li><a href="/documentation">Docs</a></li>
+          
+            <li><a href="/tutorials">Tutorials</a></li>
+          
+            <li><a href="/videos">Videos</a></li>
+          
+            <li><a href="/use-cases">Use Cases</a></li>
+          
+            <li><a href="/community">Community</a></li>
+          
+            <li><a href="/download">Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://issues.jboss.org/browse/ISPN">Submit a Bug</a></li>
+          
+            <li><a href="https://github.com/infinispan">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/blog">Blog</a></li>
+          
+            <li><a href="https://twitter.com/infinispan">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="http://www.cloudtm.eu/" target="_blank"><img src="/assets/images/footer/cloud-tm.png"></a>
+          <img src="/assets/images/footer/leads.png">
+          <br/>
+          <a href="http://cloudbutton.eu/" target="_blank"><img src="/assets/images/footer/cloud-button.png"></a>
+
+        </div>
+        <div class="width-6-12">
+
+          <b>Thanks to</b><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank">JetBrains Intellj IDEA</a><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank"><img src="/assets/images/footer/jetbrains.png">
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+      | <a href="https://www.redhat.com/en/about/privacy-policy">Red Hat Privacy Policy</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>

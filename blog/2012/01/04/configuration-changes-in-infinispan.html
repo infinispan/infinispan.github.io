@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Configuration Changes in Infinispan</title>
+  <!-- <script id="adobe_dtm" src="//www.redhat.com/dtm.js" type="text/javascript"></script> -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/styles/github.min.css">
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/highlight.min.js"></script>
+  <script charset="UTF-8"
+          src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/languages/java.min.js"></script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+<!--   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-125236544-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+ 
+    gtag('config', 'UA-125236544-1');
+  </script> -->
+
+
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> Configuration Changes in Infinispan
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Configuration Changes in Infinispan</h1>
+    <div class="post-date">January 04, 2012
+      Tags: <a href="/blog/tag/configuration">configuration</a> 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/pmuir.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By Pete Muir</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div class="paragraph">
+<p>This blog will introduce both Infinispan users, and Infinispan
+contributors to the new configuration system. First, I&#8217;ll detail the
+changes for users, and then for committers.</p>
+</div>
+<div class="sect1">
+<h2 id="users">Users</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>If you use XML to configure Infinispan, you shouldn&#8217;t notice any change,
+except a much faster startup, courtesy of the Stax based parser.
+However, if you use programmatic configuration, read on for the
+important differences.
+Configuration is now packaged in <code>org.infinispan.configuration</code>, and you
+must use a builder style:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">Configuration c1 = new ConfigurationBuilder()
+   // Adjust any configuration defaults you want
+   .clustering()
+      .l1()
+         .disable()
+      .mode(DIST_SYNC)
+      .hash()
+         .numOwners(5)
+   .build();</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The old bean style configuration is now deprecated and will be removed
+in a later version.
+Configuration properties which can be safely changed at runtime are
+mutable, and all others are immutable.
+To copy a configuration, use the <code>read()</code> method on the builder, for
+example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">Configuration c2 = new ConfigurationBuilder()
+   // Read in C1 to provide defaults
+   .read(c1)
+   .clustering()
+      .l1()
+         .enable()
+   // This cache is DIST_SYNC, will have 5 owners, with L1 cache enabled
+   .build();</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This completely replaces the old system of defining a set of overrides
+on bean properties. Note that this means the behaviour of Infinispan
+configuration is somewhat different when used programmatically. Whilst
+before, you could define a default configuration, and any overrides
+would be applied on top of <strong>your</strong> defaults when defined, now you must
+explicitly read in your defaults to the builder. This allows for much
+greater flexibility in your code (you can have a as many "default"
+configurations as you want), and makes your code more explicit and type
+safe (finding references works).</p>
+</div>
+<div class="paragraph">
+<p>The schema is unchanged from before. Infinispan 4.0 configurations are
+currently not being parsed. Support for these will be added shortly,
+however a warning message will be printed if they are used. To upgrade,
+just change the schema definition from:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-xml" data-lang="xml">&lt;infinispan
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="urn:infinispan:config:4.1 http://www.infinispan.org/schemas/infinispan-config-4.1.xsd"
+     xmlns="urn:infinispan:config:4.1"&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>to</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-xml" data-lang="xml">&lt;infinispan
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="urn:infinispan:config:5.1 http://www.infinispan.org/schemas/infinispan-config-5.1.xsd"
+     xmlns="urn:infinispan:config:5.1"&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The schema documentation has changed format, as it is now produced using
+the standard tool x3p. This should be a significant improvement, as
+better navigation is offered. Some elements and attributes are missing
+docs right now, we are working on adding this. As an added benefit, your
+IDE should now show documentation when an xsd referenced (as above)</p>
+</div>
+<div class="paragraph">
+<p>We are in the process of adding in support for this configuration style
+for modules (such as cache stores). In the meantime, please use the old
+configuration or XML if you require support for cache store module
+configuration.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="committers">Committers</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>If you are a committer to Infinispan, you may find the following notes
+useful. Note that currently we still use the old configuration system
+internally within Infinispan. This makes things a little complicated.
+This will be switched out soon! For now, you need to also add your
+property to the old config system as well as the new.</p>
+</div>
+<div class="paragraph">
+<p>Note, these guides assume you are adding an element to the cache
+configuration, but apply equally to the global configuration.</p>
+</div>
+<div class="paragraph">
+<p>Before you start adding a configuration property, identify whether you
+want to add a property to an existing configuration group/element, or
+whether you need to create a child object. We call the configuration
+group XXX in the steps below.</p>
+</div>
+<div class="sect2">
+<h3 id="adding-a-property">Adding a property</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Add the property to the relevant <code>XXXConfiguration</code> class. Add a
+private final field, add a parameter to the constructor, and assign the
+value to the field in the constructor body. Add a accessor for the
+property. If the property should be mutable at runtime, then add a
+mutator as well. Most configuration properties are not mutable at
+runtime - if the configuration is runtime mutable, then Infinispan needs
+to take notice of this update whilst the cache is running (you can&#8217;t
+cache the value of the configuration in your implementation class).
+Mutators and accessors don&#8217;t use the classic JavaBean pattern of
+prepending accessors with "get" and mutators with "set". Instead, the
+name of the property is used for an accessor. A mutator is an overloaded
+version of the accessor which takes a parameter, the new value.</p>
+</li>
+<li>
+<p>Add the property to the matching <code>XXXConfigurationBuilder</code>. You&#8217;ll
+need to add a mutable field to the class, and initialise it to it&#8217;s
+default value in the field declaration. Add a mutator (following the
+above pattern).</p>
+</li>
+<li>
+<p>The <code>create()</code> method is called by the parent object in order to
+instantiate the <code>XXXConfiguration</code> object from the builder. Therefore,
+make sure to pass the value of the field in the builder to the
+<code>XXXConfiguration</code> object&#8217;s constructor here. Additionally, if you
+require a complex default (for example, the value of a configuration
+property is defaulted conditionally based on the value of some other
+configuration property), then this is the place to do this.</p>
+</li>
+<li>
+<p>The <code>validate()</code> method is called by the parent object to validate the
+values the user has passed in. This method may also be called directly
+by user code, should they wish to manually validate a configuration
+object. You should place any validation logic here related to your
+configuration property. If you need to "cross-validate" properties
+(validate the value of your property conditionally upon the value of
+another property), and the other property is on another builder object,
+increase the visibility of that other property field to "default", and
+reference it from this builder, by calling the <code>getBuilder()</code> method,
+which will gives you a handle on the root configuration builder.</p>
+</li>
+<li>
+<p>The final step is to add parsing logic to the <code>Parser</code> class. First,
+add the attribute to name to the <code>Attribute</code> enum (this class simply
+provides a mapping between the non-type-safe name of the attribute in
+XML and a type-safe reference to use in the parser). Locate the relevant
+<code>parseXXX()</code> method on the class, and add a case to the switch statement
+for the attribute. Call the builder mutator you created above,
+performing any XML related validation (you are unlikely to need this),
+and type conversion (using the static methods on the primitive wrapper
+classes, String class, or relevant enum class).</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="adding-a-group">Adding a group</h3>
+<div class="paragraph">
+<p>In some situations you may additionally want to add a configuration
+grouping object, represented in XML as an element. You might want to do
+this if you are adding a new area of functionality to Infinispan.
+Identify the location of the new configuration grouping object. It might
+be added to the root <code>Configuration</code> object, or it might be added to one
+it&#8217;s children, children&#8217;s children. We&#8217;ll call the parent YYY in the
+steps below.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Create the <code>XXXConfiguration</code> object. Add any properties required
+following the guide for adding properties. The constructors visibility
+should be "default".</p>
+</li>
+<li>
+<p>Create the <code>XXXConfigurationBuilder</code> object. It should subclass the
+relevant configuration child builder&#8201;&#8212;&#8201;use the
+<code>YYYConfigurationChildBuilder</code> as the superclass. This will ensure that
+all builder methods that allow the user to "escape" are provided
+correctly (i.e provide access to other grouping elements), and also
+require you to provide a create() and validate() method. The constructor
+needs to take the the <code>YYYConfigurationBuilder</code> as an argument, and pass
+this to the superclass (this simply allows access to the root of the
+builder tree using the <code>getBuilder()</code> method).</p>
+</li>
+<li>
+<p>Follow the property adding guide to add any properties you need to the
+builder. The <code>create()</code> method needs to return a new instance of the
+<code>XXXConfiguration</code> object. Implement any validation needed in the
+<code>validate()</code> method.</p>
+</li>
+<li>
+<p>In the <code>YYYConfiguration</code> object, add your new configuration class as
+a private final field, add an accessor, and add initialiser assignment
+in the constructor</p>
+</li>
+<li>
+<p>In the <code>YYYConfigurationBuilder</code>, add your new configuration builder
+as a private final field, and initialise it in the constructor with a
+new instance. Finally, add an accessor for it following the standard
+pattern discussed in the guide.</p>
+</li>
+<li>
+<p>In the <code>YYYConfigurationBuilder</code> ensure that your validate method is
+called in it&#8217;s validate method, and that result of the
+<code>XXXConfiguration</code> instances' create method is passed to the constructor
+of <code>YYYConfiguration</code></p>
+</li>
+<li>
+<p>Finally, add this to the parser. First, add the element to the
+<code>Element</code> class, which provides a type safe representation of the
+element name in XML. In the <code>Parser</code> class, add a new <code>parseXXX</code> method,
+copying one of the others that most matches your requirements (parse
+methods either parse elements only - look for
+<code>ParseUtils,requireNoAttributes()</code>, attributes only&#8201;&#8212;&#8201;look for
+<code>ParseUtils.requireNoContent()</code> or a combination of both&#8201;&#8212;&#8201;look for an
+iterator over both elements and attributes). Add any attributes as
+discussed in the adding a property guide. Finally, wire this in by
+locating the <code>parseYYY()</code> method, and adding an element to the switch
+statement, that calls your new <code>parseXXX()</code> method.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="bridging-to-the-old-configuration">Bridging to the old configuration</h3>
+<div class="paragraph">
+<p>Until we entirely swap out the old configuration you will need to add
+your property to the old configuration (no need to worry about jaxb
+mappings though!), and then add some code to the
+<code>LegacyConfigurationAdaptor</code> to adapt both ways. It&#8217;s fairly
+straightforward, just locate the relevant point in the <code>adapt()</code> method
+(near the configuration group you are using) and map from the legacy
+configuration to the new configuration, or vs versa. You will need to
+map both ways, in both adapt methods.</p>
+</div>
+</div>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://jira.jboss.org/browse/ISPN" target="_blank">JIRA issues tracker</a>.
+        If you don’t find any, <a href="https://jira.jboss.org/browse/ISPN" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest"
+                       target="_blank">StackOverflow</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/">Home</a></li>
+          
+            <li><a href="/features">Features</a></li>
+          
+            <li><a href="/documentation">Docs</a></li>
+          
+            <li><a href="/tutorials">Tutorials</a></li>
+          
+            <li><a href="/videos">Videos</a></li>
+          
+            <li><a href="/use-cases">Use Cases</a></li>
+          
+            <li><a href="/community">Community</a></li>
+          
+            <li><a href="/download">Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://issues.jboss.org/browse/ISPN">Submit a Bug</a></li>
+          
+            <li><a href="https://github.com/infinispan">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/blog">Blog</a></li>
+          
+            <li><a href="https://twitter.com/infinispan">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="http://www.cloudtm.eu/" target="_blank"><img src="/assets/images/footer/cloud-tm.png"></a>
+          <img src="/assets/images/footer/leads.png">
+          <br/>
+          <a href="http://cloudbutton.eu/" target="_blank"><img src="/assets/images/footer/cloud-button.png"></a>
+
+        </div>
+        <div class="width-6-12">
+
+          <b>Thanks to</b><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank">JetBrains Intellj IDEA</a><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank"><img src="/assets/images/footer/jetbrains.png">
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+      | <a href="https://www.redhat.com/en/about/privacy-policy">Red Hat Privacy Policy</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>

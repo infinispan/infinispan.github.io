@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Non Blocking Journey</title>
+  <!-- <script id="adobe_dtm" src="//www.redhat.com/dtm.js" type="text/javascript"></script> -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/styles/github.min.css">
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/highlight.min.js"></script>
+  <script charset="UTF-8"
+          src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/languages/java.min.js"></script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+<!--   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-125236544-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+ 
+    gtag('config', 'UA-125236544-1');
+  </script> -->
+
+
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> Non Blocking Journey
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Non Blocking Journey</h1>
+    <div class="post-date">August 31, 2020
+      Tags: <a href="/blog/tag/non-blocking">non-blocking</a> <a href="/blog/tag/server">server</a> <a href="/blog/tag/embedded">embedded</a> 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/wburns.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By William Burns</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>As many you are probably aware recent trends have shown that making applications non blocking
+provides quite a few benefits allowing for greater scalability with less resources. Infinispan
+has been written and rewriting parts to take advantage of this as we can for
+both embedded and server use cases.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="before-infinispan-11">Before Infinispan 11</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Infinispan Server has always utilized netty, however we may not have been the best about
+ensuring we didn&#8217;t block the event loop.
+The HotRod Client in 9.2.0 also utilizes netty to provide for non blocking operations.
+The internal embedded interceptors were rewritten in 9.0.0 to provide for non blocking support for
+internal cache operations, which include put/get.
+Cache store operations in 10.0.0 were offloaded to a blocking thread pool to provide non
+blocking support.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="infinispan-11-non-blocking-changes">Infinispan 11 Non Blocking Changes</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>With the newest release we have rewritten lots of the internals of Infinispan to take advantage
+of non blocking as much as possible.
+The amount of changes is quite large and a bit hard to describe them all in this blog post.
+The various JIRA can be seen from <a href="https://issues.redhat.com/browse/ISPN-10309" class="bare">https://issues.redhat.com/browse/ISPN-10309</a>,
+which isn&#8217;t even complete yet despite how many different changes we have done.</p>
+</div>
+<div class="paragraph">
+<p>The persistence SPI was completely rewritten in 11 with non blocking in mind as well and this will
+be covered in a future post as it has much more detailing it.
+For now you can rest assure that all prior stores will still work, however they may have or
+can be optimized to take into account non blocking support.</p>
+</div>
+<div class="sect2">
+<h3 id="conversions">Conversions</h3>
+<div class="paragraph">
+<p>Pretty much every module in the Infinispan code base has been changed to support non blocking.
+If code relies upon an API that is blocking that is known to be blocking, we offload those calls
+to a blocking thread pool to ensure we never block the non blocking thread.</p>
+</div>
+<div class="paragraph">
+<p>Unfortunately some modules have not yet been updated and those are ones related to query.
+Query is in the middle of a giant refactoring and doing so would have caused massive
+conflicts and thus has been delayed to Infinispan 12.
+The server works around this by ensuring write operations performed upon a cache with
+query are always done in a blocking thread to ensure safety.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="thread-pools">Thread Pools</h3>
+<div class="paragraph">
+<p>Infinispan utilizes various thread pools for handling of operations.
+This table details how many thread pools each version of
+Infinispan can have.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Thread Pools</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Version</th>
+<th class="tableblock halign-left valign-top">Embedded</th>
+<th class="tableblock halign-left valign-top">Server</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISPN 10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISPN 11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>As you can see there is more than a 50 percent reduction of the number of thread pools in
+both embedded and server modes. This in turn has allowed for a reduction of the default
+number of threads as well as seen in the next table. Note that N is how many cores that
+are available to the JVM.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Maximum Default Thread Count</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Version</th>
+<th class="tableblock halign-left valign-top">Embedded</th>
+<th class="tableblock halign-left valign-top">Server</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISPN 10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">310 + N</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">470 + (2 * N)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ISPN 11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">150 + (2 * N)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">150 + (4 * N)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>After this consolidation we have non blocking and blocking thread pools.
+As you can see this allows us to reduce the maximum number of threads in embedded by about half and
+the server to a third of what it used to be before.</p>
+</div>
+<div class="paragraph">
+<p>The server has an additional thread pool for the netty event loop and unfortunately we cannot
+consolidate this thread pool, but it is planned for Infinispan 12, which will get us to the
+same number of threads and thread pools for both embedded and server modes.</p>
+</div>
+<div class="paragraph">
+<p>Note that this doesn&#8217;t talk about the JGroups thread pool as this is unchanged and is the same.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="blockhound">BlockHound</h3>
+<div class="paragraph">
+<p>If you are familiar with making code non blocking it can be a very difficult task as even the
+most mundane call can be hiding something blocking, even if it is very brief.
+We could write something to do detect such calls, but there is already an open source tool that
+does exactly what we needed.
+This tool is BlockHound, which can detect blocking calls at runtime.
+More information about it can be found at <a href="https://github.com/reactor/BlockHound" class="bare">https://github.com/reactor/BlockHound</a>.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan takes advantage of blockhound in that we configure it at the module level.
+This allows the end user to even add block hound with Infinispan in embedded mode
+and it should work to test out to ensure that interactions with Infinispan are not blocking
+when needed.
+Note that we do not yet support block hound for the client, despite many methods
+are not blocking today.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="what-remains-for-infinispan-12">What remains for Infinispan 12</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan 12 should bring the entire non blocking saga to its hopfully final completion.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The aforementioned query modules need to be revamped</p>
+</li>
+<li>
+<p>Existing supported cache stores need to be rewritten to directly support non blocking</p>
+</li>
+<li>
+<p>Cache retrieval needs to be offloaded to a blocking thread</p>
+</li>
+<li>
+<p>Combine server event loop with non blocking thread pool</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Also if time permits the Infinispan Client would be ensured to be fully non blocking and
+integrate with BlockHound to ensure client apps behave properly.</p>
+</div>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://jira.jboss.org/browse/ISPN" target="_blank">JIRA issues tracker</a>.
+        If you don’t find any, <a href="https://jira.jboss.org/browse/ISPN" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest"
+                       target="_blank">StackOverflow</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+      <div class="width-12-12 callout orange margin-tb-xs">
+    <div class="grid-wrapper">
+        <div class="width-4-12 width-12-12-m block-image">
+            <img src="/assets/images/blog/authors/wburns.jpg" class="author-img">
+        </div>
+        <div class="width-8-12 width-12-12-m block-content">
+            <h5>William Burns</h5>
+            <p>Will is a core Infinispan engineer working for Red Hat since 2013. He enjoys streaming data and writing reactive code.</p>
+            <div class="width-3-12 width-6-12-m bio-block">
+                <a href="http://github.com/wburns"><img src="/assets/images/community/icon-github.png"></a>
+                
+                <a href="https://twitter.com/mudokonman"><img src="/assets/images/community/icon-twitter.png"></a>
+                
+            </div>
+        </div>
+    </div>
+</div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/">Home</a></li>
+          
+            <li><a href="/features">Features</a></li>
+          
+            <li><a href="/documentation">Docs</a></li>
+          
+            <li><a href="/tutorials">Tutorials</a></li>
+          
+            <li><a href="/videos">Videos</a></li>
+          
+            <li><a href="/use-cases">Use Cases</a></li>
+          
+            <li><a href="/community">Community</a></li>
+          
+            <li><a href="/download">Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://issues.jboss.org/browse/ISPN">Submit a Bug</a></li>
+          
+            <li><a href="https://github.com/infinispan">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/blog">Blog</a></li>
+          
+            <li><a href="https://twitter.com/infinispan">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="http://www.cloudtm.eu/" target="_blank"><img src="/assets/images/footer/cloud-tm.png"></a>
+          <img src="/assets/images/footer/leads.png">
+          <br/>
+          <a href="http://cloudbutton.eu/" target="_blank"><img src="/assets/images/footer/cloud-button.png"></a>
+
+        </div>
+        <div class="width-6-12">
+
+          <b>Thanks to</b><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank">JetBrains Intellj IDEA</a><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank"><img src="/assets/images/footer/jetbrains.png">
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+      | <a href="https://www.redhat.com/en/about/privacy-policy">Red Hat Privacy Policy</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>

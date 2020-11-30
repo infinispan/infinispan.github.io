@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Implementing a performant, thread-safe ordered data container</title>
+  <!-- <script id="adobe_dtm" src="//www.redhat.com/dtm.js" type="text/javascript"></script> -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/styles/github.min.css">
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/highlight.min.js"></script>
+  <script charset="UTF-8"
+          src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/languages/java.min.js"></script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+<!--   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-125236544-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+ 
+    gtag('config', 'UA-125236544-1');
+  </script> -->
+
+
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> Implementing a performant, thread-safe ordered data container
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Implementing a performant, thread-safe ordered data container</h1>
+    <div class="post-date">May 12, 2009
+      Tags: <a href="/blog/tag/algorithms">algorithms</a> <a href="/blog/tag/eviction">eviction</a> <a href="/blog/tag/concurrency">concurrency</a> <a href="/blog/tag/data structures">data structures</a> 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/msurtani.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By Manik Surtani</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div class="paragraph">
+<p>To achieve efficient ordering of entries in the
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/DataContainer.html">DataContainer</a>
+interface for configurations that support eviction, there was a need for
+a linked HashMap implementation that was thread-safe and performant.
+Below, I specifically discuss the implementations of the
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/FIFODataContainer.html">FIFODataContainer</a>
+and
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/LRUDataContainer.html">LRUDataContainer</a>
+in Infinispan 4.0.x. Wherever this document references
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/FIFODataContainer.html">FIFODataContainer</a>,
+this also applies to
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/LRUDataContainer.html">LRUDataContainer</a>
+- which extends
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/FIFODataContainer.html">FIFODataContainer</a>.
+The only difference is that
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/LRUDataContainer.html">LRUDataContainer</a>
+updates links whenever an entry is visited as well as added.</p>
+</div>
+<div class="paragraph">
+<p>After analysing and considering a few different approaches, the one I
+settled on is a subset of the algorithms described by H. Sundell and P.
+Tsigas in their 2008 paper titled
+<a href="http://www.md.chalmers.se/%7Etsigas/papers/Lock-Free-Deques-Doubly-Lists-JPDC.pdf">Lock-Free
+Deques and Doubly Linked Lists</a>, combined with the approach used by
+Sun&#8217;s JDK6 for reference marking in
+<a href="http://java.sun.com/javase/6/docs/api/java/util/concurrent/ConcurrentSkipListMap.html">ConcurrentSkipListMap</a>'s
+implementation.</p>
+</div>
+<div class="paragraph">
+<p>Reference marking? What&#8217;s that?</p>
+</div>
+<div class="paragraph">
+<p>Compare-and-swap (CAS) is a common technique today for atomically
+updating a variable or a reference without the use of a mutual exclusion
+mechanism like a lock. But this only works when you modify a single
+memory location at a time, be it a reference or a primitive. Sometimes
+you need to atomically update two separate bits of information in a
+single go, such as a reference, as well as some information about that
+reference. Hence reference marking. In C, this is sometimes done by
+making use of the assumption that an entire word in memory is not needed
+to store a pointer to another memory location, and some bits of this
+word can be used to store additional flags via bitmasking. This allows
+for atomic updates of both the reference and this extra information
+using a single CAS operation.</p>
+</div>
+<div class="paragraph">
+<p>This is possible in Java too using
+<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/concurrent/atomic/AtomicMarkableReference.html">AtomicMarkableReference</a>,
+but is usually considered overly complex, slow and space-inefficient.
+Instead, what we do is borrow a technique from
+<a href="http://java.sun.com/javase/6/docs/api/java/util/concurrent/ConcurrentSkipListMap.html">ConcurrentSkipListMap</a>
+and use an intermediate, delegating entry. While this adds a little more
+complexity in traversal (you need to be aware of the presence of these
+marker entries when traversing the linked list), this performs better
+than an
+<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/concurrent/atomic/AtomicMarkableReference.html">AtomicMarkableReference</a>.</p>
+</div>
+<div class="paragraph">
+<p>In this specific implementation, the 'extra information' stored in a
+reference is the fact that the entry holding the reference is in the
+process of being deleted. It is a common problem with lock-free linked
+lists when you have concurrent insert and delete operations that the
+newly inserted entry gets deleted as well, since it attaches itself to
+the entry being concurrently deleted. When the entry to be removed marks
+its references, however, this makes other threads aware of the fact and
+cause CAS operations on the reference to fail and retry.</p>
+</div>
+<div class="paragraph">
+<p>Performance</p>
+</div>
+<div class="paragraph">
+<p>Aside from maintaining order of entries and being thread-safe,
+performance was one of the other goals. The target is to achieve
+constant-time performance - O(1) - for all operations on
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/DataContainer.html">DataContainer</a>.</p>
+</div>
+<div class="paragraph">
+<p>The
+clhttp://3.bp.blogspot.com/_ca0W9t-Ryos/SgGwA2iw_vI/AAAAAAAAAKA/TpVMWo2Rq9U/s1600-h/FIFODataContainer.jpeg[<span class="image"><img src="http://3.bp.blogspot.com/_ca0W9t-Ryos/SgGwA2iw_vI/AAAAAAAAAKA/TpVMWo2Rq9U/s400/FIFODataContainer.jpeg" alt="image"></span>]ass
+diagram (click to view in full-size) depicts the
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/FIFODataContainer.html">FIFODataContainer</a>
+class. At its heart the
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/FIFODataContainer.html">FIFODataContainer</a>
+mimics a JDK
+<a href="http://java.sun.com/j2se/1.5.0/docs/api/java/util/concurrent/ConcurrentHashMap.html">ConcurrentHashMap</a>
+(CHM), making use of hashtable-like lockable segments. Unlike the
+segments in CHM, however, these segments are simpler as they support a
+much smaller set of operations.</p>
+</div>
+<div class="paragraph">
+<p>Retrieving data from the container
+The use of segments allow for constant-time thread-safe get() and
+containsKey() operations. Iterators obtained from the
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/DataContainer.html">DataContainer</a>
+- which implements Iterable, and hence usable in for-each loops - and
+keySet() are immutable, thread-safe and efficient, using traversal of
+the linked list - making use of getNext() and getPrev() helpers. See
+below for details. Traversal is efficient and constant-time.</p>
+</div>
+<div class="paragraph">
+<p>Updating the container
+When removing an entry, remove() locks the segment in question, removes
+the entry, and unlinks the entry. Both operations are thread-safe and
+constant-time. Locking the segment and removing the entry is pretty
+straightforward. Unlinking involves marking references, and then an
+attempt at CAS&#8217;ing next and previous references to bypass the removed
+entry. Order here is important - updates to the next reference needs to
+happen first, read on for more details as to why.</p>
+</div>
+<div class="paragraph">
+<p>When performing a put(), the entry is created, segment locked and entry
+inserted into the segment. The entry is then inserted at the tail of the
+linked list. Again, both operations are thread-safe and constant-time.
+Linking at the tail involves careful CAS&#8217;ing of references on the new
+entry, the tail dummy entry and the former last entry in the list.</p>
+</div>
+<div class="paragraph">
+<p>Maintaining a lock-free, concurrent doubly linked list
+It is important to note that the entries in this implementation are
+doubly linked. This is critical since, unlike the JDK&#8217;s
+<a href="http://java.sun.com/javase/6/docs/api/java/util/concurrent/ConcurrentSkipListMap.html">ConcurrentSkipListMap</a>,
+we use a hashtable to look up entries to be removed, to achieve constant
+time performance in lookup. Locating the parent entry to update a
+reference needs to be constant-time as well, and hence the need for a
+previous reference. Doubly-linked lists make things much trickier
+though, as there two references to update atomically (yes, that sounds
+wrong!)</p>
+</div>
+<div class="paragraph">
+<p>Crucially, what we do not care about - and do not support - is
+reverse-order traversal. This means that we only really care about
+maintaining accuracy in the forward direction of the linked list, and
+treat the previous reference as an approximation to an entry somewhere
+behind the current entry. Previous references can then be corrected -
+using the correctPrev() helper method described below - to locate the
+precise entry behind the current entry. By placing greater importance on
+the forward direction of the list, this allows us to reliably CAS the
+forward reference even if the previous reference CAS fails. It is hence
+critical that whenever any references are updated, the next reference is
+CAS&#8217;d first, and only on this success the previous reference CAS is
+attempted. The same order applies with marking references. Also, it is
+important that any process that touches an entry that observes that the
+next pointer is marked but the previous pointer is not, attempts to mark
+the previous pointer before attempting any further steps.</p>
+</div>
+<div class="paragraph">
+<p>The specific functions we need to expose, to support
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/DataContainer.html">DataContainer</a>
+operations, are:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">void linkAtEnd(LinkedEntry entry);
+
+void unlink(LinkedEntry entry);
+
+LinkedEntry correctPrev(LinkedEntry suggestedPrev, LinkedEntry current);
+
+LinkedEntry getNext(LinkedEntry current);
+
+LinkedEntry getPrev(LinkedEntry current);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>These are exposed as protected final methods, usable by
+<a href="http://docs.jboss.org/infinispan/4.0/apidocs/org/infinispan/container/FIFODataContainer.html">FIFODataContainer</a>
+and its subclasses. The implementations themselves use a combination of
+CAS&#8217;s on a LinkedEntry&#8217;s next and previous pointers, marking references,
+and helper correction of previous pointers when using getNext() and
+getPrevious() to traverse the list. Note that it is important that only
+the last two methods are used when traversing rather than directly
+accessing a LinkedEntry&#8217;s references - since markers need to be stepped
+over and links corrected.</p>
+</div>
+<div class="paragraph">
+<p>Please refer to
+<a href="http://www.md.chalmers.se/%7Etsigas/papers/Lock-Free-Deques-Doubly-Lists-JPDC.pdf">Lock-Free
+Deques and Doubly Linked Lists</a> for details of the algorithm steps.</p>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://jira.jboss.org/browse/ISPN" target="_blank">JIRA issues tracker</a>.
+        If you don’t find any, <a href="https://jira.jboss.org/browse/ISPN" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest"
+                       target="_blank">StackOverflow</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/">Home</a></li>
+          
+            <li><a href="/features">Features</a></li>
+          
+            <li><a href="/documentation">Docs</a></li>
+          
+            <li><a href="/tutorials">Tutorials</a></li>
+          
+            <li><a href="/videos">Videos</a></li>
+          
+            <li><a href="/use-cases">Use Cases</a></li>
+          
+            <li><a href="/community">Community</a></li>
+          
+            <li><a href="/download">Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://issues.jboss.org/browse/ISPN">Submit a Bug</a></li>
+          
+            <li><a href="https://github.com/infinispan">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/blog">Blog</a></li>
+          
+            <li><a href="https://twitter.com/infinispan">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="http://www.cloudtm.eu/" target="_blank"><img src="/assets/images/footer/cloud-tm.png"></a>
+          <img src="/assets/images/footer/leads.png">
+          <br/>
+          <a href="http://cloudbutton.eu/" target="_blank"><img src="/assets/images/footer/cloud-button.png"></a>
+
+        </div>
+        <div class="width-6-12">
+
+          <b>Thanks to</b><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank">JetBrains Intellj IDEA</a><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank"><img src="/assets/images/footer/jetbrains.png">
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+      | <a href="https://www.redhat.com/en/about/privacy-policy">Red Hat Privacy Policy</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>

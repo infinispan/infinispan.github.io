@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Introducing the Anchored Keys module</title>
+  <!-- <script id="adobe_dtm" src="//www.redhat.com/dtm.js" type="text/javascript"></script> -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/styles/github.min.css">
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/highlight.min.js"></script>
+  <script charset="UTF-8"
+          src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/languages/java.min.js"></script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+<!--   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-125236544-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+ 
+    gtag('config', 'UA-125236544-1');
+  </script> -->
+
+
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> Introducing the Anchored Keys module
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Introducing the Anchored Keys module</h1>
+    <div class="post-date">July 22, 2020
+      Tags: <a href="/blog/tag/anchored keys">anchored keys</a> <a href="/blog/tag/state transfer">state transfer</a> 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/dberindei.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By Dan Berindei</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan version 11 introduces an experimental module that allows scaling up a cluster and adding new nodes without expensive <strong>state transfer</strong>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="background">Background</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>For background, the preferred way to scale up the storage capacity of a Infinispan cluster
+is to use distributed caches.
+A distributed cache stores each key/value pair on <code>num-owners</code> nodes,
+and each node can compute the location of a key (aka the key owners) directly.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan achieves this by statically mapping cache keys to <code>num-segments</code> <strong>consistent hash segments</strong>,
+and then dynamically mapping segments to nodes based on the cache&#8217;s <strong>topology</strong>
+(roughly the current plus the historical membership of the cache).
+Whenever a new node joins the cluster, the cache is <strong>rebalanced</strong>, and the new node replaces an existing node
+as the owner of some segments.
+The key/value pairs in those segments are copied to the new node and removed from the no-longer-owner node
+via <strong>state transfer</strong>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Because the allocation of segments to nodes is based on random UUIDs generated at start time,
+it is common (though less so after
+<a href="https://issues.redhat.com/browse/ISPN-11679">ISPN-11679</a>
+), for segments to also move from one old node to another old node.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="architecture">Architecture</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The basic idea is to skip the static mapping of keys to segments and to map keys directly to nodes.</p>
+</div>
+<div class="paragraph">
+<p>When a key/value pair is inserted into the cache,
+the newest member becomes the <strong>anchor owner</strong> of that key, and the only node storing the actual value.
+In order to make the anchor location available without an extra remote lookup,
+all the other nodes store a reference to the anchor owner.</p>
+</div>
+<div class="paragraph">
+<p>That way, when another node joins, it only needs to receive the location information from the existing nodes,
+and values can stay on the anchor owner, minimizing the amount of traffic.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="limitations">Limitations</h2>
+<div class="sectionbody">
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Only one node can be added at a time</dt>
+<dd>
+<p>An external actor (e.g. a Kubernetes/OpenShift operator, or a human administrator)
+must monitor the load on the current nodes, and add a new node whenever the newest node
+is close to "full".</p>
+</dd>
+</dl>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Because the anchor owner information is replicated on all the nodes, and values are never moved off a node,
+the memory usage of each node will keep growing as new entries and nodes are added.
+</td>
+</tr>
+</table>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">There is no redundancy</dt>
+<dd>
+<p>Every value is stored on a single node.
+When a node crashes or even stops gracefully, the values stored on that node are lost.</p>
+</dd>
+<dt class="hdlist1">Transactions are not supported</dt>
+<dd>
+<p>A later version may add transaction support, but the fact that any node stop or crash
+loses entries makes transactions a lot less valuable compared to a distributed cache.</p>
+</dd>
+<dt class="hdlist1">Hot Rod clients do not know the anchor owner</dt>
+<dd>
+<p>Hot Rod clients cannot use the topology information from the servers to locate the anchor owner.
+Instead, the server receiving a Hot Rod get request must make an additional request to the anchor owner
+in order to retrieve the value.</p>
+</dd>
+</dl>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="configuration">Configuration</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The module is still very young and does not yet support many Infinispan features.</p>
+</div>
+<div class="paragraph">
+<p>Eventually, if it proves useful, it may become another cache mode, just like scattered caches.
+For now, configuring a cache with anchored keys requires a replicated cache with a custom element <code>anchored-keys</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;infinispan
+      xmlns="urn:infinispan:config:11.0"
+      xmlns:anchored="urn:infinispan:config:anchored:11.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="urn:infinispan:config:11.0
+            https://infinispan.org/schemas/infinispan-config-11.0.xsd
+            urn:infinispan:config:anchored:11.0
+            https://infinispan.org/schemas/infinispan-anchored-config-11.0.xsd"&gt;
+
+    &lt;cache-container default-cache="default"&gt;
+        &lt;transport/&gt;
+        &lt;replicated-cache name="default"&gt;
+            &lt;anchored:anchored-keys/&gt;
+        &lt;/replicated-cache&gt;
+    &lt;/cache-container&gt;
+
+&lt;/infinispan&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When the <code>&lt;anchored-keys/&gt;</code> element is present, the module automatically enables anchored keys
+and makes some required configuration changes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Disables <code>await-initial-transfer</code></p>
+</li>
+<li>
+<p>Enables conflict resolution with the equivalent of</p>
+<div class="paragraph">
+<p><code>&lt;partition-handling when-split="ALLOW_READ_WRITES" merge-policy="PREFER_NON_NULL"/&gt;</code></p>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The cache will fail to start if these attributes are explicitly set to other values,
+if state transfer is disabled, or if transactions are enabled.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="implementation-status">Implementation status</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Basic operations are implemented: <code>put</code>, <code>putIfAbsent</code>, <code>get</code>, <code>replace</code>, <code>remove</code>, <code>putAll</code>, <code>getAll</code>.</p>
+</div>
+<div class="sect2">
+<h3 id="functional-commands">Functional commands</h3>
+<div class="paragraph">
+<p>The <code>FunctionalMap</code> API is not implemented.</p>
+</div>
+<div class="paragraph">
+<p>Other operations that rely on the functional API&#8217;s implementation do not work either: <code>merge</code>, <code>compute</code>,
+<code>computeIfPresent</code>, <code>computeIfAbsent</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="partition-handling">Partition handling</h3>
+<div class="paragraph">
+<p>When a node crashes, surviving nodes do not remove anchor references pointing to that node.
+In theory, this could allow merges to skip conflict resolution, but currently the <code>PREFERRED_NON_NULL</code>
+merge policy is configured automatically and cannot be changed.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="listeners">Listeners</h3>
+<div class="paragraph">
+<p>Cluster listeners and client listeners are implemented and receive the correct notifications.</p>
+</div>
+<div class="paragraph">
+<p>Non-clustered embedded listeners currently receive notifications on all the nodes, not just the node
+where the value is stored.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="performance-considerations">Performance considerations</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="clientserver-latency">Client/Server Latency</h3>
+<div class="paragraph">
+<p>The client always contacts the primary owner, so any read has a
+<code>(N-1)/N</code> probability of requiring a unicast RPC from the primary to the anchor owner.</p>
+</div>
+<div class="paragraph">
+<p>Writes require the primary to send the value to one node and the anchor address
+to all the other nodes, which is currently done with <code>N-1</code> unicast RPCs.</p>
+</div>
+<div class="paragraph">
+<p>In theory we could send in parallel one unicast RPC for the value and one multicast RPC for the address,
+but that would need additional logic to ignore the address on the anchor owner
+and with TCP multicast RPCs are implemented as parallel unicasts anyway.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="memory-overhead">Memory overhead</h3>
+<div class="paragraph">
+<p>Compared to a distributed cache with one owner, an anchored-keys cache
+contains copies of all the keys and their locations, plus the overhead of the cache itself.</p>
+</div>
+<div class="paragraph">
+<p>Therefore, a node with anchored-keys caches should stop accepting new entries when it has less than
+<code>(&lt;key size&gt; + &lt;per-key overhead&gt;) * &lt;number of entries not yet inserted&gt;</code> bytes available.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+The number of entries not yet inserted is obviously very hard to estimate.
+In the future we may provide a way to limit the overhead of key location information,
+e.g. by using a distributed cache.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The per-key overhead is lowest for off-heap storage, around 63 bytes:
+8 bytes for the entry reference in <code>MemoryAddressHash.memory</code>,
+29 bytes for the off-heap entry header,
+and 26 bytes for the serialized <code>RemoteMetadata</code> with the owner&#8217;s address.</p>
+</div>
+<div class="paragraph">
+<p>The per-key overhead of the ConcurrentHashMap-based on-heap cache,
+assuming a 64-bit JVM with compressed OOPS, would be around 92 bytes:
+32 bytes for <code>ConcurrentHashMap.Node</code>, 32 bytes for <code>MetadataImmortalCacheEntry</code>,
+24 bytes for <code>RemoteMetadata</code>, and 4 bytes in the <code>ConcurrentHashMap.table</code> array.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="state-transfer">State transfer</h3>
+<div class="paragraph">
+<p>State transfer does not transfer the actual values, but it still needs
+to transfer all the keys and the anchor owner information.</p>
+</div>
+<div class="paragraph">
+<p>Assuming that the values are much bigger compared to the keys,
+the anchor cache&#8217;s state transfer should also be much faster
+compared to the state transfer of a distributed cache of a similar size.
+But for small values, there may not be a visible improvement.</p>
+</div>
+<div class="paragraph">
+<p>The initial state transfer does not block a joiner from starting,
+because it will just ask another node for the anchor owner.
+However, the remote lookups can be expensive, especially in embedded mode,
+but also in server mode, if the client is not <code>HASH_DISTRIBUTION_AWARE</code>.</p>
+</div>
+</div>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://jira.jboss.org/browse/ISPN" target="_blank">JIRA issues tracker</a>.
+        If you don’t find any, <a href="https://jira.jboss.org/browse/ISPN" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest"
+                       target="_blank">StackOverflow</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/">Home</a></li>
+          
+            <li><a href="/features">Features</a></li>
+          
+            <li><a href="/documentation">Docs</a></li>
+          
+            <li><a href="/tutorials">Tutorials</a></li>
+          
+            <li><a href="/videos">Videos</a></li>
+          
+            <li><a href="/use-cases">Use Cases</a></li>
+          
+            <li><a href="/community">Community</a></li>
+          
+            <li><a href="/download">Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://issues.jboss.org/browse/ISPN">Submit a Bug</a></li>
+          
+            <li><a href="https://github.com/infinispan">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/blog">Blog</a></li>
+          
+            <li><a href="https://twitter.com/infinispan">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="http://www.cloudtm.eu/" target="_blank"><img src="/assets/images/footer/cloud-tm.png"></a>
+          <img src="/assets/images/footer/leads.png">
+          <br/>
+          <a href="http://cloudbutton.eu/" target="_blank"><img src="/assets/images/footer/cloud-button.png"></a>
+
+        </div>
+        <div class="width-6-12">
+
+          <b>Thanks to</b><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank">JetBrains Intellj IDEA</a><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank"><img src="/assets/images/footer/jetbrains.png">
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+      | <a href="https://www.redhat.com/en/about/privacy-policy">Red Hat Privacy Policy</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>

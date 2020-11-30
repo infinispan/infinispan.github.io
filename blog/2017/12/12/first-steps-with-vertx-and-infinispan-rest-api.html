@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>First steps with Vert.x and Infinispan REST API (Part 1)</title>
+  <!-- <script id="adobe_dtm" src="//www.redhat.com/dtm.js" type="text/javascript"></script> -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/styles/github.min.css">
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/highlight.min.js"></script>
+  <script charset="UTF-8"
+          src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/languages/java.min.js"></script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+<!--   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-125236544-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+ 
+    gtag('config', 'UA-125236544-1');
+  </script> -->
+
+
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> First steps with Vert.x and Infinispan REST API (Part 1)
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>First steps with Vert.x and Infinispan REST API (Part 1)</h1>
+    <div class="post-date">December 12, 2017
+      Tags: <a href="/blog/tag/vert.x">vert.x</a> <a href="/blog/tag/rest">rest</a> <a href="/blog/tag/API">API</a> 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/karesti.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By Katia Aresti</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div class="paragraph">
+<p>Welcome to the first in a multi-part series of blog posts about creating
+<a href="http://vertx.io/">Eclipse Vert.x</a> applications with
+<a href="http://infinispan.org/">Infinispan</a>. The purpose of this first tutorial
+is to showcase how to create a REST API.</p>
+</div>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p><em>All the code of this tutorial is available in this
+<a href="https://github.com/infinispan-demos/vertx-api">GitHub repository</a>. The
+backend is a Java project using <a href="https://maven.apache.org/">Maven</a>, so all
+the needed dependencies can be found in the pom.xml.</em></p>
+</div>
+</blockquote>
+</div>
+<div class="paragraph">
+<p>==</p>
+</div>
+<div class="sect1">
+<h2 id="what-is-vert-x">What is Vert.x ?</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="http://vertx.io/">Vert.x</a> is a tool-kit for building reactive
+applications on the JVM. It’s an event driven and non blocking tool-kit.
+It is based on the
+<a href="http://vertx.io/docs/vertx-core/java/#_reactor_and_multi_reactor">Reactor
+Pattern</a>, like Node.js, but unlike Node it can easily use all the cores
+of your machine so you can create highly concurrent and performant
+applications. Code examples can be found
+<a href="https://github.com/vert-x3/vertx-examples">in this repository</a>.</p>
+</div>
+<div class="paragraph">
+<p>==</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="rest-api">REST API</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Let’s start creating a simple endpoint that will display a welcome
+message on '/'. In Vert.x this is done by creating a
+<strong><a href="http://vertx.io/docs/vertx-core/java/#_verticles">Verticle</a></strong>. A verticle
+is a unit of deployment and processes incoming events over an
+event-loop. <a href="https://en.wikipedia.org/wiki/Event_loop">Event-loops</a> are
+used in asynchronous programming models. I won&#8217;t spend more time here
+explaining these concepts as this is very well done in this
+<a href="https://www.youtube.com/watch?v=qL5BGHPXrac">Devoxx Vert.x talk</a> or in
+the documentation available
+<a href="http://vertx.io/docs/guide-for-java-devs/">here</a>.</p>
+</div>
+<div class="paragraph">
+<p>We need to override the start method, create a 'router' so '/' requests
+can be handled, and finally create a http server.</p>
+</div>
+<div class="paragraph">
+<p>The most important thing to remember about vert.x, is that <strong>we can NEVER
+EVER call blocking code</strong> (we will see how to deal with blocking API&#8217;s
+just after). If we do so, we will
+<a href="http://vertx.io/docs/vertx-core/java/#golden_rule">block the event loop</a>
+and we won&#8217;t be able to serve incoming requests properly.</p>
+</div>
+<div class="paragraph">
+<p>Run the main method, go to your browser to <a href="http://localhost:8081/ and" class="bare">http://localhost:8081/ and</a> we
+see the welcome message !</p>
+</div>
+<div class="sect2">
+<h3 id="connecting-with-infinispan">Connecting with Infinispan</h3>
+<div class="paragraph">
+<p>Now we are going to create a <strong>REST API</strong> that uses Infinispan. The
+purpose here is to post and get names by id. We are going to use the
+default cache in Infinispan for this example, and we will connect to it
+remotely. To do that, we are going to use the
+<a href="http://infinispan.org/hotrod-clients/">Infinispan hotrod protocol</a>, which
+is the recommended way to do it (but we could use
+<a href="http://infinispan.org/docs/9.0.x/infinispan_server_guide/infinispan_server_guide.html#_rest">REST</a>
+or
+<a href="http://infinispan.org/docs/9.0.x/infinispan_server_guide/infinispan_server_guide.html#_memcached">Memcached</a>
+protocol too)</p>
+</div>
+<div class="sect3">
+<h4 id="start-infinispan-locally">Start Infinispan locally</h4>
+<div class="paragraph">
+<p>The first thing we are going to do is to run an Infinispan Server
+locally. We download the Infinispan Server from
+<a href="http://downloads.jboss.org/infinispan/9.1.3.Final/infinispan-server-9.1.3.Final-bin.zip">here</a>,
+unzip the downloaded file and run ./bin/standalone.sh. </p>
+</div>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p><em>If you are using Docker on Linux, you can use the
+Ihttps://hub.docker.com/r/jboss/infinispan-server/[nfinispan Docker
+Image Available] easily. If you are using Docker for Mac, at the time of
+this writing there is an issue with internal IP addresses and they can&#8217;t
+be called externally. Different workarounds exist to solve the problem,
+but the easiest thing for this example is simply downloading and running
+the standalone server locally. We will see how to use the docker image
+in Openshift just after.</em></p>
+</div>
+</blockquote>
+</div>
+<div class="paragraph">
+<p>The hotrod server is listening in localhost:11222.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="connect-the-client-to-the-server">Connect the client to the server</h4>
+<div class="paragraph">
+<p>The code we need to connect with Infinispan from our java application is
+the following :</p>
+</div>
+<div class="paragraph">
+<p>This code <strong>is blocking</strong>. As I said before, <strong>we can&#8217;t block the event
+loop</strong> and this will happen if we directly call these API&#8217;s from a
+verticle. The code must be called using
+<a href="http://vertx.io/docs/vertx-core/java/#blocking_code">vertx.executeBlocking</a>
+method, and passing a Handler. The code in the handler will be executed
+from a worker thread pool and will pass the result back
+asynchronously.
+Instead of overriding the start method, we are going to
+override start(Future&lt;Void&gt; startFuture). This way, we are going to be
+able to handle errors.</p>
+</div>
+<div class="paragraph">
+<p>To stop the client, the API supplies a non blocking method that can be
+called when the verticle is stopped, so we are safe on that.</p>
+</div>
+<div class="paragraph">
+<p>We are going to create an abstract CacheAccessVerticle where we will
+initialise the manager and get default cache. When everything is correct
+and the defautCache variable is initialised, we will log a message and
+execute the initSuccess abstract method.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="rest-api-to-create-names">REST API to create names</h3>
+<div class="paragraph">
+<p>We are going to add 3 new endpoints.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>GET /api displays the API name</p>
+</li>
+<li>
+<p>POST /api/cutenames creates a new name</p>
+</li>
+<li>
+<p>GET /api/cutenames/id displays a name by id</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>CuteNamesRestAPI verticle can now extend this class and override
+the initSuccess method instead of the start method.</p>
+</div>
+<div class="sect3">
+<h4 id="post">POST</h4>
+<div class="paragraph">
+<p>Our goal is to use a curl to create a name like this :</p>
+</div>
+<div class="paragraph">
+<p>curl -X POST \ 
+-H "Content-Type: application/json" \
+-d '\{"name":"Oihana"}' "http://localhost:8081/api/cutenames"</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre></pre>
+</div>
+</div>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p><em>For those that are not familiar with basques names, Oihana means
+'rainforest' and is a super cute name. Those who know me will confirm
+that I&#8217;m absolutely not biased making this statement.</em></p>
+</div>
+</blockquote>
+</div>
+<div class="paragraph">
+<p>To read the body content, we need to <strong>add a body handler</strong> to the route,
+otherwise the body won&#8217;t be parsed. This is done by
+calling router.route().handler(BodyHandler.create()).</p>
+</div>
+<div class="paragraph">
+<p>The handler that will handle the post method in '/api/cutenames' is a
+RoutingContext handler. We want to create a new name in the default
+cache. For that, we will call putAsync method from the <strong>defaultCache</strong>.</p>
+</div>
+<div class="paragraph">
+<p>The server responds 201 when the name is correctly created, and 400 when
+the request is not correct.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="get-by-id">GET by id</h4>
+<div class="paragraph">
+<p>To create a get endpoint by id, we need to declare a route that will
+take a parameter :id. In the route handler, we are going to call
+getAsync method.</p>
+</div>
+<div class="paragraph">
+<p>If we run the main, we can POST and GET names using curl !</p>
+</div>
+<div class="paragraph">
+<p> curl -X POST -H "Content-Type: application/json" \
+ -d '\{"id":"42", "name":"Oihana"}' \ 
+"http://localhost:8081/api/cutenames" </p>
+</div>
+<div class="paragraph">
+<p><strong>Cute name added </strong></p>
+</div>
+<div class="paragraph">
+<p> curl -X GET -H "Content-Type: application/json" \ 
+"http://localhost:8081/api/cutenames/42"
+*
+\{"name":"Oihana"}*</p>
+</div>
+<div class="paragraph">
+<p>==</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="wrap-up">Wrap up</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>We have learned how to create a REST API with Vert.x, powered by
+Infinispan. The repository has some unit tests using the
+<a href="http://vertx.io/docs/vertx-web-client/java/">web client</a>. Feedback is
+more than welcome to improve the code and the provided examples. I hope
+you enjoyed this tutorial ! On the next tutorial you will learn how to
+create a
+<a href="http://blog.infinispan.org/2017/12/first-steps-with-vertx-and-infinispan-push-api.html">PUSH
+API</a>.</p>
+</div>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://jira.jboss.org/browse/ISPN" target="_blank">JIRA issues tracker</a>.
+        If you don’t find any, <a href="https://jira.jboss.org/browse/ISPN" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest"
+                       target="_blank">StackOverflow</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+      <div class="width-12-12 callout orange margin-tb-xs">
+    <div class="grid-wrapper">
+        <div class="width-4-12 width-12-12-m block-image">
+            <img src="/assets/images/blog/authors/karesti.jpg" class="author-img">
+        </div>
+        <div class="width-8-12 width-12-12-m block-content">
+            <h5>Katia Aresti</h5>
+            <p>Katia Aresti is a Senior Software Engineer working for Red Hat since 2017. She is part of the core Infinispan team, reponsible of the integration with other frameworks such as Spring-Boot, Vert.x or Quarkus, developing new features such as Clustered Counters, REST API endpoints and the new Server Web Console.</p>
+            <div class="width-3-12 width-6-12-m bio-block">
+                <a href="http://github.com/karesti"><img src="/assets/images/community/icon-github.png"></a>
+                
+                <a href="http://twitter.com/karesti"><img src="/assets/images/community/icon-twitter.png"></a>
+                
+            </div>
+        </div>
+    </div>
+</div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/">Home</a></li>
+          
+            <li><a href="/features">Features</a></li>
+          
+            <li><a href="/documentation">Docs</a></li>
+          
+            <li><a href="/tutorials">Tutorials</a></li>
+          
+            <li><a href="/videos">Videos</a></li>
+          
+            <li><a href="/use-cases">Use Cases</a></li>
+          
+            <li><a href="/community">Community</a></li>
+          
+            <li><a href="/download">Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://issues.jboss.org/browse/ISPN">Submit a Bug</a></li>
+          
+            <li><a href="https://github.com/infinispan">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/blog">Blog</a></li>
+          
+            <li><a href="https://twitter.com/infinispan">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="http://www.cloudtm.eu/" target="_blank"><img src="/assets/images/footer/cloud-tm.png"></a>
+          <img src="/assets/images/footer/leads.png">
+          <br/>
+          <a href="http://cloudbutton.eu/" target="_blank"><img src="/assets/images/footer/cloud-button.png"></a>
+
+        </div>
+        <div class="width-6-12">
+
+          <b>Thanks to</b><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank">JetBrains Intellj IDEA</a><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank"><img src="/assets/images/footer/jetbrains.png">
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+      | <a href="https://www.redhat.com/en/about/privacy-policy">Red Hat Privacy Policy</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>

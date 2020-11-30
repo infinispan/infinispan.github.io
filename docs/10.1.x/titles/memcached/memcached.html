@@ -1,4 +1,13 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <meta name="generator" content="Asciidoctor 2.0.10"> <title>Infinispan Memcached Client Guide</title> <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700"> <style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>Infinispan Memcached Client Guide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
+<style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
 /* Uncomment @import statement to use as custom stylesheet */
 /*@import "https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700";*/
@@ -425,8 +434,202 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 #footer{background:none}
 #footer-text{color:rgba(0,0,0,.6);font-size:.9em}}
 @media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
-</style> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"> <link rel="canonical" href="http://infinispan.org/docs/stable/user_guide/user_guide.html"> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/themes/default/style.min.css"> <link rel="stylesheet" href="../../css/css.css"> <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script> <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script> <script src="../../js/js.js"></script> </head> <body class="book toc2 toc-left"> <div id="header"> <h1>Infinispan Memcached Client Guide</h1> <div id="toc" class="toc2"> <div id="toctitle">Table of Contents</div> <ul class="sectlevel1"> <li><a href="#memcached_server">1. Memcached Server</a> <ul class="sectlevel2"> <li><a href="#memcached_client_encoding">1.1. Client Encoding</a></li> <li><a href="#command_clarification">1.2. Command Clarification</a> <ul class="sectlevel3"> <li><a href="#flush_all">1.2.1. Flush All</a></li> <li><a href="#unsupported_features">1.2.2. Unsupported Features</a> <ul class="sectlevel4"> <li><a href="#individual_stats">Individual Stats</a></li> <li><a href="#statistic_settings">Statistic Settings</a></li> <li><a href="#settings_with_arguments_parameter">Settings with Arguments Parameter</a></li> <li><a href="#delete_hold_time_parameter">Delete Hold Time Parameter</a></li> <li><a href="#verbosity_command">Verbosity Command</a></li> </ul> </li> </ul> </li> </ul> </li> <li><a href="#talking_to_infinispan_memcached_servers_from_non_java_clients">2. Talking To Infinispan Memcached Servers From Non-Java Clients</a> <ul class="sectlevel2"> <li><a href="#multi_clustered_server_tutorial">2.1. Multi Clustered Server Tutorial</a></li> </ul> </li> </ul> </div> </div> <div id="content"> <div class="sect1"> <h2 id="memcached_server"><a class="anchor" href="#memcached_server"></a>1. Memcached Server</h2> <div class="sectionbody"> <div class="paragraph"> <p>The Infinispan server distribution contains a server module that implements the <a href="http://github.com/memcached/memcached/blob/master/doc/protocol.txt">Memcached text protocol</a>. This allows Memcached clients to talk to one or several Infinispan backed Memcached servers. These servers can be standalone just like Memcached, where each server acts independently and does not communicate with the rest. They can also be clustered, where the servers replicate or distribute their contents to other Infinispan backed Memcached servers, providing clients with failover capabilities.</p> </div> <div class="sect2"> <h3 id="memcached_client_encoding"><a class="anchor" href="#memcached_client_encoding"></a>1.1. Client Encoding</h3> <div class="paragraph"> <p>The Memcached text protocol assumes data values read and written by clients are raw bytes. The support for type negotiation will come with <a href="https://github.com/memcached/memcached/wiki/BinaryProtocolRevamped#data-types">the Memcached binary protocol</a> implementation.</p> </div> <div class="paragraph"> <p>It&#8217;s not possible for a Memcached client to negotiate the data type to obtain data from the server or send data in different formats. The server can optionally be configured to handle values encoded with a certain Media Type. By setting the <code>client-encoding</code> attribute in the <code>memcached-connector</code> element, the server will return content in this configured format, and clients can also send data in this format.</p> </div> <div class="paragraph"> <p>The <code>client-encoding</code> is useful when a single cache is accessed from multiple remote endpoints (Rest, HotRod, Memcached) and it allows users to tailor the responses/requests to Memcached text clients. For more infomarmation on interoperability between endpoints, consult the endpoint interoperability documentation.</p> </div> </div> <div class="sect2"> <h3 id="command_clarification"><a class="anchor" href="#command_clarification"></a>1.2. Command Clarification</h3> <div class="sect3"> <h4 id="flush_all"><a class="anchor" href="#flush_all"></a>1.2.1. Flush All</h4> <div class="paragraph"> <p>Even in a clustered environment, flush_all command leads to the clearing of the Infinispan Memcached server where the call lands. There is no attempt to propagate this flush to other nodes in the cluster. This is done so that the <code>flush_all</code> with delay use case can be reproduced with the Infinispan Memcached server. The aim of passing a delay to <code>flush_all</code> is so that different Memcached servers can be flushed at different times, and hence avoid overloading the database with requests as a result of all Memcached servers being empty. For more info, check the <a href="http://github.com/memcached/memcached/blob/master/doc/protocol.txt">Memcached text protocol section on flush_all</a> .</p> </div> </div> <div class="sect3"> <h4 id="unsupported_features"><a class="anchor" href="#unsupported_features"></a>1.2.2. Unsupported Features</h4> <div class="paragraph"> <p>This section details features of the Memcached text protocol that are currently not supported by the Infinispan based Memcached implementation.</p> </div> <div class="sect4"> <h5 id="individual_stats"><a class="anchor" href="#individual_stats"></a>Individual Stats</h5> <div class="paragraph"> <p>There are differences in the nature of the original memcached implementation, which is C/C\\ based, and the Infinispan implementation which is Java based. There are some general purpose statistics that are not supported. For these unsupported stats, Infinispan Memcached server always returns 0.</p> </div> <div class="ulist"> <div class="title">Unsupported statistics</div> <ul> <li> <p>pid</p> </li> <li> <p>pointer_size</p> </li> <li> <p>rusage_user</p> </li> <li> <p>rusage_system</p> </li> <li> <p>bytes</p> </li> <li> <p>curr_connections</p> </li> <li> <p>total_connections</p> </li> <li> <p>connection_structures</p> </li> <li> <p>auth_cmds</p> </li> <li> <p>auth_errors</p> </li> <li> <p>limit_maxbytes</p> </li> <li> <p>threads</p> </li> <li> <p>conn_yields</p> </li> <li> <p>reclaimed</p> </li> </ul> </div> </div> <div class="sect4"> <h5 id="statistic_settings"><a class="anchor" href="#statistic_settings"></a>Statistic Settings</h5> <div class="paragraph"> <p>The statistics setting section of the text protocol has not been implemented due to its volatility.</p> </div> </div> <div class="sect4"> <h5 id="settings_with_arguments_parameter"><a class="anchor" href="#settings_with_arguments_parameter"></a>Settings with Arguments Parameter</h5> <div class="paragraph"> <p>Since the arguments that can be sent to the Memcached server are not documented, Infinispan Memcached server does not support passing any arguments to the stats command. If any parameters are passed, the Infinispan Memcached server will respond with a <code>CLIENT_ERROR</code> .</p> </div> </div> <div class="sect4"> <h5 id="delete_hold_time_parameter"><a class="anchor" href="#delete_hold_time_parameter"></a>Delete Hold Time Parameter</h5> <div class="paragraph"> <p>Memcached no longer honors the optional hold time parameter for the delete command. The Infinispan based Memcached server does not implement the feature.</p> </div> </div> <div class="sect4"> <h5 id="verbosity_command"><a class="anchor" href="#verbosity_command"></a>Verbosity Command</h5> <div class="paragraph"> <p>The verbosity command is not supported since Infinispan logging cannot be simplified to defining the logging level alone.</p> </div> </div> </div> </div> </div> </div> <div class="sect1"> <h2 id="talking_to_infinispan_memcached_servers_from_non_java_clients"><a class="anchor" href="#talking_to_infinispan_memcached_servers_from_non_java_clients"></a>2. Talking To Infinispan Memcached Servers From Non-Java Clients</h2> <div class="sectionbody"> <div class="paragraph"> <p>This section shows how to talk to Infinispan Memcached server via a non-Java client, such as a Python script.</p> </div> <div class="sect2"> <h3 id="multi_clustered_server_tutorial"><a class="anchor" href="#multi_clustered_server_tutorial"></a>2.1. Multi Clustered Server Tutorial</h3> <div class="paragraph"> <p>This example showcases the distribution capabilities of Infinispan Memcached severs that are not available in the original Memcached implementation.</p> </div> <div class="olist arabic"> <div class="title">Procedure</div> <ol class="arabic"> <li> <p>Start two clustered nodes: This configuration is the same one used for the GUI demo:</p> <div class="listingblock"> <div class="content"> <pre>$ ./bin/standalone.sh -c clustered.xml -Djboss.node.name=nodeA
-$ ./bin/standalone.sh -c clustered.xml -Djboss.node.name=nodeB -Djboss.socket.binding.port-offset=100</pre> </div> </div> <div class="paragraph"> <p>Alternatively, use:</p> </div> <div class="listingblock"> <div class="content"> <pre>$ ./bin/domain.sh</pre> </div> </div> <div class="paragraph"> <p>Which automatically starts two nodes.</p> </div> </li> <li> <p>Execute the <a href="https://github.com/infinispan/infinispan/tree/master/server/memcached/src/test/resources/test_memcached_write.py">test_memcached_write.py</a> script. This basically executes several write operations against the Infinispan Memcached server bound to port <code>11211</code>. If the script is executed successfully, you should see an output similar to this:</p> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code> Connecting to 127.0.0.1:11211
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="canonical" href="http://infinispan.org/docs/stable/user_guide/user_guide.html">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/themes/default/style.min.css">
+<link rel="stylesheet" href="../../css/css.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
+<script src="../../js/js.js"></script>
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<h1>Infinispan Memcached Client Guide</h1>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#memcached_server">1. Memcached Server</a>
+<ul class="sectlevel2">
+<li><a href="#memcached_client_encoding">1.1. Client Encoding</a></li>
+<li><a href="#command_clarification">1.2. Command Clarification</a>
+<ul class="sectlevel3">
+<li><a href="#flush_all">1.2.1. Flush All</a></li>
+<li><a href="#unsupported_features">1.2.2. Unsupported Features</a>
+<ul class="sectlevel4">
+<li><a href="#individual_stats">Individual Stats</a></li>
+<li><a href="#statistic_settings">Statistic Settings</a></li>
+<li><a href="#settings_with_arguments_parameter">Settings with Arguments Parameter</a></li>
+<li><a href="#delete_hold_time_parameter">Delete Hold Time Parameter</a></li>
+<li><a href="#verbosity_command">Verbosity Command</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#talking_to_infinispan_memcached_servers_from_non_java_clients">2. Talking To Infinispan Memcached Servers From Non-Java Clients</a>
+<ul class="sectlevel2">
+<li><a href="#multi_clustered_server_tutorial">2.1. Multi Clustered Server Tutorial</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="memcached_server"><a class="anchor" href="#memcached_server"></a>1. Memcached Server</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Infinispan server distribution contains a server module that implements the <a href="http://github.com/memcached/memcached/blob/master/doc/protocol.txt">Memcached text protocol</a>. This allows Memcached clients to talk to one or several Infinispan backed Memcached servers. These servers can be standalone just like Memcached, where each server acts independently and does not communicate with the rest. They can also be clustered, where the servers replicate or distribute their contents to other Infinispan backed Memcached servers, providing clients with failover capabilities.</p>
+</div>
+<div class="sect2">
+<h3 id="memcached_client_encoding"><a class="anchor" href="#memcached_client_encoding"></a>1.1. Client Encoding</h3>
+<div class="paragraph">
+<p>The Memcached text protocol assumes data values read and written by clients are raw bytes. The support for type negotiation will come
+with <a href="https://github.com/memcached/memcached/wiki/BinaryProtocolRevamped#data-types">the Memcached binary protocol</a> implementation.</p>
+</div>
+<div class="paragraph">
+<p>It&#8217;s not possible for a Memcached client to negotiate the data type to obtain data from the server or send data in different formats. The server can optionally be configured to handle values encoded with a certain Media Type. By setting the <code>client-encoding</code> attribute in the <code>memcached-connector</code> element, the server will return content in this configured format, and clients can also send data in this format.</p>
+</div>
+<div class="paragraph">
+<p>The <code>client-encoding</code> is useful when a single cache is accessed from multiple remote endpoints (Rest, HotRod, Memcached) and it allows users to tailor the responses/requests to Memcached text clients. For more infomarmation on interoperability between endpoints, consult the endpoint interoperability documentation.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="command_clarification"><a class="anchor" href="#command_clarification"></a>1.2. Command Clarification</h3>
+<div class="sect3">
+<h4 id="flush_all"><a class="anchor" href="#flush_all"></a>1.2.1. Flush All</h4>
+<div class="paragraph">
+<p>Even in a clustered environment, flush_all command leads to the clearing of the Infinispan Memcached server where the call lands. There is  no attempt to propagate this flush to other nodes in the cluster. This is done so that the <code>flush_all</code> with delay use case can be reproduced with the Infinispan Memcached server. The aim of passing a delay to <code>flush_all</code> is so that different Memcached servers can be flushed at different times, and hence avoid overloading the database with requests as a result of all Memcached servers being empty. For more info, check the <a href="http://github.com/memcached/memcached/blob/master/doc/protocol.txt">Memcached text protocol section on flush_all</a> .</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="unsupported_features"><a class="anchor" href="#unsupported_features"></a>1.2.2. Unsupported Features</h4>
+<div class="paragraph">
+<p>This section details features of the Memcached text protocol that are currently not supported by the Infinispan based Memcached implementation.</p>
+</div>
+<div class="sect4">
+<h5 id="individual_stats"><a class="anchor" href="#individual_stats"></a>Individual Stats</h5>
+<div class="paragraph">
+<p>There are differences in the nature of the original memcached implementation, which is C/C\\ based, and the Infinispan implementation which is Java based. There are some general purpose statistics that are not supported. For these unsupported stats, Infinispan Memcached server always returns 0.</p>
+</div>
+<div class="ulist">
+<div class="title">Unsupported statistics</div>
+<ul>
+<li>
+<p>pid</p>
+</li>
+<li>
+<p>pointer_size</p>
+</li>
+<li>
+<p>rusage_user</p>
+</li>
+<li>
+<p>rusage_system</p>
+</li>
+<li>
+<p>bytes</p>
+</li>
+<li>
+<p>curr_connections</p>
+</li>
+<li>
+<p>total_connections</p>
+</li>
+<li>
+<p>connection_structures</p>
+</li>
+<li>
+<p>auth_cmds</p>
+</li>
+<li>
+<p>auth_errors</p>
+</li>
+<li>
+<p>limit_maxbytes</p>
+</li>
+<li>
+<p>threads</p>
+</li>
+<li>
+<p>conn_yields</p>
+</li>
+<li>
+<p>reclaimed</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="statistic_settings"><a class="anchor" href="#statistic_settings"></a>Statistic Settings</h5>
+<div class="paragraph">
+<p>The statistics setting section of the text protocol has not been implemented due to its volatility.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="settings_with_arguments_parameter"><a class="anchor" href="#settings_with_arguments_parameter"></a>Settings with Arguments Parameter</h5>
+<div class="paragraph">
+<p>Since the arguments that can be sent to the Memcached server are not documented, Infinispan Memcached server does not support passing any arguments to the stats command. If any parameters are passed, the Infinispan Memcached server will respond with a <code>CLIENT_ERROR</code> .</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="delete_hold_time_parameter"><a class="anchor" href="#delete_hold_time_parameter"></a>Delete Hold Time Parameter</h5>
+<div class="paragraph">
+<p>Memcached no longer honors the optional hold time parameter for the delete command. The Infinispan based Memcached server does not implement the feature.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="verbosity_command"><a class="anchor" href="#verbosity_command"></a>Verbosity Command</h5>
+<div class="paragraph">
+<p>The verbosity command is not supported since Infinispan logging cannot be simplified to defining the logging level alone.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="talking_to_infinispan_memcached_servers_from_non_java_clients"><a class="anchor" href="#talking_to_infinispan_memcached_servers_from_non_java_clients"></a>2. Talking To Infinispan Memcached Servers From Non-Java Clients</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This section shows how to talk to Infinispan Memcached server via a non-Java client, such as a Python script.</p>
+</div>
+<div class="sect2">
+<h3 id="multi_clustered_server_tutorial"><a class="anchor" href="#multi_clustered_server_tutorial"></a>2.1. Multi Clustered Server Tutorial</h3>
+<div class="paragraph">
+<p>This example showcases the distribution capabilities of Infinispan Memcached severs that are not available in the original Memcached implementation.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Start two clustered nodes:
+This configuration is the same one used for the GUI demo:</p>
+<div class="listingblock">
+<div class="content">
+<pre>$ ./bin/standalone.sh -c clustered.xml -Djboss.node.name=nodeA
+$ ./bin/standalone.sh -c clustered.xml -Djboss.node.name=nodeB -Djboss.socket.binding.port-offset=100</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Alternatively, use:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>$ ./bin/domain.sh</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Which automatically starts two nodes.</p>
+</div>
+</li>
+<li>
+<p>Execute the <a href="https://github.com/infinispan/infinispan/tree/master/server/memcached/src/test/resources/test_memcached_write.py">test_memcached_write.py</a> script. This basically executes several write operations against the Infinispan Memcached server bound to port <code>11211</code>. If the script is executed successfully, you should see an output similar to this:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code> Connecting to 127.0.0.1:11211
  Testing set ['Simple_Key': Simple value] ... OK
  Testing set ['Expiring_Key' : 999 : 3] ... OK
  Testing increment 3 times ['Incr_Key' : starting at 1 ]
@@ -439,12 +642,35 @@ $ ./bin/standalone.sh -c clustered.xml -Djboss.node.name=nodeB -Djboss.socket.bi
  Decrement by one ... OK
  Testing decrement 2 times in one call ['Multi_Decr_Key' : 3 ]
  Initialise at 3 ... OK
- Decrement by 2 ... OK</code></pre> </div> </div> </li> <li> <p>Execute the <a href="https://github.com/infinispan/infinispan/tree/master/server/memcached/src/test/resources/test_memcached_read.py">test_memcached_read.py</a> script which connects to server bound to <code>127.0.0.1:11311</code> and verifies that it can read the data that was written by the writer script to the first server. If the script is executed successfully, you should see an output similar to this:</p> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code> Connecting to 127.0.0.1:11311
+ Decrement by 2 ... OK</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Execute the <a href="https://github.com/infinispan/infinispan/tree/master/server/memcached/src/test/resources/test_memcached_read.py">test_memcached_read.py</a> script which connects to server bound to <code>127.0.0.1:11311</code> and verifies that it can read the data that was written by the writer script to the first server. If the script is executed successfully, you should see an output similar to this:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code> Connecting to 127.0.0.1:11311
  Testing get ['Simple_Key'] should return Simple value ... OK
  Testing get ['Expiring_Key'] should return nothing... OK
  Testing get ['Incr_Key'] should return 4 ... OK
  Testing get ['Decr_Key'] should return 3 ... OK
- Testing get ['Multi_Decr_Key'] should return 1 ... OK</code></pre> </div> </div> </li> </ol> </div> </div> </div> </div> </div> <div id="footer"> <div id="footer-text"> Last updated 2020-05-03 12:31:45 -0400 </div> </div> <style>
+ Testing get ['Multi_Decr_Key'] should return 1 ... OK</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2020-05-03 12:31:45 -0400
+</div>
+</div>
+<style>
 /* Stylesheet for CodeRay to match GitHub theme | MIT License | http://foundation.zurb.com */
 pre.CodeRay{background:#f7f7f8}
 .CodeRay .line-numbers{border-right:1px solid currentColor;opacity:.35;padding:0 .5em 0 0}
@@ -532,7 +758,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 .CodeRay .delete .delete{color:#800}
 .CodeRay .change .change{color:#66f}
 .CodeRay .head .head{color:#f4f}
-</style> <script type="text/x-mathjax-config">
+</style>
+<script type="text/x-mathjax-config">
 MathJax.Hub.Config({
   messageStyle: "none",
   tex2jax: {
@@ -554,7 +781,9 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
     return data
   })
 })
-</script> <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script> <script>
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+<script>
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
@@ -563,4 +792,7 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
   ga('create', 'UA-8601422-1', 'auto');
   ga('send', 'pageview');
 
-</script> </body> </html>
+</script>
+
+</body>
+</html>

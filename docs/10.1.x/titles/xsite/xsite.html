@@ -1,4 +1,13 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta http-equiv="X-UA-Compatible" content="IE=edge"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <meta name="generator" content="Asciidoctor 2.0.10"> <title>Replicating Data Across Sites with Infinispan 10.1</title> <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700"> <style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.10">
+<title>Replicating Data Across Sites with Infinispan 10.1</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
+<style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
 /* Uncomment @import statement to use as custom stylesheet */
 /*@import "https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700";*/
@@ -425,15 +434,591 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 #footer{background:none}
 #footer-text{color:rgba(0,0,0,.6);font-size:.9em}}
 @media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
-</style> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"> <link rel="canonical" href="http://infinispan.org/docs/stable/user_guide/user_guide.html"> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/themes/default/style.min.css"> <link rel="stylesheet" href="../../css/css.css"> <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script> <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script> <script src="../../js/js.js"></script> </head> <body class="book toc2 toc-left"> <div id="header"> <h1>Replicating Data Across Sites with Infinispan 10.1</h1> <div id="toc" class="toc2"> <div id="toctitle">Table of Contents</div> <ul class="sectlevel1"> <li><a href="#xsite_replication">1. Infinispan Cross-Site Replication</a> <ul class="sectlevel2"> <li><a href="#xsite_replication-xsite">1.1. Cross-Site Replication</a> <ul class="sectlevel3"> <li><a href="#xsite_masters-xsite">1.1.1. Site Masters</a></li> </ul> </li> <li><a href="#xsite_backups-xsite">1.2. Adding Backups to Caches</a></li> <li><a href="#xsite_backup_strategies-xsite">1.3. Backup Strategies</a> <ul class="sectlevel3"> <li><a href="#xsite_sync_backups-xsite">1.3.1. Synchronous Backups</a></li> <li><a href="#xsite_async_backups-xsite">1.3.2. Asynchronous Backups</a></li> <li><a href="#xsite_compare_backups-xsite">1.3.3. Synchronous vs Asynchronous Backups</a></li> </ul> </li> <li><a href="#xsite_auto_offline-xsite">1.4. Taking Sites Offline Automatically</a></li> <li><a href="#xsite_state_transfer-xsite">1.5. State Transfer</a></li> <li><a href="#xsite_active_passive-xsite">1.6. Client Connections Across Sites</a> <ul class="sectlevel3"> <li><a href="#conflicts-xsite">1.6.1. Conflicting Entries with Cross-Site Replication</a></li> </ul> </li> <li><a href="#xsite_expiration-xsite">1.7. Expiration and Cross-Site Replication</a></li> </ul> </li> <li><a href="#xsite_configure">2. Configuring Infinispan for Cross-Site Replication</a> <ul class="sectlevel2"> <li><a href="#configure_relay-xsite">2.1. Configuring Cluster Transport for Cross-Site Replication</a> <ul class="sectlevel3"> <li><a href="#ref_relay-xsite">2.1.1. JGroups RELAY2 Stacks</a></li> <li><a href="#ref_relay_custom-xsite">2.1.2. Custom JGroups RELAY2 Stacks</a></li> </ul> </li> <li><a href="#configure_backups-xsite">2.2. Adding Backup Locations to Caches</a></li> <li><a href="#configure_backupfor-xsite">2.3. Backing Up to Caches with Different Names</a></li> <li><a href="#verify_xsite_view-xsite">2.4. Verifying Cross-Site Views</a></li> <li><a href="#configure_clients-xsite">2.5. Configuring Hot Rod Clients for Cross-Site Replication</a></li> </ul> </li> <li><a href="#xsite_manage">3. Performing Cross-Site Replication Operations</a> <ul class="sectlevel2"> <li><a href="#xsite_operations_cli">3.1. Cross-Site Operations with the CLI</a> <ul class="sectlevel3"> <li><a href="#manage_sites-xsite">3.1.1. Bringing Backup Locations Offline and Online</a></li> <li><a href="#cli_xsite_push-xsite">3.1.2. Pushing State to Backup Locations</a></li> </ul> </li> <li><a href="#xsite_operations_rest">3.2. Cross-Site Operations with the REST API</a> <ul class="sectlevel3"> <li><a href="#rest_v2_xsite_sites_status">3.2.1. Getting Status of All Backup Locations</a></li> <li><a href="#rest_v2_xsite_site_status">3.2.2. Getting Status of Specific Backup Locations</a></li> <li><a href="#rest_v2_xsite_take_site_offline">3.2.3. Taking Backup Locations Offline</a></li> <li><a href="#rest_v2_xsite_bring_backup_online">3.2.4. Bringing Backup Locations Online</a></li> <li><a href="#rest_v2_xsite_start_push">3.2.5. Pushing State to Backup Locations</a></li> <li><a href="#rest_v2_xsite_cancel_state_push">3.2.6. Canceling State Transfer</a></li> <li><a href="#rest_v2_xsite_state_push">3.2.7. Getting State Transfer Status</a></li> <li><a href="#rest_v2_xsite_clear_transfer_status">3.2.8. Clearing State Transfer Status</a></li> <li><a href="#rest_v2_xsite_tuning_takeoffline">3.2.9. Modifying Take Offline Conditions</a></li> <li><a href="#rest_v2_xsite_cancel_receive_state">3.2.10. Canceling State Transfer from Receiving Sites</a></li> <li><a href="#rest_v2_cache_manager_site_status">3.2.11. Getting Status of Backup Locations</a></li> <li><a href="#rest_v2_cache_manager_take_offline">3.2.12. Taking Backup Locations Offline</a></li> <li><a href="#rest_v2_cache_manager_bring_online">3.2.13. Bringing Backup Locations Online</a></li> <li><a href="#rest_v2_cache_manager_start_push">3.2.14. Starting State Transfer</a></li> <li><a href="#rest_v2_cache_manager_cancel_push">3.2.15. Canceling State Transfer</a></li> </ul> </li> </ul> </li> </ul> </div> </div> <div id="content"> <div class="sect1"> <h2 id="xsite_replication"><a class="anchor" href="#xsite_replication"></a>1. Infinispan Cross-Site Replication</h2> <div class="sectionbody"> <div class="paragraph"> <p>Cross-site replication allows you to back up data from one Infinispan cluster to another.</p> </div> <div class="sect2"> <h3 id="xsite_replication-xsite"><a class="anchor" href="#xsite_replication-xsite"></a>1.1. Cross-Site Replication</h3> <div class="paragraph"> <p>Infinispan clusters running in different locations can discover and communicate with each other.</p> </div> <div class="paragraph"> <p>A site is a locally running Infinispan cluster. For demonstration purposes, this documentation illustrates sites as data centers in different geographic locations, as in the following diagram:</p> </div> <div class="imageblock"> <div class="content"> <img src="../../topics/images/xsite.svg" alt="xsite"> </div> </div> <div class="paragraph"> <p><strong>LON</strong> is a datacenter in London, England.<br> <strong>NYC</strong> is a datacenter in New York City, USA.</p> </div> <div class="admonitionblock note"> <table> <tr> <td class="icon"> <i class="fa icon-note" title="Note"></i> </td> <td class="content"> <div class="paragraph"> <p>Infinispan can form global clusters across two or more sites.</p> </div> <div class="paragraph"> <p>For example, configure a third Infinispan cluster running in San Francisco, <strong>SFO</strong>, as backup location for <strong>LON</strong> and <strong>NYC</strong>.</p> </div> </td> </tr> </table> </div> <div class="sect3"> <h4 id="xsite_masters-xsite"><a class="anchor" href="#xsite_masters-xsite"></a>1.1.1. Site Masters</h4> <div class="paragraph"> <p>Site masters are the nodes in Infinispan clusters that are responsible for sending and receiving requests from backup locations.</p> </div> <div class="paragraph"> <p>If a node is not a site master, it must forward backup requests to a local site master. Only site masters can send requests to backup locations.</p> </div> <div class="paragraph"> <p>For optimal performance, you should configure all nodes as site masters. This increases the speed of backup requests because each node in the cluster can backup to remote sites directly without having to forward backup requests to site masters.</p> </div> </div> </div> <div class="sect2"> <h3 id="xsite_backups-xsite"><a class="anchor" href="#xsite_backups-xsite"></a>1.2. Adding Backups to Caches</h3> <div class="paragraph"> <p>Name remote sites as backup locations in your cache definitions.</p> </div> <div class="paragraph"> <p>For example, the following diagram shows three caches, "customers", "eu-orders", and "us-orders":</p> </div> <div class="imageblock"> <div class="content"> <img src="../../topics/images/xsite-caches.svg" alt="xsite caches"> </div> </div> <div class="ulist"> <ul> <li> <p>In <strong>LON</strong>, "customers" names <strong>NYC</strong> as a backup location.</p> </li> <li> <p>In <strong>NYC</strong>, "customers" names <strong>LON</strong> as a backup location.</p> </li> <li> <p>"eu-orders" and "us-orders" do not have backups and are local to the respective cluster.</p> </li> </ul> </div> </div> <div class="sect2"> <h3 id="xsite_backup_strategies-xsite"><a class="anchor" href="#xsite_backup_strategies-xsite"></a>1.3. Backup Strategies</h3> <div class="paragraph"> <p>Infinispan clusters can use different strategies for backing up data to remote sites.</p> </div> <div class="paragraph"> <p>Infinispan replicates across sites at the same time that writes to local caches occur. For example, if a client writes "k1" to <strong>LON</strong>, Infinispan backs up "k1" to <strong>NYC</strong> at the same time.</p> </div> <div class="sect3"> <h4 id="xsite_sync_backups-xsite"><a class="anchor" href="#xsite_sync_backups-xsite"></a>1.3.1. Synchronous Backups</h4> <div class="paragraph"> <p>When Infinispan replicates data to backup locations, it waits until the operation completes before writing to the local cache.</p> </div> <div class="paragraph"> <p>You can control how Infinispan handles writes to the local cache if backup operations fail. For example, you can configure Infinispan to attempt to abort local writes and throw exceptions if backups to remote sites fail.</p> </div> <div class="paragraph"> <p>Synchronous backups also support two-phase commits with caches that participate in optimistic transactions. The first phase of the backup acquires a lock. The second phase commits the modification.</p> </div> <div class="admonitionblock important"> <table> <tr> <td class="icon"> <i class="fa icon-important" title="Important"></i> </td> <td class="content"> <div class="paragraph"> <p>Two-phase commit with cross-site replication has a significant performance impact because it requires two round-trips across the network.</p> </div> </td> </tr> </table> </div> </div> <div class="sect3"> <h4 id="xsite_async_backups-xsite"><a class="anchor" href="#xsite_async_backups-xsite"></a>1.3.2. Asynchronous Backups</h4> <div class="paragraph"> <p>When Infinispan replicates data to backup locations, it does not wait until the operation completes before writing to the local cache.</p> </div> <div class="paragraph"> <p>Asynchronous backup operations and writes to the local cache are independent of each other. If backup operations fail, write operations to the local cache continue and no exceptions occur.</p> </div> </div> <div class="sect3"> <h4 id="xsite_compare_backups-xsite"><a class="anchor" href="#xsite_compare_backups-xsite"></a>1.3.3. Synchronous vs Asynchronous Backups</h4> <div class="paragraph"> <p>Synchronous backups offer the strongest guarantee of data consistency across sites. If <code>strategy=sync</code>, when <code>cache.put()</code> calls return you know the value is up to date in the local cache and in the backup locations.</p> </div> <div class="paragraph"> <p>The trade-off for this consistency is performance. Synchronous backups have much greater latency in comparison to asynchronous backups.</p> </div> <div class="paragraph"> <p>Asynchronous backups, on the other hand, do not add latency to client requests so they have no performance impact. However, if <code>strategy=async</code>, when <code>cache.put()</code> calls return you cannot be sure of the value in the backup locations is the same as in the local cache.</p> </div> </div> </div> <div class="sect2"> <h3 id="xsite_auto_offline-xsite"><a class="anchor" href="#xsite_auto_offline-xsite"></a>1.4. Taking Sites Offline Automatically</h3> <div class="paragraph"> <p>Backup configurations include timeout values for operations to replicate data to remote sites. When backup operations reach the timeout, Infinispan records the operation as a failure.</p> </div> <div class="paragraph"> <p>To automatically take sites offline, you can then configure the number of <strong>consecutive</strong> failures that can occur.</p> </div> <div class="paragraph"> <p>For example, the <strong>NYC</strong> backup configuration specifies five as the number of failures after which <strong>NYC</strong> goes offline. If <strong>LON</strong> attempts five consecutive backup operations that fail, Infinispan automatically takes <strong>NYC</strong> offline. <strong>LON</strong> then stops backing up to <strong>NYC</strong> until you bring the site back online.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="canonical" href="http://infinispan.org/docs/stable/user_guide/user_guide.html">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/themes/default/style.min.css">
+<link rel="stylesheet" href="../../css/css.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
+<script src="../../js/js.js"></script>
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<h1>Replicating Data Across Sites with Infinispan 10.1</h1>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#xsite_replication">1. Infinispan Cross-Site Replication</a>
+<ul class="sectlevel2">
+<li><a href="#xsite_replication-xsite">1.1. Cross-Site Replication</a>
+<ul class="sectlevel3">
+<li><a href="#xsite_masters-xsite">1.1.1. Site Masters</a></li>
+</ul>
+</li>
+<li><a href="#xsite_backups-xsite">1.2. Adding Backups to Caches</a></li>
+<li><a href="#xsite_backup_strategies-xsite">1.3. Backup Strategies</a>
+<ul class="sectlevel3">
+<li><a href="#xsite_sync_backups-xsite">1.3.1. Synchronous Backups</a></li>
+<li><a href="#xsite_async_backups-xsite">1.3.2. Asynchronous Backups</a></li>
+<li><a href="#xsite_compare_backups-xsite">1.3.3. Synchronous vs Asynchronous Backups</a></li>
+</ul>
+</li>
+<li><a href="#xsite_auto_offline-xsite">1.4. Taking Sites Offline Automatically</a></li>
+<li><a href="#xsite_state_transfer-xsite">1.5. State Transfer</a></li>
+<li><a href="#xsite_active_passive-xsite">1.6. Client Connections Across Sites</a>
+<ul class="sectlevel3">
+<li><a href="#conflicts-xsite">1.6.1. Conflicting Entries with Cross-Site Replication</a></li>
+</ul>
+</li>
+<li><a href="#xsite_expiration-xsite">1.7. Expiration and Cross-Site Replication</a></li>
+</ul>
+</li>
+<li><a href="#xsite_configure">2. Configuring Infinispan for Cross-Site Replication</a>
+<ul class="sectlevel2">
+<li><a href="#configure_relay-xsite">2.1. Configuring Cluster Transport for Cross-Site Replication</a>
+<ul class="sectlevel3">
+<li><a href="#ref_relay-xsite">2.1.1. JGroups RELAY2 Stacks</a></li>
+<li><a href="#ref_relay_custom-xsite">2.1.2. Custom JGroups RELAY2 Stacks</a></li>
+</ul>
+</li>
+<li><a href="#configure_backups-xsite">2.2. Adding Backup Locations to Caches</a></li>
+<li><a href="#configure_backupfor-xsite">2.3. Backing Up to Caches with Different Names</a></li>
+<li><a href="#verify_xsite_view-xsite">2.4. Verifying Cross-Site Views</a></li>
+<li><a href="#configure_clients-xsite">2.5. Configuring Hot Rod Clients for Cross-Site Replication</a></li>
+</ul>
+</li>
+<li><a href="#xsite_manage">3. Performing Cross-Site Replication Operations</a>
+<ul class="sectlevel2">
+<li><a href="#xsite_operations_cli">3.1. Cross-Site Operations with the CLI</a>
+<ul class="sectlevel3">
+<li><a href="#manage_sites-xsite">3.1.1. Bringing Backup Locations Offline and Online</a></li>
+<li><a href="#cli_xsite_push-xsite">3.1.2. Pushing State to Backup Locations</a></li>
+</ul>
+</li>
+<li><a href="#xsite_operations_rest">3.2. Cross-Site Operations with the REST API</a>
+<ul class="sectlevel3">
+<li><a href="#rest_v2_xsite_sites_status">3.2.1. Getting Status of All Backup Locations</a></li>
+<li><a href="#rest_v2_xsite_site_status">3.2.2. Getting Status of Specific Backup Locations</a></li>
+<li><a href="#rest_v2_xsite_take_site_offline">3.2.3. Taking Backup Locations Offline</a></li>
+<li><a href="#rest_v2_xsite_bring_backup_online">3.2.4. Bringing Backup Locations Online</a></li>
+<li><a href="#rest_v2_xsite_start_push">3.2.5. Pushing State to Backup Locations</a></li>
+<li><a href="#rest_v2_xsite_cancel_state_push">3.2.6. Canceling State Transfer</a></li>
+<li><a href="#rest_v2_xsite_state_push">3.2.7. Getting State Transfer Status</a></li>
+<li><a href="#rest_v2_xsite_clear_transfer_status">3.2.8. Clearing State Transfer Status</a></li>
+<li><a href="#rest_v2_xsite_tuning_takeoffline">3.2.9. Modifying Take Offline Conditions</a></li>
+<li><a href="#rest_v2_xsite_cancel_receive_state">3.2.10. Canceling State Transfer from Receiving Sites</a></li>
+<li><a href="#rest_v2_cache_manager_site_status">3.2.11. Getting Status of Backup Locations</a></li>
+<li><a href="#rest_v2_cache_manager_take_offline">3.2.12. Taking Backup Locations Offline</a></li>
+<li><a href="#rest_v2_cache_manager_bring_online">3.2.13. Bringing Backup Locations Online</a></li>
+<li><a href="#rest_v2_cache_manager_start_push">3.2.14. Starting State Transfer</a></li>
+<li><a href="#rest_v2_cache_manager_cancel_push">3.2.15. Canceling State Transfer</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="xsite_replication"><a class="anchor" href="#xsite_replication"></a>1. Infinispan Cross-Site Replication</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Cross-site replication allows you to back up data from one Infinispan cluster to another.</p>
+</div>
+<div class="sect2">
+<h3 id="xsite_replication-xsite"><a class="anchor" href="#xsite_replication-xsite"></a>1.1. Cross-Site Replication</h3>
+<div class="paragraph">
+<p>Infinispan clusters running in different locations can discover and
+communicate with each other.</p>
+</div>
+<div class="paragraph">
+<p>A site is a locally running Infinispan cluster. For demonstration purposes,
+this documentation illustrates sites as data centers in different geographic
+locations, as in the following diagram:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/xsite.svg" alt="xsite">
+</div>
+</div>
+<div class="paragraph">
+<p><strong>LON</strong> is a datacenter in London, England.<br>
+<strong>NYC</strong> is a datacenter in New York City, USA.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan can form global clusters across two or more sites.</p>
+</div>
+<div class="paragraph">
+<p>For example, configure a third Infinispan cluster running in San Francisco,
+<strong>SFO</strong>, as backup location for <strong>LON</strong> and <strong>NYC</strong>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="xsite_masters-xsite"><a class="anchor" href="#xsite_masters-xsite"></a>1.1.1. Site Masters</h4>
+<div class="paragraph">
+<p>Site masters are the nodes in Infinispan clusters that are responsible for
+sending and receiving requests from backup locations.</p>
+</div>
+<div class="paragraph">
+<p>If a node is not a site master, it must forward backup requests to a local site
+master. Only site masters can send requests to backup locations.</p>
+</div>
+<div class="paragraph">
+<p>For optimal performance, you should configure all nodes as site masters. This
+increases the speed of backup requests because each node in the cluster can
+backup to remote sites directly without having to forward backup requests to
+site masters.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="xsite_backups-xsite"><a class="anchor" href="#xsite_backups-xsite"></a>1.2. Adding Backups to Caches</h3>
+<div class="paragraph">
+<p>Name remote sites as backup locations in your cache definitions.</p>
+</div>
+<div class="paragraph">
+<p>For example, the following diagram shows three caches, "customers", "eu-orders", and "us-orders":</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/xsite-caches.svg" alt="xsite caches">
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>In <strong>LON</strong>, "customers" names <strong>NYC</strong> as a backup location.</p>
+</li>
+<li>
+<p>In <strong>NYC</strong>, "customers" names <strong>LON</strong> as a backup location.</p>
+</li>
+<li>
+<p>"eu-orders" and "us-orders" do not have backups and are local to the respective cluster.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="xsite_backup_strategies-xsite"><a class="anchor" href="#xsite_backup_strategies-xsite"></a>1.3. Backup Strategies</h3>
+<div class="paragraph">
+<p>Infinispan clusters can use different strategies for backing up data to remote sites.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan replicates across sites at the same time that writes to local caches occur. For example, if a client writes "k1" to <strong>LON</strong>, Infinispan backs up "k1" to <strong>NYC</strong> at the same time.</p>
+</div>
+<div class="sect3">
+<h4 id="xsite_sync_backups-xsite"><a class="anchor" href="#xsite_sync_backups-xsite"></a>1.3.1. Synchronous Backups</h4>
+<div class="paragraph">
+<p>When Infinispan replicates data to backup locations, it waits until the
+operation completes before writing to the local cache.</p>
+</div>
+<div class="paragraph">
+<p>You can control how Infinispan handles writes to the local cache if backup
+operations fail. For example, you can configure Infinispan to attempt to abort
+local writes and throw exceptions if backups to remote sites fail.</p>
+</div>
+<div class="paragraph">
+<p>Synchronous backups also support two-phase commits with caches that participate
+in optimistic transactions. The first phase of the backup acquires a lock. The
+second phase commits the modification.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Two-phase commit with cross-site replication has a significant performance
+impact because it requires two round-trips across the network.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="xsite_async_backups-xsite"><a class="anchor" href="#xsite_async_backups-xsite"></a>1.3.2. Asynchronous Backups</h4>
+<div class="paragraph">
+<p>When Infinispan replicates data to backup locations, it does not wait until the
+operation completes before writing to the local cache.</p>
+</div>
+<div class="paragraph">
+<p>Asynchronous backup operations and writes to the local cache are independent of
+each other. If backup operations fail, write operations to the local cache
+continue and no exceptions occur.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="xsite_compare_backups-xsite"><a class="anchor" href="#xsite_compare_backups-xsite"></a>1.3.3. Synchronous vs Asynchronous Backups</h4>
+<div class="paragraph">
+<p>Synchronous backups offer the strongest guarantee of data consistency across
+sites. If <code>strategy=sync</code>, when <code>cache.put()</code> calls return you know the value
+is up to date in the local cache and in the backup locations.</p>
+</div>
+<div class="paragraph">
+<p>The trade-off for this consistency is performance. Synchronous backups have
+much greater latency in comparison to asynchronous backups.</p>
+</div>
+<div class="paragraph">
+<p>Asynchronous backups, on the other hand, do not add latency to client requests
+so they have no performance impact. However, if <code>strategy=async</code>, when
+<code>cache.put()</code> calls return you cannot be sure of the value in the backup
+locations is the same as in the local cache.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="xsite_auto_offline-xsite"><a class="anchor" href="#xsite_auto_offline-xsite"></a>1.4. Taking Sites Offline Automatically</h3>
+<div class="paragraph">
+<p>Backup configurations include timeout values for operations to replicate
+data to remote sites. When backup operations reach the timeout, Infinispan
+records the operation as a failure.</p>
+</div>
+<div class="paragraph">
+<p>To automatically take sites offline, you can then configure the
+number of <strong>consecutive</strong> failures that can occur.</p>
+</div>
+<div class="paragraph">
+<p>For example, the <strong>NYC</strong> backup configuration specifies five as the number of
+failures after which <strong>NYC</strong> goes offline. If <strong>LON</strong> attempts five consecutive
+backup operations that fail, Infinispan automatically takes <strong>NYC</strong> offline.
+<strong>LON</strong> then stops backing up to <strong>NYC</strong> until you bring the site back online.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;take-offline</span> <span class="attribute-name">after-failures</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">5</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-<span class="tag">&lt;/backup&gt;</span></code></pre> </div> </div> <div class="paragraph"> <p>You can also specify the amount of time to wait before taking sites offline. When backup operations fail, Infinispan waits before taking sites offline. If a backup request succeeds before the wait time runs out, Infinispan does not take the site offline.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="tag">&lt;/backup&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can also specify the amount of time to wait before taking sites offline.
+When backup operations fail, Infinispan waits before taking sites offline. If
+a backup request succeeds before the wait time runs out, Infinispan does not
+take the site offline.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;take-offline</span> <span class="attribute-name">after-failures</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">5</span><span class="delimiter">&quot;</span></span>
                 <span class="attribute-name">min-wait</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-<span class="tag">&lt;/backup&gt;</span></code></pre> </div> </div> <div class="paragraph"> <p>In the preceding example, if failures occur for 5 consecutive operations, Infinispan waits 10 seconds and, if no requests are successful within the 10 second wait time, Infinispan then takes <strong>NYC</strong> offline.</p> </div> <div class="paragraph"> <p>To use only a minimum wait time for automatically taking locations offline, set a negative or zero value for the <code>after-failures</code> attribute; for example:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="tag">&lt;/backup&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the preceding example, if failures occur for 5 consecutive operations,
+Infinispan waits 10 seconds and, if no requests are successful within the 10
+second wait time, Infinispan then takes <strong>NYC</strong> offline.</p>
+</div>
+<div class="paragraph">
+<p>To use only a minimum wait time for automatically taking locations offline, set
+a negative or zero value for the <code>after-failures</code> attribute; for example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;take-offline</span> <span class="attribute-name">after-failures</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">-1</span><span class="delimiter">&quot;</span></span>
                 <span class="attribute-name">min-wait</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-<span class="tag">&lt;/backup&gt;</span></code></pre> </div> </div> <div class="admonitionblock tip"> <table> <tr> <td class="icon"> <i class="fa icon-tip" title="Tip"></i> </td> <td class="content"> <div class="paragraph"> <p>You can manually take sites offline through the Infinispan command line interface or REST API.</p> </div> </td> </tr> </table> </div> <div class="paragraph"> <div class="title">Reference</div> <p><a href="#xsite_manage">Performing Cross-Site Replication Operations with the CLI or REST API</a></p> </div> </div> <div class="sect2"> <h3 id="xsite_state_transfer-xsite"><a class="anchor" href="#xsite_state_transfer-xsite"></a>1.5. State Transfer</h3> <div class="paragraph"> <p>State transfer is an administrative operation that synchronizes data between sites.</p> </div> <div class="paragraph"> <p>For example, <strong>LON</strong> goes offline and <strong>NYC</strong> starts handling client requests. When you bring <strong>LON</strong> back online, the Infinispan cluster in <strong>LON</strong> does not have the same data as the cluster in <strong>NYC</strong>.</p> </div> <div class="paragraph"> <p>To ensure the data is consistent between <strong>LON</strong> and <strong>NYC</strong>, you can push state from <strong>NYC</strong> to <strong>LON</strong>.</p> </div> <div class="ulist"> <ul> <li> <p>State transfer is bidirectional. For example, you can push state from <strong>NYC</strong> to <strong>LON</strong> or from <strong>LON</strong> to <strong>NYC</strong>.</p> </li> <li> <p>Pushing state to offline sites brings them back online.</p> </li> <li> <p>State transfer overwrites only data that exists on both sites, the originating site and the receiving site. Infinispan does not delete data.</p> <div class="paragraph"> <p>For example, "k2" exists on <strong>LON</strong> and <strong>NYC</strong>. "k2" is removed from <strong>NYC</strong> while <strong>LON</strong> is offline. When you bring <strong>LON</strong> back online, "k2" still exists at that location. If you push state from <strong>NYC</strong> to <strong>LON</strong>, the transfer does not affect "k2" on <strong>LON</strong>.</p> </div> <div class="admonitionblock tip"> <table> <tr> <td class="icon"> <i class="fa icon-tip" title="Tip"></i> </td> <td class="content"> <div class="paragraph"> <p>To ensure contents of the cache are identical after state transfer, remove all data from the cache on the receiving site before pushing state. Use the <code>clear()</code> method.</p> </div> </td> </tr> </table> </div> </li> <li> <p>State transfer does not overwrite updates to data that occur after you initiate the push.</p> <div class="paragraph"> <p>For example, "k1,v1" exists on <strong>LON</strong> and <strong>NYC</strong>. <strong>LON</strong> goes offline so you push state transfer to <strong>LON</strong> from <strong>NYC</strong>, which brings <strong>LON</strong> back online. Before state transfer completes, a client puts "k1,v2" on <strong>LON</strong>.</p> </div> <div class="paragraph"> <p>In this case the state transfer from <strong>NYC</strong> does not overwrite "k1,v2" because that modification happened after you initiated the push.</p> </div> </li> </ul> </div> <div class="ulist"> <div class="title">Reference</div> <ul> <li> <p><a href="https://docs.jboss.org/infinispan/10.1/apidocs/org/infinispan/Cache.html#clear()">org.infinispan.Cache.clear()</a></p> </li> <li> <p><a href="../cli/cli.html#deleting_cache_entries">Clearing Caches with the CLI</a></p> <div class="admonitionblock tip"> <table> <tr> <td class="icon"> <i class="fa icon-tip" title="Tip"></i> </td> <td class="content"> <div class="paragraph"> <p>Run <code>help clearcache</code> from the CLI for command details and examples.</p> </div> </td> </tr> </table> </div> </li> <li> <p><a href="../rest/rest.html#rest_v2_clear_cache">Clearing Caches with the REST API</a></p> </li> </ul> </div> </div> <div class="sect2"> <h3 id="xsite_active_passive-xsite"><a class="anchor" href="#xsite_active_passive-xsite"></a>1.6. Client Connections Across Sites</h3> <div class="paragraph"> <p>Clients can write to Infinispan clusters in either an Active/Passive or Active/Active configuration.</p> </div> <div class="paragraph"> <div class="title">Active/Passive</div> <p>The following diagram illustrates Active/Passive where Infinispan handles client requests from one site only:</p> </div> <div class="imageblock"> <div class="content"> <img src="../../topics/images/xsite-active-passive.svg" alt="xsite active passive"> </div> </div> <div class="paragraph"> <p>In the preceding image:</p> </div> <div class="olist arabic"> <ol class="arabic"> <li> <p>Client connects to the Infinispan cluster at <strong>LON</strong>.</p> </li> <li> <p>Client writes "k1" to the cache.</p> </li> <li> <p>The site master at <strong>LON</strong>, "n1", sends the request to replicate "k1" to the site master at <strong>NYC</strong>, "nA".</p> </li> </ol> </div> <div class="paragraph"> <p>With Active/Passive, <strong>NYC</strong> provides data redundancy. If the Infinispan cluster at <strong>LON</strong> goes offline for any reason, clients can start sending requests to <strong>NYC</strong>. When you bring <strong>LON</strong> back online you can synchronize data with <strong>NYC</strong> and then switch clients back to <strong>LON</strong>.</p> </div> <div class="paragraph"> <div class="title">Active/Active</div> <p>The following diagram illustrates Active/Active where Infinispan handles client requests at two sites:</p> </div> <div class="imageblock"> <div class="content"> <img src="../../topics/images/xsite-active-active.svg" alt="xsite active active"> </div> </div> <div class="paragraph"> <p>In the preceding image:</p> </div> <div class="olist arabic"> <ol class="arabic"> <li> <p>Client A connects to the Infinispan cluster at <strong>LON</strong>.</p> </li> <li> <p>Client A writes "k1" to the cache.</p> </li> <li> <p>Client B connects to the Infinispan cluster at <strong>NYC</strong>.</p> </li> <li> <p>Client B writes "k2" to the cache.</p> </li> <li> <p>Site masters at <strong>LON</strong> and <strong>NYC</strong> send requests so that "k1" is replicated to <strong>NYC</strong> and "k2" is replicated to <strong>LON</strong>.</p> </li> </ol> </div> <div class="paragraph"> <p>With Active/Active both <strong>NYC</strong> and <strong>LON</strong> replicate data to remote caches while handling client requests. If either <strong>NYC</strong> or <strong>LON</strong> go offline, clients can start sending requests to the online site. You can then bring offline sites back online, push state to synchronize data, and switch clients as required.</p> </div> <div class="sect3"> <h4 id="conflicts-xsite"><a class="anchor" href="#conflicts-xsite"></a>1.6.1. Conflicting Entries with Cross-Site Replication</h4> <div class="paragraph"> <p>Conflicting entries can occur with Active/Active site configurations if clients write to the same entries at the same time but at different sites.</p> </div> <div class="paragraph"> <p>For example, client A writes to "k1" in <strong>LON</strong> at the same time that client B writes to "k1" in <strong>NYC</strong>. In this case, "k1" has a different value in <strong>LON</strong> than in <strong>NYC</strong>.</p> </div> <div class="paragraph"> <p>With synchronous replication, concurrent writes result in deadlocks because both sites lock the same key in different orders. To resolve deadlocks, client applications must wait until the locks time out.</p> </div> <div class="paragraph"> <p>With asynchronous replication, concurrent writes result in conflicting values because sites replicate after entries are modified locally. After replication occurs, there is no guarantee which value for "k1" exists at which site.</p> </div> <div class="ulist"> <ul> <li> <p>Keys have conflicting values.</p> </li> <li> <p>One of the conflicting values is overwritten if sites do not replicate values at the same time. In this case, one of the values is lost and there is no guarantee which value is saved.</p> </li> </ul> </div> <div class="paragraph"> <p>In all cases, inconsistencies in key values are resolved after the next non-conflicting <code>put()</code> operation updates the value.</p> </div> <div class="admonitionblock note"> <table> <tr> <td class="icon"> <i class="fa icon-note" title="Note"></i> </td> <td class="content"> <div class="paragraph"> <p>There currently is no conflict resolution policy that client applications can use to handle conflicts in asynchronous mode. However, conflict resolution techniques are planned for a future Infinispan version.</p> </div> </td> </tr> </table> </div> </div> </div> <div class="sect2"> <h3 id="xsite_expiration-xsite"><a class="anchor" href="#xsite_expiration-xsite"></a>1.7. Expiration and Cross-Site Replication</h3> <div class="paragraph"> <p>Infinispan expiration controls how long entries remain in the cache.</p> </div> <div class="ulist"> <ul> <li> <p><code>lifespan</code> expiration is suitable for cross-site replication. When entries reach the maximum lifespan, Infinispan expires them independently of the remote sites.</p> </li> <li> <p><code>max-idle</code> expiration does not work with cross-site replication. Infinispan cannot determine when cache entries reach the idle timeout in remote sites.</p> </li> </ul> </div> </div> </div> </div> <div class="sect1"> <h2 id="xsite_configure"><a class="anchor" href="#xsite_configure"></a>2. Configuring Infinispan for Cross-Site Replication</h2> <div class="sectionbody"> <div class="paragraph"> <p>Configuring Infinispan to replicate data across sites, you first set up cluster transport so Infinispan clusters can discover each other and site masters can communicate. You then add backup locations to cache definitions in your Infinispan configuration.</p> </div> <div class="sect2"> <h3 id="configure_relay-xsite"><a class="anchor" href="#configure_relay-xsite"></a>2.1. Configuring Cluster Transport for Cross-Site Replication</h3> <div class="paragraph"> <p>Add JGroups RELAY2 to your transport layer so that Infinispan clusters can communicate with backup locations.</p> </div> <div class="olist arabic"> <div class="title">Procedure</div> <ol class="arabic"> <li> <p>Open <code>infinispan.xml</code> for editing.</p> </li> <li> <p>Add the RELAY2 protocol to a JGroups stack, for example:</p> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;jgroups&gt;</span>
+<span class="tag">&lt;/backup&gt;</span></code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>You can manually take sites offline through the Infinispan command line
+interface or REST API.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<div class="title">Reference</div>
+<p><a href="#xsite_manage">Performing Cross-Site Replication Operations with the CLI or REST API</a></p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="xsite_state_transfer-xsite"><a class="anchor" href="#xsite_state_transfer-xsite"></a>1.5. State Transfer</h3>
+<div class="paragraph">
+<p>State transfer is an administrative operation that synchronizes data between
+sites.</p>
+</div>
+<div class="paragraph">
+<p>For example, <strong>LON</strong> goes offline and <strong>NYC</strong> starts handling client requests.
+When you bring <strong>LON</strong> back online, the Infinispan cluster in <strong>LON</strong> does not
+have the same data as the cluster in <strong>NYC</strong>.</p>
+</div>
+<div class="paragraph">
+<p>To ensure the data is consistent between <strong>LON</strong> and <strong>NYC</strong>, you can push
+state from <strong>NYC</strong> to <strong>LON</strong>.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>State transfer is bidirectional. For example, you can push state from <strong>NYC</strong>
+to <strong>LON</strong> or from <strong>LON</strong> to <strong>NYC</strong>.</p>
+</li>
+<li>
+<p>Pushing state to offline sites brings them back online.</p>
+</li>
+<li>
+<p>State transfer overwrites only data that exists on both sites, the originating site and the receiving site. Infinispan does not delete data.</p>
+<div class="paragraph">
+<p>For example, "k2" exists on <strong>LON</strong> and <strong>NYC</strong>. "k2" is removed from <strong>NYC</strong>
+while <strong>LON</strong> is offline. When you bring <strong>LON</strong> back online, "k2" still exists
+at that location. If you push state from <strong>NYC</strong> to <strong>LON</strong>, the transfer does
+not affect "k2" on <strong>LON</strong>.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>To ensure contents of the cache are identical after state transfer, remove all
+data from the cache on the receiving site before pushing state. Use the
+<code>clear()</code> method.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>State transfer does not overwrite updates to data that occur after you
+initiate the push.</p>
+<div class="paragraph">
+<p>For example, "k1,v1" exists on <strong>LON</strong> and <strong>NYC</strong>. <strong>LON</strong> goes offline so you
+push state transfer to <strong>LON</strong> from <strong>NYC</strong>, which brings <strong>LON</strong> back online.
+Before state transfer completes, a client puts "k1,v2" on <strong>LON</strong>.</p>
+</div>
+<div class="paragraph">
+<p>In this case the state transfer from <strong>NYC</strong> does not overwrite "k1,v2" because
+that modification happened after you initiated the push.</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/10.1/apidocs/org/infinispan/Cache.html#clear()">org.infinispan.Cache.clear()</a></p>
+</li>
+<li>
+<p><a href="../cli/cli.html#deleting_cache_entries">Clearing Caches with the CLI</a></p>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Run <code>help clearcache</code> from the CLI for command details and examples.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="../rest/rest.html#rest_v2_clear_cache">Clearing Caches with the REST API</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="xsite_active_passive-xsite"><a class="anchor" href="#xsite_active_passive-xsite"></a>1.6. Client Connections Across Sites</h3>
+<div class="paragraph">
+<p>Clients can write to Infinispan clusters in either an Active/Passive or
+Active/Active configuration.</p>
+</div>
+<div class="paragraph">
+<div class="title">Active/Passive</div>
+<p>The following diagram illustrates Active/Passive where Infinispan handles
+client requests from one site only:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/xsite-active-passive.svg" alt="xsite active passive">
+</div>
+</div>
+<div class="paragraph">
+<p>In the preceding image:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Client connects to the Infinispan cluster at <strong>LON</strong>.</p>
+</li>
+<li>
+<p>Client writes "k1" to the cache.</p>
+</li>
+<li>
+<p>The site master at <strong>LON</strong>, "n1", sends the request to replicate "k1" to the site master at <strong>NYC</strong>, "nA".</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>With Active/Passive, <strong>NYC</strong> provides data redundancy. If the Infinispan
+cluster at <strong>LON</strong> goes offline for any reason, clients can start sending
+requests to <strong>NYC</strong>. When you bring <strong>LON</strong> back online you can synchronize
+data with <strong>NYC</strong> and then switch clients back to <strong>LON</strong>.</p>
+</div>
+<div class="paragraph">
+<div class="title">Active/Active</div>
+<p>The following diagram illustrates Active/Active where Infinispan handles
+client requests at two sites:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/xsite-active-active.svg" alt="xsite active active">
+</div>
+</div>
+<div class="paragraph">
+<p>In the preceding image:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Client A connects to the Infinispan cluster at <strong>LON</strong>.</p>
+</li>
+<li>
+<p>Client A writes "k1" to the cache.</p>
+</li>
+<li>
+<p>Client B connects to the Infinispan cluster at <strong>NYC</strong>.</p>
+</li>
+<li>
+<p>Client B writes "k2" to the cache.</p>
+</li>
+<li>
+<p>Site masters at <strong>LON</strong> and <strong>NYC</strong> send requests so that "k1" is replicated to <strong>NYC</strong> and "k2" is replicated to <strong>LON</strong>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>With Active/Active both <strong>NYC</strong> and <strong>LON</strong> replicate data to remote caches
+while handling client requests. If either <strong>NYC</strong> or <strong>LON</strong> go offline,
+clients can start sending requests to the online site. You can then bring
+offline sites back online, push state to synchronize data, and switch clients
+as required.</p>
+</div>
+<div class="sect3">
+<h4 id="conflicts-xsite"><a class="anchor" href="#conflicts-xsite"></a>1.6.1. Conflicting Entries with Cross-Site Replication</h4>
+<div class="paragraph">
+<p>Conflicting entries can occur with Active/Active site configurations if clients
+write to the same entries at the same time but at different sites.</p>
+</div>
+<div class="paragraph">
+<p>For example, client A writes to "k1" in <strong>LON</strong> at the same time that client B
+writes to "k1" in <strong>NYC</strong>. In this case, "k1" has a different value in <strong>LON</strong>
+than in <strong>NYC</strong>.</p>
+</div>
+<div class="paragraph">
+<p>With synchronous replication, concurrent writes result in deadlocks because
+both sites lock the same key in different orders. To resolve deadlocks, client
+applications must wait until the locks time out.</p>
+</div>
+<div class="paragraph">
+<p>With asynchronous replication, concurrent writes result in conflicting values
+because sites replicate after entries are modified locally.  After replication occurs, there is no guarantee which value for "k1" exists at which site.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Keys have conflicting values.</p>
+</li>
+<li>
+<p>One of the conflicting values is overwritten if sites do not replicate values at the same time. In this case, one of the values is lost and there is no guarantee which value is saved.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>In all cases, inconsistencies in key values are resolved after the next
+non-conflicting <code>put()</code> operation updates the value.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>There currently is no conflict resolution policy that client applications can
+use to handle conflicts in asynchronous mode. However, conflict resolution
+techniques are planned for a future Infinispan version.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="xsite_expiration-xsite"><a class="anchor" href="#xsite_expiration-xsite"></a>1.7. Expiration and Cross-Site Replication</h3>
+<div class="paragraph">
+<p>Infinispan expiration controls how long entries remain in the cache.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>lifespan</code> expiration is suitable for cross-site replication. When entries reach the maximum lifespan, Infinispan expires them independently of the remote sites.</p>
+</li>
+<li>
+<p><code>max-idle</code> expiration does not work with cross-site replication. Infinispan cannot determine when cache entries reach the idle timeout in remote sites.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="xsite_configure"><a class="anchor" href="#xsite_configure"></a>2. Configuring Infinispan for Cross-Site Replication</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Configuring Infinispan to replicate data across sites, you first set up cluster transport so Infinispan clusters can discover each other and site masters can communicate. You then add backup locations to cache definitions in your Infinispan configuration.</p>
+</div>
+<div class="sect2">
+<h3 id="configure_relay-xsite"><a class="anchor" href="#configure_relay-xsite"></a>2.1. Configuring Cluster Transport for Cross-Site Replication</h3>
+<div class="paragraph">
+<p>Add JGroups RELAY2 to your transport layer so that Infinispan clusters can
+communicate with backup locations.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Open <code>infinispan.xml</code> for editing.</p>
+</li>
+<li>
+<p>Add the RELAY2 protocol to a JGroups stack, for example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;jgroups&gt;</span>
    <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">xsite</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">udp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
       <span class="tag">&lt;relay.RELAY2</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max_site_masters</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;remote-sites</span> <span class="attribute-name">default-stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">tcp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
@@ -441,9 +1026,44 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
          <span class="tag">&lt;remote-site</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;/remote-sites&gt;</span>
    <span class="tag">&lt;/stack&gt;</span>
-<span class="tag">&lt;/jgroups&gt;</span></code></pre> </div> </div> </li> <li> <p>Configure Infinispan cluster transport to use the stack, as in the following example:</p> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="tag">&lt;/jgroups&gt;</span></code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Configure Infinispan cluster transport to use the stack, as in the following example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;transport</span> <span class="attribute-name">cluster</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${cluster.name}</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">xsite</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-<span class="tag">&lt;/cache-container&gt;</span></code></pre> </div> </div> </li> <li> <p>Save and close <code>infinispan.xml</code>.</p> </li> </ol> </div> <div class="ulist"> <div class="title">Reference</div> <ul> <li> <p><a href="#ref_relay-xsite">JGroups RELAY2 Stacks</a></p> </li> <li> <p><a href="https://docs.jboss.org/infinispan/10.1/configdocs/">Infinispan Configuration Schema</a></p> </li> </ul> </div> <div class="sect3"> <h4 id="ref_relay-xsite"><a class="anchor" href="#ref_relay-xsite"></a>2.1.1. JGroups RELAY2 Stacks</h4> <div class="paragraph"> <p>Infinispan clusters use JGroups RELAY2 for inter-cluster discovery and communication.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;jgroups&gt;</span>
+<span class="tag">&lt;/cache-container&gt;</span></code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Save and close <code>infinispan.xml</code>.</p>
+</li>
+</ol>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="#ref_relay-xsite">JGroups RELAY2 Stacks</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/10.1/configdocs/">Infinispan Configuration Schema</a></p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="ref_relay-xsite"><a class="anchor" href="#ref_relay-xsite"></a>2.1.1. JGroups RELAY2 Stacks</h4>
+<div class="paragraph">
+<p>Infinispan clusters use JGroups RELAY2 for inter-cluster discovery and communication.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;jgroups&gt;</span>
    <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">xsite</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="1"></i><b>(1)</b>
           <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">udp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b>
       <span class="tag">&lt;relay.RELAY2</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="3"></i><b>(3)</b>
@@ -454,7 +1074,47 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
          <span class="tag">&lt;remote-site</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;/remote-sites&gt;</span>
    <span class="tag">&lt;/stack&gt;</span>
-<span class="tag">&lt;/jgroups&gt;</span></code></pre> </div> </div> <div class="colist arabic"> <table> <tr> <td><i class="conum" data-value="1"></i><b>1</b></td> <td>Defines a stack named "xsite" that declares which protocols to use for your Infinispan cluster transport.</td> </tr> <tr> <td><i class="conum" data-value="2"></i><b>2</b></td> <td>Uses the default JGroups UDP stack for intra-cluster traffic.</td> </tr> <tr> <td><i class="conum" data-value="3"></i><b>3</b></td> <td>Adds <code>RELAY2</code> to the stack for inter-cluster transport.</td> </tr> <tr> <td><i class="conum" data-value="4"></i><b>4</b></td> <td>Names the local site. Infinispan replicates data in caches from this site to backup locations.</td> </tr> <tr> <td><i class="conum" data-value="5"></i><b>5</b></td> <td>Configures a maximum of 1000 site masters for the local cluster. You should set <code>max_site_masters</code> &gt;= the number of nodes in the Infinispan cluster for optimal performance with backup requests.</td> </tr> <tr> <td><i class="conum" data-value="6"></i><b>6</b></td> <td>Specifies all site names and uses the default JGroups TCP stack for inter-cluster transport.</td> </tr> <tr> <td><i class="conum" data-value="7"></i><b>7</b></td> <td>Names each remote site as a backup location.</td> </tr> </table> </div> </div> <div class="sect3"> <h4 id="ref_relay_custom-xsite"><a class="anchor" href="#ref_relay_custom-xsite"></a>2.1.2. Custom JGroups RELAY2 Stacks</h4> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;jgroups&gt;</span>
+<span class="tag">&lt;/jgroups&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Defines a stack named "xsite" that declares which protocols to use for your Infinispan cluster transport.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Uses the default JGroups UDP stack for intra-cluster traffic.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Adds <code>RELAY2</code> to the stack for inter-cluster transport.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Names the local site. Infinispan replicates data in caches from this site to backup locations.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Configures a maximum of 1000 site masters for the local cluster. You should set <code>max_site_masters</code> &gt;= the number of nodes in the Infinispan cluster for optimal performance with backup requests.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>Specifies all site names and uses the default JGroups TCP stack for inter-cluster transport.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>Names each remote site as a backup location.</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="ref_relay_custom-xsite"><a class="anchor" href="#ref_relay_custom-xsite"></a>2.1.2. Custom JGroups RELAY2 Stacks</h4>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;jgroups&gt;</span>
    <span class="tag">&lt;stack-file</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">relay-global</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jgroups-relay.xml</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
    <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">xsite</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">udp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
       <span class="tag">&lt;relay.RELAY2</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups</span><span class="delimiter">&quot;</span></span>
@@ -465,7 +1125,25 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
          <span class="tag">&lt;remote-site</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;/remote-sites&gt;</span>
    <span class="tag">&lt;/stack&gt;</span>
-<span class="tag">&lt;/jgroups&gt;</span></code></pre> </div> </div> <div class="colist arabic"> <table> <tr> <td><i class="conum" data-value="1"></i><b>1</b></td> <td>Adds a custom RELAY2 stack defined in <code>jgroups-relay.xml</code>.</td> </tr> <tr> <td><i class="conum" data-value="2"></i><b>2</b></td> <td>Sets the maximum number of site masters and optionally specifies additional RELAY2 properties. See JGroups RELAY2 documentation.</td> </tr> </table> </div> <div class="listingblock"> <div class="title">Example <code>jgroups-relay.xml</code></div> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;config</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups</span><span class="delimiter">&quot;</span></span>
+<span class="tag">&lt;/jgroups&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Adds a custom RELAY2 stack defined in <code>jgroups-relay.xml</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Sets the maximum number of site masters and optionally specifies additional RELAY2 properties. See JGroups RELAY2 documentation.</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="title">Example <code>jgroups-relay.xml</code></div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;config</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups</span><span class="delimiter">&quot;</span></span>
       <span class="attribute-name">xmlns:xsi</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">http://www.w3.org/2001/XMLSchema-instance</span><span class="delimiter">&quot;</span></span>
       <span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups http://www.jgroups.org/schema/jgroups-4.1.xsd</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
 
@@ -486,40 +1164,608 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
              <span class="attribute-name">ergonomics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
 
     <span class="comment">&lt;!-- Provide other configuration as required. --&gt;</span>
-<span class="tag">&lt;/config&gt;</span></code></pre> </div> </div> <div class="ulist"> <div class="title">Reference</div> <ul> <li> <p><a href="../configuring/configuring.html#cluster_transport">Cluster Transport Configuration</a></p> </li> <li> <p><a href="http://www.jgroups.org/manual4/index.html#RELAY2">JGroups RELAY2</a></p> </li> <li> <p><a href="http://www.jgroups.org/manual4/index.html#Relay2Advanced">Relaying between multiple sites (RELAY2)</a></p> </li> </ul> </div> </div> </div> <div class="sect2"> <h3 id="configure_backups-xsite"><a class="anchor" href="#configure_backups-xsite"></a>2.2. Adding Backup Locations to Caches</h3> <div class="paragraph"> <p>Specify the names of remote sites so Infinispan can back up data to those locations.</p> </div> <div class="olist arabic"> <div class="title">Procedure</div> <ol class="arabic"> <li> <p>Add the <code>backups</code> element to your cache definition.</p> </li> <li> <p>Specify the name of each remote site with the <code>backup</code> element.</p> <div class="paragraph"> <p>As an example, in the <strong>LON</strong> configuration, specify <strong>NYC</strong> as the remote site.</p> </div> </li> <li> <p>Repeat the preceding steps so that each site is a backup for all other sites. For example, you cannot add <strong>LON</strong> as a backup for <strong>NYC</strong> without adding <strong>NYC</strong> as a backup for <strong>LON</strong>.</p> </li> </ol> </div> <div class="admonitionblock note"> <table> <tr> <td class="icon"> <i class="fa icon-note" title="Note"></i> </td> <td class="content"> <div class="paragraph"> <p>Cache configurations can be different across sites and use different backup strategies. Infinispan replicates data based on cache names.</p> </div> </td> </tr> </table> </div> <div class="listingblock"> <div class="title">Example "customers" configuration in <strong>LON</strong></div> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="tag">&lt;/config&gt;</span></code></pre>
+</div>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="../configuring/configuring.html#cluster_transport">Cluster Transport Configuration</a></p>
+</li>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#RELAY2">JGroups RELAY2</a></p>
+</li>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#Relay2Advanced">Relaying between multiple sites (RELAY2)</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configure_backups-xsite"><a class="anchor" href="#configure_backups-xsite"></a>2.2. Adding Backup Locations to Caches</h3>
+<div class="paragraph">
+<p>Specify the names of remote sites so Infinispan can back up data to those locations.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Add the <code>backups</code> element to your cache definition.</p>
+</li>
+<li>
+<p>Specify the name of each remote site with the <code>backup</code> element.</p>
+<div class="paragraph">
+<p>As an example, in the <strong>LON</strong> configuration, specify <strong>NYC</strong> as the remote site.</p>
+</div>
+</li>
+<li>
+<p>Repeat the preceding steps so that each site is a backup for all other sites. For example, you cannot add <strong>LON</strong> as a backup for <strong>NYC</strong> without adding <strong>NYC</strong> as a backup for <strong>LON</strong>.</p>
+</li>
+</ol>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Cache configurations can be different across sites and use different backup
+strategies. Infinispan replicates data based on cache names.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="title">Example "customers" configuration in <strong>LON</strong></div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;backups&gt;</span>
     <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
   <span class="tag">&lt;/backups&gt;</span>
-<span class="tag">&lt;/replicated-cache&gt;</span></code></pre> </div> </div> <div class="listingblock"> <div class="title">Example "customers" configuration in <strong>NYC</strong></div> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Example "customers" configuration in <strong>NYC</strong></div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;backups&gt;</span>
     <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
   <span class="tag">&lt;/backups&gt;</span>
-<span class="tag">&lt;/replicated-cache&gt;</span></code></pre> </div> </div> <div class="ulist"> <div class="title">Reference</div> <ul> <li> <p><a href="https://docs.jboss.org/infinispan/10.1/configdocs/">Infinispan Configuration Schema</a></p> </li> </ul> </div> </div> <div class="sect2"> <h3 id="configure_backupfor-xsite"><a class="anchor" href="#configure_backupfor-xsite"></a>2.3. Backing Up to Caches with Different Names</h3> <div class="paragraph"> <p>By default, Infinispan replicates data between caches that have the same name.</p> </div> <div class="ulist"> <div class="title">Procedure</div> <ul> <li> <p>Use <code>backup-for</code> to replicate data from a remote site into a cache with a different name on the local site.</p> </li> </ul> </div> <div class="paragraph"> <p>For example, the following configuration backs up the "customers" cache on <strong>LON</strong> to the "eu-customers" cache on <strong>NYC</strong>.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">eu-customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/10.1/configdocs/">Infinispan Configuration Schema</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configure_backupfor-xsite"><a class="anchor" href="#configure_backupfor-xsite"></a>2.3. Backing Up to Caches with Different Names</h3>
+<div class="paragraph">
+<p>By default, Infinispan replicates data between caches that have the same name.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Use <code>backup-for</code> to replicate data from a remote site into a cache with a
+different name on the local site.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For example, the following configuration backs up the "customers" cache on
+<strong>LON</strong> to the "eu-customers" cache on <strong>NYC</strong>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">eu-customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;backups&gt;</span>
     <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
   <span class="tag">&lt;/backups&gt;</span>
   <span class="tag">&lt;backup-for</span> <span class="attribute-name">remote-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">customers</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">remote-site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
-<span class="tag">&lt;/replicated-cache&gt;</span></code></pre> </div> </div> </div> <div class="sect2"> <h3 id="verify_xsite_view-xsite"><a class="anchor" href="#verify_xsite_view-xsite"></a>2.4. Verifying Cross-Site Views</h3> <div class="paragraph"> <p>After you configure Infinispan for cross-site replication, you should verify that Infinispan clusters successfully form cross-site views.</p> </div> <div class="ulist"> <div class="title">Procedure</div> <ul> <li> <p>Check log messages for <code>ISPN000439: Received new x-site view</code> messages.</p> </li> </ul> </div> <div class="paragraph"> <p>For example, if the Infinispan cluster in <strong>LON</strong> has formed a cross-site view with the Infinispan cluster in <strong>NYC</strong>, it provides the following messages:</p> </div> <div class="listingblock"> <div class="content"> <pre>INFO  [org.infinispan.XSITE] (jgroups-5,${server.hostname}) ISPN000439: Received new x-site view: [NYC]
-INFO  [org.infinispan.XSITE] (jgroups-7,${server.hostname}) ISPN000439: Received new x-site view: [NYC, LON]</pre> </div> </div> </div> <div class="sect2"> <h3 id="configure_clients-xsite"><a class="anchor" href="#configure_clients-xsite"></a>2.5. Configuring Hot Rod Clients for Cross-Site Replication</h3> <div class="paragraph"> <p>Configure Hot Rod clients to use Infinispan clusters at different sites.</p> </div> <div class="listingblock"> <div class="title"><code>hotrod-client.properties</code></div> <div class="content"> <pre class="CodeRay highlight nowrap"><code># Servers at the active site
+<span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="verify_xsite_view-xsite"><a class="anchor" href="#verify_xsite_view-xsite"></a>2.4. Verifying Cross-Site Views</h3>
+<div class="paragraph">
+<p>After you configure Infinispan for cross-site replication, you should verify
+that Infinispan clusters successfully form cross-site views.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Check log messages for <code>ISPN000439: Received new x-site view</code> messages.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For example, if the Infinispan cluster in <strong>LON</strong> has formed a cross-site view
+with the Infinispan cluster in <strong>NYC</strong>, it provides the following messages:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>INFO  [org.infinispan.XSITE] (jgroups-5,${server.hostname}) ISPN000439: Received new x-site view: [NYC]
+INFO  [org.infinispan.XSITE] (jgroups-7,${server.hostname}) ISPN000439: Received new x-site view: [NYC, LON]</pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configure_clients-xsite"><a class="anchor" href="#configure_clients-xsite"></a>2.5. Configuring Hot Rod Clients for Cross-Site Replication</h3>
+<div class="paragraph">
+<p>Configure Hot Rod clients to use Infinispan clusters at different sites.</p>
+</div>
+<div class="listingblock">
+<div class="title"><code>hotrod-client.properties</code></div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code># Servers at the active site
 infinispan.client.hotrod.server_list = LON_host1:11222,LON_host2:11222,LON_host3:11222
 
 # Servers at the backup site
-infinispan.client.hotrod.cluster.NYC = NYC_hostA:11222,NYC_hostB:11222,NYC_hostC:11222,NYC_hostD:11222</code></pre> </div> </div> <div class="listingblock"> <div class="title"><code>ConfigurationBuilder</code></div> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="java">ConfigurationBuilder builder = <span class="keyword">new</span> ConfigurationBuilder();
+infinispan.client.hotrod.cluster.NYC = NYC_hostA:11222,NYC_hostB:11222,NYC_hostC:11222,NYC_hostD:11222</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title"><code>ConfigurationBuilder</code></div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="java">ConfigurationBuilder builder = <span class="keyword">new</span> ConfigurationBuilder();
 builder.addServers(<span class="string"><span class="delimiter">&quot;</span><span class="content">LON_host1:11222;LON_host2:11222;LON_host3:11222</span><span class="delimiter">&quot;</span></span>)
        .addCluster(<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span>)
-       .addClusterNodes(<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC_hostA:11222;NYC_hostB:11222;NYC_hostC:11222;NYC_hostD:11222</span><span class="delimiter">&quot;</span></span>)</code></pre> </div> </div> <div class="admonitionblock tip"> <table> <tr> <td class="icon"> <i class="fa icon-tip" title="Tip"></i> </td> <td class="content"> <div class="paragraph"> <p>Use the following methods to switch Hot Rod clients to the default cluster or to a cluster at a different site:</p> </div> <div class="ulist"> <ul> <li> <p><code>RemoteCacheManager.switchToDefaultCluster()</code></p> </li> <li> <p><code>RemoteCacheManager.switchToCluster(${site.name})</code></p> </li> </ul> </div> </td> </tr> </table> </div> <div class="ulist"> <div class="title">Reference</div> <ul> <li> <p><a href="https://docs.jboss.org/infinispan/10.1/apidocs/org/infinispan/client/hotrod/configuration/package-summary.html#package.description">org.infinispan.client.hotrod.configuration package description</a></p> </li> <li> <p><a href="https://docs.jboss.org/infinispan/10.1/apidocs/org/infinispan/client/hotrod/configuration/ConfigurationBuilder.html">org.infinispan.client.hotrod.configuration.ConfigurationBuilder</a></p> </li> <li> <p><a href="https://docs.jboss.org/infinispan/10.1/apidocs/org/infinispan/client/hotrod/RemoteCacheManager.html#RemoteCacheManager-java.net.URL-">org.infinispan.client.hotrod.RemoteCacheManager</a></p> </li> </ul> </div> </div> </div> </div> <div class="sect1"> <h2 id="xsite_manage"><a class="anchor" href="#xsite_manage"></a>3. Performing Cross-Site Replication Operations</h2> <div class="sectionbody"> <div class="paragraph"> <p>Bring sites online and offline. Transfer cache state to remote sites.</p> </div> <div class="sect2"> <h3 id="xsite_operations_cli"><a class="anchor" href="#xsite_operations_cli"></a>3.1. Cross-Site Operations with the CLI</h3> <div class="paragraph"> <p>The Infinispan command line interface lets you remotely connect to Infinispan servers, manage sites, and push state transfer to backup locations.</p> </div> <div class="ulist"> <div class="title">Prerequisites</div> <ul> <li> <p>Start the Infinispan CLI.</p> </li> <li> <p>Connect to a running Infinispan cluster.</p> </li> </ul> </div> <div class="sect3"> <h4 id="manage_sites-xsite"><a class="anchor" href="#manage_sites-xsite"></a>3.1.1. Bringing Backup Locations Offline and Online</h4> <div class="paragraph"> <p>Take backup locations offline manually and bring them back online.</p> </div> <div class="ulist"> <div class="title">Procedure</div> <ul> <li> <p>Check if backup locations are online or offline with the <code>site status</code> command:</p> <div class="listingblock"> <div class="content"> <pre>//containers/default]&gt; site status --cache=cacheName --site=NYC</pre> </div> </div> <div class="admonitionblock note"> <table> <tr> <td class="icon"> <i class="fa icon-note" title="Note"></i> </td> <td class="content"> <div class="paragraph"> <p><code>--site</code> is an optional argument. If not set, the CLI returns all backup locations.</p> </div> </td> </tr> </table> </div> </li> <li> <p>Bring backup locations online with the <code>bring-online</code> command:</p> <div class="listingblock"> <div class="content"> <pre>//containers/default]&gt; site bring-online --cache=customers --site=NYC</pre> </div> </div> </li> <li> <p>Take backup locations offline with the <code>take-offline</code> command:</p> <div class="listingblock"> <div class="content"> <pre>//containers/default]&gt; site take-offline --cache=customers --site=NYC</pre> </div> </div> </li> </ul> </div> <div class="paragraph"> <p>For more information and examples, run the <code>help site</code> command.</p> </div> </div> <div class="sect3"> <h4 id="cli_xsite_push-xsite"><a class="anchor" href="#cli_xsite_push-xsite"></a>3.1.2. Pushing State to Backup Locations</h4> <div class="paragraph"> <p>Transfer cache state to remote backup locations.</p> </div> <div class="ulist"> <div class="title">Procedure</div> <ul> <li> <p>Use the <code>site</code> command to push state transfer, as in the following example:</p> <div class="listingblock"> <div class="content"> <pre>//containers/default]&gt; site push-site-state --cache=cacheName --site=NYC</pre> </div> </div> </li> </ul> </div> <div class="paragraph"> <p>For more information and examples, run the <code>help site</code> command.</p> </div> <div class="paragraph"> <div class="title">Reference</div> <p><a href="../cli/cli.html">Infinispan Command Line Interface</a></p> </div> </div> </div> <div class="sect2"> <h3 id="xsite_operations_rest"><a class="anchor" href="#xsite_operations_rest"></a>3.2. Cross-Site Operations with the REST API</h3> <div class="paragraph"> <p>Infinispan servers provide a REST API that allows you to perform cross-site operations.</p> </div> <div class="sect3"> <h4 id="rest_v2_xsite_sites_status"><a class="anchor" href="#rest_v2_xsite_sites_status"></a>3.2.1. Getting Status of All Backup Locations</h4> <div class="paragraph"> <p>Retrieve the status of all backup locations with <code>GET</code> requests.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/</code></pre> </div> </div> <div class="paragraph"> <p>Infinispan responds with the status of each backup location in JSON format, as in the following example:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="json">{
+       .addClusterNodes(<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC_hostA:11222;NYC_hostB:11222;NYC_hostC:11222;NYC_hostD:11222</span><span class="delimiter">&quot;</span></span>)</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Use the following methods to switch Hot Rod clients to the default cluster or
+to a cluster at a different site:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>RemoteCacheManager.switchToDefaultCluster()</code></p>
+</li>
+<li>
+<p><code>RemoteCacheManager.switchToCluster(${site.name})</code></p>
+</li>
+</ul>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/10.1/apidocs/org/infinispan/client/hotrod/configuration/package-summary.html#package.description">org.infinispan.client.hotrod.configuration package description</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/10.1/apidocs/org/infinispan/client/hotrod/configuration/ConfigurationBuilder.html">org.infinispan.client.hotrod.configuration.ConfigurationBuilder</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/10.1/apidocs/org/infinispan/client/hotrod/RemoteCacheManager.html#RemoteCacheManager-java.net.URL-">org.infinispan.client.hotrod.RemoteCacheManager</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="xsite_manage"><a class="anchor" href="#xsite_manage"></a>3. Performing Cross-Site Replication Operations</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Bring sites online and offline. Transfer cache state to remote sites.</p>
+</div>
+<div class="sect2">
+<h3 id="xsite_operations_cli"><a class="anchor" href="#xsite_operations_cli"></a>3.1. Cross-Site Operations with the CLI</h3>
+<div class="paragraph">
+<p>The Infinispan command line interface lets you remotely connect to Infinispan
+servers, manage sites, and push state transfer to backup locations.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Start the Infinispan CLI.</p>
+</li>
+<li>
+<p>Connect to a running Infinispan cluster.</p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="manage_sites-xsite"><a class="anchor" href="#manage_sites-xsite"></a>3.1.1. Bringing Backup Locations Offline and Online</h4>
+<div class="paragraph">
+<p>Take backup locations offline manually and bring them back online.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Check if backup locations are online or offline with the <code>site status</code>
+command:</p>
+<div class="listingblock">
+<div class="content">
+<pre>//containers/default]&gt; site status --cache=cacheName --site=NYC</pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code>--site</code> is an optional argument. If not set, the CLI returns all backup
+locations.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>Bring backup locations online with the <code>bring-online</code> command:</p>
+<div class="listingblock">
+<div class="content">
+<pre>//containers/default]&gt; site bring-online --cache=customers --site=NYC</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Take backup locations offline with the <code>take-offline</code> command:</p>
+<div class="listingblock">
+<div class="content">
+<pre>//containers/default]&gt; site take-offline --cache=customers --site=NYC</pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For more information and examples, run the <code>help site</code> command.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="cli_xsite_push-xsite"><a class="anchor" href="#cli_xsite_push-xsite"></a>3.1.2. Pushing State to Backup Locations</h4>
+<div class="paragraph">
+<p>Transfer cache state to remote backup locations.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Use the <code>site</code> command to push state transfer, as in the following example:</p>
+<div class="listingblock">
+<div class="content">
+<pre>//containers/default]&gt; site push-site-state --cache=cacheName --site=NYC</pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For more information and examples, run the <code>help site</code> command.</p>
+</div>
+<div class="paragraph">
+<div class="title">Reference</div>
+<p><a href="../cli/cli.html">Infinispan Command Line Interface</a></p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="xsite_operations_rest"><a class="anchor" href="#xsite_operations_rest"></a>3.2. Cross-Site Operations with the REST API</h3>
+<div class="paragraph">
+<p>Infinispan servers provide a REST API that allows you to perform cross-site
+operations.</p>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_xsite_sites_status"><a class="anchor" href="#rest_v2_xsite_sites_status"></a>3.2.1. Getting Status of All Backup Locations</h4>
+<div class="paragraph">
+<p>Retrieve the status of all backup locations with <code>GET</code> requests.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan responds with the status of each backup location in JSON format, as
+in the following example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
   <span class="key"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">online</span><span class="delimiter">&quot;</span></span>,
   <span class="key"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">offline</span><span class="delimiter">&quot;</span></span>
-}</code></pre> </div> </div> <table class="tableblock frame-all grid-all stretch"> <caption class="title">Table 1. Returned Status</caption> <colgroup> <col style="width: 50%;"> <col style="width: 50%;"> </colgroup> <thead> <tr> <th class="tableblock halign-left valign-top">Value</th> <th class="tableblock halign-left valign-top">Description</th> </tr> </thead> <tbody> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have a cross-site view with the backup location.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">No nodes in the local cluster have a cross-site view with the backup location.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>mixed</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Some nodes in the local cluster have a cross-site view with the backup location, other nodes in the local cluster do not have a cross-site view. The response indicates status for each node.</p></td> </tr> </tbody> </table> </div> <div class="sect3"> <h4 id="rest_v2_xsite_site_status"><a class="anchor" href="#rest_v2_xsite_site_status"></a>3.2.2. Getting Status of Specific Backup Locations</h4> <div class="paragraph"> <p>Retrieve the status of a backup location with <code>GET</code> requests.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}</code></pre> </div> </div> <div class="paragraph"> <p>Infinispan responds with the status of each node in the site in JSON format, as in the following example:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="json">{
+}</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Returned Status</caption>
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have a cross-site view with the backup location.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No nodes in the local cluster have a cross-site view with the backup location.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mixed</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Some nodes in the local cluster have a cross-site view with the backup location, other nodes in the local cluster do not have a cross-site view. The response indicates status for each node.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_xsite_site_status"><a class="anchor" href="#rest_v2_xsite_site_status"></a>3.2.2. Getting Status of Specific Backup Locations</h4>
+<div class="paragraph">
+<p>Retrieve the status of a backup location with <code>GET</code> requests.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan responds with the status of each node in the site in JSON
+format, as in the following example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
   <span class="key"><span class="delimiter">&quot;</span><span class="content">NodeA</span><span class="delimiter">&quot;</span></span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">offline</span><span class="delimiter">&quot;</span></span>,
   <span class="key"><span class="delimiter">&quot;</span><span class="content">NodeB</span><span class="delimiter">&quot;</span></span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">online</span><span class="delimiter">&quot;</span></span>
-}</code></pre> </div> </div> <table class="tableblock frame-all grid-all stretch"> <caption class="title">Table 2. Returned Status</caption> <colgroup> <col style="width: 50%;"> <col style="width: 50%;"> </colgroup> <thead> <tr> <th class="tableblock halign-left valign-top">Value</th> <th class="tableblock halign-left valign-top">Description</th> </tr> </thead> <tbody> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">The node is online.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">The node is offline.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>failed</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Not possible to retrieve status. The remote cache could be shutting down or a network error occurred during the request.</p></td> </tr> </tbody> </table> </div> <div class="sect3"> <h4 id="rest_v2_xsite_take_site_offline"><a class="anchor" href="#rest_v2_xsite_take_site_offline"></a>3.2.3. Taking Backup Locations Offline</h4> <div class="paragraph"> <p>Take backup locations offline with <code>GET</code> requests and the <code>?action=take-offline</code> parameter.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}?action=take-offline</code></pre> </div> </div> </div> <div class="sect3"> <h4 id="rest_v2_xsite_bring_backup_online"><a class="anchor" href="#rest_v2_xsite_bring_backup_online"></a>3.2.4. Bringing Backup Locations Online</h4> <div class="paragraph"> <p>Bring backup locations online with the <code>?action=bring-online</code> parameter.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}?action=bring-online</code></pre> </div> </div> </div> <div class="sect3"> <h4 id="rest_v2_xsite_start_push"><a class="anchor" href="#rest_v2_xsite_start_push"></a>3.2.5. Pushing State to Backup Locations</h4> <div class="paragraph"> <p>Push cache state to a backup location with the <code>?action=start-push-state</code> parameter.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}?action=start-push-state</code></pre> </div> </div> </div> <div class="sect3"> <h4 id="rest_v2_xsite_cancel_state_push"><a class="anchor" href="#rest_v2_xsite_cancel_state_push"></a>3.2.6. Canceling State Transfer</h4> <div class="paragraph"> <p>Cancel state transfer operations with the <code>?action=cancel-push-state</code> parameter.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}?action=cancel-push-state</code></pre> </div> </div> </div> <div class="sect3"> <h4 id="rest_v2_xsite_state_push"><a class="anchor" href="#rest_v2_xsite_state_push"></a>3.2.7. Getting State Transfer Status</h4> <div class="paragraph"> <p>Retrieve status of state transfer operations with the <code>?action=push-state-status</code> parameter.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups?action=push-state-status</code></pre> </div> </div> <div class="paragraph"> <p>Infinispan responds with the status of state transfer for each backup location in JSON format, as in the following example:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="json">{
+}</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Returned Status</caption>
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The node is online.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The node is offline.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>failed</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not possible to retrieve status. The remote cache could be shutting down or a network error occurred during the request.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_xsite_take_site_offline"><a class="anchor" href="#rest_v2_xsite_take_site_offline"></a>3.2.3. Taking Backup Locations Offline</h4>
+<div class="paragraph">
+<p>Take backup locations offline with <code>GET</code> requests and the
+<code>?action=take-offline</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}?action=take-offline</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_xsite_bring_backup_online"><a class="anchor" href="#rest_v2_xsite_bring_backup_online"></a>3.2.4. Bringing Backup Locations Online</h4>
+<div class="paragraph">
+<p>Bring backup locations online with the <code>?action=bring-online</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}?action=bring-online</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_xsite_start_push"><a class="anchor" href="#rest_v2_xsite_start_push"></a>3.2.5. Pushing State to Backup Locations</h4>
+<div class="paragraph">
+<p>Push cache state to a backup location with the <code>?action=start-push-state</code>
+parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}?action=start-push-state</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_xsite_cancel_state_push"><a class="anchor" href="#rest_v2_xsite_cancel_state_push"></a>3.2.6. Canceling State Transfer</h4>
+<div class="paragraph">
+<p>Cancel state transfer operations with the <code>?action=cancel-push-state</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}?action=cancel-push-state</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_xsite_state_push"><a class="anchor" href="#rest_v2_xsite_state_push"></a>3.2.7. Getting State Transfer Status</h4>
+<div class="paragraph">
+<p>Retrieve status of state transfer operations with the
+<code>?action=push-state-status</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups?action=push-state-status</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan responds with the status of state transfer for each backup location
+in JSON format, as in the following example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
    <span class="key"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">CANCELED</span><span class="delimiter">&quot;</span></span>,
    <span class="key"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">OK</span><span class="delimiter">&quot;</span></span>
-}</code></pre> </div> </div> <table class="tableblock frame-all grid-all stretch"> <caption class="title">Table 3. Returned Status</caption> <colgroup> <col style="width: 50%;"> <col style="width: 50%;"> </colgroup> <thead> <tr> <th class="tableblock halign-left valign-top">Value</th> <th class="tableblock halign-left valign-top">Description</th> </tr> </thead> <tbody> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SENDING</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">State transfer to the backup location is in progress.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OK</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">State transfer completed successfully.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERROR</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">An error occurred with state transfer. Check log files.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CANCELLING</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">State transfer cancellation is in progress.</p></td> </tr> </tbody> </table> </div> <div class="sect3"> <h4 id="rest_v2_xsite_clear_transfer_status"><a class="anchor" href="#rest_v2_xsite_clear_transfer_status"></a>3.2.8. Clearing State Transfer Status</h4> <div class="paragraph"> <p>Clear state transfer status for sending sites with the <code>?action=clear-push-state-status</code> parameter.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/local?action=clear-push-state-status</code></pre> </div> </div> </div> <div class="sect3"> <h4 id="rest_v2_xsite_tuning_takeoffline"><a class="anchor" href="#rest_v2_xsite_tuning_takeoffline"></a>3.2.9. Modifying Take Offline Conditions</h4> <div class="paragraph"> <p>Sites go offline if certain conditions are met. Modify the take offline parameters to control when backup locations automatically go offline.</p> </div> <div class="olist arabic"> <div class="title">Procedure</div> <ol class="arabic"> <li> <p>Check configured take offline parameters with <code>GET</code> requests and the <code>take-offline-config</code> parameter.</p> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}/take-offline-config</code></pre> </div> </div> <div class="paragraph"> <p>The Infinispan response includes <code>after_failures</code> and <code>min_wait</code> fields as follows:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="json">{
+}</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Returned Status</caption>
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SENDING</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">State transfer to the backup location is in progress.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">State transfer completed successfully.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERROR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An error occurred with state transfer. Check log files.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CANCELLING</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">State transfer cancellation is in progress.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_xsite_clear_transfer_status"><a class="anchor" href="#rest_v2_xsite_clear_transfer_status"></a>3.2.8. Clearing State Transfer Status</h4>
+<div class="paragraph">
+<p>Clear state transfer status for sending sites with the
+<code>?action=clear-push-state-status</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/local?action=clear-push-state-status</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_xsite_tuning_takeoffline"><a class="anchor" href="#rest_v2_xsite_tuning_takeoffline"></a>3.2.9. Modifying Take Offline Conditions</h4>
+<div class="paragraph">
+<p>Sites go offline if certain conditions are met. Modify the take offline
+parameters to control when backup locations automatically go offline.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Check configured take offline parameters with <code>GET</code> requests and the
+<code>take-offline-config</code> parameter.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}/take-offline-config</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The Infinispan response includes <code>after_failures</code> and <code>min_wait</code> fields as
+follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
   <span class="key"><span class="delimiter">&quot;</span><span class="content">after_failures</span><span class="delimiter">&quot;</span></span>: <span class="integer">2</span>,
   <span class="key"><span class="delimiter">&quot;</span><span class="content">min_wait</span><span class="delimiter">&quot;</span></span>: <span class="integer">1000</span>
-}</code></pre> </div> </div> </li> <li> <p>Modify take offline parameters in the body of <code>PUT</code> requests.</p> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>PUT /v2/caches/{cacheName}/x-site/backups/{siteName}/take-offline-config</code></pre> </div> </div> </li> </ol> </div> </div> <div class="sect3"> <h4 id="rest_v2_xsite_cancel_receive_state"><a class="anchor" href="#rest_v2_xsite_cancel_receive_state"></a>3.2.10. Canceling State Transfer from Receiving Sites</h4> <div class="paragraph"> <p>If the connection between two backup locations breaks, you can cancel state transfer on the site that is receiving the push.</p> </div> <div class="paragraph"> <p>Cancel state transfer from a remote site and keep the current state of the local cache with the <code>?action=cancel-receive-state</code> parameter.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}?action=cancel-receive-state</code></pre> </div> </div> </div> <div class="sect3"> <h4 id="rest_v2_cache_manager_site_status"><a class="anchor" href="#rest_v2_cache_manager_site_status"></a>3.2.11. Getting Status of Backup Locations</h4> <div class="paragraph"> <p>Retrieve the status of all backup locations from Cache Managers with <code>GET</code> requests.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /rest/v2/cache-managers/{cacheManagerName}/x-site/backups/</code></pre> </div> </div> <div class="paragraph"> <p>Infinispan responds with status in JSON format, as in the following example:</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code data-lang="json">{
+}</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Modify take offline parameters in the body of <code>PUT</code> requests.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>PUT /v2/caches/{cacheName}/x-site/backups/{siteName}/take-offline-config</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_xsite_cancel_receive_state"><a class="anchor" href="#rest_v2_xsite_cancel_receive_state"></a>3.2.10. Canceling State Transfer from Receiving Sites</h4>
+<div class="paragraph">
+<p>If the connection between two backup locations breaks, you can cancel state
+transfer on the site that is receiving the push.</p>
+</div>
+<div class="paragraph">
+<p>Cancel state transfer from a remote site and keep the current state of the
+local cache with the <code>?action=cancel-receive-state</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/x-site/backups/{siteName}?action=cancel-receive-state</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_cache_manager_site_status"><a class="anchor" href="#rest_v2_cache_manager_site_status"></a>3.2.11. Getting Status of Backup Locations</h4>
+<div class="paragraph">
+<p>Retrieve the status of all backup locations from Cache Managers with <code>GET</code>
+requests.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /rest/v2/cache-managers/{cacheManagerName}/x-site/backups/</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan responds with status in JSON format, as in the following example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
    <span class="key"><span class="delimiter">&quot;</span><span class="content">SFO-3</span><span class="delimiter">&quot;</span></span>:{
       <span class="key"><span class="delimiter">&quot;</span><span class="content">status</span><span class="delimiter">&quot;</span></span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">online</span><span class="delimiter">&quot;</span></span>
    },
@@ -532,7 +1778,91 @@ builder.addServers(<span class="string"><span class="delimiter">&quot;</span><sp
          <span class="string"><span class="delimiter">&quot;</span><span class="content">CACHE_2</span><span class="delimiter">&quot;</span></span>
       ]
    }
-}</code></pre> </div> </div> <table class="tableblock frame-all grid-all stretch"> <caption class="title">Table 4. Returned Status</caption> <colgroup> <col style="width: 50%;"> <col style="width: 50%;"> </colgroup> <thead> <tr> <th class="tableblock halign-left valign-top">Value</th> <th class="tableblock halign-left valign-top">Description</th> </tr> </thead> <tbody> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have a cross-site view with the backup location.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">No nodes in the local cluster have a cross-site view with the backup location.</p></td> </tr> <tr> <td class="tableblock halign-left valign-top"><p class="tableblock"><code>mixed</code></p></td> <td class="tableblock halign-left valign-top"><p class="tableblock">Some nodes in the local cluster have a cross-site view with the backup location, other nodes in the local cluster do not have a cross-site view. The response indicates status for each node.</p></td> </tr> </tbody> </table> </div> <div class="sect3"> <h4 id="rest_v2_cache_manager_take_offline"><a class="anchor" href="#rest_v2_cache_manager_take_offline"></a>3.2.12. Taking Backup Locations Offline</h4> <div class="paragraph"> <p>Take backup locations offline with the <code>?action=take-offline</code> parameter.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /rest/v2/cache-managers/{cacheManagerName}/x-site/backups/{siteName}?action=take-offline</code></pre> </div> </div> </div> <div class="sect3"> <h4 id="rest_v2_cache_manager_bring_online"><a class="anchor" href="#rest_v2_cache_manager_bring_online"></a>3.2.13. Bringing Backup Locations Online</h4> <div class="paragraph"> <p>Bring backup locations online with the <code>?action=bring-online</code> parameter.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /rest/v2/cache-managers/{cacheManagerName}/x-site/backups/{siteName}?action=bring-online</code></pre> </div> </div> </div> <div class="sect3"> <h4 id="rest_v2_cache_manager_start_push"><a class="anchor" href="#rest_v2_cache_manager_start_push"></a>3.2.14. Starting State Transfer</h4> <div class="paragraph"> <p>Push state of all caches to remote sites with the <code>?action=start-push-state</code> parameter.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /rest/v2/cache-managers/{cacheManagerName}/x-site/backups/{siteName}?action=start-push-state</code></pre> </div> </div> </div> <div class="sect3"> <h4 id="rest_v2_cache_manager_cancel_push"><a class="anchor" href="#rest_v2_cache_manager_cancel_push"></a>3.2.15. Canceling State Transfer</h4> <div class="paragraph"> <p>Cancel ongoing state transfer operations with the <code>?action=cancel-push-state</code> parameter.</p> </div> <div class="listingblock"> <div class="content"> <pre class="CodeRay highlight nowrap"><code>GET /rest/v2/cache-managers/{cacheManagerName}/x-site/backups/{siteName}?action=cancel-push-state</code></pre> </div> </div> </div> </div> </div> </div> </div> <div id="footer"> <div id="footer-text"> Last updated 2020-05-03 12:31:45 -0400 </div> </div> <style>
+}</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Returned Status</caption>
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have a cross-site view with the backup location.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No nodes in the local cluster have a cross-site view with the backup location.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>mixed</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Some nodes in the local cluster have a cross-site view with the backup location, other nodes in the local cluster do not have a cross-site view. The response indicates status for each node.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_cache_manager_take_offline"><a class="anchor" href="#rest_v2_cache_manager_take_offline"></a>3.2.12. Taking Backup Locations Offline</h4>
+<div class="paragraph">
+<p>Take backup locations offline with the <code>?action=take-offline</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /rest/v2/cache-managers/{cacheManagerName}/x-site/backups/{siteName}?action=take-offline</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_cache_manager_bring_online"><a class="anchor" href="#rest_v2_cache_manager_bring_online"></a>3.2.13. Bringing Backup Locations Online</h4>
+<div class="paragraph">
+<p>Bring backup locations online with the <code>?action=bring-online</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /rest/v2/cache-managers/{cacheManagerName}/x-site/backups/{siteName}?action=bring-online</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_cache_manager_start_push"><a class="anchor" href="#rest_v2_cache_manager_start_push"></a>3.2.14. Starting State Transfer</h4>
+<div class="paragraph">
+<p>Push state of all caches to remote sites with the <code>?action=start-push-state</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /rest/v2/cache-managers/{cacheManagerName}/x-site/backups/{siteName}?action=start-push-state</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_cache_manager_cancel_push"><a class="anchor" href="#rest_v2_cache_manager_cancel_push"></a>3.2.15. Canceling State Transfer</h4>
+<div class="paragraph">
+<p>Cancel ongoing state transfer operations with the <code>?action=cancel-push-state</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /rest/v2/cache-managers/{cacheManagerName}/x-site/backups/{siteName}?action=cancel-push-state</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2020-05-03 12:31:45 -0400
+</div>
+</div>
+<style>
 /* Stylesheet for CodeRay to match GitHub theme | MIT License | http://foundation.zurb.com */
 pre.CodeRay{background:#f7f7f8}
 .CodeRay .line-numbers{border-right:1px solid currentColor;opacity:.35;padding:0 .5em 0 0}
@@ -620,7 +1950,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 .CodeRay .delete .delete{color:#800}
 .CodeRay .change .change{color:#66f}
 .CodeRay .head .head{color:#f4f}
-</style> <script type="text/x-mathjax-config">
+</style>
+<script type="text/x-mathjax-config">
 MathJax.Hub.Config({
   messageStyle: "none",
   tex2jax: {
@@ -642,7 +1973,9 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
     return data
   })
 })
-</script> <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script> <script>
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+<script>
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
@@ -651,4 +1984,7 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
   ga('create', 'UA-8601422-1', 'auto');
   ga('send', 'pageview');
 
-</script> </body> </html>
+</script>
+
+</body>
+</html>

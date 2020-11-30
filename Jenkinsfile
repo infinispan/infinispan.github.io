@@ -4,7 +4,7 @@ pipeline {
     agent {
         label 'slave-group-release'
     }
-    
+
     environment {
         MAVEN_HOME = tool('Maven')
         JAVA_HOME = tool('JDK 11')
@@ -35,9 +35,9 @@ pipeline {
         stage('Publish') {
             steps {
                 echo "Using PATH = ${env.PATH}"
-                sh "./bin/publish.sh"
+                sh "_bin/publish.sh"
             }
-        }        
+        }
     }
 
     post {

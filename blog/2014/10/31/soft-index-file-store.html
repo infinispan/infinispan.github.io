@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Soft-Index File Store</title>
+  <!-- <script id="adobe_dtm" src="//www.redhat.com/dtm.js" type="text/javascript"></script> -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/styles/github.min.css">
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/highlight.min.js"></script>
+  <script charset="UTF-8"
+          src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/languages/java.min.js"></script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+<!--   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-125236544-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+ 
+    gtag('config', 'UA-125236544-1');
+  </script> -->
+
+
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> Soft-Index File Store
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Soft-Index File Store</h1>
+    <div class="post-date">October 31, 2014
+      Tags: 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/infinispan.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By Infinispan</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div class="paragraph">
+<p>Recently, Infinispan got a new local file-based cache store, called
+Soft-Index File Store. Why have we created just another cache store,
+what problems is it solving, what are its limitations and how is it
+designed?</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Single File Store is a well performing cache store, but it stores all
+keys in-memory; that limits the number of keys you can store. File
+fragmentation could be even more of an issue: if you store larger and
+larger values (that happens quite a lot, as users e.g. add stuff into
+their shopping carts), the space is not reused and instead the entry is
+appended at the end of the file. The space (now empty) is reused only if
+you write entry that can fit there. Also, even if you remove all entries
+from the cache, the file won&#8217;t shrink, and neither won&#8217;t be
+de-fragmented.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>LevelDB uses quite well performing Google&#8217;s library written in native
+code. The major drawback is the native code - if LevelDB has a bug that
+ends in segfault, whole JVM crashes, bringing you application server
+down.</p>
+</div>
+<div class="paragraph">
+<p>Our new Soft Index File Store is pure Java implementation that tries to
+get around Single File Store&#8217;s drawbacks by implementing a variant of
+<strong>B+ tree</strong> that is cached in-memory using Java&#8217;s <strong>soft references</strong> -
+here&#8217;s where the name Soft Index File Store comes from. This B+ tree
+(called Index) is offloaded on filesystem to single file: in fact, this
+has theoretically similar problems with fragmentation as Single File
+Store - but in practice it shouldn&#8217;t cause such problems. This index
+file does not need to be persisted - it is purged and rebuilt when the
+cache store restarts, its purpose is only offloading.</p>
+</div>
+<div class="paragraph">
+<p>The data that should be persisted are stored in a set of files that are
+written in append-only way - that means that if you store this on
+conventional magnetic disk, it does not have to seek when writing a
+burst of entries. It is not stored in a single file but in a set of
+files. When any of these files drops below 50% of usage (the entries are
+marked as removed or overwritten), the file starts being collected,
+moving live entries into another file and in the end removing the old
+file from disk.</p>
+</div>
+<div class="paragraph">
+<p>Most of the in-memory structures in Soft Index File Store are bounded,
+therefore you don&#8217;t have to be afraid of OOMEs. You can also configure
+the limits for concurrently open files as well (so that you don&#8217;t run
+out of file descriptors).</p>
+</div>
+<div class="sect1">
+<h2 id="how-to-configure-sifs">How to configure SIFS</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The configuration is no different from regular cache store:</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="implementation-details">Implementation details</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Index does not use single file, in fact it can be split into
+multiple segments. That&#8217;s because the algorithm updating this B+ tree is
+designed as single writer - multiple readers, but that could make the
+writer thread (called 'Index Updater') the bottleneck. Therefore, you
+can set how many segments should the Index be split into (according to
+keys' hashCode()).</p>
+</div>
+<div class="paragraph">
+<p>Each node in the Index stores 'prefix' of all keys (or rather the
+serialized forms) used in the node in order to reduce the space required
+for the node. This comes with the assumption that the prefixes are often
+similar (e.g. when you use key "user000001" and "user000002"). If you
+can change how the keys are serialized, it is encouraged to move the
+changing part of the key to the end of the serialized data.</p>
+</div>
+<div class="paragraph">
+<p>The data are written by single thread as well, the 'Log Appender'.
+There&#8217;s no reason to let threads that access the cache store compete
+over file-system - Log Appender queues the write results, writes them
+into the file and wakes up the waiting thread. There are 2 possibly
+unnecessary context-switches, but in the original design we wanted to
+allow the write request to return only after the data have been fsynced.
+By batching the writes, Log Appender allows this as a configuration
+option - then you can be sure that the data are already on disk when the
+call returns.</p>
+</div>
+<div class="paragraph">
+<p>When the entry is modified, the Index needs to be updated. The request
+is sent to Index Updater via bounded queue and the newest entry location
+is stored in Temporary Table until this is stored in the Index. The
+updated nodes are eventually offloaded onto disk in this way.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="known-limitations">Known limitations</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Size of a node in the Index is limited, by default it is 4096 bytes,
+though it can be configured. This size also limits the key length (or
+rather the length of the serialized form): you can&#8217;t use keys longer
+than size of the node - 15 bytes. Moreover, the key length is stored as
+'short', limiting it to 32767 bytes. There&#8217;s no way how you can use
+longer keys - SIFS throws an exception when the key is longer after
+serialization.</p>
+</div>
+<div class="paragraph">
+<p>When entries are stored with expiration, SIFS does not discover the a
+file is full of expired entries and the compaction of old data files may
+not be started ever (method AdvancedStore.purgeExpired() is not
+implemented). This can lead to excessive file-system space usage.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="future-work">Future work</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>What we need to do know is to benchmark SIFS in many configurations and
+set the optimal values as defaults. However, we run mostly synthetic
+benchmarks - and that&#8217;s where you can help. Let&#8217;s play with Soft Index
+File Store a bit and tell us what configuration works best for you!</p>
+</div>
+<div class="paragraph">
+<p>For storing large keys, building the B+ tree of hashCodes could perform
+better that storing the whole keys, though it would need additional
+handling for collisions. Tell us what keys do you use, please!</p>
+</div>
+<div class="paragraph">
+<p>Currently, each index update needs to be eventually stored, and that
+means one or more writes into the file-system even when this is not
+necessary. In the future, we might try to use phantom references instead
+of soft references to write the Index only when it needs to release some
+memory. However, this requires a lot of further work, so test SIFS today
+and let us now how do you like it!</p>
+</div>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://jira.jboss.org/browse/ISPN" target="_blank">JIRA issues tracker</a>.
+        If you don’t find any, <a href="https://jira.jboss.org/browse/ISPN" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest"
+                       target="_blank">StackOverflow</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+      <div class="width-12-12 callout orange margin-tb-xs">
+    <div class="grid-wrapper">
+        <div class="width-4-12 width-12-12-m block-image">
+            <img src="/assets/images/blog/authors/infinispan.jpg" class="author-img">
+        </div>
+        <div class="width-8-12 width-12-12-m block-content">
+            <h5>Infinispan</h5>
+            <p>Boosting the performace since 2009.</p>
+            <div class="width-3-12 width-6-12-m bio-block">
+                <a href="http://github.com/infinispan"><img src="/assets/images/community/icon-github.png"></a>
+                
+                <a href="http://twitter.com/infinispan"><img src="/assets/images/community/icon-twitter.png"></a>
+                
+            </div>
+        </div>
+    </div>
+</div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/">Home</a></li>
+          
+            <li><a href="/features">Features</a></li>
+          
+            <li><a href="/documentation">Docs</a></li>
+          
+            <li><a href="/tutorials">Tutorials</a></li>
+          
+            <li><a href="/videos">Videos</a></li>
+          
+            <li><a href="/use-cases">Use Cases</a></li>
+          
+            <li><a href="/community">Community</a></li>
+          
+            <li><a href="/download">Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://issues.jboss.org/browse/ISPN">Submit a Bug</a></li>
+          
+            <li><a href="https://github.com/infinispan">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/blog">Blog</a></li>
+          
+            <li><a href="https://twitter.com/infinispan">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="http://www.cloudtm.eu/" target="_blank"><img src="/assets/images/footer/cloud-tm.png"></a>
+          <img src="/assets/images/footer/leads.png">
+          <br/>
+          <a href="http://cloudbutton.eu/" target="_blank"><img src="/assets/images/footer/cloud-button.png"></a>
+
+        </div>
+        <div class="width-6-12">
+
+          <b>Thanks to</b><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank">JetBrains Intellj IDEA</a><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank"><img src="/assets/images/footer/jetbrains.png">
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+      | <a href="https://www.redhat.com/en/about/privacy-policy">Red Hat Privacy Policy</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>

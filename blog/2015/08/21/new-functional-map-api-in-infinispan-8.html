@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>New Functional Map API in Infinispan 8 - Introduction</title>
+  <!-- <script id="adobe_dtm" src="//www.redhat.com/dtm.js" type="text/javascript"></script> -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/styles/github.min.css">
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/highlight.min.js"></script>
+  <script charset="UTF-8"
+          src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.3.2/languages/java.min.js"></script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+<!--   <script async src="https://www.googletagmanager.com/gtag/js?id=UA-125236544-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+ 
+    gtag('config', 'UA-125236544-1');
+  </script> -->
+
+
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> New Functional Map API in Infinispan 8 - Introduction
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>New Functional Map API in Infinispan 8 - Introduction</h1>
+    <div class="post-date">August 21, 2015
+      Tags: <a href="/blog/tag/ functional"> functional</a> <a href="/blog/tag/introduction">introduction</a> <a href="/blog/tag/API">API</a> <a href="/blog/tag/lambda">lambda</a> 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/galder.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By Galder Zamarreño</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div class="paragraph">
+<p>In Infinispan 8.0.0.Beta3, we have a introduced a new experimental API
+for interacting with your data which takes advantage of the functional
+programming additions and improved asynchronous programming capabilities
+available in Java 8.</p>
+</div>
+<div class="paragraph">
+<p>Over the next few weeks we&#8217;ll be introducing different aspects of the
+API. In this first blog post, we&#8217;ll focus on why we felt there&#8217;s a need
+for a new approach, answering a few key questions.</p>
+</div>
+<div class="sect2">
+<h3 id="concurrentmap-and-jcache">ConcurrentMap and JCache</h3>
+<div class="paragraph">
+<p>Map­-like key/value pair APIs have often been used for distributed
+caching and in-­memory data grids. Initially,
+<a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ConcurrentMap.html">ConcurrentMap</a>
+became popular but this was designed to be run within a single JVM, and
+hence some of the operations suffered in distributed environments or
+when persistence stores were attached. For example, methods such as
+'<a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#put-K-V-"><em>V
+put(K, V)</em></a>',
+'<a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ConcurrentMap.html#putIfAbsent-K-V-"><em>V
+putIfAbsent(K, V)</em></a>',
+<em>'<a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ConcurrentMap.html#replace-K-V-">V
+replace(K, V)</a></em>' would force implementations to return the previous
+value, but often this value is not needed yet this could be expensive to
+transfer.</p>
+</div>
+<div class="paragraph">
+<p><a href="https://jcp.org/en/jsr/detail?id=107">JSR­-107</a> set out to improve on
+this and came up with the
+<a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java">JCache</a>
+specification which solved this particular problem separating operations
+such ConcurrentMap&#8217;s
+'<a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#put-K-V-"><em>V
+put(K, V)</em></a>' into two operations:
+'<a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java#L194"><em>void
+put(K, V)</em></a>' and
+'<em><a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java#L224">V
+getAndPut(K, V)</a>'</em>, and it applied the same logic to other operations
+such as '<em>replace</em>' by providing an alternative
+'<em><a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java#L459">getAndReplace(K,
+V)</a>'</em>&#8230;&#8203; etc.</p>
+</div>
+<div class="paragraph">
+<p>However, even though JCache was designed with distributed caching in
+mind, it still failed to provide an API to execute operations
+asynchronously and hence avoid resource under­utilization by having
+threads waiting for remote operations to complete.
+'<em><a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java#L169">l​oadAll</a>'</em> ​is
+probably the only exception, and it would have been the perfect
+candidate to return a
+<a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Future.html">F​uture​</a>
+or similar construct, but having to pass in a completion listener feels
+a bit clunky and cannot be chained easily.</p>
+</div>
+<div class="paragraph">
+<p>In my opinion, the best parts of JCache are
+'<em><a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java#L559">i​nvoke</a>'</em>​
+and
+'<a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java#L599"><em>i​nvokeAll</em></a>'
+methods. When you
+look at them, you see a lot of potential to reimplement <em>get</em>, <em>put</em>,
+<em>getAndPut</em>, <em>getAndReplace</em>, <em>putAll</em>,​ <em>getAll</em>, ​and many others
+using these methods. In other words, as an implementer, all you should
+need to implement is those two functions, and the rest would be
+syntactic sugar for the user. Unfortunately, the way '<em>i​nvoke</em>' and
+'<em>i​nvokeAll</em>' handle arguments is a bit clunky, and really,  it&#8217;s just
+screaming for lambdas to be passed in and
+<a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html">C​ompletableFuture</a> instances to
+be returned (Java 8!).</p>
+</div>
+<div class="paragraph">
+<p>So, when Infinispan moved to Java 8, we decided to revisit these
+concepts and see if we could come up with a better, distilled map­-like
+interface to be used for as either a caching or data grid API.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="new-functional-map-api">New Functional Map API</h3>
+<div class="paragraph">
+<p>Infinispan&#8217;s
+<a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java">Functional
+Map API</a> is a distilled map­like asynchronous API which uses lambdas to
+interact with data.</p>
+</div>
+<div class="sect4">
+<h5 id="asynchronous-and-lazy">Asynchronous and Lazy</h5>
+<div class="paragraph">
+<p>Being an asynchronous API, all methods that return a single result,
+return a
+<a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html">CompletableFuture</a>
+which wraps the result, so you can use the resources of your system more
+efficiently by having the possibility to receive callbacks when the
+CompletableFuture has completed, or you can chain or compose them with
+other CompletableFuture. If you do want to block the thread and wait for
+the result, just as it happens with a ConcurrentMap or JCache method
+call, you can simply call
+<code><a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html#get--"><em>CompletableFuture.get()</em></a></code>
+(for such situations, we are working on finding ways to avoid
+unnecessary thread creation when the caller will block on the
+CompletableFuture).</p>
+</div>
+<div class="paragraph">
+<p>For those operations that return multiple results, the API returns
+instances of a
+​https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/Traversable.java[Traversable]
+interface which offers a lazy pull­-style API for working with multiple
+results. Although push­-style interfaces for handling multiple results,
+such as RxJava, are fully asynchronous, they&#8217;re harder to use from a
+user’s perspective. T​raversable,​ being a lazy pull­-style API, can
+still be asynchronous underneath since the user can decide to work on
+the traversable at a later stage, and the Traversable implementation
+itself can decide when to compute those results.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="lambda-transparency">Lambda transparency</h5>
+<div class="paragraph">
+<p>Since the content of the lambdas is transparent to Infinispan, the API
+has been split into 3 interfaces for read­-only
+(<a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java#L106">R​eadOnlyMap</a>)​,
+read­-write
+(<a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java#L456">R​eadWriteMap</a>)​
+and write­-only
+(<a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java#L227">W​riteOnlyMap</a>)​
+operations respectively, in order to provide hints to the Infinispan
+internals on the type of work needed to support lambdas.</p>
+</div>
+<div class="paragraph">
+<p>For example, Infinispan has been designed in such way that our
+'<em>C​oncurrentMap.​g​et(​)</em>' and '<em>JCache.​g​etAll(​)</em>' implementations
+do not require locks to be acquired. These <em>get()</em>/<em>getAll()</em> operations
+are read-only operations, and hence if you call our functional map
+R​eadOnlyMap&#8217;s '<em><a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java#L144">eval(​)</a></em>'
+or
+'<em><a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java#L176">e​valMany(​)</a></em>'
+operations, you get the same benefit. A key advantage of R​eadOnlyMap&#8217;s
+'<em>eval​()</em>' and '<em>e​valMany(​)</em>' operations is that they take lambdas as
+parameters which means the returned types are more flexible, so we can
+return a value associated with the key, or we can return a boolean if a
+value has the expected contents, or we can return some metadata
+parameters from it, e.g. last accessed time, last modified time,
+creation time, lifespan, version information&#8230;&#8203;etc.</p>
+</div>
+<div class="paragraph">
+<p>Another important hint that is required to make efficient use of the
+system is to know when a write-only operation is being executed.
+Write­-only operations require locks to be acquired and as demonstrated
+by JCache&#8217;s
+'<a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java#L505"><em>void
+removeAll()</em></a>' and
+`<em><a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java#L194">void
+put(K, V)</a></em>' or ConcurrentMap&#8217;s
+'<a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#putAll-java.util.Map-"><em>putAll()</em></a>',
+they do not require the previous value to be queried or read, which as
+explained above is a very important optimization since reading the
+previous value might require the persistence layer or a remote node to
+be queried. WriteOnlyMap&#8217;s
+'<a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java#L281"><em>eval()</em></a>',
+'<a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java#L351"><em>evalMany()</em></a>',
+and
+'<a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java#L414"><em>evalAll()</em></a>'
+follow this same pattern with the added flexibility for the lambda to
+decide what kind of write operation to execute.</p>
+</div>
+<div class="paragraph">
+<p>The final type of operations we have are read­-write operations, and
+within this category we find CAS-like (Compare­-And­-Swap) operations.
+This type of operations require previous value associated with the key
+to be read and for locks to be acquired before executing the lambda.
+￼Most of the operations in ConcurrentMap and JCache operations fall
+within this domain including:
+'<em><a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#put-K-V-">V
+put(K, V)</a></em>',
+'<a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java#L283"><em>boolean
+putIfAbsent(K, V)</em></a>',
+'<em><a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#replace-K-V-">V
+replace(K, V)</a></em>',
+'<em><a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#replace-K-V-V-">boolean
+replace(K, V, V)</a></em>'&#8230;&#8203;etc. ReadWriteMap&#8217;s
+'<em><a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java#L554">eval()</a></em>',
+'<em><a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java#L581">evalMany()</a></em>'
+and
+'<em><a href="https://github.com/infinispan/infinispan/blob/master/commons/src/main/java/org/infinispan/commons/api/functional/FunctionalMap.java#L626">evalAll()</a></em>'
+provide a way to implement the vast majority of these operations thanks
+to the flexibility of the lambdas passed in. So you can make CAS­-like
+comparisons not only based on value equality but based on metadata
+parameter equality such as version information, and you can send back
+previous value or boolean instances to signal whether the CAS­-like
+comparison succeeded.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="deity-i-need-to-learn-a-new-api">$DEITY, I need to learn a new API!!!</h3>
+<div class="paragraph">
+<p>This new functional Map­-like API is meant to complement existing
+Key/Value Infinispan API offerings, so you&#8217;ll still be able to use
+ConcurrentMap or JCache standard APIs if that&#8217;s what suits your use case
+best.</p>
+</div>
+<div class="paragraph">
+<p>The target audience for this new API is either:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Distributed or persistent caching/in­-memory­ data­-grid users that
+want to benefit from CompletableFuture and/or Traversable for async/lazy
+data grid or caching data manipulation. The clear advantage here is that
+threads do not need to be idle waiting for remote operations to
+complete, but instead these can be notified when remote operations
+complete and then chain them with other subsequent operations.</p>
+</li>
+<li>
+<p>Users wanting to go beyond the standard operations exposed by
+ConcurrentMap and JCache, for example, if you want to do a replace
+operation using metadata parameter equality instead of value equality,
+or if you want to retrieve metadata information from values&#8230;&#8203;etc.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Internally, we feel that this new functional Map­-like API distills the
+Map­-like APIs that we currently offer (including ConcurrentMap and
+JCache) and gets rid of a lot of duplication in our
+<a href="https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/AdvancedCache.html">AdvancedCache</a>
+API (e.g.
+'<a href="https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/AdvancedCache.html#getCacheEntry-java.lang.Object-"><em>getCacheEntry()</em></a>',
+'<a href="https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/AsyncCache.html#getAsync-K-"><em>getAsync()</em></a>',
+'<a href="https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/commons/api/AsyncCache.html#putAsync-K-V-"><em>putAsync()</em></a>',
+'<em><a href="https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/AdvancedCache.html#put-K-V-org.infinispan.metadata.Metadata-">put(K,
+V, Metadata)</a></em>'&#8230;&#8203;etc), and hence down the line, we&#8217;d want all these
+APIs to be implemented using the new functional Map­like API. By doing
+that, we hope to reduce the number of commands that our internal
+architecture implements, hence reducing our code base.</p>
+</div>
+<div class="paragraph">
+<p>This new API also offers a new approach for passing per-invocation
+parameters, and much more flexible Metadata handling compared to our
+current approach. As we dig into this new API in next blog posts, we&#8217;ll
+explain the differences and advantages provided by these.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="functional-map-api-usage-examples">Functional Map API usage examples</h3>
+<div class="paragraph">
+<p>To give you a little taste of what the API looks like, here is a
+write-­only operation to associate a key with a value, whose
+CompletableFuture has been chained so that when it completes, a
+read­-only operation can be executed to read the stored value, and when
+that completes, print it to the system output:</p>
+</div>
+<div class="paragraph">
+<p>You can find more examples of this new API
+in <a href="https://github.com/infinispan/infinispan/blob/master/core/src/test/java/org/infinispan/functional/decorators/FunctionalConcurrentMap.java">FunctionalConcurrentMap</a> and
+<a href="https://github.com/infinispan/infinispan/blob/master/core/src/test/java/org/infinispan/functional/decorators/FunctionalJCache.java">FunctionalJCache</a>
+classes, which are implementations of ConcurrentMap and JCache
+respectively using the new Functional Map API.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="tell-me-more">Tell me more!!￼</h3>
+<div class="paragraph">
+<p>Over the next few weeks I&#8217;ll be posting examples looking at the finer
+details of these new Functional Map APIs, but if you&#8217;re eager to get
+started, check the classes in org.infinispan.functional
+package, <a href="https://github.com/infinispan/infinispan/blob/master/core/src/test/java/org/infinispan/functional/decorators/FunctionalConcurrentMap.java">FunctionalConcurrentMap</a>
+and <a href="https://github.com/infinispan/infinispan/blob/master/core/src/test/java/org/infinispan/functional/decorators/FunctionalJCache.java">FunctionalJCache</a> which
+are ConcurrentMap and JCache implementations based on these Functional
+Map APIs, and
+<a href="https://github.com/infinispan/infinispan/blob/master/core/src/test/java/org/infinispan/functional/FunctionalMapTest.java">FunctionalMapTest</a>
+which demonstrates operations that go beyond what ConcurrentMap and
+JCache offer.</p>
+</div>
+<div class="paragraph">
+<p>Happy (functional) hacking :)</p>
+</div>
+<div class="paragraph">
+<p>Galder</p>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://jira.jboss.org/browse/ISPN" target="_blank">JIRA issues tracker</a>.
+        If you don’t find any, <a href="https://jira.jboss.org/browse/ISPN" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://stackoverflow.com/questions/tagged/?tagnames=infinispan&sort=newest"
+                       target="_blank">StackOverflow</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/">Home</a></li>
+          
+            <li><a href="/features">Features</a></li>
+          
+            <li><a href="/documentation">Docs</a></li>
+          
+            <li><a href="/tutorials">Tutorials</a></li>
+          
+            <li><a href="/videos">Videos</a></li>
+          
+            <li><a href="/use-cases">Use Cases</a></li>
+          
+            <li><a href="/community">Community</a></li>
+          
+            <li><a href="/download">Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="https://issues.jboss.org/browse/ISPN">Submit a Bug</a></li>
+          
+            <li><a href="https://github.com/infinispan">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            <li><a href="/blog">Blog</a></li>
+          
+            <li><a href="https://twitter.com/infinispan">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="http://www.cloudtm.eu/" target="_blank"><img src="/assets/images/footer/cloud-tm.png"></a>
+          <img src="/assets/images/footer/leads.png">
+          <br/>
+          <a href="http://cloudbutton.eu/" target="_blank"><img src="/assets/images/footer/cloud-button.png"></a>
+
+        </div>
+        <div class="width-6-12">
+
+          <b>Thanks to</b><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank">JetBrains Intellj IDEA</a><br/>
+          <a href="https://www.jetbrains.com/idea/" target="_blank"><img src="/assets/images/footer/jetbrains.png">
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+      | <a href="https://www.redhat.com/en/about/privacy-policy">Red Hat Privacy Policy</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>
