@@ -23,14 +23,16 @@ These instructions will get you a copy of the project up and running on your loc
   - [Ubuntu Linux](https://jekyllrb.com/docs/installation/ubuntu/)
   - [Windows](https://jekyllrb.com/docs/installation/windows/)
     
-3. Fork this repository by clicking the _Fork_ button at the top right corner of this page.
+3. Fork this repository by clicking the _Fork_ button in the top right corner of this page.
 4. Clone your fork (please ensure you have current version of git installed) by running: 
-  `git clone git@github.com:YOUR_USER_NAME/community-theme.git`
+  `git clone git@github.com:YOUR_USER_NAME/infinispan.github.io.git`
 5. Change into the project directory
-  `cd community-theme`
-6. Build the site and make it available on a local server
+  `cd infinispan.github.io`
+6. Download and install required RubyGems
+  `bundle install`
+7. Build the site and make it available on a local server
   `bundle exec jekyll serve`
-7. To preview your site, browse to http://localhost:4000
+8. To preview your site, browse to http://localhost:4000
 
 > If you encounter any unexpected errors during the above, please refer to the [troubleshooting](https://jekyllrb.com/docs/troubleshooting/#configuration-problems) page or the [requirements](https://jekyllrb.com/docs/installation/#requirements) page, as you might be missing development headers or other prerequisites.
 
