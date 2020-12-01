@@ -69,7 +69,7 @@ end
 
 def extract_maven_artifact(artifact, target)
   puts "Downloading #{artifact} to #{target}"
-  %x( mvn org.apache.maven.plugins:maven-dependency-plugin:3.1.1:copy -DoutputDirectory=#{target} -DrepoUrl=https://repository.jboss.org/nexus/content/groups/public-jboss/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
+  %x( mvn org.apache.maven.plugins:maven-dependency-plugin:3.1.1:copy -DoutputDirectory=#{target} -DrepoUrl=https://search.maven.org/artifact/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
   %x( unzip -q #{target}/*.zip -d #{target} )
   FileUtils.rm Dir.glob("#{target}/*.zip")
 end
