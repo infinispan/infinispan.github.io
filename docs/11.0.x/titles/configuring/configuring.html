@@ -607,6 +607,13 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#google2_ping">7.2.8. GOOGLE2_PING</a></li>
 </ul>
 </li>
+<li><a href="#jgroups_encrypt">7.3. Encrypting Cluster Transport</a>
+<ul class="sectlevel3">
+<li><a href="#jgroups_encryption-cluster_transport">7.3.1. Infinispan Cluster Security</a></li>
+<li><a href="#configuring_jgroups_asym_encrypt-cluster_transport">7.3.2. Configuring Cluster Transport with Asymmetric Encryption</a></li>
+<li><a href="#configuring_jgroups_sym_encrypt-cluster_transport">7.3.3. Configuring Cluster Transport with Symmetric Encryption</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#persistence">8. Setting Up Persistent Storage</a>
@@ -5046,6 +5053,349 @@ about the cluster members.</p>
 </div>
 </div>
 </div>
+<div class="sect2">
+<h3 id="jgroups_encrypt"><a class="anchor" href="#jgroups_encrypt"></a>7.3. Encrypting Cluster Transport</h3>
+<div class="paragraph">
+<p>Secure cluster transport so that nodes communicate with encrypted messages.
+You can also configure Infinispan clusters to perform certificate authentication so that only nodes with valid identities can join.</p>
+</div>
+<div class="sect3">
+<h4 id="jgroups_encryption-cluster_transport"><a class="anchor" href="#jgroups_encryption-cluster_transport"></a>7.3.1. Infinispan Cluster Security</h4>
+<div class="paragraph">
+<p>To secure cluster traffic, you configure Infinispan nodes to encrypt JGroups message payloads with secret keys.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan nodes can obtain secret keys from either:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The coordinator node (asymmetric encryption).</p>
+</li>
+<li>
+<p>A shared keystore (symmetric encryption).</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<div class="title">Retrieving secret keys from coordinator nodes</div>
+<p>You configure asymmetric encryption by adding the <code>ASYM_ENCRYPT</code> protocol to a JGroups stack in your Infinispan configuration.
+This allows Infinispan clusters to generate and distribute secret keys.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>When using asymmetric encryption, you should also provide keystores so that nodes can perform certificate authentication and securely exchange secret keys.
+This protects your cluster from man-in-the-middle (MitM) attacks.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Asymmetric encryption secures cluster traffic as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The first node in the Infinispan cluster, the coordinator node, generates a secret key.</p>
+</li>
+<li>
+<p>A joining node performs certificate authentication with the coordinator to mutually verify identity.</p>
+</li>
+<li>
+<p>The joining node requests the secret key from the coordinator node. That request includes the public key for the joining node.</p>
+</li>
+<li>
+<p>The coordinator node encrypts the secret key with the public key and returns it to the joining node.</p>
+</li>
+<li>
+<p>The joining node decrypts and installs the secret key.</p>
+</li>
+<li>
+<p>The node joins the cluster, encrypting and decrypting messages with the secret key.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Retrieving secret keys from shared keystores</div>
+<p>You configure symmetric encryption by adding the <code>SYM_ENCRYPT</code> protocol to a JGroups stack in your Infinispan configuration.
+This allows Infinispan clusters to obtain secret keys from keystores that you provide.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Nodes install the secret key from a keystore on the Infinispan classpath at startup.</p>
+</li>
+<li>
+<p>Node join clusters, encrypting and decrypting messages with the secret key.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Comparison of asymmetric and symmetric encryption</div>
+<p><code>ASYM_ENCRYPT</code> with certificate authentication provides an additional layer of encryption in comparison with <code>SYM_ENCRYPT</code>.
+You provide keystores that encrypt the requests to coordinator nodes for the secret key.
+Infinispan automatically generates that secret key and handles cluster traffic, while letting you specify when to generate secret keys.
+For example, you can configure clusters to generate new secret keys when nodes leave.
+This ensures that nodes cannot bypass certificate authentication and join with old keys.</p>
+</div>
+<div class="paragraph">
+<p><code>SYM_ENCRYPT</code>, on the other hand, is faster than <code>ASYM_ENCRYPT</code> because nodes do not need to exchange keys with the cluster coordinator.
+A potential drawback to <code>SYM_ENCRYPT</code> is that there is no configuration to automatically generate new secret keys when cluster membership changes.
+Users are responsible for generating and distributing the secret keys that nodes use to encrypt cluster traffic.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="configuring_jgroups_asym_encrypt-cluster_transport"><a class="anchor" href="#configuring_jgroups_asym_encrypt-cluster_transport"></a>7.3.2. Configuring Cluster Transport with Asymmetric Encryption</h4>
+<div class="paragraph">
+<p>Configure Infinispan clusters to generate and distribute secret keys that encrypt JGroups messages.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a keystore with certificate chains that enables Infinispan to verify node identity.</p>
+</li>
+<li>
+<p>Place the keystore on the classpath for each node in the cluster.</p>
+<div class="paragraph">
+<p>For Infinispan Server, you put the keystore in the $ISPN_HOME directory.</p>
+</div>
+</li>
+<li>
+<p>Add the <code>SSL_KEY_EXCHANGE</code> and <code>ASYM_ENCRYPT</code> protocols to a JGroups stack in your Infinispan configuration, as in the following example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+    <span class="tag">&lt;jgroups&gt;</span>
+         <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">encrypt-tcp</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">tcp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+           <span class="tag">&lt;SSL_KEY_EXCHANGE</span> <span class="attribute-name">keystore_name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mykeystore.jks</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="2"></i><b>(2)</b>
+                             <span class="attribute-name">keystore_password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeit</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="3"></i><b>(3)</b>
+                             <span class="attribute-name">stack.combine</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT_AFTER</span><span class="delimiter">&quot;</span></span>
+                             <span class="attribute-name">stack.position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">VERIFY_SUSPECT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="4"></i><b>(4)</b>
+           <span class="tag">&lt;ASYM_ENCRYPT</span> <span class="attribute-name">asym_keylength</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2048</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="5"></i><b>(5)</b>
+                    <span class="attribute-name">asym_algorithm</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">RSA</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="6"></i><b>(6)</b>
+                    <span class="attribute-name">change_key_on_coord_leave</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="7"></i><b>(7)</b>
+                    <span class="attribute-name">change_key_on_leave</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="8"></i><b>(8)</b>
+                    <span class="attribute-name">use_external_key_exchange</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="9"></i><b>(9)</b>
+                    <span class="attribute-name">stack.combine</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT_BEFORE</span><span class="delimiter">&quot;</span></span>
+                    <span class="attribute-name">stack.position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">pbcast.NAKACK2</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="10"></i><b>(10)</b>
+         <span class="tag">&lt;/stack&gt;</span>
+    <span class="tag">&lt;/jgroups&gt;</span>
+    <span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;transport</span> <span class="attribute-name">cluster</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.cluster.name}</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">encrypt-tcp</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="11"></i><b>(11)</b>
+                 <span class="attribute-name">node-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.node.name:}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+   <span class="tag">&lt;/cache-container&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Creates a secure JGroups stack named "encrypt-tcp" that extends the default TCP stack for Infinispan.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Names the keystore that nodes use to perform certificate authentication.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Specifies the keystore password.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Uses the <code>stack.combine</code> and <code>stack.position</code> attributes to insert <code>SSL_KEY_EXCHANGE</code> into the default TCP stack after the <code>VERIFY_SUSPECT</code> protocol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Specifies the length of the secret key that the coordinator node generates. The default value is <code>2048</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>Specifies the cipher engine the coordinator node uses to generate secret keys. The default value is <code>RSA</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>Configures Infinispan to generate and distribute a new secret key when the coordinator node changes.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>Configures Infinispan to generate and distribute a new secret key when nodes leave.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>Configures Infinispan nodes to use the <code>SSL_KEY_EXCHANGE</code> protocol for certificate authentication.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>Uses the <code>stack.combine</code> and <code>stack.position</code> attributes to insert <code>ASYM_ENCRYPT</code> into the default TCP stack before the <code>pbcast.NAKACK2</code> protocol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>Configures the Infinispan cluster to use the secure JGroups stack.</td>
+</tr>
+</table>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Verification</div>
+<p>When you start your Infinispan cluster, the following log message indicates that the cluster is using the secure JGroups stack:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">[org.infinispan.CLUSTER] ISPN000078: Starting JGroups channel cluster with stack &lt;encrypted_stack_name&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan nodes can join the cluster only if they use <code>ASYM_ENCRYPT</code> and can obtain the secret key from the coordinator node.
+Otherwise the following message is written to Infinispan logs:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>[org.jgroups.protocols.ASYM_ENCRYPT] &lt;hostname&gt;: received message without encrypt header from &lt;hostname&gt;; dropping it</pre>
+</div>
+</div>
+<div class="paragraph">
+<div class="title">Reference</div>
+<p>The example <code>ASYM_ENCRYPT</code> configuration in this procedure shows commonly used parameters.
+Refer to JGroups documentation for the full set of available parameters.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html">JGroups 4 Manual</a></p>
+</li>
+<li>
+<p><a href="http://www.jgroups.org/schema/jgroups-4.2.xsd">JGroups 4.2 Schema</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="configuring_jgroups_sym_encrypt-cluster_transport"><a class="anchor" href="#configuring_jgroups_sym_encrypt-cluster_transport"></a>7.3.3. Configuring Cluster Transport with Symmetric Encryption</h4>
+<div class="paragraph">
+<p>Configure Infinispan clusters to encrypt JGroups messages with secret keys from keystores that you provide.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a keystore that contains a secret key.</p>
+</li>
+<li>
+<p>Place the keystore on the classpath for each node in the cluster.</p>
+<div class="paragraph">
+<p>For Infinispan Server, you put the keystore in the $ISPN_HOME directory.</p>
+</div>
+</li>
+<li>
+<p>Add the <code>SYM_ENCRYPT</code> protocol to a JGroups stack in your Infinispan configuration, as in the following example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+    <span class="tag">&lt;jgroups&gt;</span>
+         <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">encrypt-tcp</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">tcp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+           <span class="tag">&lt;SYM_ENCRYPT</span> <span class="attribute-name">keystore_name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myKeystore.p12</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="2"></i><b>(2)</b>
+                        <span class="attribute-name">keystore_type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">PKCS12</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="3"></i><b>(3)</b>
+                        <span class="attribute-name">store_password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeit</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="4"></i><b>(4)</b>
+                        <span class="attribute-name">key_password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeit</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="5"></i><b>(5)</b>
+                        <span class="attribute-name">alias</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myKey</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="6"></i><b>(6)</b>
+                        <span class="attribute-name">stack.combine</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT_AFTER</span><span class="delimiter">&quot;</span></span>
+                        <span class="attribute-name">stack.position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">VERIFY_SUSPECT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="7"></i><b>(7)</b>
+         <span class="tag">&lt;/stack&gt;</span>
+    <span class="tag">&lt;/jgroups&gt;</span>
+    <span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;transport</span> <span class="attribute-name">cluster</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.cluster.name}</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">encrypt-tcp</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="8"></i><b>(8)</b>
+                 <span class="attribute-name">node-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.node.name:}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+   <span class="tag">&lt;/cache-container&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Creates a secure JGroups stack named "encrypt-tcp" that extends the default TCP stack for Infinispan.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Names the keystore from which nodes obtain secret keys.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Specifies the keystore type. JGroups uses JCEKS by default.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Specifies the keystore password.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Specifies the secret key password.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>Specifies the secret key alias.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>Uses the <code>stack.combine</code> and <code>stack.position</code> attributes to insert <code>SYM_ENCRYPT</code> into the default TCP stack after the <code>VERIFY_SUSPECT</code> protocol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>Configures the Infinispan cluster to use the secure JGroups stack.</td>
+</tr>
+</table>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Verification</div>
+<p>When you start your Infinispan cluster, the following log message indicates that the cluster is using the secure JGroups stack:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">[org.infinispan.CLUSTER] ISPN000078: Starting JGroups channel cluster with stack &lt;encrypted_stack_name&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan nodes can join the cluster only if they use <code>SYM_ENCRYPT</code> and can obtain the secret key from the shared keystore.
+Otherwise the following message is written to Infinispan logs:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>[org.jgroups.protocols.SYM_ENCRYPT] &lt;hostname&gt;: received message without encrypt header from &lt;hostname&gt;; dropping it</pre>
+</div>
+</div>
+<div class="paragraph">
+<div class="title">Reference</div>
+<p>The example <code>SYM_ENCRYPT</code> configuration in this procedure shows commonly used parameters.
+Refer to JGroups documentation for the full set of available parameters.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html">JGroups 4 Manual</a></p>
+</li>
+<li>
+<p><a href="http://www.jgroups.org/schema/jgroups-4.2.xsd">JGroups 4.2 Schema</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -7935,7 +8285,7 @@ interface:</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2020-11-09 16:43:00 -0500
+Last updated 2020-11-30 02:47:11 -0500
 </div>
 </div>
 <style>

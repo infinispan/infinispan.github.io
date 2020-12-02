@@ -456,7 +456,21 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#encoding">1.1.1. Encoding</a></li>
 <li><a href="#osgi">1.1.2. OSGi</a></li>
 <li><a href="#rest">1.1.3. REST</a></li>
-<li><a href="#search">1.1.4. Search</a></li>
+<li><a href="#search">1.1.4. Search</a>
+<ul class="sectlevel4">
+<li><a href="#indexing_configuration">Indexing configuration</a>
+<ul class="sectlevel5">
+<li><a href="#storage">Storage</a></li>
+<li><a href="#reader_refresh">Reader refresh</a></li>
+<li><a href="#indexmanager">IndexManager</a></li>
+<li><a href="#worker_syncasync">Worker sync/async</a></li>
+<li><a href="#low_level_lucene_options">Low level Lucene options</a></li>
+<li><a href="#supporting_older_indexes">Supporting older indexes</a></li>
+<li><a href="#sharding">Sharding</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li><a href="#cache_health">1.1.5. Cache Health</a></li>
 <li><a href="#marshalling">1.1.6. Marshalling</a>
 <ul class="sectlevel4">
@@ -898,6 +912,154 @@ Starting with version 12 this results in a fatal error preventing the cache to s
 Please update your configurations accordingly.</p>
 </li>
 </ul>
+</div>
+<div class="sect4">
+<h5 id="indexing_configuration"><a class="anchor" href="#indexing_configuration"></a>Indexing configuration</h5>
+<div class="paragraph">
+<p>Configuring indexing using the <code>property</code> element is deprecated and will be removed in a future version.
+Use the <code>&lt;index-reader&gt;</code> and <code>&lt;index-writer&gt;</code> configuration elements to define indexing behaviour.
+For the programmatic configuration, use <code>builder.indexing().reader()</code> and <code>builder.indexing().writer()</code>.</p>
+</div>
+<div class="paragraph">
+<p>To migrate your configuration, please refer to the sections below:</p>
+</div>
+<div class="sect5">
+<h6 id="storage"><a class="anchor" href="#storage"></a>Storage</h6>
+<div class="listingblock">
+<div class="title">Memory Storage</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 11.0 --&gt;</span>
+<span class="tag">&lt;indexing&gt;</span>
+ <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default.directory_provider</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>local-heap<span class="tag">&lt;/property&gt;</span>
+<span class="tag">&lt;/indexing&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 12.0 --&gt;</span>
+<span class="tag">&lt;indexing</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local-heap</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="tag">&lt;/indexing&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Filesystem storage</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 11.0 --&gt;</span>
+<span class="tag">&lt;indexing&gt;</span>
+  <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default.directory_provider</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>filesystem<span class="tag">&lt;/property&gt;</span>
+  <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default.indexBase</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>${java.io.tmpdir}/baseDir<span class="tag">&lt;/property&gt;</span>
+<span class="tag">&lt;/indexing&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 12.0 --&gt;</span>
+<span class="tag">&lt;indexing</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">filesystem</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${java.io.tmpdir}/baseDir</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="reader_refresh"><a class="anchor" href="#reader_refresh"></a>Reader refresh</h6>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 11.0 --&gt;</span>
+<span class="tag">&lt;indexing&gt;</span>
+  <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default.reader.async_refresh_period_ms</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>1000<span class="tag">&lt;/property&gt;</span>
+<span class="tag">&lt;/indexing&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 12.0 --&gt;</span>
+<span class="tag">&lt;indexing&gt;</span>
+  <span class="tag">&lt;index-reader</span> <span class="attribute-name">refresh-interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/indexing&gt;</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="indexmanager"><a class="anchor" href="#indexmanager"></a>IndexManager</h6>
+<div class="paragraph">
+<p>From 12.0, <code>near-real-time</code> is the default index manager and no configuration is needed:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 11.0 --&gt;</span>
+<span class="tag">&lt;indexing&gt;</span>
+  <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default.indexmanager</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>near-real-time<span class="tag">&lt;/property&gt;</span>
+<span class="tag">&lt;/indexing&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 12.0 --&gt;</span>
+<span class="tag">&lt;indexing</span> <span class="attribute-name">enabled</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="worker_syncasync"><a class="anchor" href="#worker_syncasync"></a>Worker sync/async</h6>
+<div class="paragraph">
+<p>The <code>default.worker.execution</code> is redundant as the indexing process is async by default:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 11.0 --&gt;</span>
+<span class="tag">&lt;indexing&gt;</span>
+   <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default.worker.execution</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>async<span class="tag">&lt;/property&gt;</span>
+   <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default.index_flush_interval</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>500<span class="tag">&lt;/property&gt;</span>
+<span class="tag">&lt;/indexing&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 12.0 --&gt;</span>
+<span class="tag">&lt;indexing&gt;</span>
+   <span class="tag">&lt;index-writer</span> <span class="attribute-name">commit-interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/indexing&gt;</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="low_level_lucene_options"><a class="anchor" href="#low_level_lucene_options"></a>Low level Lucene options</h6>
+<div class="paragraph">
+<p>The properties used previously to tune the Lucene index directly are now
+available under the <code>&lt;index-writer&gt;</code> element.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 11.0 --&gt;</span>
+<span class="tag">&lt;indexing&gt;</span>
+   <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default.indexwriter.merge_factor</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>30<span class="tag">&lt;/property&gt;</span>
+   <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default.indexwriter.merge_max_size</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>1024<span class="tag">&lt;/property&gt;</span>
+   <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default.indexwriter.ram_buffer_size</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>256<span class="tag">&lt;/property&gt;</span>
+<span class="tag">&lt;/indexing&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="comment">&lt;!-- 12.0 --&gt;</span>
+<span class="tag">&lt;indexing&gt;</span>
+   <span class="tag">&lt;index-writer</span> <span class="attribute-name">ram-buffer-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">256</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+       <span class="tag">&lt;index-merge</span> <span class="attribute-name">factor</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">30</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1024</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+   <span class="tag">&lt;/index-writer&gt;</span>
+<span class="tag">&lt;/indexing&gt;</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="supporting_older_indexes"><a class="anchor" href="#supporting_older_indexes"></a>Supporting older indexes</h6>
+<div class="paragraph">
+<p>The property <code>lucene_version</code> is deprecated and will not be supported in a future version. It is recommended to re-index when migrating from older Infinispan versions instead of reusing the underlying indexes on disk created
+in an older Lucene version.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="sharding"><a class="anchor" href="#sharding"></a>Sharding</h6>
+<div class="paragraph">
+<p>Configuration of sharding through the property <code>default.sharding_strategy.nbr_of_shards</code> is deprecated and will be removed in a future version.</p>
+</div>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -3873,7 +4035,7 @@ repository, run the following command:</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2020-11-09 16:43:00 -0500
+Last updated 2020-11-30 02:47:11 -0500
 </div>
 </div>
 <style>

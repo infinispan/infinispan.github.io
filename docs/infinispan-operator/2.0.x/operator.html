@@ -563,16 +563,23 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#creating_service_monitor-monitor">11.1. Creating a Prometheus Service Monitor</a></li>
 </ul>
 </li>
-<li><a href="#logging">12. Monitoring Infinispan Logs</a>
+<li><a href="#anti_affinity">12. Guaranteeing Availability with Anti-Affinity</a>
 <ul class="sectlevel2">
-<li><a href="#configure_logging-monitor">12.1. Configuring Infinispan Logging</a></li>
-<li><a href="#_log_levels">12.2. Log Levels</a></li>
+<li><a href="#anti_affinity-availability">12.1. Anti-Affinity Strategies</a></li>
+<li><a href="#configuring_anti_affinity-availability">12.2. Configuring Anti-Affinity</a></li>
+<li><a href="#anti_affinity_configuration-availability">12.3. Anti-Affinity Strategy Configurations</a></li>
 </ul>
 </li>
-<li><a href="#operator_reference">13. Reference</a>
+<li><a href="#logging">13. Monitoring Infinispan Logs</a>
 <ul class="sectlevel2">
-<li><a href="#ref_image_crd-ref">13.1. Image Resource</a></li>
-<li><a href="#ref_services-ref">13.2. Network Services</a></li>
+<li><a href="#configure_logging-monitor">13.1. Configuring Infinispan Logging</a></li>
+<li><a href="#_log_levels">13.2. Log Levels</a></li>
+</ul>
+</li>
+<li><a href="#operator_reference">14. Reference</a>
+<ul class="sectlevel2">
+<li><a href="#ref_image_crd-ref">14.1. Image Resource</a></li>
+<li><a href="#ref_services-ref">14.2. Network Services</a></li>
 </ul>
 </li>
 </ul>
@@ -1165,7 +1172,8 @@ spec:
       org.infinispan: trace
       org.jgroups: trace
   expose: <i class="conum" data-value="10"></i><b>(10)</b>
-    type: LoadBalancer</code></pre>
+    type: LoadBalancer
+  affinity <i class="conum" data-value="11"></i><b>(11)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -1209,6 +1217,10 @@ spec:
 <tr>
 <td><i class="conum" data-value="10"></i><b>10</b></td>
 <td>Configures services for external traffic.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>Configures affinity and anti-affinity strategies.</td>
 </tr>
 </table>
 </div>
@@ -1304,7 +1316,8 @@ spec:
       org.jgroups.protocols.TCP: error
       org.jgroups.protocols.relay.RELAY2: fatal
   expose: <i class="conum" data-value="10"></i><b>(10)</b>
-    type: LoadBalancer</code></pre>
+    type: LoadBalancer
+  affinity <i class="conum" data-value="11"></i><b>(11)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -1348,6 +1361,10 @@ spec:
 <tr>
 <td><i class="conum" data-value="10"></i><b>10</b></td>
 <td>Configures services for external traffic.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>Configures affinity and anti-affinity strategies.</td>
 </tr>
 </table>
 </div>
@@ -3696,14 +3713,257 @@ If you do not use endpoint encryption, remove <code>spec.endpoints.tlsConfig</co
 </div>
 </div>
 <div class="sect1">
-<h2 id="logging">12. Monitoring Infinispan Logs</h2>
+<h2 id="anti_affinity">12. Guaranteeing Availability with Anti-Affinity</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Kubernetes includes anti-affinity capabilities that protect workloads from single points of failure.</p>
+</div>
+<div class="sect2">
+<h3 id="anti_affinity-availability">12.1. Anti-Affinity Strategies</h3>
+<div class="paragraph">
+<p>Each Infinispan node in a cluster is a pod that runs on an Kubernetes node in a cluster.
+Each Red Hat OpenShift node runs on a physical host system.
+Anti-affinity works by distributing Infinispan nodes across Kubernetes nodes, ensuring that your Infinispan clusters remain available even if hardware failures occur.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan Operator offers two anti-affinity strategies:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>kubernetes.io/hostname</code></dt>
+<dd>
+<p>Infinispan replica pods are scheduled on different Kubernetes nodes.</p>
+</dd>
+<dt class="hdlist1"><code>topology.kubernetes.io/zone</code></dt>
+<dd>
+<p>Infinispan replica pods are scheduled across multiple zones.</p>
+</dd>
+</dl>
+</div>
+<h4 id="_fault_tolerance" class="discrete">Fault tolerance</h4>
+<div class="paragraph">
+<p>Anti-affinity strategies guarantee cluster availability in different ways.</p>
+</div>
+<div class="paragraph">
+<div class="title">Scheduling pods on different Kubernetes nodes</div>
+<p>Provides tolerance of <code>x</code> node failures for the following types of cache:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Replicated: <code>x = spec.replicas - (spec.replica - 1)</code> where <code>spec.replicas &gt;= num_owners</code></p>
+</li>
+<li>
+<p>Distributed: <code>x = num_owners - 1</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<div class="title">Scheduling pods across multiple zones</div>
+<p>Provides tolerance of <code>x</code> zone failures when <code>x</code> zones exist for the following types of cache:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Replicated: <code>x = spec.replicas</code></p>
+</li>
+<li>
+<p>Distributed: <code>x = num_owners - 1</code></p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>spec.replicas</code></dt>
+<dd>
+<p>Defines the number of pods in each Infinispan cluster.</p>
+</dd>
+<dt class="hdlist1"><code>num_owners</code></dt>
+<dd>
+<p>Is the cache configuration attribute that defines the number of replicas for each entry in the cache.</p>
+</dd>
+</dl>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuring_anti_affinity-availability">12.2. Configuring Anti-Affinity</h3>
+<div class="paragraph">
+<p>Specify where Kubernetes schedules pods for your Infinispan clusters to ensure availability.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Add the <code>spec.affinity</code> field to your <strong>Infinispan</strong> CR.</p>
+</li>
+<li>
+<p>Configure anti-affinity strategies with the <code>podAntiAffinity</code> field.</p>
+</li>
+<li>
+<p>Define <code>kubernetes.io/hostname</code> and <code>topology.kubernetes.io/zone</code> strategies with the <code>topologyKey</code> field.</p>
+</li>
+<li>
+<p>Set the <code>weight</code> field to give preference to one strategy over another when using hostname and zone anti-affinity strategies together.</p>
+</li>
+<li>
+<p>Specify the <code>requiredDuringSchedulingIgnoredDuringExecution</code> field to always use the anti-affinity strategy. This can prevent all <code>spec.replicas</code> from being scheduled if the required number of hosts or zones are not available.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="anti_affinity_configuration-availability">12.3. Anti-Affinity Strategy Configurations</h3>
+<div class="paragraph">
+<p>Configure anti-affinity strategies in your <strong>Infinispan</strong> CR to control where Kubernetes schedules Infinispan replica pods.</p>
+</div>
+<h4 id="_schedule_pods_on_different_kubernetes_nodes" class="discrete">Schedule pods on different Kubernetes nodes</h4>
+<div class="paragraph">
+<p>The following is the anti-affinity strategy that Infinispan Operator uses if you do not configure the <code>spec.affinity</code> field in your <strong>Infinispan</strong> CR:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>spec:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100 <i class="conum" data-value="1"></i><b>(1)</b>
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - infinispan-pod
+          topologyKey: "kubernetes.io/hostname" <i class="conum" data-value="2"></i><b>(2)</b></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Sets the hostname strategy as most preferred.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Schedules Infinispan replica pods on different Kubernetes nodes.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<div class="title">Requiring different nodes</div>
+<p>If <code>spec.replicas</code> is greater than the number of Kubernetes nodes available, it is not possible to schedule Infinispan replica pods on different Kubernetes nodes.</p>
+</div>
+<div class="paragraph">
+<p>In this case, some Infinispan replica pods are scheduled on the same Kubernetes nodes.</p>
+</div>
+<div class="paragraph">
+<p>Change <code>preferredDuringSchedulingIgnoredDuringExecution</code> to <code>requiredDuringSchedulingIgnoredDuringExecution</code> if you want Infinispan cluster rollout to fail when <code>spec.replicas</code> is greater than the number of Kubernetes nodes available, as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>spec:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      ...</pre>
+</div>
+</div>
+<h4 id="_prefer_multiple_zones_when_scheduling_pods" class="discrete">Prefer multiple zones when scheduling pods</h4>
+<div class="listingblock">
+<div class="content">
+<pre>spec:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100 <i class="conum" data-value="1"></i><b>(1)</b>
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - infinispan-pod
+          topologyKey: "topology.kubernetes.io/zone" <i class="conum" data-value="2"></i><b>(2)</b>
+      - weight: 90 <i class="conum" data-value="3"></i><b>(3)</b>
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - infinispan-pod
+          topologyKey: "kubernetes.io/hostname" <i class="conum" data-value="4"></i><b>(4)</b></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Sets the zone strategy as most preferred.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Schedules Infinispan replica pods across multiple zones.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Sets the hostname strategy as next preferred.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Schedules Infinispan replica pods on different Kubernetes nodes if it is not possible to schedule across zones.</td>
+</tr>
+</table>
+</div>
+<h4 id="_schedule_pods_across_multiple_zones_only" class="discrete">Schedule pods across multiple zones only</h4>
+<div class="listingblock">
+<div class="content">
+<pre>spec:
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution: <i class="conum" data-value="1"></i><b>(1)</b>
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - infinispan-pod
+          topologyKey: "topology.kubernetes.io/zone"</pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Uses the zone strategy only when scheduling Infinispan replica pods.</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="logging">13. Monitoring Infinispan Logs</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Set logging categories to different message levels to monitor, debug, and
 troubleshoot Infinispan clusters.</p>
 </div>
 <div class="sect2">
-<h3 id="configure_logging-monitor">12.1. Configuring Infinispan Logging</h3>
+<h3 id="configure_logging-monitor">13.1. Configuring Infinispan Logging</h3>
 <div class="olist arabic">
 <div class="title">Procedure</div>
 <ol class="arabic">
@@ -3763,7 +4023,7 @@ and then apply the changes.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_log_levels">12.2. Log Levels</h3>
+<h3 id="_log_levels">13.2. Log Levels</h3>
 <div class="paragraph">
 <p>Log levels indicate the nature and severity of messages.</p>
 </div>
@@ -3805,14 +4065,14 @@ and then apply the changes.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="operator_reference">13. Reference</h2>
+<h2 id="operator_reference">14. Reference</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Find information about Infinispan services and clusters that you create with
 Infinispan Operator.</p>
 </div>
 <div class="sect2">
-<h3 id="ref_image_crd-ref">13.1. Image Resource</h3>
+<h3 id="ref_image_crd-ref">14.1. Image Resource</h3>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>spec:
@@ -3829,7 +4089,7 @@ Infinispan Operator.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="ref_services-ref">13.2. Network Services</h3>
+<h3 id="ref_services-ref">14.2. Network Services</h3>
 <div class="ulist">
 <div class="title">Internal service</div>
 <ul>
@@ -3952,7 +4212,7 @@ by default.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2020-11-27 05:20:12 -0500
+Last updated 2020-12-02 05:02:11 -0500
 </div>
 </div>
 </body>
