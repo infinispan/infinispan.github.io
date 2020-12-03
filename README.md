@@ -32,9 +32,11 @@ These instructions will get you a copy of the project up and running on your loc
   `bundle config set path $HOME/.bundle`
 7. Download and install required RubyGems
   `bundle install`
-8. Build the site and make it available on a local server
+8. Optionally, forced documentation downloading on every `jekyll serve` can be skipped with
+  `export FORCE_DOCUMENTATION_DOWNLOAD=false`
+9. Build the site and make it available on a local server
   `bundle exec jekyll serve`
-9. To preview your site, browse to http://localhost:4000
+10. To preview your site, browse to http://localhost:4000
 
 > If you encounter any unexpected errors during the above, please refer to the [troubleshooting](https://jekyllrb.com/docs/troubleshooting/#configuration-problems) page or the [requirements](https://jekyllrb.com/docs/installation/#requirements) page, as you might be missing development headers or other prerequisites.
 
