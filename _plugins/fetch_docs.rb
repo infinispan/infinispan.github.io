@@ -5,7 +5,7 @@ require "fileutils"
 require "optimist"
 
 opts = Optimist::options do
-  version "fetch_docs 0.0.2 (c) The Infinispan team"
+  version "fetch_docs 0.0.3 (c) The Infinispan team"
   banner <<-EOS
 This script pulls documentation artifacts generated during Infinispan builds
 and incorporates them into the Awestruct website.
@@ -97,9 +97,7 @@ if forceDocumentationDownload == "FALSE" and File.exists?("docs/versions.xml")
 else
   FileUtils.rm_rf(Dir.glob("docs/*"))
   Dir.mkdir("docs/") unless File.exists?("docs/")
-  versions_xml_file = File.open("docs/versions.xml", "w")
-  versions_xml_file.puts("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-  versions_xml_file.puts("<versions>")
+  versionXmlRecords = Array.new
   cfg["docs"].each do |type, tcfg|
     puts "Processing #{type}"
     tcfg.each do |ver, vcfg|
@@ -118,7 +116,7 @@ else
         valias = core["alias"]
         get_maven_docs(core["html"], core["pdf"], "docs", "#{ver}", valias)
         vname = if valias != nil then "#{ver} (#{valias})" else "#{ver}" end
-        versions_xml_file.puts("<version name=\"#{vname}\" path=\"#{ver}\" />")
+        versionXmlRecords.push "<version name=\"#{vname}\" path=\"#{ver}\" />"
       end
     end
   end
@@ -183,6 +181,12 @@ else
     %x( rm -rf _sbtmp* )
   end
 
+  versions_xml_file = File.open("docs/versions.xml", "w")
+  versions_xml_file.puts("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+  versions_xml_file.puts("<versions>")
+  versionXmlRecords.each do |versionXmlRecord|
+    versions_xml_file.puts("  " + versionXmlRecord)
+  end
   versions_xml_file.puts("</versions>")
   versions_xml_file.close()
 end
