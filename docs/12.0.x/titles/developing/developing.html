@@ -881,22 +881,28 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 </ul>
 </li>
-<li><a href="#custom_interceptors_chapter">18. Custom Interceptors</a>
+<li><a href="#anchored_keys_module">18. CloudEvents Integration Module (Experimental)</a>
 <ul class="sectlevel2">
-<li><a href="#adding_custom_interceptors_declaratively">18.1. Adding custom interceptors declaratively</a></li>
-<li><a href="#adding_custom_interceptors_programatically">18.2. Adding custom interceptors programatically</a></li>
-<li><a href="#custom_interceptor_design">18.3. Custom interceptor design</a></li>
+<li><a href="#configuration_3">18.1. Configuration</a></li>
+<li><a href="#event_format">18.2. Event Format</a></li>
 </ul>
 </li>
-<li><a href="#extending">19. Extending Infinispan</a>
+<li><a href="#custom_interceptors_chapter">19. Custom Interceptors</a>
 <ul class="sectlevel2">
-<li><a href="#custom_commands">19.1. Custom Commands</a>
+<li><a href="#adding_custom_interceptors_declaratively">19.1. Adding custom interceptors declaratively</a></li>
+<li><a href="#adding_custom_interceptors_programatically">19.2. Adding custom interceptors programatically</a></li>
+<li><a href="#custom_interceptor_design">19.3. Custom interceptor design</a></li>
+</ul>
+</li>
+<li><a href="#extending">20. Extending Infinispan</a>
+<ul class="sectlevel2">
+<li><a href="#custom_commands">20.1. Custom Commands</a>
 <ul class="sectlevel3">
-<li><a href="#an_example">19.1.1. An Example</a></li>
-<li><a href="#preassigned_custom_command_id_ranges">19.1.2. Preassigned Custom Command Id Ranges</a></li>
+<li><a href="#an_example">20.1.1. An Example</a></li>
+<li><a href="#preassigned_custom_command_id_ranges">20.1.2. Preassigned Custom Command Id Ranges</a></li>
 </ul>
 </li>
-<li><a href="#extending_the_configuration_builders_and_parsers">19.2. Extending the configuration builders and parsers</a></li>
+<li><a href="#extending_the_configuration_builders_and_parsers">20.2. Extending the configuration builders and parsers</a></li>
 </ul>
 </li>
 </ul>
@@ -948,7 +954,7 @@ artifact you add as a dependency to your project.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;properties&gt;</span>
-  <span class="tag">&lt;version.infinispan&gt;</span>12.0.0.Dev07<span class="tag">&lt;/version.infinispan&gt;</span>
+  <span class="tag">&lt;version.infinispan&gt;</span>12.0.0.CR1<span class="tag">&lt;/version.infinispan&gt;</span>
 <span class="tag">&lt;/properties&gt;</span>
 
 <span class="tag">&lt;dependencyManagement&gt;</span>
@@ -10346,7 +10352,140 @@ but also in server mode, if the client is not <code>HASH_DISTRIBUTION_AWARE</cod
 </div>
 </div>
 <div class="sect1">
-<h2 id="custom_interceptors_chapter"><a class="anchor" href="#custom_interceptors_chapter"></a>18. Custom Interceptors</h2>
+<h2 id="anchored_keys_module"><a class="anchor" href="#anchored_keys_module"></a>18. CloudEvents Integration Module (Experimental)</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan version 12 introduces an experimental module that converts
+Infinispan events to CloudEvents events and sends them to a Kafka topic
+in structured mode, with the JSON format.</p>
+</div>
+<div class="paragraph">
+<p>This allows Infinispan be further used as a Knative source.</p>
+</div>
+<div class="paragraph">
+<p>There are two broad kinds of events, and they can be sent to different
+Kafka topics:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Cache entry modifications: created, updated, removed, expired</p>
+</li>
+<li>
+<p>Audit events: user login, access denied</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="configuration_3"><a class="anchor" href="#configuration_3"></a>18.1. Configuration</h3>
+<div class="paragraph">
+<p>CloudEvents integration is enabled by adding the module to the global
+configuration and configuring at least a list of bootstrap Kafka servers
+and a topic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="preprocessor">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
+<span class="tag">&lt;infinispan</span>
+<span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.0</span><span class="delimiter">&quot;</span></span>
+<span class="attribute-name">xmlns:ce</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:cloudevents:12.0</span><span class="delimiter">&quot;</span></span>
+<span class="attribute-name">xmlns:xsi</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">http://www.w3.org/2001/XMLSchema-instance</span><span class="delimiter">&quot;</span></span>
+<span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.0</span>
+<span class="content">https://infinispan.org/schemas/infinispan-config-12.0.xsd</span>
+<span class="content">urn:infinispan:config:cloudevents:12.0</span>
+<span class="content">https://infinispan.org/schemas/infinispan-cloudevents-config-12.0.xsd</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+
+    <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;transport</span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;ce:cloudevents</span> <span class="attribute-name">bootstrap-servers</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">127.0.0.1:9092</span><span class="delimiter">&quot;</span></span>
+                                   <span class="attribute-name">audit-topic</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">audit</span><span class="delimiter">&quot;</span></span>
+                                   <span class="attribute-name">cache-entries-topic</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">cache-events</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+
+        <span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+            <span class="tag">&lt;ce:cloudevents-cache</span> <span class="attribute-name">enabled</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;/replicated-cache&gt;</span>
+    <span class="tag">&lt;/cache-container&gt;</span>
+
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="java">GlobalConfigurationBuilder managerBuilder = GlobalConfigurationBuilder.defaultClusteredBuilder();
+CloudEventsGlobalConfigurationBuilder cloudEventsGlobalBuilder =
+    managerBuilder.addModule(CloudEventsGlobalConfigurationBuilder.class);
+cloudEventsGlobalBuilder.bootstrapServers(<span class="string"><span class="delimiter">&quot;</span><span class="content">localhost:9092</span><span class="delimiter">&quot;</span></span>);
+cloudEventsGlobalBuilder.cacheEntriesTopic(<span class="string"><span class="delimiter">&quot;</span><span class="content">ispn</span><span class="delimiter">&quot;</span></span>);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Currently only the list of bootstrap servers, the number of acks, and the
+cache entries/audit topic names are configurable.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="event_format"><a class="anchor" href="#event_format"></a>18.2. Event Format</h3>
+<div class="paragraph">
+<p>The events are sent in
+<a href="https://github.com/cloudevents/spec/blob/v1.0/kafka-protocol-binding.md#13-content-modes">Kafka structured mode</a>,
+in the
+<a href="https://github.com/cloudevents/spec/blob/v1.0/json-format.md">JSON event format</a></p>
+</div>
+<div class="paragraph">
+<p>This is an example of an event:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">specversion</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1.0</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">source</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">/infinispan/CLUSTER/testCache</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">type</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.entry.created</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">time</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">2020-10-29T22:05:08.767950Z</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">subject</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">key-1</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">id</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">key-1:CommandInvocation:Test-NodeA:0</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">data</span><span class="delimiter">&quot;</span></span>: {
+       <span class="key"><span class="delimiter">&quot;</span><span class="content">property</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">value</span><span class="delimiter">&quot;</span></span>
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>source</code> field starts with <code>/infinispan/</code>, then the cluster name,
+and ends with the cache name.</p>
+</div>
+<div class="paragraph">
+<p>The <code>type</code> field is a straightforward mapping of the Infinispan cache entry
+event types, prefixed with <code>org.infinispan.entry</code>.</p>
+</div>
+<div class="paragraph">
+<p>The <code>data</code> field is the new entry value (or the old value, for remove events).
+If the value is Protostream-encoded, a Java object that can be marshalled
+to Protostream, or a Java primitive wrapper, it is converted to JSON.
+If the value is not encoded with Protostream or it is a Java object
+and the cache manager is configured to use another marshaller,
+the marshalled value is written as a string.
+If the marshalled value is not a valid UTF-8 string, it is first Base64-encoded.</p>
+</div>
+<div class="paragraph">
+<p>The <code>subject</code> field is the affected cache key, converted to a string
+using the same mechanism as the values.
+The only difference is that the resulting JSON is also wrapped in a string.</p>
+</div>
+<div class="paragraph">
+<p>TODO: The JSON conversion currently adds <code>\n</code> and space characters,
+which are escaped and preserved in the <code>subject</code> field value.
+We may want to Base64-encode protostream keys instead.</p>
+</div>
+<div class="paragraph">
+<p>The <code>id</code> field is composed from the key and a transaction/invocation id.
+Expiration events do not have an invocation id, so a random id is generated
+instead.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="custom_interceptors_chapter"><a class="anchor" href="#custom_interceptors_chapter"></a>19. Custom Interceptors</h2>
 <div class="sectionbody">
 <div class="admonitionblock important">
 <table>
@@ -10367,7 +10506,7 @@ future version.</p>
 <p>Custom interceptors are a way of extending Infinispan by being able to influence or respond to any modifications to cache. Example of such modifications are: elements are added/removed/updated or transactions are committed.</p>
 </div>
 <div class="sect2">
-<h3 id="adding_custom_interceptors_declaratively"><a class="anchor" href="#adding_custom_interceptors_declaratively"></a>18.1. Adding custom interceptors declaratively</h3>
+<h3 id="adding_custom_interceptors_declaratively"><a class="anchor" href="#adding_custom_interceptors_declaratively"></a>19.1. Adding custom interceptors declaratively</h3>
 <div class="paragraph">
 <p>Custom interceptors can be added on a per named cache basis. This is because each named cache have its own interceptor stack. Following xml snippet depicts the ways in which a custom interceptor can be added.</p>
 </div>
@@ -10392,7 +10531,7 @@ future version.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="adding_custom_interceptors_programatically"><a class="anchor" href="#adding_custom_interceptors_programatically"></a>18.2. Adding custom interceptors programatically</h3>
+<h3 id="adding_custom_interceptors_programatically"><a class="anchor" href="#adding_custom_interceptors_programatically"></a>19.2. Adding custom interceptors programatically</h3>
 <div class="paragraph">
 <p>In order to do that one needs to obtain a reference to the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html"><code>AdvancedCache</code></a>. This can be done as follows:</p>
 </div>
@@ -10408,7 +10547,7 @@ AdvancedCache advCache = aCache.getAdvancedCache();</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="custom_interceptor_design"><a class="anchor" href="#custom_interceptor_design"></a>18.3. Custom interceptor design</h3>
+<h3 id="custom_interceptor_design"><a class="anchor" href="#custom_interceptor_design"></a>19.3. Custom interceptor design</h3>
 <div class="paragraph">
 <p>When writing a custom interceptor, you need to abide by the following rules.</p>
 </div>
@@ -10426,14 +10565,14 @@ AdvancedCache advCache = aCache.getAdvancedCache();</code></pre>
 </div>
 </div>
 <div class="sect1">
-<h2 id="extending"><a class="anchor" href="#extending"></a>19. Extending Infinispan</h2>
+<h2 id="extending"><a class="anchor" href="#extending"></a>20. Extending Infinispan</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan can be extended to provide the ability for an end user to add
 additional configurations, operations and components outside of the scope of the ones normally provided by Infinispan.</p>
 </div>
 <div class="sect2">
-<h3 id="custom_commands"><a class="anchor" href="#custom_commands"></a>19.1. Custom Commands</h3>
+<h3 id="custom_commands"><a class="anchor" href="#custom_commands"></a>20.1. Custom Commands</h3>
 <div class="paragraph">
 <p>Infinispan makes use of a <a href="http://en.wikipedia.org/wiki/Command_pattern">command/visitor pattern</a> to
 implement the various top-level methods you see on the public-facing API.</p>
@@ -10468,7 +10607,7 @@ implementation in <code>META-INF/services/org.infinispan.commands.module.ModuleC
 </ol>
 </div>
 <div class="sect3">
-<h4 id="an_example"><a class="anchor" href="#an_example"></a>19.1.1. An Example</h4>
+<h4 id="an_example"><a class="anchor" href="#an_example"></a>20.1.1. An Example</h4>
 <div class="paragraph">
 <p>Here is an example of an <code>META-INF/services/org.infinispan.commands.module.ModuleCommandExtensions</code> file, configured accordingly:</p>
 </div>
@@ -10480,7 +10619,7 @@ implementation in <code>META-INF/services/org.infinispan.commands.module.ModuleC
 </div>
 </div>
 <div class="sect3">
-<h4 id="preassigned_custom_command_id_ranges"><a class="anchor" href="#preassigned_custom_command_id_ranges"></a>19.1.2. Preassigned Custom Command Id Ranges</h4>
+<h4 id="preassigned_custom_command_id_ranges"><a class="anchor" href="#preassigned_custom_command_id_ranges"></a>20.1.2. Preassigned Custom Command Id Ranges</h4>
 <div class="paragraph">
 <p>This is the list of <code>Command</code> identifiers that are used by Infinispan based modules or frameworks.
 Infinispan users should avoid using ids within these ranges. (RANGES to be finalised yet!)
@@ -10509,7 +10648,7 @@ Being this a single byte, ranges can&#8217;t be too large.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="extending_the_configuration_builders_and_parsers"><a class="anchor" href="#extending_the_configuration_builders_and_parsers"></a>19.2. Extending the configuration builders and parsers</h3>
+<h3 id="extending_the_configuration_builders_and_parsers"><a class="anchor" href="#extending_the_configuration_builders_and_parsers"></a>20.2. Extending the configuration builders and parsers</h3>
 <div class="paragraph">
 <p>If your custom module requires configuration, it is possible to enhance Infinispan&#8217;s configuration builders and
 parsers. Look at the <a href="https://github.com/infinispan/infinispan/blob/master/core/src/test/java/org/infinispan/configuration/module">custom module tests</a>
@@ -10521,7 +10660,7 @@ for a detail example on how to implement this.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2020-11-30 02:47:11 -0500
+Last updated 2020-12-22 13:01:56 -0500
 </div>
 </div>
 <style>
