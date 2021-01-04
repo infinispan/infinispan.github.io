@@ -3,9 +3,10 @@
 require "yaml"
 require "fileutils"
 require "optimist"
+require "nokogiri"
 
 opts = Optimist::options do
-  version "fetch_docs 0.0.3 (c) The Infinispan team"
+  version "fetch_docs 0.1.0 (c) The Infinispan team"
   banner <<-EOS
 This script pulls documentation artifacts generated during Infinispan builds
 and incorporates them into the Awestruct website.
@@ -91,13 +92,30 @@ def get_maven_docs(htmlArtifact, pdfArtifact, docroot, docbase, docalias)
   end
 end
 
+def gen_versions_xml_file(filePath, sourceData)
+  xmlVersionBuilder = Nokogiri::XML::Builder.new(:encoding => "UTF-8") do |xml|
+    xml.versions {
+      sourceData.each do |sourceData|
+        if sourceData.include? "!"
+          xml.version("name" => sourceData.split("!").first, "path" => sourceData.split("!").last)
+        else
+          xml.version("name" => sourceData, "path" => sourceData)
+        end
+      end
+    }
+  end
+  File.write(filePath, xmlVersionBuilder.to_xml)
+end
+
 forceDocumentationDownload = (ENV.fetch("FORCE_DOCUMENTATION_DOWNLOAD") { "true" }).upcase
 if forceDocumentationDownload == "FALSE" and File.exists?("docs/versions.xml")
   puts "Documentation exists. Skip the forced download..."
 else
   FileUtils.rm_rf(Dir.glob("docs/*"))
   Dir.mkdir("docs/") unless File.exists?("docs/")
-  versionXmlRecords = Array.new
+  coreDocIndex = Array.new
+  operatorDocIndex = Array.new
+
   cfg["docs"].each do |type, tcfg|
     puts "Processing #{type}"
     tcfg.each do |ver, vcfg|
@@ -116,7 +134,7 @@ else
         valias = core["alias"]
         get_maven_docs(core["html"], core["pdf"], "docs", "#{ver}", valias)
         vname = if valias != nil then "#{ver} (#{valias})" else "#{ver}" end
-        versionXmlRecords.push "<version name=\"#{vname}\" path=\"#{ver}\" />"
+        coreDocIndex.push "#{vname}!#{ver}"
       end
     end
   end
@@ -157,10 +175,11 @@ else
     end
     %x( mkdir -p docs/infinispan-operator/#{version}/ )
     %x( mkdir -p docs/infinispan-operator/topics/images/ )
-    %x( mv _optmp/*.html "docs/infinispan-operator/#{version}/" )
+    %x( mv _optmp/*.html _optmp/**/documentation/asciidoc/css _optmp/**/documentation/asciidoc/js "docs/infinispan-operator/#{version}/" )
     #Use images only on master. Causes harmless "cannot stat" messages.
     %x( cp -r _optmp/infinispan-operator-master/documentation/asciidoc/topics/images/* "docs/infinispan-operator/topics/images/" )
     %x( rm -rf _optmp* )
+    operatorDocIndex.push "#{version}"
   end
 
   # now for the spring boot starter docs
@@ -181,14 +200,8 @@ else
     %x( rm -rf _sbtmp* )
   end
 
-  versions_xml_file = File.open("docs/versions.xml", "w")
-  versions_xml_file.puts("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-  versions_xml_file.puts("<versions>")
-  versionXmlRecords.each do |versionXmlRecord|
-    versions_xml_file.puts("  " + versionXmlRecord)
-  end
-  versions_xml_file.puts("</versions>")
-  versions_xml_file.close()
+  gen_versions_xml_file("docs/infinispan-operator/versions.xml", operatorDocIndex)
+  gen_versions_xml_file("docs/versions.xml", coreDocIndex)
 end
 
 puts "Time elapsed #{Time.now - beginning} seconds"
