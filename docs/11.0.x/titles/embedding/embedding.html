@@ -456,6 +456,46 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#install_library">2. Installing Infinispan in Library Mode</a></li>
 <li><a href="#run_library">3. Running Infinispan as an Embedded Library</a></li>
+<li><a href="#setting_up_clusters">4. Setting Up Infinispan Clusters</a>
+<ul class="sectlevel2">
+<li><a href="#jgroups_getting_started-cluster-transport">4.1. Getting Started with Default Stacks</a>
+<ul class="sectlevel3">
+<li><a href="#preconfigured_jgroups_stacks-cluster-transport">4.1.1. Default JGroups Stacks</a></li>
+<li><a href="#jgroups_ports-cluster-transport">4.1.2. TCP and UDP Ports for Cluster Traffic</a></li>
+</ul>
+</li>
+<li><a href="#using_jgroups_inheritance-cluster-transport">4.2. Customizing JGroups Stacks</a>
+<ul class="sectlevel3">
+<li><a href="#jgroups_inheritance_attributes-cluster-transport">4.2.1. Inheritance Attributes</a></li>
+</ul>
+</li>
+<li><a href="#using_jgroups_system_properties-cluster-transport">4.3. Using JGroups System Properties</a>
+<ul class="sectlevel3">
+<li><a href="#jgroups_system_props-cluster-transport">4.3.1. System Properties for JGroups Stacks</a></li>
+</ul>
+</li>
+<li><a href="#using_jgroups_inline-cluster-transport">4.4. Using Inline JGroups Stacks</a></li>
+<li><a href="#jgroups_external-cluster-transport">4.5. Using External JGroups Stacks</a></li>
+<li><a href="#cluster_discovery-cluster-transport">4.6. Cluster Discovery Protocols</a>
+<ul class="sectlevel3">
+<li><a href="#discovery_ping-cluster-transport">4.6.1. PING</a></li>
+<li><a href="#discovery_tcpping-cluster-transport">4.6.2. TCPPING</a></li>
+<li><a href="#discovery_mping-cluster-transport">4.6.3. MPING</a></li>
+<li><a href="#discovery_tcpgossip-cluster-transport">4.6.4. TCPGOSSIP</a></li>
+<li><a href="#discovery_jdbcping-cluster-transport">4.6.5. JDBC_PING</a></li>
+<li><a href="#discovery_dnsping-cluster-transport">4.6.6. DNS_PING</a></li>
+</ul>
+</li>
+<li><a href="#jgroups_jchannels-cluster-transport">4.7. Using Custom JChannels</a></li>
+<li><a href="#jgroups_encrypt">4.8. Encrypting Cluster Transport</a>
+<ul class="sectlevel3">
+<li><a href="#jgroups_encryption-cluster_transport">4.8.1. Infinispan Cluster Security</a></li>
+<li><a href="#configuring_jgroups_asym_encrypt-cluster_transport">4.8.2. Configuring Cluster Transport with Asymmetric Encryption</a></li>
+<li><a href="#configuring_jgroups_sym_encrypt-cluster_transport">4.8.3. Configuring Cluster Transport with Symmetric Encryption</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -505,7 +545,7 @@ artifact you add as a dependency to your project.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;properties&gt;</span>
-  <span class="tag">&lt;version.infinispan&gt;</span>11.0.7.Final<span class="tag">&lt;/version.infinispan&gt;</span>
+  <span class="tag">&lt;version.infinispan&gt;</span>11.0.9.Final<span class="tag">&lt;/version.infinispan&gt;</span>
 <span class="tag">&lt;/properties&gt;</span>
 
 <span class="tag">&lt;dependencyManagement&gt;</span>
@@ -603,40 +643,1374 @@ Infinispan as needed.</p>
 <p><a href="../configuring/configuring.html#programmatic-configuring">Configuring Infinispan Programmatically</a></p>
 </li>
 <li>
-<p><a href="../configuring/configuring.html#cluster_transport">Setting Up Cluster Transport</a></p>
+<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/configuration/global/GlobalConfigurationBuilder.html">org.infinispan.configuration.global.GlobalConfigurationBuilder</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/manager/EmbeddedCacheManager.html">org.infinispan.manager.EmbeddedCacheManager</a></p>
 </li>
 <li>
 <p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/Cache.html">org.infinispan.Cache</a></p>
 </li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="setting_up_clusters"><a class="anchor" href="#setting_up_clusters"></a>4. Setting Up Infinispan Clusters</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan requires a transport layer so nodes can automatically join and leave clusters.
+The transport layer also enables Infinispan nodes to replicate or distribute data across the network and perform operations such as re-balancing and state transfer.</p>
+</div>
+<div class="sect2">
+<h3 id="jgroups_getting_started-cluster-transport"><a class="anchor" href="#jgroups_getting_started-cluster-transport"></a>4.1. Getting Started with Default Stacks</h3>
+<div class="paragraph">
+<p>Infinispan uses JGroups protocol stacks so nodes can send each other messages on dedicated cluster channels.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan provides preconfigured JGroups stacks for <code>UDP</code> and <code>TCP</code> protocols.
+You can use these default stacks as a starting point for building custom cluster transport configuration that is optimized for your network requirements.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/commons/api/CacheContainerAdmin.html">org.infinispan.commons.api.CacheContainerAdmin</a></p>
+<p>Locate the default JGroups stacks, <code>default-jgroups-*.xml</code>, in the <code>default-configs</code> directory inside the <code>infinispan-core-11.0.9.Final.jar</code> file.</p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/configuration/cache/CacheMode.html">org.infinispan.configuration.cache.CacheMode</a></p>
+<p>Do one of the following:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Use the <code>stack</code> attribute in your <code>infinispan.xml</code> file.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+  <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">replicatedCache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;transport</span> <span class="attribute-name">cluster</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.cluster.name}</span><span class="delimiter">&quot;</span></span>
+               <span class="attribute-name">stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">udp</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="1"></i><b>(1)</b>
+               <span class="attribute-name">node-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.node.name:}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;/cache-container&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Uses <code>default-jgroups-udp.xml</code> for cluster transport.</td>
+</tr>
+</table>
+</div>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/configuration/cache/Configuration.html">org.infinispan.configuration.cache.Configuration</a></p>
+<p>Use the <code>addProperty()</code> method to set the JGroups stack file:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">GlobalConfiguration globalConfig = <span class="keyword">new</span> GlobalConfigurationBuilder().transport()
+        .defaultTransport()
+<span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span> .clusterName(<span class="string"><span class="delimiter">&quot;</span><span class="content">qa-cluster</span><span class="delimiter">&quot;</span></span>)
+<span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span> .addProperty(<span class="string"><span class="delimiter">&quot;</span><span class="content">configurationFile</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">default-jgroups-udp.xml</span><span class="delimiter">&quot;</span></span>) <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span> .build();</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Uses the <code>default-jgroups-udp.xml</code> stack for cluster transport.</td>
+</tr>
+</table>
+</div>
+</li>
+</ul>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Infinispan logs the following message to indicate which stack it uses:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>[org.infinispan.CLUSTER] ISPN000078: Starting JGroups channel cluster with stack udp</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="preconfigured_jgroups_stacks-cluster-transport"><a class="anchor" href="#preconfigured_jgroups_stacks-cluster-transport"></a>4.1.1. Default JGroups Stacks</h4>
+<div class="paragraph">
+<p>Learn about default JGroups stacks that configure cluster transport.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 16.6666%;">
+<col style="width: 50.0001%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">File name</th>
+<th class="tableblock halign-left valign-top">Stack name</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>default-jgroups-udp.xml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>udp</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uses UDP for transport and UDP multicast for discovery. Suitable for larger clusters (over 100 nodes) or if you are using replicated caches or invalidation mode. Minimizes the number of open sockets.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>default-jgroups-tcp.xml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tcp</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uses TCP for transport and the <code>MPING</code> protocol for discovery, which uses
+<code>UDP</code> multicast. Suitable for smaller clusters (under 100 nodes) <em>only if</em> you are using distributed caches because TCP is more efficient than UDP as a point-to-point protocol.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>default-jgroups-ec2.xml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ec2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uses TCP for transport and <code>S3_PING</code> for discovery. Suitable for Amazon EC2 nodes where UDP multicast is not available.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>default-jgroups-kubernetes.xml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>kubernetes</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uses TCP for transport and <code>DNS_PING</code> for discovery. Suitable for Kubernetes and Red Hat OpenShift nodes where UDP multicast is not always available.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>default-jgroups-google.xml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>google</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uses TCP for transport and <code>GOOGLE_PING2</code> for discovery. Suitable for Google Cloud Platform nodes where UDP multicast is not available.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>default-jgroups-azure.xml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>azure</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uses TCP for transport and <code>AZURE_PING</code> for discovery. Suitable for Microsoft Azure nodes where UDP multicast is not available.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#protlist">JGroups Protocols</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="jgroups_ports-cluster-transport"><a class="anchor" href="#jgroups_ports-cluster-transport"></a>4.1.2. TCP and UDP Ports for Cluster Traffic</h4>
+<div class="paragraph">
+<p>Infinispan uses the following ports for cluster transport messages:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Default Port</th>
+<th class="tableblock halign-left valign-top">Protocol</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>7800</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCP/UDP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JGroups cluster bind port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>46655</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UDP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JGroups multicast</p></td>
+</tr>
+</tbody>
+</table>
+<h5 id="cross_site_replication" class="discrete">Cross-Site Replication</h5>
+<div class="paragraph">
+<p>Infinispan uses the following ports for the JGroups RELAY2 protocol:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>7900</code></dt>
+<dd>
+<p>For Infinispan clusters running on Kubernetes.</p>
+</dd>
+<dt class="hdlist1"><code>7800</code></dt>
+<dd>
+<p>If using UDP for traffic between nodes and TCP for traffic between clusters.</p>
+</dd>
+<dt class="hdlist1"><code>7801</code></dt>
+<dd>
+<p>If using TCP for traffic between nodes and TCP for traffic between clusters.</p>
+</dd>
+</dl>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="using_jgroups_inheritance-cluster-transport"><a class="anchor" href="#using_jgroups_inheritance-cluster-transport"></a>4.2. Customizing JGroups Stacks</h3>
+<div class="paragraph">
+<p>Adjust and tune properties to create a cluster transport configuration that works for your network requirements.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan provides attributes that let you extend the default JGroups stacks for easier configuration.
+You can inherit properties from the default stacks while combining, removing, and replacing other properties.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a new JGroups stack declaration in your <code>infinispan.xml</code> file.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+  <span class="tag">&lt;jgroups&gt;</span>
+    <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stack</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="tag">&lt;/stack&gt;</span>
+  <span class="tag">&lt;/jgroups&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Creates a custom JGroups stack named "my-stack".</td>
+</tr>
+</table>
+</div>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/configuration/cache/ConfigurationBuilder.html">org.infinispan.configuration.cache.ConfigurationBuilder</a></p>
+<p>Add the <code>extends</code> attribute and specify a JGroups stack to inherit properties from.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+  <span class="tag">&lt;jgroups&gt;</span>
+    <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stack</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">tcp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="tag">&lt;/stack&gt;</span>
+  <span class="tag">&lt;/jgroups&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Inherits from the default TCP stack.</td>
+</tr>
+</table>
+</div>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/configuration/global/GlobalConfigurationBuilder.html">org.infinispan.configuration.global.GlobalConfigurationBuilder</a></p>
+<p>Use the <code>stack.combine</code> attribute to modify properties for protocols configured in the inherited stack.</p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/manager/DefaultCacheManager.html">org.infinispan.manager.DefaultCacheManager</a></p>
+<p>Use the <code>stack.position</code> attribute to define the location for your custom stack.</p>
+<div class="paragraph">
+<p>For example, you might evaluate using a Gossip router and symmetric encryption with the default TCP stack as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;jgroups&gt;</span>
+  <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stack</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">tcp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;TCPGOSSIP</span> <span class="attribute-name">initial_hosts</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${jgroups.tunnel.gossip_router_hosts:localhost[12001]}</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">stack.combine</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">REPLACE</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">stack.position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">MPING</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="tag">&lt;FD_SOCK</span> <span class="attribute-name">stack.combine</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">REMOVE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b>
+    <span class="tag">&lt;VERIFY_SUSPECT</span> <span class="attribute-name">timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="3"></i><b>(3)</b>
+    <span class="tag">&lt;SYM_ENCRYPT</span> <span class="attribute-name">sym_algorithm</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">AES</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">keystore_name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mykeystore.p12</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">keystore_type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">PKCS12</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">store_password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeit</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">key_password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeit</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">alias</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myKey</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">stack.combine</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT_AFTER</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">stack.position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">VERIFY_SUSPECT</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span> <i class="conum" data-value="4"></i><b>(4)</b>
+  <span class="tag">&lt;/stack&gt;</span>
+<span class="tag">&lt;/jgroups&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Uses the <code>TCPGOSSIP</code> protocol as the discovery mechanism instead of <code>MPING</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Removes the <code>FD_SOCK</code> protocol from the stack.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Modifies the timeout value for the <code>VERIFY_SUSPECT</code> protocol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Adds the <code>SYM_ENCRYPT</code> protocol to the stack after the <code>VERIFY_SUSPECT</code> protocol.</td>
+</tr>
+</table>
+</div>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/manager/EmbeddedCacheManager.html">org.infinispan.manager.EmbeddedCacheManager</a></p>
+<p>Specify the stack name as the value for the <code>stack</code> attribute in the <code>transport</code> configuration.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+  <span class="tag">&lt;jgroups&gt;</span>
+    <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stack</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">tcp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+     ...
+    <span class="tag">&lt;/stack&gt;</span>
+    <span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;transport</span> <span class="attribute-name">cluster</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.cluster.name}</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-stack</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="1"></i><b>(1)</b>
+                 <span class="attribute-name">node-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.node.name:}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+   <span class="tag">&lt;/cache-container&gt;</span>
+  <span class="tag">&lt;/jgroups&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Configures Infinispan to use "my-stack" for cluster transport.</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>Check Infinispan logs to ensure it uses the stack.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>[org.infinispan.CLUSTER] ISPN000078: Starting JGroups channel cluster with stack my-stack</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<div class="sect3">
+<h4 id="jgroups_inheritance_attributes-cluster-transport"><a class="anchor" href="#jgroups_inheritance_attributes-cluster-transport"></a>4.2.1. Inheritance Attributes</h4>
+<div class="paragraph">
+<p>When you extend a JGroups stack, inheritance attributes let you adjust protocols and properties in the stack you are extending.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>stack.position</code> specifies protocols to modify.</p>
+</li>
+<li>
+<p><code>stack.combine</code> uses the following values to extend JGroups stacks:</p>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>COMBINE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Overrides protocol properties.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>REPLACE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Replaces protocols.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INSERT_AFTER</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adds a protocol into the stack after another protocol.
+Does not affect the protocol that you specify as the insertion point.</p>
+<p class="tableblock">Protocols in JGroups stacks affect each other based on their location in the stack.
+For example, you should put a protocol such as <code>NAKACK2</code> after the <code>SYM_ENCRYPT</code> or <code>ASYM_ENCRYPT</code> protocol so that <code>NAKACK2</code> is secured.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>REMOVE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Removes protocols from the stack.</p></td>
+</tr>
+</tbody>
+</table>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="using_jgroups_system_properties-cluster-transport"><a class="anchor" href="#using_jgroups_system_properties-cluster-transport"></a>4.3. Using JGroups System Properties</h3>
+<div class="paragraph">
+<p>Pass system properties to Infinispan at startup to tune cluster transport.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Use <code>-D&lt;property-name&gt;=&lt;property-value&gt;</code> arguments to set JGroups system properties as required.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For example, set a custom bind port and IP address as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>$ java -cp ... -Djgroups.bind.port=1234 -Djgroups.bind.address=192.0.2.0</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>When you embed Infinispan clusters in clustered WildFly applications, JGroups system properties can clash or override each other.</p>
+</div>
+<div class="paragraph">
+<p>For example, you do not set a unique bind address for either your Infinispan cluster or your WildFly application.
+In this case both Infinispan and your WildFly application use the JGroups default property and attempt to form clusters using the same bind address.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="jgroups_system_props-cluster-transport"><a class="anchor" href="#jgroups_system_props-cluster-transport"></a>4.3.1. System Properties for JGroups Stacks</h4>
+<div class="paragraph">
+<p>Set system properties that configure JGroups cluster transport stacks.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 42.8571%;">
+<col style="width: 28.5714%;">
+<col style="width: 14.2858%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">System Property</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Default Value</th>
+<th class="tableblock halign-left valign-top">Required/Optional</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.bind.address</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bind address for cluster transport.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SITE_LOCAL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.bind.port</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bind port for the socket.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>7800</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.mcast_addr</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IP address for multicast, both discovery and inter-cluster communication. The IP address must be a valid "class D" address that is suitable for IP multicast.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>228.6.7.8</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.mcast_port</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Port for the multicast socket.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>46655</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.ip_ttl</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Time-to-live (TTL) for IP multicast packets. The value defines the number of network hops a packet can make before it is dropped.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.thread_pool.min_threads</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Minimum number of threads for the thread pool.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.thread_pool.max_threads</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of threads for the thread pool.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">200</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.join_timeout</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of milliseconds to wait for join requests to succeed.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.thread_dumps_threshold</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Number of times a thread pool needs to be full before a thread dump is logged.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10000</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<div class="title">Amazon EC3</div>
+<p>The following system properties apply only to <code>default-jgroups-ec2.xml</code>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 42.8571%;">
+<col style="width: 28.5714%;">
+<col style="width: 14.2858%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">System Property</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Default Value</th>
+<th class="tableblock halign-left valign-top">Required/Optional</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.s3.access_key</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Amazon S3 access key for an S3 bucket.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No default value.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.s3.secret_access_key</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Amazon S3 secret key used for an S3 bucket.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No default value.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.s3.bucket</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name of the Amazon S3 bucket. The name must exist and be unique.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No default value.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<div class="title">Kubernetes</div>
+<p>The following system properties apply only to <code>default-jgroups-kubernetes.xml</code>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 42.8571%;">
+<col style="width: 28.5714%;">
+<col style="width: 14.2858%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">System Property</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Default Value</th>
+<th class="tableblock halign-left valign-top">Required/Optional</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.dns.query</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sets the DNS record that returns cluster members.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No default value.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Required</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<div class="title">Google Cloud Platform</div>
+<p>The following system properties apply only to <code>default-jgroups-google.xml</code>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 42.8571%;">
+<col style="width: 28.5714%;">
+<col style="width: 14.2858%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">System Property</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Default Value</th>
+<th class="tableblock halign-left valign-top">Required/Optional</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jgroups.google.bucket_name</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Name of the Google Compute Engine bucket. The name must exist and be unique.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No default value.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Required</p></td>
+</tr>
+</tbody>
+</table>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#SystemProperties">JGroups System Properties</a></p>
+</li>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#protlist">JGroups Protocol List</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="using_jgroups_inline-cluster-transport"><a class="anchor" href="#using_jgroups_inline-cluster-transport"></a>4.4. Using Inline JGroups Stacks</h3>
+<div class="paragraph">
+<p>You can insert complete JGroups stack definitions into <code>infinispan.xml</code> files.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Embed a custom JGroups stack declaration in your <code>infinispan.xml</code> file.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+  <span class="tag">&lt;jgroups&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+    <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">prod</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b>
+      <span class="tag">&lt;TCP</span> <span class="attribute-name">bind_port</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">7800</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">port_range</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">30</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">recv_buf_size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">20000000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">send_buf_size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">640000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;MPING</span> <span class="attribute-name">bind_addr</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">127.0.0.1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">break_on_coord_rsp</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">mcast_addr</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${jgroups.mping.mcast_addr:228.2.4.6}</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">mcast_port</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${jgroups.mping.mcast_port:43366}</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">num_discovery_runs</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">ip_ttl</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${jgroups.udp.ip_ttl:2}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;MERGE3</span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;FD_SOCK</span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;FD_ALL</span> <span class="attribute-name">timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">timeout_check_interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;VERIFY_SUSPECT</span> <span class="attribute-name">timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;pbcast.NAKACK2</span> <span class="attribute-name">use_mcast_xmit</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">xmit_interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">xmit_table_num_rows</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">50</span><span class="delimiter">&quot;</span></span>
+                      <span class="attribute-name">xmit_table_msgs_per_row</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1024</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">xmit_table_max_compaction_time</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">30000</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;UNICAST3</span> <span class="attribute-name">xmit_interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">xmit_table_num_rows</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">50</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">xmit_table_msgs_per_row</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1024</span><span class="delimiter">&quot;</span></span>
+                <span class="attribute-name">xmit_table_max_compaction_time</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">30000</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;pbcast.STABLE</span> <span class="attribute-name">stability_delay</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">200</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">desired_avg_gossip</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max_bytes</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1M</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;pbcast.GMS</span> <span class="attribute-name">print_local_addr</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">join_timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${jgroups.join_timeout:2000}</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;UFC</span> <span class="attribute-name">max_credits</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">4m</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">min_threshold</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">0.40</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;MFC</span> <span class="attribute-name">max_credits</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">4m</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">min_threshold</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">0.40</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+      <span class="tag">&lt;FRAG3</span> <span class="tag">/&gt;</span>
+    <span class="tag">&lt;/stack&gt;</span>
+  <span class="tag">&lt;/jgroups&gt;</span>
+  <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">replicatedCache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;transport</span> <span class="attribute-name">stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">prod</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span> <i class="conum" data-value="3"></i><b>(3)</b>
+    ...
+  <span class="tag">&lt;/cache-container&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Contains one or more JGroups stack definitions.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Defines a custom JGroups stack named "prod".</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Configures Infinispan to use "prod" for cluster transport.</td>
+</tr>
+</table>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="jgroups_external-cluster-transport"><a class="anchor" href="#jgroups_external-cluster-transport"></a>4.5. Using External JGroups Stacks</h3>
+<div class="paragraph">
+<p>Reference external files that define custom JGroups stacks in <code>infinispan.xml</code> files.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Put custom JGroups stack files on the application classpath.</p>
+<div class="paragraph">
+<p>Alternatively you can specify an absolute path when you declare the external stack file.</p>
+</div>
+</li>
+<li>
+<p>Reference the external stack file with the <code>stack-file</code> element.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+  <span class="tag">&lt;jgroups&gt;</span>
+     <span class="tag">&lt;stack-file</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">prod-tcp</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">prod-jgroups-tcp.xml</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+  <span class="tag">&lt;/jgroups&gt;</span>
+  <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">replicatedCache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;transport</span> <span class="attribute-name">stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">prod-tcp</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b>
+    <span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">replicatedCache</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;/cache-container&gt;</span>
+  ...
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Creates a stack named "prod-tcp" that uses the "prod-jgroups-tcp.xml" definition.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Configures Infinispan to use "prod-tcp" for cluster transport.</td>
+</tr>
+</table>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cluster_discovery-cluster-transport"><a class="anchor" href="#cluster_discovery-cluster-transport"></a>4.6. Cluster Discovery Protocols</h3>
+<div class="paragraph">
+<p>Infinispan supports different protocols that allow nodes to automatically find each other on the network and form clusters.</p>
+</div>
+<div class="paragraph">
+<p>There are two types of discovery mechanisms that Infinispan can use:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Generic discovery protocols that work on most networks and do not rely on external services.</p>
+</li>
+<li>
+<p>Discovery protocols that rely on external services to store and retrieve topology information for Infinispan clusters.<br>
+For instance the DNS_PING protocol performs discovery through DNS server records.</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Running Infinispan on hosted platforms requires using discovery mechanisms that are adapted to network constraints that individual cloud providers impose.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#DiscoveryProtocols">JGroups Discovery Protocols</a></p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="discovery_ping-cluster-transport"><a class="anchor" href="#discovery_ping-cluster-transport"></a>4.6.1. PING</h4>
+<div class="paragraph">
+<p>PING, or UDPPING is a generic JGroups discovery mechanism that uses dynamic multicasting with the UDP protocol.</p>
+</div>
+<div class="paragraph">
+<p>When joining, nodes send PING requests to an IP multicast address to discover other nodes already in the Infinispan cluster.
+Each node responds to the PING request with a packet that contains the address of the coordinator node and its own address. C=coordinator’s address and A=own address.
+If no nodes respond to the PING request, the joining node becomes the coordinator node in a new cluster.</p>
+</div>
+<div class="listingblock">
+<div class="title">PING configuration example</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;config&gt;</span>
+  <span class="tag">&lt;PING</span> <span class="attribute-name">num_discovery_runs</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  ...
+<span class="tag">&lt;/config&gt;</span></code></pre>
+</div>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#PING">JGroups PING</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="discovery_tcpping-cluster-transport"><a class="anchor" href="#discovery_tcpping-cluster-transport"></a>4.6.2. TCPPING</h4>
+<div class="paragraph">
+<p>TCPPING is a generic JGroups discovery mechanism that uses a list of static addresses for cluster members.</p>
+</div>
+<div class="paragraph">
+<p>With TCPPING, you manually specify the IP address or hostname of each node in the Infinispan cluster as part of the JGroups stack, rather than letting nodes discover each other dynamically.</p>
+</div>
+<div class="listingblock">
+<div class="title">TCPPING configuration example</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;config&gt;</span>
+  <span class="tag">&lt;TCP</span> <span class="attribute-name">bind_port</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">7800</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+  <span class="tag">&lt;TCPPING</span> <span class="attribute-name">timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3000</span><span class="delimiter">&quot;</span></span>
+<span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span> <span class="attribute-name">initial_hosts</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${jgroups.tcpping.initial_hosts:hostname1[port1],hostname2[port2]}</span><span class="delimiter">&quot;</span></span>
+<span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="attribute-name">port_range</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">0</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="error"> </span><span class="attribute-name">num_initial_members</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  ...
+<span class="tag">&lt;/config&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>For reliable discovery, Red Hat recommends <code>port-range=0</code>.</td>
+</tr>
+</table>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#TCPPING_Prot">JGroups TCPPING</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="discovery_mping-cluster-transport"><a class="anchor" href="#discovery_mping-cluster-transport"></a>4.6.3. MPING</h4>
+<div class="paragraph">
+<p>MPING uses IP multicast to discover the initial membership of Infinispan clusters.</p>
+</div>
+<div class="paragraph">
+<p>You can use MPING to replace TCPPING discovery with TCP stacks and use multicasing for discovery instead of static lists of initial hosts.
+However, you can also use MPING with UDP stacks.</p>
+</div>
+<div class="listingblock">
+<div class="title">MPING configuration example</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;config&gt;</span>
+  <span class="tag">&lt;MPING</span> <span class="attribute-name">mcast_addr</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${jgroups.mcast_addr:228.6.7.8}</span><span class="delimiter">&quot;</span></span>
+         <span class="attribute-name">mcast_port</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${jgroups.mcast_port:46655}</span><span class="delimiter">&quot;</span></span>
+         <span class="attribute-name">num_discovery_runs</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span>
+         <span class="attribute-name">ip_ttl</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${jgroups.udp.ip_ttl:2}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  ...
+<span class="tag">&lt;/config&gt;</span></code></pre>
+</div>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#MPING">JGroups MPING</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="discovery_tcpgossip-cluster-transport"><a class="anchor" href="#discovery_tcpgossip-cluster-transport"></a>4.6.4. TCPGOSSIP</h4>
+<div class="paragraph">
+<p>Gossip routers provide a centralized location on the network from which your
+Infinispan cluster can retrieve addresses of other nodes.</p>
+</div>
+<div class="paragraph">
+<p>You inject the address (<code>IP:PORT</code>) of the Gossip router into Infinispan nodes as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Pass the address as a system property to the JVM; for example, <code>-DGossipRouterAddress="10.10.2.4[12001]"</code>.</p>
+</li>
+<li>
+<p>Reference that system property in the JGroups configuration file.</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="title">Gossip router configuration example</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;config&gt;</span>
+  <span class="tag">&lt;TCP</span> <span class="attribute-name">bind_port</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">7800</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+  <span class="tag">&lt;TCPGOSSIP</span> <span class="attribute-name">timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3000</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">initial_hosts</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${GossipRouterAddress}</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">num_initial_members</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+  ...
+<span class="tag">&lt;/config&gt;</span></code></pre>
+</div>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#TCPGOSSIP_Prot">JGroups Gossip Router</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="discovery_jdbcping-cluster-transport"><a class="anchor" href="#discovery_jdbcping-cluster-transport"></a>4.6.5. JDBC_PING</h4>
+<div class="paragraph">
+<p>JDBC_PING uses shared databases to store information about Infinispan clusters.
+This protocol supports any database that can use a JDBC connection.</p>
+</div>
+<div class="paragraph">
+<p>Nodes write their IP addresses to the shared database so joining nodes can find the Infinispan cluster on the network.
+When nodes leave Infinispan clusters, they delete their IP addresses from the shared database.</p>
+</div>
+<div class="listingblock">
+<div class="title">JDBC_PING configuration example</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;config&gt;</span>
+  <span class="tag">&lt;JDBC_PING</span> <span class="attribute-name">connection_url</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:mysql://localhost:3306/database_name</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">connection_username</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">user</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">connection_password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">password</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">connection_driver</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mysql.jdbc.Driver</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  ...
+<span class="tag">&lt;/config&gt;</span></code></pre>
+</div>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Add the appropriate JDBC driver to the classpath so Infinispan can use JDBC_PING.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#_jdbc_ping">JDBC_PING</a></p>
+</li>
+<li>
+<p><a href="http://community.jboss.org/wiki/JDBCPING">JDBC_PING Wiki</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="discovery_dnsping-cluster-transport"><a class="anchor" href="#discovery_dnsping-cluster-transport"></a>4.6.6. DNS_PING</h4>
+<div class="paragraph">
+<p>JGroups DNS_PING queries DNS servers to discover Infinispan cluster members
+in Kubernetes environments such as OKD and Red Hat OpenShift.</p>
+</div>
+<div class="listingblock">
+<div class="title">DNS_PING configuration example</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="xml"><span class="tag">&lt;config&gt;</span>
+  <span class="tag">&lt;dns.DNS_PING</span> <span class="attribute-name">dns_query</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myservice.myproject.svc.cluster.local</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+  ...
+<span class="tag">&lt;/config&gt;</span></code></pre>
+</div>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html#_dns_ping">JGroups DNS_PING</a></p>
+</li>
+<li>
+<p><a href="https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/">DNS for Services and Pods</a> (Kubernetes documentation for adding DNS entries)</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="jgroups_jchannels-cluster-transport"><a class="anchor" href="#jgroups_jchannels-cluster-transport"></a>4.7. Using Custom JChannels</h3>
+<div class="paragraph">
+<p>Construct custom JGroups JChannels as in the following example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java">GlobalConfigurationBuilder global = <span class="keyword">new</span> GlobalConfigurationBuilder();
+JChannel jchannel = <span class="keyword">new</span> JChannel();
+<span class="comment">// Configure the jchannel as needed.</span>
+JGroupsTransport transport = <span class="keyword">new</span> JGroupsTransport(jchannel);
+global.transport().transport(transport);
+<span class="keyword">new</span> DefaultCacheManager(global.build());</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan cannot use custom JChannels that are already connected.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<div class="title">Reference</div>
+<p><a href="http://www.jgroups.org/manual4/index.html#JChannel">JGroups JChannel</a></p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="jgroups_encrypt"><a class="anchor" href="#jgroups_encrypt"></a>4.8. Encrypting Cluster Transport</h3>
+<div class="paragraph">
+<p>Secure cluster transport so that nodes communicate with encrypted messages.
+You can also configure Infinispan clusters to perform certificate authentication so that only nodes with valid identities can join.</p>
+</div>
+<div class="sect3">
+<h4 id="jgroups_encryption-cluster_transport"><a class="anchor" href="#jgroups_encryption-cluster_transport"></a>4.8.1. Infinispan Cluster Security</h4>
+<div class="paragraph">
+<p>To secure cluster traffic, you configure Infinispan nodes to encrypt JGroups message payloads with secret keys.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan nodes can obtain secret keys from either:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The coordinator node (asymmetric encryption).</p>
+</li>
+<li>
+<p>A shared keystore (symmetric encryption).</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<div class="title">Retrieving secret keys from coordinator nodes</div>
+<p>You configure asymmetric encryption by adding the <code>ASYM_ENCRYPT</code> protocol to a JGroups stack in your Infinispan configuration.
+This allows Infinispan clusters to generate and distribute secret keys.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>When using asymmetric encryption, you should also provide keystores so that nodes can perform certificate authentication and securely exchange secret keys.
+This protects your cluster from man-in-the-middle (MitM) attacks.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Asymmetric encryption secures cluster traffic as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The first node in the Infinispan cluster, the coordinator node, generates a secret key.</p>
+</li>
+<li>
+<p>A joining node performs certificate authentication with the coordinator to mutually verify identity.</p>
+</li>
+<li>
+<p>The joining node requests the secret key from the coordinator node. That request includes the public key for the joining node.</p>
+</li>
+<li>
+<p>The coordinator node encrypts the secret key with the public key and returns it to the joining node.</p>
+</li>
+<li>
+<p>The joining node decrypts and installs the secret key.</p>
+</li>
+<li>
+<p>The node joins the cluster, encrypting and decrypting messages with the secret key.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Retrieving secret keys from shared keystores</div>
+<p>You configure symmetric encryption by adding the <code>SYM_ENCRYPT</code> protocol to a JGroups stack in your Infinispan configuration.
+This allows Infinispan clusters to obtain secret keys from keystores that you provide.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Nodes install the secret key from a keystore on the Infinispan classpath at startup.</p>
+</li>
+<li>
+<p>Node join clusters, encrypting and decrypting messages with the secret key.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Comparison of asymmetric and symmetric encryption</div>
+<p><code>ASYM_ENCRYPT</code> with certificate authentication provides an additional layer of encryption in comparison with <code>SYM_ENCRYPT</code>.
+You provide keystores that encrypt the requests to coordinator nodes for the secret key.
+Infinispan automatically generates that secret key and handles cluster traffic, while letting you specify when to generate secret keys.
+For example, you can configure clusters to generate new secret keys when nodes leave.
+This ensures that nodes cannot bypass certificate authentication and join with old keys.</p>
+</div>
+<div class="paragraph">
+<p><code>SYM_ENCRYPT</code>, on the other hand, is faster than <code>ASYM_ENCRYPT</code> because nodes do not need to exchange keys with the cluster coordinator.
+A potential drawback to <code>SYM_ENCRYPT</code> is that there is no configuration to automatically generate new secret keys when cluster membership changes.
+Users are responsible for generating and distributing the secret keys that nodes use to encrypt cluster traffic.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="configuring_jgroups_asym_encrypt-cluster_transport"><a class="anchor" href="#configuring_jgroups_asym_encrypt-cluster_transport"></a>4.8.2. Configuring Cluster Transport with Asymmetric Encryption</h4>
+<div class="paragraph">
+<p>Configure Infinispan clusters to generate and distribute secret keys that encrypt JGroups messages.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a keystore with certificate chains that enables Infinispan to verify node identity.</p>
+</li>
+<li>
+<p>Place the keystore on the classpath for each node in the cluster.</p>
+<div class="paragraph">
+<p>For Infinispan Server, you put the keystore in the $ISPN_HOME directory.</p>
+</div>
+</li>
+<li>
+<p>Add the <code>SSL_KEY_EXCHANGE</code> and <code>ASYM_ENCRYPT</code> protocols to a JGroups stack in your Infinispan configuration, as in the following example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+    <span class="tag">&lt;jgroups&gt;</span>
+         <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">encrypt-tcp</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">tcp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+           <span class="tag">&lt;SSL_KEY_EXCHANGE</span> <span class="attribute-name">keystore_name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mykeystore.jks</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="2"></i><b>(2)</b>
+                             <span class="attribute-name">keystore_password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeit</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="3"></i><b>(3)</b>
+                             <span class="attribute-name">stack.combine</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT_AFTER</span><span class="delimiter">&quot;</span></span>
+                             <span class="attribute-name">stack.position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">VERIFY_SUSPECT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="4"></i><b>(4)</b>
+           <span class="tag">&lt;ASYM_ENCRYPT</span> <span class="attribute-name">asym_keylength</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2048</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="5"></i><b>(5)</b>
+                    <span class="attribute-name">asym_algorithm</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">RSA</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="6"></i><b>(6)</b>
+                    <span class="attribute-name">change_key_on_coord_leave</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="7"></i><b>(7)</b>
+                    <span class="attribute-name">change_key_on_leave</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="8"></i><b>(8)</b>
+                    <span class="attribute-name">use_external_key_exchange</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="9"></i><b>(9)</b>
+                    <span class="attribute-name">stack.combine</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT_AFTER</span><span class="delimiter">&quot;</span></span>
+                    <span class="attribute-name">stack.position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SSL_KEY_EXCHANGE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="10"></i><b>(10)</b>
+         <span class="tag">&lt;/stack&gt;</span>
+    <span class="tag">&lt;/jgroups&gt;</span>
+    <span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;transport</span> <span class="attribute-name">cluster</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.cluster.name}</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">encrypt-tcp</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="11"></i><b>(11)</b>
+                 <span class="attribute-name">node-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.node.name:}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+   <span class="tag">&lt;/cache-container&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Creates a secure JGroups stack named "encrypt-tcp" that extends the default TCP stack for Infinispan.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Names the keystore that nodes use to perform certificate authentication.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Specifies the keystore password.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Uses the <code>stack.combine</code> and <code>stack.position</code> attributes to insert <code>SSL_KEY_EXCHANGE</code> into the default TCP stack after the <code>VERIFY_SUSPECT</code> protocol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Specifies the length of the secret key that the coordinator node generates. The default value is <code>2048</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>Specifies the cipher engine the coordinator node uses to generate secret keys. The default value is <code>RSA</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>Configures Infinispan to generate and distribute a new secret key when the coordinator node changes.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>Configures Infinispan to generate and distribute a new secret key when nodes leave.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>Configures Infinispan nodes to use the <code>SSL_KEY_EXCHANGE</code> protocol for certificate authentication.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>Uses the <code>stack.combine</code> and <code>stack.position</code> attributes to insert <code>ASYM_ENCRYPT</code> into the default TCP stack after the <code>SSL_KEY_EXCHANGE</code> protocol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>Configures the Infinispan cluster to use the secure JGroups stack.</td>
+</tr>
+</table>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Verification</div>
+<p>When you start your Infinispan cluster, the following log message indicates that the cluster is using the secure JGroups stack:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">[org.infinispan.CLUSTER] ISPN000078: Starting JGroups channel cluster with stack &lt;encrypted_stack_name&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan nodes can join the cluster only if they use <code>ASYM_ENCRYPT</code> and can obtain the secret key from the coordinator node.
+Otherwise the following message is written to Infinispan logs:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>[org.jgroups.protocols.ASYM_ENCRYPT] &lt;hostname&gt;: received message without encrypt header from &lt;hostname&gt;; dropping it</pre>
+</div>
+</div>
+<div class="paragraph">
+<div class="title">Reference</div>
+<p>The example <code>ASYM_ENCRYPT</code> configuration in this procedure shows commonly used parameters.
+Refer to JGroups documentation for the full set of available parameters.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html">JGroups 4 Manual</a></p>
+</li>
+<li>
+<p><a href="http://www.jgroups.org/schema/jgroups-4.2.xsd">JGroups 4.2 Schema</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="configuring_jgroups_sym_encrypt-cluster_transport"><a class="anchor" href="#configuring_jgroups_sym_encrypt-cluster_transport"></a>4.8.3. Configuring Cluster Transport with Symmetric Encryption</h4>
+<div class="paragraph">
+<p>Configure Infinispan clusters to encrypt JGroups messages with secret keys from keystores that you provide.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a keystore that contains a secret key.</p>
+</li>
+<li>
+<p>Place the keystore on the classpath for each node in the cluster.</p>
+<div class="paragraph">
+<p>For Infinispan Server, you put the keystore in the $ISPN_HOME directory.</p>
+</div>
+</li>
+<li>
+<p>Add the <code>SYM_ENCRYPT</code> protocol to a JGroups stack in your Infinispan configuration, as in the following example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+    <span class="tag">&lt;jgroups&gt;</span>
+         <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">encrypt-tcp</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">tcp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+           <span class="tag">&lt;SYM_ENCRYPT</span> <span class="attribute-name">keystore_name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myKeystore.p12</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="2"></i><b>(2)</b>
+                        <span class="attribute-name">keystore_type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">PKCS12</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="3"></i><b>(3)</b>
+                        <span class="attribute-name">store_password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeit</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="4"></i><b>(4)</b>
+                        <span class="attribute-name">key_password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeit</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="5"></i><b>(5)</b>
+                        <span class="attribute-name">alias</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myKey</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="6"></i><b>(6)</b>
+                        <span class="attribute-name">stack.combine</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT_AFTER</span><span class="delimiter">&quot;</span></span>
+                        <span class="attribute-name">stack.position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">VERIFY_SUSPECT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="7"></i><b>(7)</b>
+         <span class="tag">&lt;/stack&gt;</span>
+    <span class="tag">&lt;/jgroups&gt;</span>
+    <span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;transport</span> <span class="attribute-name">cluster</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.cluster.name}</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">encrypt-tcp</span><span class="delimiter">&quot;</span></span> <i class="conum" data-value="8"></i><b>(8)</b>
+                 <span class="attribute-name">node-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${infinispan.node.name:}</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+   <span class="tag">&lt;/cache-container&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Creates a secure JGroups stack named "encrypt-tcp" that extends the default TCP stack for Infinispan.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Names the keystore from which nodes obtain secret keys.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Specifies the keystore type. JGroups uses JCEKS by default.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Specifies the keystore password.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Specifies the secret key password.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>Specifies the secret key alias.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>Uses the <code>stack.combine</code> and <code>stack.position</code> attributes to insert <code>SYM_ENCRYPT</code> into the default TCP stack after the <code>VERIFY_SUSPECT</code> protocol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>Configures the Infinispan cluster to use the secure JGroups stack.</td>
+</tr>
+</table>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Verification</div>
+<p>When you start your Infinispan cluster, the following log message indicates that the cluster is using the secure JGroups stack:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">[org.infinispan.CLUSTER] ISPN000078: Starting JGroups channel cluster with stack &lt;encrypted_stack_name&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan nodes can join the cluster only if they use <code>SYM_ENCRYPT</code> and can obtain the secret key from the shared keystore.
+Otherwise the following message is written to Infinispan logs:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>[org.jgroups.protocols.SYM_ENCRYPT] &lt;hostname&gt;: received message without encrypt header from &lt;hostname&gt;; dropping it</pre>
+</div>
+</div>
+<div class="paragraph">
+<div class="title">Reference</div>
+<p>The example <code>SYM_ENCRYPT</code> configuration in this procedure shows commonly used parameters.
+Refer to JGroups documentation for the full set of available parameters.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="http://www.jgroups.org/manual4/index.html">JGroups 4 Manual</a></p>
+</li>
+<li>
+<p><a href="http://www.jgroups.org/schema/jgroups-4.2.xsd">JGroups 4.2 Schema</a></p>
 </li>
 </ul>
 </div>
 </div>
 </div>
 </div>
+</div>
+</div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2020-11-30 02:47:11 -0500
+Last updated 2021-01-15 08:44:32 -0500
 </div>
 </div>
 <style>

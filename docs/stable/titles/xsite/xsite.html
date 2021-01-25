@@ -468,10 +468,14 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#xsite_state_transfer-xsite">1.5. State Transfer</a></li>
 <li><a href="#xsite_active_passive-xsite">1.6. Client Connections Across Sites</a>
 <ul class="sectlevel3">
-<li><a href="#conflict_resolution-xsite">1.6.1. Concurrent Writes and Conflicting Entries</a></li>
+<li><a href="#conflict_resolution-xsite">1.6.1. Concurrent Writes and Conflicting Entries</a>
+<ul class="sectlevel4">
+<li><a href="#custom_conflict_resolution">Custom Conflict Resolution</a></li>
 </ul>
 </li>
-<li><a href="#xsite_expiration-xsite">1.7. Expiration and Cross-Site Replication</a></li>
+</ul>
+</li>
+<li><a href="#xsite_expiration-xsite">1.7. Expiration with Cross-Site Replication</a></li>
 </ul>
 </li>
 <li><a href="#xsite_configure">2. Configuring Infinispan for Cross-Site Replication</a>
@@ -484,8 +488,9 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#configure_backups-xsite">2.2. Adding Backup Locations to Caches</a></li>
 <li><a href="#configure_backupfor-xsite">2.3. Backing Up to Caches with Different Names</a></li>
-<li><a href="#verify_xsite_view-xsite">2.4. Verifying Cross-Site Views</a></li>
-<li><a href="#configure_clients-xsite">2.5. Configuring Hot Rod Clients for Cross-Site Replication</a></li>
+<li><a href="#configure_conflict_resolver-xsite">2.4. Configuring Cross-Site Conflict Resolution</a></li>
+<li><a href="#verify_xsite_view-xsite">2.5. Verifying Cross-Site Views</a></li>
+<li><a href="#configure_clients-xsite">2.6. Configuring Hot Rod Clients for Cross-Site Replication</a></li>
 </ul>
 </li>
 <li><a href="#xsite_manage">3. Performing Cross-Site Replication Operations</a>
@@ -904,7 +909,7 @@ that modification happened after you initiated the push.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/Cache.html#clear()">org.infinispan.Cache.clear()</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#clear()">org.infinispan.Cache.clear()</a></p>
 </li>
 <li>
 <p><a href="../cli/cli.html#deleting_cache_entries">Clearing Caches with the CLI</a></p>
@@ -1081,30 +1086,99 @@ priority for resolving conflicting entries; for example, <strong>1LON</strong> a
 </tr>
 </table>
 </div>
+<div class="sect4">
+<h5 id="custom_conflict_resolution"><a class="anchor" href="#custom_conflict_resolution"></a>Custom Conflict Resolution</h5>
+<div class="paragraph">
+<p>Infinispan provides other algorithms for conflict resolution.
+They can found in <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">XSiteMergePolicy</a> enum.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>DEFAULT</code>: Uses the algorithm described above.</p>
+</li>
+<li>
+<p><code>PREFER_NON_NULL</code>: If there is a write/remove conflict it keeps the write operation and discards the remove operation.
+For all other combinations, it uses the <code>DEFAULT</code>.</p>
+</li>
+<li>
+<p><code>PREFER_NULL</code>: Similar to <code>PREFER_NON_NULL</code> but, instead, it discards the write operation.</p>
+</li>
+<li>
+<p><code>ALWAYS_REMOVE</code>: In case of any conflict, it removes the <code>key</code> from both sites.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>In addition, <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">XSiteEntryMergePolicy</a> interface can be implemented to add your own conflict resolution algorithm:</p>
+</div>
+<div class="listingblock">
+<div class="title"><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">XSiteEntryMergePolicy</a> class</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="java"><span class="directive">public</span> <span class="type">interface</span> <span class="class">XSiteEntryMergePolicy</span>&lt;K, V&gt; {
+   CompletionStage&lt;SiteEntry&lt;V&gt;&gt; mrege(K key, SiteEntry&lt;V&gt; localEntry, SiteEntry&lt;V&gt; remoteEntry);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/xsite/spi/SiteEntry.html">SiteEntry</a> contains the <code>value</code> and <code>Metadata</code> associates with a specific site.</p>
+</div>
 <div class="ulist">
 <div class="title">Reference</div>
 <ul>
 <li>
 <p><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html#compareTo-java.lang.String-">java.lang.String#compareTo()</a></p>
 </li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">XSiteEntryMergePolicy</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">XSiteMergePolicy</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/xsite/spi/SiteEntry.html">SiteEntry</a></p>
+</li>
+<li>
+<p><a href="#configure_conflict_resolver-xsite">Configure Cross-Site Conflict Resolution</a></p>
+</li>
 </ul>
+</div>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="xsite_expiration-xsite"><a class="anchor" href="#xsite_expiration-xsite"></a>1.7. Expiration and Cross-Site Replication</h3>
+<h3 id="xsite_expiration-xsite"><a class="anchor" href="#xsite_expiration-xsite"></a>1.7. Expiration with Cross-Site Replication</h3>
 <div class="paragraph">
-<p>Infinispan expiration controls how long entries remain in the cache.</p>
+<p>Expiration removes cache entries based on time.
+Infinispan provides two ways to configure expiration for entries:</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>lifespan</code> expiration is suitable for cross-site replication. When entries reach the maximum lifespan, Infinispan expires them independently of the remote sites.</p>
-</li>
-<li>
-<p><code>max-idle</code> expiration does not work with cross-site replication. Infinispan cannot determine when cache entries reach the idle timeout in remote sites.</p>
-</li>
-</ul>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>lifespan</code></dt>
+<dd>
+<p>Sets the maximum amount of time that entries can exist.<br>
+When you set <code>lifespan</code> with cross-site replication, Infinispan clusters expire entries independently of remote sites.</p>
+</dd>
+<dt class="hdlist1"><code>max-idle</code></dt>
+<dd>
+<p>Specifies how long entries can exist based on read or write operations in a given time period.<br>
+When you set a <code>max-idle</code> with cross-site replication, Infinispan clusters send touch commands to coordinate idle timeout values with remote sites.<br></p>
+</dd>
+</dl>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Using maximum idle expiration in cross-site deployments can impact performance because the additional processing to keep <code>max-idle</code> values synchronized means some operations take longer to complete.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 </div>
 </div>
@@ -1165,7 +1239,7 @@ communicate with backup locations.</p>
 <p><a href="#ref_relay-xsite">JGroups RELAY2 Stacks</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/configdocs/">Infinispan Configuration Schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Configuration Schema</a></p>
 </li>
 </ul>
 </div>
@@ -1271,8 +1345,8 @@ such as this:</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;config</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups</span><span class="delimiter">&quot;</span></span>
-        <span class="attribute-name">xmlns:xsi</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">http://www.w3.org/2001/XMLSchema-instance</span><span class="delimiter">&quot;</span></span>
-        <span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups http://www.jgroups.org/schema/jgroups-4.2.xsd</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="attribute-name">xmlns:xsi</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">http://www.w3.org/2001/XMLSchema-instance</span><span class="delimiter">&quot;</span></span>
+      <span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups http://www.jgroups.org/schema/jgroups-4.1.xsd</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
 
     <span class="comment">&lt;!-- Use TCP for inter-cluster transport. --&gt;</span>
     <span class="tag">&lt;TCP</span> <span class="attribute-name">bind_addr</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">127.0.0.1</span><span class="delimiter">&quot;</span></span>
@@ -1298,7 +1372,7 @@ such as this:</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="../configuring/configuring.html#cluster_transport">Cluster Transport Configuration</a></p>
+<p><a href="../server/server.html#setting_up_clusters">Setting Up Infinispan Clusters</a></p>
 </li>
 <li>
 <p><a href="http://www.jgroups.org/manual4/index.html#RELAY2">JGroups RELAY2</a></p>
@@ -1371,7 +1445,7 @@ strategies. Infinispan replicates data based on cache names.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/configdocs/">Infinispan Configuration Schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Configuration Schema</a></p>
 </li>
 </ul>
 </div>
@@ -1401,12 +1475,60 @@ different name on the local site.</p>
     <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
   <span class="tag">&lt;/backups&gt;</span>
   <span class="tag">&lt;backup-for</span> <span class="attribute-name">remote-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">customers</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">remote-site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
-<span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="verify_xsite_view-xsite"><a class="anchor" href="#verify_xsite_view-xsite"></a>2.4. Verifying Cross-Site Views</h3>
+<h3 id="configure_conflict_resolver-xsite"><a class="anchor" href="#configure_conflict_resolver-xsite"></a>2.4. Configuring Cross-Site Conflict Resolution</h3>
+<div class="paragraph">
+<p>Specify the algorithm name of the implementation to use when conflict happens.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Use <code>merge-policy</code> to configure the conflict resolution algorithm.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="title">Using Infinispan algorithm</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">eu-customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="tag">&lt;backups</span> <span class="attribute-name">merge-policy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ALWAYS_REMOVE</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+   <span class="tag">&lt;/backups&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Using a custom implementation</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">eu-customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="tag">&lt;backups</span> <span class="attribute-name">merge-policy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.mycompany.MyCustomXSiteEntryMergePolicy</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+   <span class="tag">&lt;/backups&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">XSiteEntryMergePolicy</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">XSiteMergePolicy</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Configuration Schema</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="verify_xsite_view-xsite"><a class="anchor" href="#verify_xsite_view-xsite"></a>2.5. Verifying Cross-Site Views</h3>
 <div class="paragraph">
 <p>After you configure Infinispan for cross-site replication, you should verify
 that Infinispan clusters successfully form cross-site views.</p>
@@ -1431,7 +1553,7 @@ INFO  [org.infinispan.XSITE] (jgroups-7,${server.hostname}) ISPN000439: Received
 </div>
 </div>
 <div class="sect2">
-<h3 id="configure_clients-xsite"><a class="anchor" href="#configure_clients-xsite"></a>2.5. Configuring Hot Rod Clients for Cross-Site Replication</h3>
+<h3 id="configure_clients-xsite"><a class="anchor" href="#configure_clients-xsite"></a>2.6. Configuring Hot Rod Clients for Cross-Site Replication</h3>
 <div class="paragraph">
 <p>Configure Hot Rod clients to use Infinispan clusters at different sites.</p>
 </div>
@@ -1483,13 +1605,13 @@ to a cluster at a different site:</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/client/hotrod/configuration/package-summary.html#package.description">org.infinispan.client.hotrod.configuration package description</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/client/hotrod/configuration/package-summary.html#package.description">org.infinispan.client.hotrod.configuration package description</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/client/hotrod/configuration/ConfigurationBuilder.html">org.infinispan.client.hotrod.configuration.ConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/client/hotrod/configuration/ConfigurationBuilder.html">org.infinispan.client.hotrod.configuration.ConfigurationBuilder</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/client/hotrod/RemoteCacheManager.html#RemoteCacheManager-java.net.URL-">org.infinispan.client.hotrod.RemoteCacheManager</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/client/hotrod/RemoteCacheManager.html#RemoteCacheManager-java.net.URL-">org.infinispan.client.hotrod.RemoteCacheManager</a></p>
 </li>
 </ul>
 </div>
@@ -2093,10 +2215,10 @@ cross-site operations.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/jmxComponents.html#XSiteAdmin">XSiteAdmin MBean</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/jmxComponents.html#XSiteAdmin">XSiteAdmin MBean</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/jmxComponents.html#XSiteAdmin">GlobalXSiteAdminOperations MBean</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/jmxComponents.html#XSiteAdmin">GlobalXSiteAdminOperations MBean</a></p>
 </li>
 </ul>
 </div>
@@ -2399,7 +2521,7 @@ and statistics, see the <em>Infinispan JMX Components</em> documentation.</p>
 </div>
 <div class="paragraph">
 <div class="title">Reference</div>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/jmxComponents.html">Infinispan JMX Components</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/jmxComponents.html">Infinispan JMX Components</a></p>
 </div>
 </div>
 </div>
@@ -2582,7 +2704,7 @@ If you did not take the site offline manually, this message could indicate a fai
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2020-11-30 02:47:11 -0500
+Last updated 2021-01-24 14:05:14 -0500
 </div>
 </div>
 <style>

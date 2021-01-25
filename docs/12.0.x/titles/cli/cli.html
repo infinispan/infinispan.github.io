@@ -458,7 +458,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#cli_resources">1.3.1. CLI Resources</a></li>
 </ul>
 </li>
-<li><a href="#server_shutdown-cli">1.4. Shutting Down Infinispan Server</a></li>
+<li><a href="#server_shutdown-cli">1.4. Shutting Down Infinispan Server</a>
+<ul class="sectlevel3">
+<li><a href="#restarting_clusters-cli">1.4.1. Restarting Infinispan Clusters</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#cache_operations">2. Performing Cache Operations with the Infinispan CLI</a>
@@ -1165,7 +1169,7 @@ server</pre>
 <div class="sect2">
 <h3 id="server_shutdown-cli"><a class="anchor" href="#server_shutdown-cli"></a>1.4. Shutting Down Infinispan Server</h3>
 <div class="paragraph">
-<p>Gracefully shut down running servers to passivate all entries to disk and persist state.</p>
+<p>Stop individually running servers or bring down clusters gracefully.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -1174,22 +1178,26 @@ server</pre>
 <p>Create a CLI connection to Infinispan.</p>
 </li>
 <li>
-<p>Use the <code class="command">shutdown</code> command to stop server instances or entire clusters.</p>
+<p>Shut down Infinispan Server in one of the following ways:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Stop individual servers with the <code class="command">shutdown server</code> command:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; shutdown server &lt;server_hostname&gt;</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Stop clusters with the <code class="command">shutdown cluster</code> command:</p>
+<p>Stop all nodes in a cluster with the <code class="command">shutdown cluster</code> command, for example:</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; shutdown cluster</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This command saves cluster state to the <code>data</code> folder for each node in the cluster.
+If you use a cache store, the <code class="command">shutdown cluster</code> command also persists all data in the cache.</p>
+</div>
+</li>
+<li>
+<p>Stop individual server instances with the <code class="command">shutdown server</code> command and the server hostname, for example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; shutdown server &lt;my_server01&gt;</code></pre>
 </div>
 </div>
 </li>
@@ -1197,6 +1205,34 @@ server</pre>
 </div>
 </li>
 </ol>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The <code class="command">shutdown server</code> command does not wait for rebalancing operations to complete, which can lead to data loss if you specify multiple hostnames at the same time.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Run <code class="command">help shutdown</code> for more details about using the command.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <div class="title">Verification</div>
@@ -1208,6 +1244,20 @@ server</pre>
 ISPN000080: Disconnecting JGroups channel cluster
 ISPN000390: Persisted state, version=&lt;$version&gt; timestamp=YYYY-MM-DDTHH:MM:SS
 ISPN080003: Infinispan Server stopped</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="restarting_clusters-cli"><a class="anchor" href="#restarting_clusters-cli"></a>1.4.1. Restarting Infinispan Clusters</h4>
+<div class="paragraph">
+<p>When you bring Infinispan clusters back online after shutting them down, you should wait for the cluster to be available before adding or removing nodes or modifying cluster state.</p>
+</div>
+<div class="paragraph">
+<p>If you shutdown clustered nodes with the <code class="command">shutdown server</code> command, you must restart each server in reverse order.<br>
+For example, if you shutdown <code>server1</code> and then shutdown <code>server2</code>, you should first start <code>server2</code> and then start <code>server1</code>.</p>
+</div>
+<div class="paragraph">
+<p>If you shutdown a cluster with the <code class="command">shutdown cluster</code> command, clusters become fully operational only after all nodes rejoin.<br>
+You can restart nodes in any order but the cluster remains in DEGRADED state until all nodes that were joined before shutdown are running.</p>
 </div>
 </div>
 </div>
@@ -4280,8 +4330,7 @@ Registers a <code>person.proto</code> Protobuf schema.</p>
 <div class="sect3">
 <h4 id="name_30"><a class="anchor" href="#name_30"></a>9.30.1. NAME</h4>
 <div class="paragraph">
-<p>shutdown - stops individual servers or performs orderly shutdowns for entire
-clusters.</p>
+<p>shutdown - stops running servers or brings clusters down gracefully.</p>
 </div>
 </div>
 <div class="sect3">
@@ -4296,12 +4345,16 @@ clusters.</p>
 <div class="sect3">
 <h4 id="examples_15"><a class="anchor" href="#examples_15"></a>9.30.3. EXAMPLES</h4>
 <div class="paragraph">
+<p><code>shutdown server</code><br>
+Stops the server to which the CLI is connected.</p>
+</div>
+<div class="paragraph">
 <p><code>shutdown server my_server01</code><br>
 Stops the server with hostname <code>my_server01</code>.</p>
 </div>
 <div class="paragraph">
 <p><code>shutdown cluster</code><br>
-Performs an orderly shutdown of all servers joined to the cluster.</p>
+Stores cluster state, persists entries if you use a cache store, and stops all nodes.</p>
 </div>
 </div>
 <div class="sect3">
@@ -4696,7 +4749,7 @@ Returns the version for the server and the CLI.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2020-12-22 13:01:56 -0500
+Last updated 2021-01-24 14:05:14 -0500
 </div>
 </div>
 <style>

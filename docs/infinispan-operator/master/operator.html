@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.12">
-<title>Infinispan Operator Guide</title>
+<title>Infinispan Operator 2.1 Guide</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -447,7 +447,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </head>
 <body id="infinispan_operator" class="article toc2 toc-left">
 <div id="header">
-<h1>Infinispan Operator Guide</h1>
+<h1>Infinispan Operator 2.1 Guide</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
@@ -517,10 +517,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#getting_certs-security">8.1.1. Retrieving TLS Certificates</a></li>
 </ul>
 </li>
-<li><a href="#using_custom_tls-security">8.2. Using Custom TLS Certificates</a>
+<li><a href="#disabling_encryption-security">8.2. Disabling Encryption</a></li>
+<li><a href="#using_custom_tls-security">8.3. Using Custom TLS Certificates</a>
 <ul class="sectlevel3">
-<li><a href="#ref_tls_cert_secret-security">8.2.1. Certificate Secrets</a></li>
-<li><a href="#ref_tls_keystore_secret-security">8.2.2. Keystore Secrets</a></li>
+<li><a href="#ref_tls_cert_secret-security">8.3.1. Certificate Secrets</a></li>
+<li><a href="#ref_tls_keystore_secret-security">8.3.2. Keystore Secrets</a></li>
 </ul>
 </li>
 </ul>
@@ -544,6 +545,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#ref_xsite_crd_manual-xsite_manual">9.2.2. Resources for Manual Cross-Site Connections</a></li>
 </ul>
 </li>
+<li><a href="#configuring_sites_in_clusters-{context}">9.3. Configuring Sites in the Same Kubernetes Cluster</a></li>
 </ul>
 </li>
 <li><a href="#caches">10. Creating Infinispan Caches</a>
@@ -611,6 +613,9 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <p>The Infinispan Operator provides operational intelligence and reduces management
 complexity for deploying Infinispan on Kubernetes and Red Hat OpenShift.</p>
 </div>
+<div class="paragraph">
+<p>Infinispan Operator 2.1 corresponds to Infinispan 12.0.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -665,7 +670,7 @@ going on to the next node.</p>
 <dl>
 <dt class="hdlist1">Installation Mode</dt>
 <dd>
-<p>You can install Infinispan Operator into specific namespaces only.</p>
+<p>You can install Infinispan Operator into specific namespaces or multiple namespaces.</p>
 </dd>
 <dt class="hdlist1">Update Channel</dt>
 <dd>
@@ -1316,7 +1321,7 @@ spec:
       storageClassName: my-storage-class
     sites: <i class="conum" data-value="5"></i><b>(5)</b>
       local:
-      name: NYC
+      name: azure
       expose:
         type: LoadBalancer
       locations:
@@ -1324,26 +1329,28 @@ spec:
         url: openshift://api.azure.host:6443
         secretName: azure-token
       - name: aws
+        clusterName: example-infinispan <i class="conum" data-value="6"></i><b>(6)</b>
+        namespace: ispn-namespace <i class="conum" data-value="7"></i><b>(7)</b>
         url: openshift://api.aws.host:6443
         secretName: aws-token
   security:
-    endpointSecretName: endpoint-identities <i class="conum" data-value="6"></i><b>(6)</b>
-    endpointEncryption: <i class="conum" data-value="7"></i><b>(7)</b>
+    endpointSecretName: endpoint-identities <i class="conum" data-value="8"></i><b>(8)</b>
+    endpointEncryption: <i class="conum" data-value="9"></i><b>(9)</b>
         type: Secret
         certSecretName: tls-secret
-  container: <i class="conum" data-value="8"></i><b>(8)</b>
+  container: <i class="conum" data-value="10"></i><b>(10)</b>
     extraJvmOpts: "-XX:NativeMemoryTracking=summary"
     cpu: "1000m"
     memory: 1Gi
-  logging: <i class="conum" data-value="9"></i><b>(9)</b>
+  logging: <i class="conum" data-value="11"></i><b>(11)</b>
     categories:
       org.infinispan: debug
       org.jgroups: debug
       org.jgroups.protocols.TCP: error
       org.jgroups.protocols.relay.RELAY2: fatal
-  expose: <i class="conum" data-value="10"></i><b>(10)</b>
+  expose: <i class="conum" data-value="12"></i><b>(12)</b>
     type: LoadBalancer
-  affinity <i class="conum" data-value="11"></i><b>(11)</b></code></pre>
+  affinity <i class="conum" data-value="13"></i><b>(13)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -1370,26 +1377,34 @@ spec:
 </tr>
 <tr>
 <td><i class="conum" data-value="6"></i><b>6</b></td>
-<td>Adds an authentication secret with user credentials.</td>
+<td>Specifies the name of the Infinispan cluster at the backup location if it does not match the name of the local cluster.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="7"></i><b>7</b></td>
-<td>Adds a custom encryption secret for secure connections.</td>
+<td>Specifies the Kubernetes namespace for the Infinispan cluster at the backup location if it is not the same as the local cluster.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="8"></i><b>8</b></td>
-<td>Allocates resources to nodes.</td>
+<td>Adds an authentication secret with user credentials.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="9"></i><b>9</b></td>
-<td>Configures logging.</td>
+<td>Adds a custom encryption secret for secure connections.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="10"></i><b>10</b></td>
-<td>Configures services for external traffic.</td>
+<td>Allocates resources to nodes.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>Configures logging.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="12"></i><b>12</b></td>
+<td>Configures services for external traffic.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="13"></i><b>13</b></td>
 <td>Configures affinity and anti-affinity strategies.</td>
 </tr>
 </table>
@@ -2108,7 +2123,52 @@ before they expire.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="using_custom_tls-security">8.2. Using Custom TLS Certificates</h3>
+<h3 id="disabling_encryption-security">8.2. Disabling Encryption</h3>
+<div class="paragraph">
+<p>You can disable encryption so clients do not need TLS certificates to establish connections with Infinispan.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan does not recommend disabling encryption in production environments where endpoints are exposed outside the Kubernetes cluster via <code>spec.expose.type</code>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Set <code>None</code> as the value for the <code>spec.security.endpointEncryption.type</code> field in your <code>Infinispan</code> CR and then apply the changes.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>spec:
+  ...
+  security:
+    endpointEncryption:
+            type: None <i class="conum" data-value="1"></i><b>(1)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Disables encryption for Infinispan endpoints.</td>
+</tr>
+</table>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="using_custom_tls-security">8.3. Using Custom TLS Certificates</h3>
 <div class="paragraph">
 <p>Use custom PKCS12 keystore or TLS certificate/key pairs to encrypt connections
 between clients and Infinispan clusters.</p>
@@ -2171,7 +2231,7 @@ between clients and Infinispan clusters.</p>
 </ol>
 </div>
 <div class="sect3">
-<h4 id="ref_tls_cert_secret-security">8.2.1. Certificate Secrets</h4>
+<h4 id="ref_tls_cert_secret-security">8.3.1. Certificate Secrets</h4>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>apiVersion: v1
@@ -2198,7 +2258,7 @@ data:
 </div>
 </div>
 <div class="sect3">
-<h4 id="ref_tls_keystore_secret-security">8.2.2. Keystore Secrets</h4>
+<h4 id="ref_tls_keystore_secret-security">8.3.2. Keystore Secrets</h4>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>apiVersion: v1
@@ -2471,29 +2531,6 @@ eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9...</code></pre>
 <li>
 <p>Create secrets that contain service account tokens for each backup location.</p>
 </li>
-<li>
-<p>Ensure that Kubernetes project names match.</p>
-<div class="admonitionblock important">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-important" title="Important"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>To perform cross-site replication, Infinispan Operator requires Infinispan
-clusters to have the same name and run in matching namespaces.</p>
-</div>
-<div class="paragraph">
-<p>For example, you create a cluster at <strong>LON</strong> in a project named
-<code>xsite-cluster</code>. The cluster at <strong>NYC</strong> must also run in a project
-named <code>xsite-cluster</code>.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</li>
 </ul>
 </div>
 <div class="olist arabic">
@@ -2507,6 +2544,12 @@ named <code>xsite-cluster</code>.</p>
 </li>
 <li>
 <p>Provide the name, URL, and secret for each Infinispan cluster that acts as a backup location with <code>spec.service.sites.locations</code>.</p>
+</li>
+<li>
+<p>Specify cluster names and namespaces for Infinispan clusters at each site with the the <code>clusterName</code> and <code>namespace</code> fields, if necessary.</p>
+<div class="paragraph">
+<p>You need to specify cluster names and namespaces for backup locations only if they do not match those for the local Infinispan cluster.</p>
+</div>
 <div class="paragraph">
 <p>The following are example <code>Infinispan</code> CR definitions for <strong>LON</strong> and <strong>NYC</strong>:</p>
 </div>
@@ -2534,6 +2577,8 @@ spec:
           url: openshift://api.rhdg-lon.openshift-aws.myhost.com:6443
           secretName: lon-token
         - name: NYC
+          clusterName: example-infinispan
+          namespace: ispn-namespace
           url: openshift://api.rhdg-nyc.openshift-aws.myhost.com:6443
           secretName: nyc-token</code></pre>
 </div>
@@ -2561,6 +2606,8 @@ spec:
           url: openshift://api.rhdg-nyc.openshift-aws.myhost.com:6443
           secretName: nyc-token
         - name: LON
+          clusterName: example-infinispan
+          namespace: ispn-namespace
           url: openshift://api.rhdg-lon.openshift-aws.myhost.com:6443
           secretName: lon-token</code></pre>
 </div>
@@ -2953,6 +3000,81 @@ locations to caches.</p>
 </tr>
 </table>
 </div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuring_sites_in_clusters-{context}">9.3. Configuring Sites in the Same Kubernetes Cluster</h3>
+<div class="paragraph">
+<p>For evaluation and demonstration purposes, you can configure Infinispan to back up between nodes in the same Kubernetes cluster.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create an <code>Infinispan</code> CR for each Infinispan cluster.</p>
+</li>
+<li>
+<p>Specify the name of the local site with <code>spec.service.sites.local.name</code>.</p>
+</li>
+<li>
+<p>Set <code>ClusterIP</code> as the value of the <code>spec.service.sites.local.expose.type</code> field.</p>
+</li>
+<li>
+<p>Provide the name and host for each Infinispan cluster that acts as a backup location with <code>spec.service.sites.locations</code>.</p>
+<div class="paragraph">
+<p>The following is an example <code>Infinispan</code> CR definition:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">apiVersion: infinispan.org/v1
+kind: Infinispan
+metadata:
+  name: example-clustera
+spec:
+  replicas: 1
+  expose:
+    type: LoadBalancer
+  service:
+    type: DataGrid
+    sites:
+      local:
+        name: SiteA
+        expose:
+          type: ClusterIP
+      locations:
+        - name: SiteA
+          host: example-clustera-site <i class="conum" data-value="1"></i><b>(1)</b>
+        - name: SiteB
+          host: example-clusterb-site</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The value of the <code>host</code> field is the Kubernetes service name that resolves to an internal IP address.</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>Configure nodes with any other Data Grid Service resources.</p>
+</li>
+<li>
+<p>Apply the <code>Infinispan</code> CRs.</p>
+</li>
+<li>
+<p>Check node logs to verify that Infinispan clusters form a cross-site view, for example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ kubectl logs example-infinispan-0 | grep x-site
+
+INFO  [org.infinispan.XSITE] (jgroups-5,example-infinispan-0-&lt;id&gt;) ISPN000439: Received new x-site view: [NYC]
+INFO  [org.infinispan.XSITE] (jgroups-7,example-infinispan-0-&lt;id&gt;) ISPN000439: Received new x-site view: [NYC, LON]</code></pre>
+</div>
+</div>
+</li>
+</ol>
 </div>
 </div>
 </div>
@@ -4822,7 +4944,7 @@ by default.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-01-12 08:39:24 -0500
+Last updated 2021-01-25 05:51:49 -0500
 </div>
 </div>
 <script>
