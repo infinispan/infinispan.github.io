@@ -401,6 +401,13 @@
   </xs:complexType>
 
   <xs:complexType name="transport">
+    <xs:sequence>
+      <xs:element name="property" type="tns:property" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>A transport property with name and value to be passed to the Transport instance.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
     <xs:attribute name="stack" type="xs:string">
       <xs:annotation>
         <xs:documentation>Defines the jgroups stack used by the transport.</xs:documentation>
@@ -586,7 +593,10 @@
       <xs:element name="context-initializer" minOccurs="0" maxOccurs="unbounded">
         <xs:annotation>
           <xs:documentation>
-            SerializationContextInitializer implementation which is used to initialize a Protostream based marshaller for user types.
+            SerializationContextInitializer implementation which is used to initialize a ProtoStream based marshaller
+            for user types. If no &lt;context-initializer&gt; elements are present then the java.util.ServiceLoader
+            mechanism will be used to automatically discover all SerializationContextInitializer implementations present
+            in classpath and load them.
           </xs:documentation>
         </xs:annotation>
         <xs:complexType>
@@ -599,10 +609,10 @@
           </xs:attribute>
         </xs:complexType>
       </xs:element>
-      <xs:element name="white-list" minOccurs="0">
+      <xs:element name="allow-list" minOccurs="0">
         <xs:annotation>
           <xs:documentation>
-            Enables individual classes or regular expressions to be added to the EmbeddedCacheManager white list.
+            Enables individual classes or regular expressions to be added to the EmbeddedCacheManager allow list.
           </xs:documentation>
         </xs:annotation>
         <xs:complexType>
@@ -610,14 +620,14 @@
             <xs:element name="class" type="xs:string" minOccurs="0" maxOccurs="unbounded">
               <xs:annotation>
                 <xs:documentation>
-                  FQN of the class to be added to the whitelist.
+                  FQN of the class to be added to the allowlist.
                 </xs:documentation>
               </xs:annotation>
             </xs:element>
             <xs:element name="regex" type="xs:string" minOccurs="0" maxOccurs="unbounded">
               <xs:annotation>
                 <xs:documentation>
-                  Regex pattern used to determine if a class is a member of the whitelist.
+                  Regex pattern used to determine if a class is a member of the allowlist.
                 </xs:documentation>
               </xs:annotation>
             </xs:element>
@@ -886,6 +896,16 @@
         </xs:annotation>
         <xs:complexType>
           <xs:sequence>
+            <xs:element name="index-reader" type="tns:index-reader" minOccurs="0">
+              <xs:annotation>
+                <xs:documentation>Controls index reading parameters.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="index-writer" type="tns:index-writer" minOccurs="0">
+              <xs:annotation>
+                <xs:documentation>Controls index writing parameters</xs:documentation>
+              </xs:annotation>
+            </xs:element>
             <xs:element name="key-transformers" minOccurs="0" maxOccurs="1">
               <xs:annotation>
                 <xs:documentation>Defines the Transformers used to stringify keys for indexing with Lucene</xs:documentation>
@@ -929,6 +949,21 @@
               <xs:documentation>
                 Specify whether indexing is enabled or not. Defaults to false, but it auto-activates if the
                 indexing element is present and indexing is not explicitly disabled. It also auto-activates if 'auto-config' is set to 'true'.
+              </xs:documentation>
+            </xs:annotation>
+          </xs:attribute>
+          <xs:attribute name="storage" type="tns:index-storage" default="filesystem">
+            <xs:annotation>
+              <xs:documentation>Specify index storage options.</xs:documentation>
+            </xs:annotation>
+          </xs:attribute>
+          <xs:attribute name="path" type="xs:string">
+            <xs:annotation>
+              <xs:documentation>
+                Specifies a filesystem path for the index when storage is 'filesystem'.
+                The value can be a relative or absolute path. Relative paths are created
+                relative to the configured global persistent location, or to the current
+                working directory when global state is disabled.
               </xs:documentation>
             </xs:annotation>
           </xs:attribute>
@@ -1834,7 +1869,7 @@
     </xs:attribute>
     <xs:attribute name="preload" type="xs:boolean" default="false">
       <xs:annotation>
-        <xs:documentation>If true, when the cache starts, data stored in the cache store will be pre-loaded into memory. This is particularly useful when data in the cache store will be needed immediately after startup and you want to avoid cache operations being delayed as a result of loading this data lazily. Can be used to provide a 'warm-cache' on startup, however there is a performance penalty as startup time is affected by this process.</xs:documentation>
+        <xs:documentation>If true, when the cache starts, data stored in the cache store will be pre-loaded into memory. This is particularly useful when data in the cache store will be needed immediately after startup and you want to avoid cache operations being delayed as a result of loading this data lazily. Can be used to provide a 'warm-cache' on startup, however there is a performance penalty as startup time is affected by this process. Likewise in some cases you cannot pre-load data in caches stores, such as when using shared remote stores.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="fetch-state" type="xs:boolean" default="false">
@@ -1886,8 +1921,8 @@
     <xs:attribute name="segmented" type="xs:boolean" default="true">
       <xs:annotation>
         <xs:documentation>
-          Configures cache stores to store data in hash space segments, with the
-          "hash.numSegments" property defining the number of segments.
+          Configures cache stores to store data in hash space segments, with the cache's
+          "segments" attribute defining the number of segments.
         </xs:documentation>
       </xs:annotation>
     </xs:attribute>
@@ -2055,6 +2090,14 @@
         </xs:annotation>
       </xs:element>
     </xs:sequence>
+    <xs:attribute name="merge-policy" type="tns:xsite-merge-policy" default="DEFAULT">
+      <xs:annotation>
+        <xs:documentation>
+          Specifies the fully qualified name of a class that implements the XSiteEntryMergePolicy interface or any of
+          the alias. Use if for ASYNC strategy backup.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
   </xs:complexType>
 
   <xs:complexType name="backup">
@@ -2277,6 +2320,140 @@
       </xs:enumeration>
     </xs:restriction>
   </xs:simpleType>
+
+  <xs:simpleType name="index-storage">
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="filesystem">
+        <xs:annotation>
+          <xs:documentation>Local filesystem index storage. This is the default.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="local-heap">
+        <xs:annotation>
+          <xs:documentation>JVM heap index storage, not persisted between restarts. Only suitable for small datasets with low concurrency.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="index-reader">
+    <xs:attribute name="refresh-interval" type="xs:long" default="0">
+      <xs:annotation>
+        <xs:documentation>
+          Interval, in milliseconds, to reopen the index reader.
+          By default, the index reader is refreshed on-demand during searches, if new entries were indexed since the last refresh. Configuring with a value larger than zero will make some queries results stale, but query throughput will increase substantially, specially in write heavy scenarios.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="index-merge">
+    <xs:attribute name="max-entries" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>
+          Maximum number of entries that an index segment can have before merging. Segments with more than this number of entries are not merged. Smaller values perform better on frequently changing indexes, larger values provide better search performance if the index does not change often.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="factor" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>
+          Number of segments that are merged at once. With smaller values, merging happens more often, which uses more resources, but the total number of segments will be lower on average, increasing search performance. Larger values (greater than 10) are best for heavy writing scenarios.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="min-size" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>
+          Minimum target size of segments, in MB, for background merges. Segments smaller than this size are merged more aggressively. Setting a value that is too large might result in expensive merge operations, even though they are less frequent.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="max-size" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>
+          Maximum size of segments, in MB, for background merges. Segments larger than this size are never merged in the background. Settings this to a lower value helps reduce memory requirements and avoids some merging operations at the cost of optimal search speed. This attribute is ignored when forcefully merging an index and `max-forced-size` applies instead.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="max-forced-size" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>
+          maximum size of segments, in MB, for forced merges and overrides the `max-size` attribute. Set this to the same value as `max-size` or lower. However setting the value too low degrades search performance because documents are deleted.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="calibrate-by-deletes" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>
+          Whether the number of deleted entries in an index should be taken into account when counting the entries in the segment. Setting `false` will lead to more frequent merges caused by `max-entries`, but will more aggressively merge segments with many deleted documents, improving search performance.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="index-writer">
+    <xs:sequence>
+      <xs:element name="index-merge" type="tns:index-merge" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            Defines properties to control the merge of index segments. An index segment is
+            not related to an Infinispan segment, but represents a section of index in the storage.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="commit-interval" type="xs:int" default="1000">
+      <xs:annotation>
+        <xs:documentation>
+          Amount of time, in milliseconds, that index changes that are buffered in memory are flushed to the index storage and a commit is performed. Because operation is costly, small values should be avoided. The default is 1000 ms (1 second).
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ram-buffer-size" type="xs:int" default="32">
+      <xs:annotation>
+        <xs:documentation>
+          Maximum amount of memory that can be used for buffering added entries and deletions before they are flushed to the index storage. Large values result in faster indexing but use more memory. For faster indexing performance you should set this attribute instead of `max-buffered-entries`. When used in combination with the `max-buffered-entries` attribute, a flush occurs for whichever event happens first.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="max-buffered-entries" type="xs:int" default="32">
+      <xs:annotation>
+        <xs:documentation>
+          Maximum number of entries that can be buffered in-memory before they are flushed to the index storage. Large values result in faster indexing but use more memory. When used in combination with the `ram-buffer-size` attribute, a flush occurs for whichever event happens first.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="thread-pool-size" type="xs:int" default="1">
+      <xs:annotation>
+        <xs:documentation>
+          Number of threads that execute write operations to the index.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="queue-count" type="xs:int" default="1">
+      <xs:annotation>
+        <xs:documentation>
+          Number of internal queues to use for each indexed type. Each queue holds a batch of modifications that is applied to the index and queues are processed in parallel. Increasing the number of queues will lead to an increase of indexing throughput, but only if the bottleneck is CPU. For optimum results, do not set a value for `queue-count` that is larger than the value for `thread-pool-size`.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="queue-size" type="xs:int" default="1000">
+      <xs:annotation>
+        <xs:documentation>
+          Maximum number of elements each queue can hold. Increasing the `queue-size` value increases the amount of memory that is used during indexing operations. Setting a value that is too small can block indexing operations.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="low-level-trace" type="xs:boolean" default="false">
+      <xs:annotation>
+        <xs:documentation>
+          Enables low-level trace information for indexing operations. Enabling this attribute substantially degrades performance. You should use this low-level tracing only as a last resource for troubleshooting.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
 
   <xs:simpleType name="eviction-strategy">
     <xs:restriction base="xs:token">
@@ -2622,7 +2799,22 @@
         </xs:enumeration>
         <xs:enumeration value="INSERT_AFTER">
           <xs:annotation>
-            <xs:documentation>Inserts the protocol after an existing protocol in the stack, referenced using the stack.position attribute.</xs:documentation>
+            <xs:documentation>Inserts the protocol after/above an existing protocol in the stack, referenced using the stack.position attribute.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+        <xs:enumeration value="INSERT_ABOVE">
+          <xs:annotation>
+            <xs:documentation>Inserts the protocol after/above an existing protocol in the stack, referenced using the stack.position attribute.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+        <xs:enumeration value="INSERT_BEFORE">
+          <xs:annotation>
+            <xs:documentation>Inserts the protocol before/below an existing protocol in the stack, referenced using the stack.position attribute.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+        <xs:enumeration value="INSERT_BELOW">
+          <xs:annotation>
+            <xs:documentation>Inserts the protocol before/below an existing protocol in the stack, referenced using the stack.position attribute.</xs:documentation>
           </xs:annotation>
         </xs:enumeration>
         <xs:enumeration value="REPLACE">
@@ -2651,6 +2843,41 @@
       <xs:enumeration value="ON_WRITE">
         <xs:annotation>
           <xs:documentation>Bias is acquired by the writing entry.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="xsite-merge-policy">
+    <xs:union memberTypes="tns:xsite-merge-policy-defaults xs:string"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="xsite-merge-policy-defaults">
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="DEFAULT">
+        <xs:annotation>
+          <xs:documentation>In case of conflict, it chooses the entry for the site's name with lower lexicographically
+            order.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="PREFER_NON_NULL">
+        <xs:annotation>
+          <xs:documentation>In case of conflict and one of the entries is null, it chooses the non-null entry. If both
+            non-null, it uses the DEFAULT.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="PREFER_NULL">
+        <xs:annotation>
+          <xs:documentation>In case of conflict and one of the entries is null, it chooses the null entry. If both
+            non-null, it uses the DEFAULT.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="ALWAYS_REMOVE">
+        <xs:annotation>
+          <xs:documentation>In case of any conflict, the entry is removed from both sites.</xs:documentation>
         </xs:annotation>
       </xs:enumeration>
     </xs:restriction>
