@@ -541,7 +541,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#manually_connecting_clusters">9.2. Manually Connecting Infinispan Clusters</a>
 <ul class="sectlevel3">
-<li><a href="#configuring_sites-xsite_manual">9.2.1. Specifying Infinispan Cluster Hostnames for Cross-Site Replication</a></li>
+<li><a href="#configuring_sites-xsite_manual">9.2.1. Specifying Static Hosts and Ports for Infinispan Clusters</a></li>
 <li><a href="#ref_xsite_crd_manual-xsite_manual">9.2.2. Resources for Manual Cross-Site Connections</a></li>
 </ul>
 </li>
@@ -2736,6 +2736,9 @@ locations to caches.</p>
 <li>
 <p>Use <code>openshift://</code> if the backup location is an OpenShift cluster. You should specify the URL of the Kubernetes API.</p>
 </li>
+<li>
+<p>Use <code>infinispan+xsite://</code> if the backup location has a static hostname and port.</p>
+</li>
 </ul>
 </div></td>
 </tr>
@@ -2773,20 +2776,21 @@ Kubernetes environment.</p>
 <div class="sect2">
 <h3 id="manually_connecting_clusters">9.2. Manually Connecting Infinispan Clusters</h3>
 <div class="paragraph">
-<p>Specify hostnames and ports so Infinispan clusters can establish connections with backup locations and form cross-site views.
-You can manually configure connections for cross-site replication so Infinispan clusters running on OpenShift can back up to clusters running in different environments, such as virtual machine or bare-metal deployments.
-Manually configuring connections for cross-site replication is also necessary when access to the Kubernetes API is not available outside the OpenShift cluster where Infinispan runs.</p>
+<p>Configure cross-site replication manually so Infinispan clusters running on OpenShift can back up to clusters running in platforms other than Kubernetes.</p>
+</div>
+<div class="paragraph">
+<p>Manually configuring cross-site replication is also necessary when access to the Kubernetes API is not available outside the Kubernetes cluster where Infinispan runs.</p>
 </div>
 <div class="sect3">
-<h4 id="configuring_sites-xsite_manual">9.2.1. Specifying Infinispan Cluster Hostnames for Cross-Site Replication</h4>
+<h4 id="configuring_sites-xsite_manual">9.2.1. Specifying Static Hosts and Ports for Infinispan Clusters</h4>
 <div class="paragraph">
-<p>Specify hostnames and ports for Infinispan clusters so they can establish connections and form cross-site views.</p>
+<p>Specify static hosts and ports for Infinispan clusters so they can establish connections and form cross-site views.</p>
 </div>
 <div class="ulist">
 <div class="title">Prerequisites</div>
 <ul>
 <li>
-<p>Ensure that you have the correct hostnames and port numbers for each Infinispan cluster that you plan to configure as a backup location.</p>
+<p>Have the host names and ports for each Infinispan cluster that you plan to configure as a backup location.</p>
 </li>
 </ul>
 </div>
@@ -2800,10 +2804,7 @@ Manually configuring connections for cross-site replication is also necessary wh
 <p>Specify the name of the local site with <code>spec.service.sites.local.name</code>.</p>
 </li>
 <li>
-<p>Provide the name, host, and port for each Infinispan cluster that acts as a backup location with <code>spec.service.sites.locations</code>.</p>
-<div class="paragraph">
-<p>The following are example <code>Infinispan</code> CR definitions for <strong>LON</strong> and <strong>NYC</strong>:</p>
-</div>
+<p>Provide the name and static URL for each Infinispan cluster that acts as a backup location with <code>spec.service.sites.locations</code>, for example:</p>
 <div class="ulist">
 <ul>
 <li>
@@ -2825,11 +2826,9 @@ spec:
           type: LoadBalancer
       locations:
         - name: LON
-          host: infinispan-lon.myhost.com
-          port: 7900
+          url: infinispan+xsite://infinispan-lon.myhost.com:7900
         - name: NYC
-          host: infinispan-nyc.myhost.com
-          port: 7900</code></pre>
+          url: infinispan+xsite://infinispan-nyc.myhost.com:7900</code></pre>
 </div>
 </div>
 </li>
@@ -2852,11 +2851,9 @@ spec:
           type: LoadBalancer
       locations:
         - name: NYC
-          host: infinispan-nyc.myhost.com
-          port: 7900
+          url: infinispan+xsite://infinispan-nyc.myhost.com:7900
         - name: LON
-          host: infinispan-lon.myhost.com
-          port: 7900</code></pre>
+          url: infinispan+xsite://infinispan-lon.myhost.com</code></pre>
 </div>
 </div>
 </li>
@@ -2935,15 +2932,13 @@ locations to caches.</p>
           type: LoadBalancer <i class="conum" data-value="3"></i><b>(3)</b>
       locations: <i class="conum" data-value="4"></i><b>(4)</b>
       - name: LON <i class="conum" data-value="5"></i><b>(5)</b>
-        host: infinispan-lon.myhost.com <i class="conum" data-value="6"></i><b>(6)</b>
-        port: 7900 <i class="conum" data-value="7"></i><b>(7)</b>
+        url: infinispan+xsite://infinispan-lon.myhost.com:7900 <i class="conum" data-value="6"></i><b>(6)</b>
       - name: NYC
-        host: infinispan-nyc.myhost.com
-        port: 7900
+        url: infinispan+xsite://infinispan-nyc.myhost.com:7900
   logging:
     categories:
-      org.jgroups.protocols.TCP: error <i class="conum" data-value="8"></i><b>(8)</b>
-      org.jgroups.protocols.relay.RELAY2: fatal <i class="conum" data-value="9"></i><b>(9)</b></code></pre>
+      org.jgroups.protocols.TCP: error <i class="conum" data-value="7"></i><b>(7)</b>
+      org.jgroups.protocols.relay.RELAY2: fatal <i class="conum" data-value="8"></i><b>(8)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2980,18 +2975,14 @@ locations to caches.</p>
 </tr>
 <tr>
 <td><i class="conum" data-value="6"></i><b>6</b></td>
-<td>Specifies the hostname for the backup location.</td>
+<td>Specifies the static URL for the backup location in the format of <code>infinispan+xsite://&lt;hostname&gt;:&lt;port&gt;</code>. The default port is <code>7900</code>.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="7"></i><b>7</b></td>
-<td>Optionally specifies the port that the backup location uses for the JGroups RELAY2 protocol. The default is <code>7900</code>.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="8"></i><b>8</b></td>
 <td>Logs error messages for the JGroups TCP protocol.</td>
 </tr>
 <tr>
-<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
 <td>Logs fatal messages for the JGroups RELAY2 protocol.</td>
 </tr>
 </table>
@@ -3016,7 +3007,7 @@ locations to caches.</p>
 <p>Set <code>ClusterIP</code> as the value of the <code>spec.service.sites.local.expose.type</code> field.</p>
 </li>
 <li>
-<p>Provide the name and host for each Infinispan cluster that acts as a backup location with <code>spec.service.sites.locations</code>.</p>
+<p>Provide the Infinispan cluster hostname as the URL for each backup location with <code>spec.service.sites.locations</code>.</p>
 <div class="paragraph">
 <p>The following is an example <code>Infinispan</code> CR definition:</p>
 </div>
@@ -3039,16 +3030,16 @@ spec:
           type: ClusterIP
       locations:
         - name: SiteA
-          host: example-clustera-site <i class="conum" data-value="1"></i><b>(1)</b>
+          url: infinispan+xsite://example-clustera-site <i class="conum" data-value="1"></i><b>(1)</b>
         - name: SiteB
-          host: example-clusterb-site</code></pre>
+          url: infinispan+xsite://example-clusterb-site</code></pre>
 </div>
 </div>
 <div class="colist arabic">
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>The value of the <code>host</code> field is the Kubernetes service name that resolves to an internal IP address.</td>
+<td>The value of the <code>url</code> field is the Kubernetes service name that resolves to an internal IP address.</td>
 </tr>
 </table>
 </div>
@@ -4971,7 +4962,7 @@ by default.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-02-04 05:00:07 -0500
+Last updated 2021-02-11 12:28:05 -0500
 </div>
 </div>
 <script>
