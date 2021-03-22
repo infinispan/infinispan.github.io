@@ -551,19 +551,14 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#create_caches_cr">9. Creating Caches with Infinispan Operator</a>
 <ul class="sectlevel2">
-<li><a href="#cache_auth-cache-cr">9.1. Adding Credentials for Infinispan Operator</a>
+<li><a href="#cache_xml-cache-cr">9.1. Creating Infinispan Caches from XML</a></li>
+<li><a href="#cache_templates-cache-cr">9.2. Creating Infinispan Caches from Templates</a></li>
+<li><a href="#adding_backup_locations-cache-cr">9.3. Adding Backup Locations to Caches</a>
 <ul class="sectlevel3">
-<li><a href="#custom_cache_auth-cache-cr">9.1.1. Using Custom Credentials Secrets</a></li>
+<li><a href="#backups_automatic_offline-cache-cr">9.3.1. Performance Considerations with Taking Backup Locations Offline</a></li>
 </ul>
 </li>
-<li><a href="#cache_xml-cache-cr">9.2. Creating Infinispan Caches from XML</a></li>
-<li><a href="#cache_templates-cache-cr">9.3. Creating Infinispan Caches from Templates</a></li>
-<li><a href="#adding_backup_locations-cache-cr">9.4. Adding Backup Locations to Caches</a>
-<ul class="sectlevel3">
-<li><a href="#backups_automatic_offline-cache-cr">9.4.1. Performance Considerations with Taking Backup Locations Offline</a></li>
-</ul>
-</li>
-<li><a href="#adding_cache_stores-cache-cr">9.5. Adding Persistent Cache Stores</a></li>
+<li><a href="#adding_cache_stores-cache-cr">9.4. Adding Persistent Cache Stores</a></li>
 </ul>
 </li>
 <li><a href="#connecting_clients">10. Establishing Remote Client Connections</a>
@@ -1323,7 +1318,9 @@ spec:
         url: openshift://api.azure.host:6443
         secretName: azure-token
       - name: aws
+        # Specifies the cluster name at the backup location.
         clusterName: example-infinispan
+        # Specifies the namespace for the cluster at the backup location.
         namespace: ispn-namespace
         url: openshift://api.aws.host:6443
         secretName: aws-token
@@ -2613,10 +2610,7 @@ eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9...</code></pre>
 <p>Provide the name, URL, and secret for each Infinispan cluster that acts as a backup location with <code>spec.service.sites.locations</code>.</p>
 </li>
 <li>
-<p>Specify cluster names and namespaces for Infinispan clusters at each site with the the <code>clusterName</code> and <code>namespace</code> fields, if necessary.</p>
-<div class="paragraph">
-<p>You need to specify cluster names and namespaces for backup locations only if they do not match those for the local Infinispan cluster.</p>
-</div>
+<p>If Infinispan cluster names or namespaces at the remote site do not match the local site, specify those values with the <code>clusterName</code> and <code>namespace</code> fields.</p>
 <div class="paragraph">
 <p>The following are example <code>Infinispan</code> CR definitions for <strong>LON</strong> and <strong>NYC</strong>:</p>
 </div>
@@ -2644,8 +2638,8 @@ spec:
           url: openshift://api.rhdg-lon.openshift-aws.myhost.com:6443
           secretName: lon-token
         - name: NYC
-          clusterName: example-infinispan
-          namespace: ispn-namespace
+          clusterName: nyc-cluster
+          namespace: nyc-cluster-namespace
           url: openshift://api.rhdg-nyc.openshift-aws.myhost.com:6443
           secretName: nyc-token</code></pre>
 </div>
@@ -2658,7 +2652,7 @@ spec:
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">apiVersion: infinispan.org/v1
 kind: Infinispan
 metadata:
-  name: example-infinispan
+  name: nyc-cluster
 spec:
   replicas: 2
   service:
@@ -2756,12 +2750,14 @@ locations to caches.</p>
         url: openshift://api.site-a.devcluster.openshift.com:6443 <i class="conum" data-value="6"></i><b>(6)</b>
         secretName: lon-token <i class="conum" data-value="7"></i><b>(7)</b>
       - name: NYC
+        clusterName: nyc-cluster-name <i class="conum" data-value="8"></i><b>(8)</b>
+        namespace: nyc-cluster-namespace <i class="conum" data-value="9"></i><b>(9)</b>
         url: openshift://api.site-b.devcluster.openshift.com:6443
         secretName: nyc-token
   logging:
     categories:
-      org.jgroups.protocols.TCP: error <i class="conum" data-value="8"></i><b>(8)</b>
-      org.jgroups.protocols.relay.RELAY2: fatal <i class="conum" data-value="9"></i><b>(9)</b></code></pre>
+      org.jgroups.protocols.TCP: error <i class="conum" data-value="10"></i><b>(10)</b>
+      org.jgroups.protocols.relay.RELAY2: fatal <i class="conum" data-value="11"></i><b>(11)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -2834,10 +2830,18 @@ Kubernetes environment.</p>
 </tr>
 <tr>
 <td><i class="conum" data-value="8"></i><b>8</b></td>
-<td>Logs error messages for the JGroups TCP protocol.</td>
+<td>Specifies the cluster name at the backup location if it is different to the cluster name at the local site.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>Specifies the namespace of the Infinispan cluster at the backup location if it does not match the namespace at the local site.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>Logs error messages for the JGroups TCP protocol.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
 <td>Logs fatal messages for the JGroups RELAY2 protocol.</td>
 </tr>
 </table>
@@ -3180,138 +3184,29 @@ The capability to create caches with Infinispan Operator is still under developm
 </li>
 </ul>
 </div>
-<div class="sect2">
-<h3 id="cache_auth-cache-cr">9.1. Adding Credentials for Infinispan Operator</h3>
-<div class="paragraph">
-<p>Infinispan Operator must authenticate with Data Grid Service clusters to create caches.
-You add credentials to a secret so that Infinispan Operator can access your cluster when creating caches.</p>
-</div>
-<div class="paragraph">
-<p>The following procedure explains how to add credentials to a new secret.
-If you already have a custom secret that contains credentials, you can use that instead of creating a new one.</p>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Define a <strong>Secret</strong> object type that provides valid user credentials for
-accessing Data Grid Service clusters in a <code>StringData</code> map.</p>
-<div class="paragraph">
-<p>For example, create an <code>basic-auth.yaml</code> file that provides credentials for
-the <code>developer</code> user as follows:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>apiVersion: v1
-stringData:
-  username: developer <i class="conum" data-value="1"></i><b>(1)</b>
-  password: G8ZdJvSaY3lOOwfM <i class="conum" data-value="2"></i><b>(2)</b>
-kind: Secret
-metadata:
-  name: basic-auth <i class="conum" data-value="3"></i><b>(3)</b>
-type: Opaque</code></pre>
-</div>
-</div>
-<div class="colist arabic">
+<div class="admonitionblock note">
 <table>
 <tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Names a user that can create caches.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Specifies the password that corresponds to the user.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>Specifies a name for the secret.</td>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>In previous versions, you need to add credentials to a secret so that Infinispan Operator can access your cluster when creating caches.</p>
+</div>
+<div class="paragraph">
+<p>That is no longer necessary.
+Infinispan Operator uses the <strong>operator</strong> user and corresponding password to perform cache operations.</p>
+</div>
+</td>
 </tr>
 </table>
 </div>
-</li>
-<li>
-<p>Create a secret from the file, as in the following example:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>$ kubectl apply -f basic-auth.yaml</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
-<div class="sect3">
-<h4 id="custom_cache_auth-cache-cr">9.1.1. Using Custom Credentials Secrets</h4>
-<div class="paragraph">
-<p>Infinispan Operator requires that credentials exist as values for the <code>username</code>
-and <code>password</code> keys in a secret. If you have a custom secret that contains
-Infinispan credentials, but uses different key names, you can override those
-names in your <code>Cache</code> CR.</p>
-</div>
-<div class="paragraph">
-<p>For example, you have a secret named "my-credentials" that holds a list of
-Infinispan users and their passwords as follows:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>stringData:
-  app_user1: spock
-  app_user1_pw: G8ZdJvSaY3lOOwfM
-  app_user2: jim
-  app_user2_pw: zTzz2gVyyF4JsYsH</code></pre>
-</div>
-</div>
-<div class="ulist">
-<div class="title">Procedure</div>
-<ul>
-<li>
-<p>In your <code>Cache</code> CR, override custom key names with <code>username</code> and <code>password</code> as follows:</p>
-</li>
-</ul>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>spec:
-  adminAuth:
-    username:
-      key: app_user1 <i class="conum" data-value="1"></i><b>(1)</b>
-      name: my-credentials <i class="conum" data-value="2"></i><b>(2)</b>
-    password:
-      key: app_user1_pw <i class="conum" data-value="3"></i><b>(3)</b>
-      name: my-credentials</code></pre>
-</div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Overrides the <code>app_user1</code> key name with <code>username</code>.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Specifies the name of your custom credentials secret.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>Overrides the <code>app_user1_pw</code> key name with <code>password</code>.</td>
-</tr>
-</table>
-</div>
-</div>
-</div>
 <div class="sect2">
-<h3 id="cache_xml-cache-cr">9.2. Creating Infinispan Caches from XML</h3>
+<h3 id="cache_xml-cache-cr">9.1. Creating Infinispan Caches from XML</h3>
 <div class="paragraph">
 <p>Complete the following steps to create caches on Data Grid Service clusters
 using valid <code>infinispan.xml</code> cache definitions.</p>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Create a secret that contains valid user credentials for accessing
-Infinispan clusters.</p>
-</li>
-</ul>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -3326,11 +3221,9 @@ kind: Cache
 metadata:
   name: mycachedefinition <i class="conum" data-value="1"></i><b>(1)</b>
 spec:
-  adminAuth: <i class="conum" data-value="2"></i><b>(2)</b>
-    secretName: basic-auth
-  clusterName: example-infinispan <i class="conum" data-value="3"></i><b>(3)</b>
-  name: mycache <i class="conum" data-value="4"></i><b>(4)</b>
-  template: &lt;infinispan&gt;&lt;cache-container&gt;&lt;distributed-cache name="mycache" mode="SYNC"&gt;&lt;persistence&gt;&lt;file-store/&gt;&lt;/persistence&gt;&lt;/distributed-cache&gt;&lt;/cache-container&gt;&lt;/infinispan&gt; <i class="conum" data-value="5"></i><b>(5)</b></code></pre>
+  clusterName: example-infinispan <i class="conum" data-value="2"></i><b>(2)</b>
+  name: mycache <i class="conum" data-value="3"></i><b>(3)</b>
+  template: &lt;infinispan&gt;&lt;cache-container&gt;&lt;distributed-cache name="mycache" mode="SYNC"&gt;&lt;persistence&gt;&lt;file-store/&gt;&lt;/persistence&gt;&lt;/distributed-cache&gt;&lt;/cache-container&gt;&lt;/infinispan&gt; <i class="conum" data-value="4"></i><b>(4)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -3341,18 +3234,14 @@ spec:
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Specifies a secret that provides credentials with <code>username</code> and <code>password</code> keys or an override for custom credentials secrets.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
 <td>Specifies the name of the target Infinispan cluster where you want Infinispan Operator to create the cache.</td>
 </tr>
 <tr>
-<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
 <td>Names the cache on the Infinispan cluster.</td>
 </tr>
 <tr>
-<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
 <td>Specifies the XML cache definition to create the cache. Note that the <code>name</code> attribute is ignored. Only <code>spec.name</code> applies to the resulting cache.</td>
 </tr>
 </table>
@@ -3371,7 +3260,7 @@ cache.infinispan.org/mycachedefinition created</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cache_templates-cache-cr">9.3. Creating Infinispan Caches from Templates</h3>
+<h3 id="cache_templates-cache-cr">9.2. Creating Infinispan Caches from Templates</h3>
 <div class="paragraph">
 <p>Complete the following steps to create caches on Data Grid Service clusters
 using cache configuration templates.</p>
@@ -3379,10 +3268,6 @@ using cache configuration templates.</p>
 <div class="ulist">
 <div class="title">Prerequisites</div>
 <ul>
-<li>
-<p>Create a secret that contains valid user credentials for accessing
-Infinispan clusters.</p>
-</li>
 <li>
 <p>Identify the cache configuration template you want to use for your cache. You
 can find a list of available configuration templates in Infinispan Console.</p>
@@ -3404,11 +3289,9 @@ kind: Cache
 metadata:
   name: mycachedefinition <i class="conum" data-value="1"></i><b>(1)</b>
 spec:
-  adminAuth: <i class="conum" data-value="2"></i><b>(2)</b>
-    secretName: basic-auth
-  clusterName: example-infinispan <i class="conum" data-value="3"></i><b>(3)</b>
-  name: mycache <i class="conum" data-value="4"></i><b>(4)</b>
-  templateName: org.infinispan.DIST_SYNC <i class="conum" data-value="5"></i><b>(5)</b></code></pre>
+  clusterName: example-infinispan <i class="conum" data-value="2"></i><b>(2)</b>
+  name: mycache <i class="conum" data-value="3"></i><b>(3)</b>
+  templateName: org.infinispan.DIST_SYNC <i class="conum" data-value="4"></i><b>(4)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -3419,18 +3302,14 @@ spec:
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Specifies a secret that provides credentials with <code>username</code> and <code>password</code> keys or an override for custom credentials secrets.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
 <td>Specifies the name of the target Infinispan cluster where you want Infinispan Operator to create the cache.</td>
 </tr>
 <tr>
-<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
 <td>Names the Infinispan cache instance.</td>
 </tr>
 <tr>
-<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
 <td>Specifies the <code>infinispan.org</code> cache configuration template to create the cache.</td>
 </tr>
 </table>
@@ -3449,7 +3328,7 @@ cache.infinispan.org/mycachedefinition created</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="adding_backup_locations-cache-cr">9.4. Adding Backup Locations to Caches</h3>
+<h3 id="adding_backup_locations-cache-cr">9.3. Adding Backup Locations to Caches</h3>
 <div class="paragraph">
 <p>When you configure Infinispan clusters to perform cross-site replication, you
 can add backup locations to your cache configurations.</p>
@@ -3543,7 +3422,7 @@ as a backup for <strong>LON</strong>.</p>
 </ul>
 </div>
 <div class="sect3">
-<h4 id="backups_automatic_offline-cache-cr">9.4.1. Performance Considerations with Taking Backup Locations Offline</h4>
+<h4 id="backups_automatic_offline-cache-cr">9.3.1. Performance Considerations with Taking Backup Locations Offline</h4>
 <div class="paragraph">
 <p>Backup locations can automatically go offline when remote sites become
 unavailable. This prevents nodes from attempting to replicate data to offline
@@ -3571,7 +3450,7 @@ failed backup attempts which can lead to performance degradation.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="adding_cache_stores-cache-cr">9.5. Adding Persistent Cache Stores</h3>
+<h3 id="adding_cache_stores-cache-cr">9.4. Adding Persistent Cache Stores</h3>
 <div class="paragraph">
 <p>You can add Single File cache stores to Data Grid Service nodes to save data to
 the persistent volume.</p>
@@ -4325,12 +4204,28 @@ Infinispan cluster.</p>
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Create an authentication secret that contains Infinispan credentials so that Prometheus can authenticate with your Infinispan cluster.</p>
+<p>Retrieve the credentials for Infinispan Operator.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>apiVersion: v1
 stringData:
-  username: developer <i class="conum" data-value="1"></i><b>(1)</b>
+  username: operator <i class="conum" data-value="1"></i><b>(1)</b>
+  password: dIRs5cAAsHIeeRIL <i class="conum" data-value="2"></i><b>(2)</b>
+kind: Secret
+metadata:
+  name: basic-auth
+type: Opaque</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Create an authentication secret that contains the credentials.<br>
+This allows Prometheus to authenticate with your Infinispan cluster and retrieve metrics.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>apiVersion: v1
+stringData:
+  username: operator <i class="conum" data-value="1"></i><b>(1)</b>
   password: dIRs5cAAsHIeeRIL <i class="conum" data-value="2"></i><b>(2)</b>
 kind: Secret
 metadata:
@@ -4342,7 +4237,7 @@ type: Opaque</code></pre>
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Specifies an application user. <code>developer</code> is the default.</td>
+<td>Specifies the <strong>operator</strong> user.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
@@ -4384,17 +4279,13 @@ spec:
           name: basic-auth
       interval: 30s
       scrapeTimeout: 10s
-      scheme: https <i class="conum" data-value="6"></i><b>(6)</b>
-      tlsConfig:
-        insecureSkipVerify: true
-        serverName: example-infinispan <i class="conum" data-value="7"></i><b>(7)</b>
   namespaceSelector:
     matchNames:
-      - infinispan <i class="conum" data-value="8"></i><b>(8)</b>
+      - infinispan <i class="conum" data-value="6"></i><b>(6)</b>
   selector:
     matchLabels:
       app: infinispan-service
-      clusterName: example-infinispan <i class="conum" data-value="9"></i><b>(9)</b></code></pre>
+      clusterName: example-infinispan <i class="conum" data-value="7"></i><b>(7)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
@@ -4417,24 +4308,14 @@ spec:
 </tr>
 <tr>
 <td><i class="conum" data-value="5"></i><b>5</b></td>
-<td>Specifies the authentication secret with Infinispan credentials.</td>
+<td>Specifies the authentication secret with Infinispan Operator credentials.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="6"></i><b>6</b></td>
-<td>Specifies that Infinispan clusters use endpoint encryption.
-If you do not use endpoint encryption, remove <code>spec.endpoints.scheme</code>.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="7"></i><b>7</b></td>
-<td>Specifies the Common Name (CN) of the TLS certificate for Infinispan encryption. If you use an OpenShift service certificate, the CN matches the <code>metadata.name</code> resource for your Infinispan cluster.
-If you do not use endpoint encryption, remove <code>spec.endpoints.tlsConfig</code>.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="8"></i><b>8</b></td>
 <td>Specifies the namespace of your Infinispan cluster.</td>
 </tr>
 <tr>
-<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
 <td>Specifies the name of your Infinispan cluster.</td>
 </tr>
 </table>
@@ -5303,7 +5184,7 @@ by default.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-03-04 09:58:18 -0500
+Last updated 2021-03-19 04:30:20 -0400
 </div>
 </div>
 <script>
