@@ -1,4 +1,190 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-03-22T13:27:23-04:00</updated><id>/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Infinispan 12.0.1.Final “Lockdown”</title><link href="/blog/2021/02/12/infinispan-12-0-1" rel="alternate" type="text/html" title="Infinispan 12.0.1.Final “Lockdown”" /><published>2021-02-12T07:00:00-05:00</published><updated>2021-02-12T07:00:00-05:00</updated><id>/blog/2021/02/12/infinispan-12.0.1.Final</id><content type="html" xml:base="/blog/2021/02/12/infinispan-12-0-1">&lt;div id=&quot;preamble&quot;&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.0">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2021-03-30T16:00:49-04:00</updated><id>/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Introducing wildfly-clustering-spring-session</title><link href="/blog/2021/03/16/new-infinispan-spring-session" rel="alternate" type="text/html" title="Introducing wildfly-clustering-spring-session" /><published>2021-03-16T08:00:00-04:00</published><updated>2021-03-16T08:00:00-04:00</updated><id>/blog/2021/03/16/wildfly-clustering-spring-session</id><content type="html" xml:base="/blog/2021/03/16/new-infinispan-spring-session">&lt;div id=&quot;preamble&quot;&gt;
+&lt;div class=&quot;sectionbody&quot;&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Dear Infinispan community,&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Last week I released version 3.0.0.Final of wildfly-clustering-spring-session, a new Spring Session implementation based on WildFly&amp;#8217;s distributed HttpSession manager and Infinispan.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;sect1&quot;&gt;
+&lt;h2 id=&quot;doesnt-infinispan-already-provide-a-spring-session-implementation&quot;&gt;Doesn&amp;#8217;t Infinispan already provide a Spring Session implementation?&lt;/h2&gt;
+&lt;div class=&quot;sectionbody&quot;&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;&lt;a href=&quot;https://infinispan.org/docs/stable/titles/integrating/integrating.html#spring_externalize_sessions&quot;&gt;Yes.&lt;/a&gt;
+Infinispan&amp;#8217;s existing Spring Session implementation stores instances of &lt;code&gt;org.springframework.session.MapSession&lt;/code&gt; into a Spring cache, which is backed by either an embedded or remote cache.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;However, like many &lt;code&gt;MapSession&lt;/code&gt; based &lt;code&gt;SessionRepository&lt;/code&gt; implementations, it suffers from a common set of problems/limitations:&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;ulist&quot;&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;The &lt;code&gt;MapSession&lt;/code&gt; object, including all session metadata and attributes must be serialized and replicated/persisted on every request, regardless of the extent to which the session was modified.&lt;/p&gt;
+&lt;div class=&quot;ulist&quot;&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Because Spring Session triggers session persistence from a &lt;code&gt;ServletFilter&lt;/code&gt;, this cost is borne per request.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/div&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Since each request for a given session operates on a copy of the &lt;code&gt;MapSession&lt;/code&gt;, and since the &lt;code&gt;MapSession&lt;/code&gt; is not persisted/replicated until the end of the request:&lt;/p&gt;
+&lt;div class=&quot;ulist&quot;&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Session modifications in one requests are not visible to concurrent requests for the same session.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;A given session modification can be overwritten by a previous modification of the same session from a concurrent request if that request finishes first.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/div&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Session attributes implementing &lt;code&gt;HttpSessionActivationListener&lt;/code&gt; are never notified before/after they are marshalled/unmarshalled.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;sect1&quot;&gt;
+&lt;h2 id=&quot;how-does-it-work&quot;&gt;How does it work?&lt;/h2&gt;
+&lt;div class=&quot;sectionbody&quot;&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;wildfly-clustering-spring-session is implemented as a Spring &lt;code&gt;SessionRepository&lt;/code&gt; facade to a container-independent &lt;code&gt;SessionManager&lt;/code&gt; implementation that persists session attributes and metadata to either an embedded Infinispan cache or a remote Infinispan server cluster via HotRod.
+This grants all of the features to Spring Session that one would normally expect when deploying a distributed web application to WildFly, including:&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;ulist&quot;&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Minimal persistence payloads using configurable persistence granularity.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Consistent view of a given session from multiple concurrent request threads on a given server&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Mutable session attribute semantics (emulates the semantics of local session manager)&lt;/p&gt;
+&lt;div class=&quot;ulist&quot;&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Ability to treat specific session attributes as immutable&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/div&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Configurable limit for the number of active sessions to retain in memory&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Proper &lt;code&gt;HttpSessionActivationListener&lt;/code&gt; notifications.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Configurable session attribute marshaller (ProtoStream, JBoss Marshalling, or Java Serialization)&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;sect1&quot;&gt;
+&lt;h2 id=&quot;how-do-i-use-it&quot;&gt;How do I use it?&lt;/h2&gt;
+&lt;div class=&quot;sectionbody&quot;&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;In this example, we&amp;#8217;ll use a remote Infinispan cluster containing a single member, deployed to the localhost, using its default configuration.
+See the project &lt;a href=&quot;https://github.com/wildfly-clustering/wildfly-clustering-spring-session/blob/master/README.md&quot;&gt;README&lt;/a&gt; for details on the available configuration annotations and their attributes.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;olist arabic&quot;&gt;
+&lt;ol class=&quot;arabic&quot;&gt;
+&lt;li&gt;
+&lt;p&gt;Create a class containing the session repository configuration.
+e.g.&lt;/p&gt;
+&lt;div class=&quot;listingblock&quot;&gt;
+&lt;div class=&quot;content&quot;&gt;
+&lt;pre class=&quot;highlight&quot;&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;@org.wildfly.clustering.web.spring.hotrod.annotation.EnableHotRodHttpSession(@HotRod(uri = &quot;hotrod://127.0.0.1:11222&quot;), manager = @SessionManager(granularity = ATTRIBUTE))
+public class Config {
+	// ...
+}&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Ensure your &lt;code&gt;/WEB-INF/applicationContext.xml&lt;/code&gt; will process you configuration annotation:&lt;/p&gt;
+&lt;div class=&quot;listingblock&quot;&gt;
+&lt;div class=&quot;content&quot;&gt;
+&lt;pre class=&quot;highlight&quot;&gt;&lt;code class=&quot;language-xml&quot; data-lang=&quot;xml&quot;&gt;&amp;lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&amp;gt;
+&amp;lt;beans xmlns=&quot;http://www.springframework.org/schema/beans&quot;
+		xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xmlns:context=&quot;http://www.springframework.org/schema/context&quot;
+		xsi:schemaLocation=&quot;http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd&quot;&amp;gt;
+	&amp;lt;context:annotation-config/&amp;gt;
+&amp;lt;/beans&amp;gt;&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Create an application initializer class that will auto-register the requisite servlet filters required by Spring Session:&lt;/p&gt;
+&lt;div class=&quot;listingblock&quot;&gt;
+&lt;div class=&quot;content&quot;&gt;
+&lt;pre class=&quot;highlight&quot;&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;public class MyHttpSessionApplicationInitializer extends AbstractHttpSessionApplicationInitializer {
+	public MyHttpSessionApplicationInitializer() {
+		// Not not call super constructor (see project README for details)
+	}
+}&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Create a &lt;code&gt;@WebListener&lt;/code&gt; that bootstraps our session repository configuration:&lt;/p&gt;
+&lt;div class=&quot;listingblock&quot;&gt;
+&lt;div class=&quot;content&quot;&gt;
+&lt;pre class=&quot;highlight&quot;&gt;&lt;code class=&quot;language-java&quot; data-lang=&quot;java&quot;&gt;@javax.servlet.annotation.WebListener
+public class MyContextLoaderListener extends org.wildfly.clustering.web.spring.context.ContextLoaderListener {
+	public MyContextLoaderListener() {
+		super(Config.class);
+	}
+}&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Deploying your application will automatically create a new cache instance in the Infinispan cluster named according to the the host and context of the web application.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;sect1&quot;&gt;
+&lt;h2 id=&quot;can-i-use-wildfly-clustering-spring-session-outside-of-wildfly&quot;&gt;Can I use wildfly-clustering-spring-session outside of WildFly?&lt;/h2&gt;
+&lt;div class=&quot;sectionbody&quot;&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Of course!
+Like most Spring Session repository implementations, it is meant to work with any implementation of the Jakarta Servlet 4.0 specification.
+The project &lt;a href=&quot;https://github.com/wildfly-clustering/wildfly-clustering-spring-session&quot;&gt;README&lt;/a&gt; contains sample instructions for installing on Tomcat.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;sect1&quot;&gt;
+&lt;h2 id=&quot;where-can-i-find-it&quot;&gt;Where can I find it?&lt;/h2&gt;
+&lt;div class=&quot;sectionbody&quot;&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;You can find the source code on &lt;a href=&quot;https://github.com/wildfly-clustering/wildfly-clustering-spring-session&quot;&gt;github&lt;/a&gt;.
+Contributions are always welcome!&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;File any issues with the &lt;a href=&quot;https://github.com/wildfly-clustering/wildfly-clustering-spring-session/issues&quot;&gt;github issue tracker&lt;/a&gt;.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Checkout the &lt;a href=&quot;https://github.com/wildfly-clustering/wildfly-clustering-spring-session/blob/master/README.md&quot;&gt;README&lt;/a&gt; for more details.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Enjoy!&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class=&quot;paragraph&quot;&gt;
+&lt;p&gt;Paul Ferraro&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;</content><author><name>Paul Ferraro</name></author><category term="spring" /><category term="spring session" /><category term="httpsession" /><category term="wildfly" /><summary type="html">Dear Infinispan community,</summary></entry><entry><title type="html">Infinispan 12.0.1.Final “Lockdown”</title><link href="/blog/2021/02/12/infinispan-12-0-1" rel="alternate" type="text/html" title="Infinispan 12.0.1.Final “Lockdown”" /><published>2021-02-12T07:00:00-05:00</published><updated>2021-02-12T07:00:00-05:00</updated><id>/blog/2021/02/12/infinispan-12.0.1.Final</id><content type="html" xml:base="/blog/2021/02/12/infinispan-12-0-1">&lt;div id=&quot;preamble&quot;&gt;
 &lt;div class=&quot;sectionbody&quot;&gt;
 &lt;div class=&quot;paragraph&quot;&gt;
 &lt;p&gt;Dear Infinispan community,&lt;/p&gt;
@@ -1281,101 +1467,4 @@ https://issues.redhat.com/browse/ISPN-11958[ISPN-11958] - Document Archetypes&lt
 &lt;/div&gt;
 &lt;/div&gt;
 &lt;/div&gt;
-&lt;/div&gt;</content><author><name>Tristan Tarrant</name></author><category term="release" /><summary type="html">Dear Infinispan community,</summary></entry><entry><title type="html">Infinispan Native Server Image</title><link href="/blog/2020/06/16/native-server-announce" rel="alternate" type="text/html" title="Infinispan Native Server Image" /><published>2020-06-16T08:00:00-04:00</published><updated>2020-06-16T08:00:00-04:00</updated><id>/blog/2020/06/16/native-server-announce</id><content type="html" xml:base="/blog/2020/06/16/native-server-announce">&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;Starting with Infinispan 11, it&amp;#8217;s now possible to create a natively compiled version of the Infinispan server.&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;sect1&quot;&gt;
-&lt;h2 id=&quot;tldr&quot;&gt;TL;DR&lt;/h2&gt;
-&lt;div class=&quot;sectionbody&quot;&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;We have a new image that contains a natively compiled Infinispan server and has a footprint of only 286MB. Try it now:&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;listingblock&quot;&gt;
-&lt;div class=&quot;content&quot;&gt;
-&lt;pre&gt;docker run -p 11222:11222 quay.io/infinispan/server-native:11.0&lt;/pre&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;div class=&quot;sect1&quot;&gt;
-&lt;h2 id=&quot;infinispan-quarkus-extensions&quot;&gt;Infinispan Quarkus Extensions&lt;/h2&gt;
-&lt;div class=&quot;sectionbody&quot;&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;&lt;a href=&quot;https://quarkus.io/&quot;&gt;Quarkus&lt;/a&gt; provides built in support for generating native executables, providing several
-abstractions to improve the development experience of creating native binaries. Building upon the
-&lt;a href=&quot;https://infinispan.org/blog/2019/11/11/serverng/&quot;&gt;new server&lt;/a&gt;, the Infinispan team have created a
-&lt;a href=&quot;https://github.com/infinispan/infinispan-quarkus&quot;&gt;Quarkus extension&lt;/a&gt; for both embedded and server use-cases.
-These extensions allow a native binary version of the server to be compiled and ran by simply executing:&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;listingblock&quot;&gt;
-&lt;div class=&quot;content&quot;&gt;
-&lt;pre&gt;mvn clean install -Dnative
-./server-runner/target/infinispan-quarkus-server-runner-11.0.0.Final-runner
-    -Dquarkus.infinispan-server.config-file=infinispan.xml \
-    -Dquarkus.infinispan-server.config-path=server/conf \
-    -Dquarkus.infinispan-server.data-path=data \
-    -Dquarkus.infinispan-server.server-path=/opt/infinispan &amp;amp;&lt;/pre&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;div class=&quot;sect1&quot;&gt;
-&lt;h2 id=&quot;native-server-image&quot;&gt;Native Server Image&lt;/h2&gt;
-&lt;div class=&quot;sectionbody&quot;&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;For many developers compiling your own Infinispan native binary manually is not desirable, therefore we
-provide the &lt;code&gt;infinispan/server-native&lt;/code&gt; image that uses a native server binary. The advantage of this over our JVM
-based &lt;code&gt;infinispan/server&lt;/code&gt; image is that we can no provide a much smaller image, 286 vs 468 MB, as we no longer need to
-include an openjdk JVM in the image.&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;The &lt;code&gt;server-native&lt;/code&gt; image is configured exactly the same as the JVM based &lt;code&gt;infinispan/server&lt;/code&gt; image. We can run an authenticated Infinispan server with
-a single user with the following command:&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;listingblock&quot;&gt;
-&lt;div class=&quot;content&quot;&gt;
-&lt;pre&gt;docker run -p 11222:11222 -e USER=&quot;user&quot; -e PASS=&quot;pass&quot; quay.io/infinispan/server-native:11.0&lt;/pre&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;From the output below, you can see the Quarkus banner as well various &lt;code&gt;io.quarkus&lt;/code&gt; logs indicating which extensions are being used.&lt;/p&gt;
-&lt;/div&gt;
-&lt;div class=&quot;listingblock&quot;&gt;
-&lt;div class=&quot;content&quot;&gt;
-&lt;pre&gt;################################################################################
-#                                                                              #
-# IDENTITIES_PATH not specified                                                #
-# Generating Identities yaml using USER and PASS env vars.                     #
-################################################################################
-2020-06-16 09:27:39,638 INFO  [io.quarkus] (main) config-generator 2.0.0.Final native (powered by Quarkus 1.5.0.Final) started in 0.069s.
-2020-06-16 09:27:39,643 INFO  [io.quarkus] (main) Profile prod activated.
-2020-06-16 09:27:39,643 INFO  [io.quarkus] (main) Installed features: [cdi, qute]
-2020-06-16 09:27:39,671 INFO  [io.quarkus] (main) config-generator stopped in 0.001s
-2020-06-16 09:27:40,306 INFO  [ListenerBean] (main) The application is starting...
-2020-06-16 09:27:40,481 INFO  [org.inf.CONTAINER] (main) ISPN000128: Infinispan version: Infinispan 'Corona Extra' 11.0.0.Final
-2020-06-16 09:27:40,489 INFO  [org.inf.CLUSTER] (main) ISPN000078: Starting JGroups channel infinispan with stack image-tcp
-2020-06-16 09:27:45,560 INFO  [org.inf.CLUSTER] (main) ISPN000094: Received new cluster view for channel infinispan: [82914efa63fe-12913|0] (1) [82914efa63fe-12913]
-2020-06-16 09:27:45,562 INFO  [org.inf.CLUSTER] (main) ISPN000079: Channel infinispan local address is 82914efa63fe-12913, physical addresses are [10.0.2.100:7800]
-2020-06-16 09:27:45,566 INFO  [org.inf.CONTAINER] (main) ISPN000390: Persisted state, version=11.0.0.Final timestamp=2020-06-16T09:27:45.563303Z
-2020-06-16 09:27:45,584 INFO  [org.inf.CONTAINER] (main) ISPN000104: Using EmbeddedTransactionManager
-2020-06-16 09:27:45,617 INFO  [org.inf.SERVER] (ForkJoinPool.commonPool-worker-3) ISPN080018: Protocol HotRod (internal)
-2020-06-16 09:27:45,618 INFO  [org.inf.SERVER] (main) ISPN080018: Protocol REST (internal)
-2020-06-16 09:27:45,629 INFO  [org.inf.SERVER] (main) ISPN080004: Protocol SINGLE_PORT listening on 10.0.2.100:11222
-2020-06-16 09:27:45,629 INFO  [org.inf.SERVER] (main) ISPN080034: Server '82914efa63fe-12913' listening on http://10.0.2.100:11222
-2020-06-16 09:27:45,629 INFO  [org.inf.SERVER] (main) ISPN080001: Infinispan Server 11.0.0.Final started in 5457ms
-2020-06-16 09:27:45,629 INFO  [io.quarkus] (main) infinispan-quarkus-server-runner 11.0.0.Final native (powered by Quarkus 1.5.0.Final) started in 5.618s.
-2020-06-16 09:27:45,629 INFO  [io.quarkus] (main) Profile prod activated.
-2020-06-16 09:27:45,629 INFO  [io.quarkus] (main) Installed features: [cdi, infinispan-embedded, infinispan-server]&lt;/pre&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;div class=&quot;sect1&quot;&gt;
-&lt;h2 id=&quot;further-reading&quot;&gt;Further Reading&lt;/h2&gt;
-&lt;div class=&quot;sectionbody&quot;&gt;
-&lt;div class=&quot;paragraph&quot;&gt;
-&lt;p&gt;For more detailed information abou how to use the &lt;code&gt;infinispan/server&lt;/code&gt; and &lt;code&gt;infinispan/server-native&lt;/code&gt; image, please consult the
-&lt;a href=&quot;https://github.com/infinispan/infinispan-images/blob/master/README.md&quot;&gt;official documentation&lt;/a&gt;.&lt;/p&gt;
-&lt;/div&gt;
-&lt;/div&gt;
-&lt;/div&gt;</content><author><name>Ryan Emerson</name></author><category term="docker" /><category term="native" /><category term="quarkus" /><summary type="html">Starting with Infinispan 11, it&amp;#8217;s now possible to create a natively compiled version of the Infinispan server.</summary></entry></feed>
+&lt;/div&gt;</content><author><name>Tristan Tarrant</name></author><category term="release" /><summary type="html">Dear Infinispan community,</summary></entry></feed>
