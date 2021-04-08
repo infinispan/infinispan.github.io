@@ -442,6 +442,82 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
 <script src="../../js/js.js"></script>
+<style>
+.hidden {
+    display: none;
+}
+
+.switch {
+    border-width: 1px 1px 0 1px;
+    border-style: solid;
+    border-color: #7a2518;
+    display: inline-block;
+}
+
+.switch--item {
+    padding: 10px;
+    background-color: #ffffff;
+    color: #7a2518;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.switch--item.selected {
+    background-color: #7a2519;
+    color: #ffffff;
+}
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script type="text/javascript">
+function addBlockSwitches() {
+    $('.primary').each(function() {
+        primary = $(this);
+        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
+        primary.children('.title').remove();
+    });
+    $('.secondary').each(function(idx, node) {
+        secondary = $(node);
+        primary = findPrimary(secondary);
+        switchItem = createSwitchItem(secondary, primary.children('.switch'));
+        switchItem.content.addClass('hidden');
+        findPrimary(secondary).append(switchItem.content);
+        secondary.remove();
+    });
+}
+
+function createBlockSwitch(primary) {
+    blockSwitch = $('<div class="switch"></div>');
+    primary.prepend(blockSwitch);
+    return blockSwitch;
+}
+
+function findPrimary(secondary) {
+    candidate = secondary.prev();
+    while (!candidate.is('.primary')) {
+        candidate = candidate.prev();
+    }
+    return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+    blockName = block.children('.title').text();
+    content = block.children('.content').first().append(block.next('.colist'));
+    item = $('<div class="switch--item">' + blockName + '</div>');
+    item.on('click', '', content, function(e) {
+        $(this).addClass('selected');
+        $(this).siblings().removeClass('selected');
+        e.data.siblings('.content').addClass('hidden');
+        e.data.removeClass('hidden');
+    });
+    blockSwitch.append(item);
+    return {'item': item, 'content': content};
+}
+
+$(addBlockSwitches);
+
+</script>
+
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
@@ -451,7 +527,14 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel1">
 <li><a href="#getting_started">1. Getting Started with the Infinispan CLI</a>
 <ul class="sectlevel2">
-<li><a href="#user_create-cli">1.1. Creating and Modifying Users</a></li>
+<li><a href="#creating-users_cli">1.1. Creating and Modifying Users</a>
+<ul class="sectlevel3">
+<li><a href="#adding_credentials">1.1.1. Adding Credentials</a></li>
+<li><a href="#assigning_roles_to_users">1.1.2. Assigning Roles to Users</a></li>
+<li><a href="#adding_users_to_groups">1.1.3. Adding Users to Groups</a></li>
+<li><a href="#user-roles-permissions_cli">1.1.4. User Roles and Permissions</a></li>
+</ul>
+</li>
 <li><a href="#cli_start-cli">1.2. Connecting to Infinispan Servers</a></li>
 <li><a href="#navigating_cli_resources">1.3. Navigating CLI Resources</a>
 <ul class="sectlevel3">
@@ -469,8 +552,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#create_cache_cli">2.1. Creating Caches with the Infinispan Command Line Interface (CLI)</a>
 <ul class="sectlevel3">
-<li><a href="#ref_xml_configuration">2.1.1. XML Configuration</a></li>
-<li><a href="#ref_json_configuration">2.1.2. JSON Configuration</a></li>
+<li><a href="#cache_configuration">2.1.1. Cache Configuration</a></li>
 </ul>
 </li>
 <li><a href="#cli_add_entries">2.2. Adding Cache Entries</a></li>
@@ -500,7 +582,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#protobuf_query">6. Querying Caches with Protobuf Metadata</a>
 <ul class="sectlevel2">
-<li><a href="#configuring_media_types">6.1. Configuring Media Types</a></li>
+<li><a href="#cli-configuring-media-types_cli">6.1. Configuring Media Types</a></li>
 <li><a href="#registering_protobuf_schemas">6.2. Registering Protobuf Schemas</a></li>
 <li><a href="#querying_caches_with_protobuf_schemas">6.3. Querying Caches with Protobuf Schemas</a></li>
 </ul>
@@ -508,7 +590,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#xsite_commands">7. Performing Cross-Site Replication Operations</a>
 <ul class="sectlevel2">
 <li><a href="#manage_sites-cli">7.1. Bringing Backup Locations Offline and Online</a></li>
-<li><a href="#cli_xsite_push-cli">7.2. Pushing State to Backup Locations</a></li>
+<li><a href="#cli_xsite_push-cli">7.2. Configuring Cross-Site State Transfer Modes</a></li>
+<li><a href="#cli_xsite_push-cli">7.3. Pushing State to Backup Locations</a></li>
 </ul>
 </li>
 <li><a href="#backup">8. Backing Up and Restoring Infinispan Clusters</a>
@@ -547,301 +630,319 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#see_also_3">9.3.7. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#cache1">9.4. CACHE(1)</a>
+<li><a href="#benchmark1">9.4. BENCHMARK(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_4">9.4.1. NAME</a></li>
 <li><a href="#synopsis_4">9.4.2. SYNOPSIS</a></li>
-<li><a href="#example">9.4.3. EXAMPLE</a></li>
-<li><a href="#see_also_4">9.4.4. SEE ALSO</a></li>
+<li><a href="#benchmark_options">9.4.3. BENCHMARK OPTIONS</a></li>
+<li><a href="#examples_4">9.4.4. EXAMPLES</a></li>
 </ul>
 </li>
-<li><a href="#cas1">9.5. CAS(1)</a>
+<li><a href="#cache1">9.5. CACHE(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_5">9.5.1. NAME</a></li>
 <li><a href="#synopsis_5">9.5.2. SYNOPSIS</a></li>
-<li><a href="#options_2">9.5.3. OPTIONS</a></li>
-<li><a href="#example_2">9.5.4. EXAMPLE</a></li>
-<li><a href="#see_also_5">9.5.5. SEE ALSO</a></li>
+<li><a href="#example">9.5.3. EXAMPLE</a></li>
+<li><a href="#see_also_4">9.5.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#cd1">9.6. CD(1)</a>
+<li><a href="#cas1">9.6. CAS(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_6">9.6.1. NAME</a></li>
-<li><a href="#description">9.6.2. DESCRIPTION</a></li>
-<li><a href="#synopsis_6">9.6.3. SYNOPSIS</a></li>
-<li><a href="#example_3">9.6.4. EXAMPLE</a></li>
-<li><a href="#see_also_6">9.6.5. SEE ALSO</a></li>
+<li><a href="#synopsis_6">9.6.2. SYNOPSIS</a></li>
+<li><a href="#options_2">9.6.3. OPTIONS</a></li>
+<li><a href="#example_2">9.6.4. EXAMPLE</a></li>
+<li><a href="#see_also_5">9.6.5. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#clearcache1">9.7. CLEARCACHE(1)</a>
+<li><a href="#cd1">9.7. CD(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_7">9.7.1. NAME</a></li>
-<li><a href="#synopsis_7">9.7.2. SYNOPSIS</a></li>
-<li><a href="#examples_4">9.7.3. EXAMPLES</a></li>
-<li><a href="#see_also_7">9.7.4. SEE ALSO</a></li>
+<li><a href="#description">9.7.2. DESCRIPTION</a></li>
+<li><a href="#synopsis_7">9.7.3. SYNOPSIS</a></li>
+<li><a href="#example_3">9.7.4. EXAMPLE</a></li>
+<li><a href="#see_also_6">9.7.5. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#config1">9.8. CONFIG(1)</a>
+<li><a href="#clearcache1">9.8. CLEARCACHE(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_8">9.8.1. NAME</a></li>
 <li><a href="#synopsis_8">9.8.2. SYNOPSIS</a></li>
-<li><a href="#description_2">9.8.3. DESCRIPTION</a></li>
-<li><a href="#command_synopsis">9.8.4. COMMAND SYNOPSIS</a></li>
-<li><a href="#common_options">9.8.5. COMMON OPTIONS</a></li>
-<li><a href="#properties">9.8.6. PROPERTIES</a></li>
-<li><a href="#examples_5">9.8.7. EXAMPLES</a></li>
-<li><a href="#see_also_8">9.8.8. SEE ALSO</a></li>
+<li><a href="#examples_5">9.8.3. EXAMPLES</a></li>
+<li><a href="#see_also_7">9.8.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#connect1">9.9. CONNECT(1)</a>
+<li><a href="#config1">9.9. CONFIG(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_9">9.9.1. NAME</a></li>
-<li><a href="#description_3">9.9.2. DESCRIPTION</a></li>
-<li><a href="#synopsis_9">9.9.3. SYNOPSIS</a></li>
-<li><a href="#options_3">9.9.4. OPTIONS</a></li>
-<li><a href="#example_4">9.9.5. EXAMPLE</a></li>
-<li><a href="#see_also_9">9.9.6. SEE ALSO</a></li>
+<li><a href="#synopsis_9">9.9.2. SYNOPSIS</a></li>
+<li><a href="#description_2">9.9.3. DESCRIPTION</a></li>
+<li><a href="#command_synopsis">9.9.4. COMMAND SYNOPSIS</a></li>
+<li><a href="#common_options">9.9.5. COMMON OPTIONS</a></li>
+<li><a href="#properties">9.9.6. PROPERTIES</a></li>
+<li><a href="#examples_6">9.9.7. EXAMPLES</a></li>
+<li><a href="#see_also_8">9.9.8. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#container1">9.10. CONTAINER(1)</a>
+<li><a href="#connect1">9.10. CONNECT(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_10">9.10.1. NAME</a></li>
-<li><a href="#synopsis_10">9.10.2. SYNOPSIS</a></li>
-<li><a href="#example_5">9.10.3. EXAMPLE</a></li>
-<li><a href="#see_also_10">9.10.4. SEE ALSO</a></li>
+<li><a href="#description_3">9.10.2. DESCRIPTION</a></li>
+<li><a href="#synopsis_10">9.10.3. SYNOPSIS</a></li>
+<li><a href="#options_3">9.10.4. OPTIONS</a></li>
+<li><a href="#example_4">9.10.5. EXAMPLE</a></li>
+<li><a href="#see_also_9">9.10.6. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#counter1">9.11. COUNTER(1)</a>
+<li><a href="#container1">9.11. CONTAINER(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_11">9.11.1. NAME</a></li>
 <li><a href="#synopsis_11">9.11.2. SYNOPSIS</a></li>
-<li><a href="#example_6">9.11.3. EXAMPLE</a></li>
-<li><a href="#see_also_11">9.11.4. SEE ALSO</a></li>
+<li><a href="#example_5">9.11.3. EXAMPLE</a></li>
+<li><a href="#see_also_10">9.11.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#create1">9.12. CREATE(1)</a>
+<li><a href="#counter1">9.12. COUNTER(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_12">9.12.1. NAME</a></li>
 <li><a href="#synopsis_12">9.12.2. SYNOPSIS</a></li>
-<li><a href="#create_cache_options">9.12.3. CREATE CACHE OPTIONS</a></li>
-<li><a href="#create_counter_options">9.12.4. CREATE COUNTER OPTIONS</a></li>
-<li><a href="#examples_6">9.12.5. EXAMPLES</a></li>
-<li><a href="#see_also_12">9.12.6. SEE ALSO</a></li>
+<li><a href="#example_6">9.12.3. EXAMPLE</a></li>
+<li><a href="#see_also_11">9.12.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#credentials1">9.13.  CREDENTIALS(1)</a>
+<li><a href="#create1">9.13. CREATE(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_13">9.13.1. NAME</a></li>
 <li><a href="#synopsis_13">9.13.2. SYNOPSIS</a></li>
-<li><a href="#description_4">9.13.3. DESCRIPTION</a></li>
-<li><a href="#synopsis_14">9.13.4. SYNOPSIS</a></li>
-<li><a href="#options_4">9.13.5. OPTIONS</a></li>
-<li><a href="#credentials_add_options">9.13.6. CREDENTIALS ADD OPTIONS</a></li>
-<li><a href="#examples_7">9.13.7. EXAMPLES</a></li>
+<li><a href="#create_cache_options">9.13.3. CREATE CACHE OPTIONS</a></li>
+<li><a href="#create_counter_options">9.13.4. CREATE COUNTER OPTIONS</a></li>
+<li><a href="#examples_7">9.13.5. EXAMPLES</a></li>
+<li><a href="#see_also_12">9.13.6. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#describe1">9.14. DESCRIBE(1)</a>
+<li><a href="#credentials1">9.14.  CREDENTIALS(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_14">9.14.1. NAME</a></li>
-<li><a href="#synopsis_15">9.14.2. SYNOPSIS</a></li>
-<li><a href="#examples_8">9.14.3. EXAMPLES</a></li>
-<li><a href="#see_also_13">9.14.4. SEE ALSO</a></li>
+<li><a href="#synopsis_14">9.14.2. SYNOPSIS</a></li>
+<li><a href="#description_4">9.14.3. DESCRIPTION</a></li>
+<li><a href="#synopsis_15">9.14.4. SYNOPSIS</a></li>
+<li><a href="#options_4">9.14.5. OPTIONS</a></li>
+<li><a href="#credentials_add_options">9.14.6. CREDENTIALS ADD OPTIONS</a></li>
+<li><a href="#examples_8">9.14.7. EXAMPLES</a></li>
 </ul>
 </li>
-<li><a href="#disconnect1">9.15. DISCONNECT(1)</a>
+<li><a href="#describe1">9.15. DESCRIBE(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_15">9.15.1. NAME</a></li>
 <li><a href="#synopsis_16">9.15.2. SYNOPSIS</a></li>
-<li><a href="#example_7">9.15.3. EXAMPLE</a></li>
-<li><a href="#see_also_14">9.15.4. SEE ALSO</a></li>
+<li><a href="#examples_9">9.15.3. EXAMPLES</a></li>
+<li><a href="#see_also_13">9.15.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#drop1">9.16. DROP(1)</a>
+<li><a href="#disconnect1">9.16. DISCONNECT(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_16">9.16.1. NAME</a></li>
 <li><a href="#synopsis_17">9.16.2. SYNOPSIS</a></li>
-<li><a href="#examples_9">9.16.3. EXAMPLES</a></li>
-<li><a href="#see_also_15">9.16.4. SEE ALSO</a></li>
+<li><a href="#example_7">9.16.3. EXAMPLE</a></li>
+<li><a href="#see_also_14">9.16.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#encoding1">9.17. ENCODING(1)</a>
+<li><a href="#drop1">9.17. DROP(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_17">9.17.1. NAME</a></li>
-<li><a href="#description_5">9.17.2. DESCRIPTION</a></li>
-<li><a href="#synopsis_18">9.17.3. SYNOPSIS</a></li>
-<li><a href="#example_8">9.17.4. EXAMPLE</a></li>
-<li><a href="#see_also_16">9.17.5. SEE ALSO</a></li>
+<li><a href="#synopsis_18">9.17.2. SYNOPSIS</a></li>
+<li><a href="#examples_10">9.17.3. EXAMPLES</a></li>
+<li><a href="#see_also_15">9.17.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#get1">9.18. GET(1)</a>
+<li><a href="#encoding1">9.18. ENCODING(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_18">9.18.1. NAME</a></li>
-<li><a href="#synopsis_19">9.18.2. SYNOPSIS</a></li>
-<li><a href="#options_5">9.18.3. OPTIONS</a></li>
-<li><a href="#example_9">9.18.4. EXAMPLE</a></li>
-<li><a href="#see_also_17">9.18.5. SEE ALSO</a></li>
+<li><a href="#description_5">9.18.2. DESCRIPTION</a></li>
+<li><a href="#synopsis_19">9.18.3. SYNOPSIS</a></li>
+<li><a href="#example_8">9.18.4. EXAMPLE</a></li>
+<li><a href="#see_also_16">9.18.5. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#help1">9.19. HELP(1)</a>
+<li><a href="#get1">9.19. GET(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_19">9.19.1. NAME</a></li>
 <li><a href="#synopsis_20">9.19.2. SYNOPSIS</a></li>
-<li><a href="#example_10">9.19.3. EXAMPLE</a></li>
-<li><a href="#see_also_18">9.19.4. SEE ALSO</a></li>
+<li><a href="#options_5">9.19.3. OPTIONS</a></li>
+<li><a href="#example_9">9.19.4. EXAMPLE</a></li>
+<li><a href="#see_also_17">9.19.5. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#logging1">9.20. LOGGING(1)</a>
+<li><a href="#help1">9.20. HELP(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_20">9.20.1. NAME</a></li>
 <li><a href="#synopsis_21">9.20.2. SYNOPSIS</a></li>
-<li><a href="#logging_set_options">9.20.3. LOGGING SET OPTIONS</a></li>
-<li><a href="#examples_10">9.20.4. EXAMPLES</a></li>
+<li><a href="#example_10">9.20.3. EXAMPLE</a></li>
+<li><a href="#see_also_18">9.20.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#ls1">9.21. LS(1)</a>
+<li><a href="#logging1">9.21. LOGGING(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_21">9.21.1. NAME</a></li>
 <li><a href="#synopsis_22">9.21.2. SYNOPSIS</a></li>
-<li><a href="#examples_11">9.21.3. EXAMPLES</a></li>
-<li><a href="#see_also_19">9.21.4. SEE ALSO</a></li>
+<li><a href="#logging_set_options">9.21.3. LOGGING SET OPTIONS</a></li>
+<li><a href="#examples_11">9.21.4. EXAMPLES</a></li>
 </ul>
 </li>
-<li><a href="#migrate1">9.22. MIGRATE(1)</a>
+<li><a href="#ls1">9.22. LS(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_22">9.22.1. NAME</a></li>
 <li><a href="#synopsis_23">9.22.2. SYNOPSIS</a></li>
-<li><a href="#description_6">9.22.3. DESCRIPTION</a></li>
-<li><a href="#command_synopsis_2">9.22.4. COMMAND SYNOPSIS</a></li>
-<li><a href="#common_options_2">9.22.5. COMMON OPTIONS</a></li>
-<li><a href="#cluster_synchronize_options">9.22.6. CLUSTER SYNCHRONIZE OPTIONS</a></li>
-<li><a href="#cluster_disconnect_options">9.22.7. CLUSTER DISCONNECT OPTIONS</a></li>
+<li><a href="#examples_12">9.22.3. EXAMPLES</a></li>
+<li><a href="#see_also_19">9.22.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#patch1">9.23. PATCH(1)</a>
+<li><a href="#migrate1">9.23. MIGRATE(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_23">9.23.1. NAME</a></li>
-<li><a href="#description_7">9.23.2. DESCRIPTION</a></li>
-<li><a href="#synopsis_24">9.23.3. SYNOPSIS</a></li>
-<li><a href="#patch_list_options">9.23.4. PATCH LIST OPTIONS</a></li>
-<li><a href="#patch_install_options">9.23.5. PATCH INSTALL OPTIONS</a></li>
-<li><a href="#patch_describe_options">9.23.6. PATCH DESCRIBE OPTIONS</a></li>
-<li><a href="#patch_rollback_options">9.23.7. PATCH ROLLBACK OPTIONS</a></li>
-<li><a href="#patch_create_options">9.23.8. PATCH CREATE OPTIONS</a></li>
-<li><a href="#examples_12">9.23.9. EXAMPLES</a></li>
+<li><a href="#synopsis_24">9.23.2. SYNOPSIS</a></li>
+<li><a href="#description_6">9.23.3. DESCRIPTION</a></li>
+<li><a href="#command_synopsis_2">9.23.4. COMMAND SYNOPSIS</a></li>
+<li><a href="#common_options_2">9.23.5. COMMON OPTIONS</a></li>
+<li><a href="#cluster_synchronize_options">9.23.6. CLUSTER SYNCHRONIZE OPTIONS</a></li>
+<li><a href="#cluster_disconnect_options">9.23.7. CLUSTER DISCONNECT OPTIONS</a></li>
 </ul>
 </li>
-<li><a href="#put1">9.24. PUT(1)</a>
+<li><a href="#patch1">9.24. PATCH(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_24">9.24.1. NAME</a></li>
-<li><a href="#description_8">9.24.2. DESCRIPTION</a></li>
+<li><a href="#description_7">9.24.2. DESCRIPTION</a></li>
 <li><a href="#synopsis_25">9.24.3. SYNOPSIS</a></li>
-<li><a href="#options_6">9.24.4. OPTIONS</a></li>
-<li><a href="#examples_13">9.24.5. EXAMPLES</a></li>
-<li><a href="#see_also_20">9.24.6. SEE ALSO</a></li>
+<li><a href="#patch_list_options">9.24.4. PATCH LIST OPTIONS</a></li>
+<li><a href="#patch_install_options">9.24.5. PATCH INSTALL OPTIONS</a></li>
+<li><a href="#patch_describe_options">9.24.6. PATCH DESCRIBE OPTIONS</a></li>
+<li><a href="#patch_rollback_options">9.24.7. PATCH ROLLBACK OPTIONS</a></li>
+<li><a href="#patch_create_options">9.24.8. PATCH CREATE OPTIONS</a></li>
+<li><a href="#examples_13">9.24.9. EXAMPLES</a></li>
 </ul>
 </li>
-<li><a href="#query1">9.25. QUERY(1)</a>
+<li><a href="#put1">9.25. PUT(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_25">9.25.1. NAME</a></li>
-<li><a href="#synopsis_26">9.25.2. SYNOPSIS</a></li>
-<li><a href="#options_7">9.25.3. OPTIONS</a></li>
-<li><a href="#examples_14">9.25.4. EXAMPLES</a></li>
-<li><a href="#see_also_21">9.25.5. SEE ALSO</a></li>
+<li><a href="#description_8">9.25.2. DESCRIPTION</a></li>
+<li><a href="#synopsis_26">9.25.3. SYNOPSIS</a></li>
+<li><a href="#options_6">9.25.4. OPTIONS</a></li>
+<li><a href="#examples_14">9.25.5. EXAMPLES</a></li>
+<li><a href="#see_also_20">9.25.6. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#quit1">9.26. QUIT(1)</a>
+<li><a href="#query1">9.26. QUERY(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_26">9.26.1. NAME</a></li>
 <li><a href="#synopsis_27">9.26.2. SYNOPSIS</a></li>
-<li><a href="#example_11">9.26.3. EXAMPLE</a></li>
-<li><a href="#see_also_22">9.26.4. SEE ALSO</a></li>
+<li><a href="#options_7">9.26.3. OPTIONS</a></li>
+<li><a href="#examples_15">9.26.4. EXAMPLES</a></li>
+<li><a href="#see_also_21">9.26.5. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#remove1">9.27. REMOVE(1)</a>
+<li><a href="#quit1">9.27. QUIT(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_27">9.27.1. NAME</a></li>
 <li><a href="#synopsis_28">9.27.2. SYNOPSIS</a></li>
-<li><a href="#options_8">9.27.3. OPTIONS</a></li>
-<li><a href="#example_12">9.27.4. EXAMPLE</a></li>
-<li><a href="#see_also_23">9.27.5. SEE ALSO</a></li>
+<li><a href="#example_11">9.27.3. EXAMPLE</a></li>
+<li><a href="#see_also_22">9.27.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#reset1">9.28. RESET(1)</a>
+<li><a href="#remove1">9.28. REMOVE(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_28">9.28.1. NAME</a></li>
 <li><a href="#synopsis_29">9.28.2. SYNOPSIS</a></li>
-<li><a href="#example_13">9.28.3. EXAMPLE</a></li>
-<li><a href="#see_also_24">9.28.4. SEE ALSO</a></li>
+<li><a href="#options_8">9.28.3. OPTIONS</a></li>
+<li><a href="#example_12">9.28.4. EXAMPLE</a></li>
+<li><a href="#see_also_23">9.28.5. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#schema1">9.29. SCHEMA(1)</a>
+<li><a href="#reset1">9.29. RESET(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_29">9.29.1. NAME</a></li>
 <li><a href="#synopsis_30">9.29.2. SYNOPSIS</a></li>
-<li><a href="#options_9">9.29.3. OPTIONS</a></li>
-<li><a href="#example_14">9.29.4. EXAMPLE</a></li>
-<li><a href="#see_also_25">9.29.5. SEE ALSO</a></li>
+<li><a href="#example_13">9.29.3. EXAMPLE</a></li>
+<li><a href="#see_also_24">9.29.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#shutdown1">9.30. SHUTDOWN(1)</a>
+<li><a href="#schema1">9.30. SCHEMA(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_30">9.30.1. NAME</a></li>
 <li><a href="#synopsis_31">9.30.2. SYNOPSIS</a></li>
-<li><a href="#examples_15">9.30.3. EXAMPLES</a></li>
-<li><a href="#see_also_26">9.30.4. SEE ALSO</a></li>
+<li><a href="#options_9">9.30.3. OPTIONS</a></li>
+<li><a href="#example_14">9.30.4. EXAMPLE</a></li>
+<li><a href="#see_also_25">9.30.5. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#site1">9.31. SITE(1)</a>
+<li><a href="#server1">9.31. SERVER(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_31">9.31.1. NAME</a></li>
-<li><a href="#synopsis_32">9.31.2. SYNOPSIS</a></li>
-<li><a href="#options_10">9.31.3. OPTIONS</a></li>
-<li><a href="#examples_16">9.31.4. EXAMPLES</a></li>
+<li><a href="#description_9">9.31.2. DESCRIPTION</a></li>
+<li><a href="#synopsis_32">9.31.3. SYNOPSIS</a></li>
+<li><a href="#server_connector_ipfilter_options">9.31.4. SERVER CONNECTOR IPFILTER OPTIONS</a></li>
+<li><a href="#examples_16">9.31.5. EXAMPLES</a></li>
 </ul>
 </li>
-<li><a href="#stats1">9.32. STATS(1)</a>
+<li><a href="#shutdown1">9.32. SHUTDOWN(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_32">9.32.1. NAME</a></li>
 <li><a href="#synopsis_33">9.32.2. SYNOPSIS</a></li>
 <li><a href="#examples_17">9.32.3. EXAMPLES</a></li>
-<li><a href="#see_also_27">9.32.4. SEE ALSO</a></li>
+<li><a href="#see_also_26">9.32.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#task1">9.33. TASK(1)</a>
+<li><a href="#site1">9.33. SITE(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_33">9.33.1. NAME</a></li>
 <li><a href="#synopsis_34">9.33.2. SYNOPSIS</a></li>
-<li><a href="#examples_18">9.33.3. EXAMPLES</a></li>
-<li><a href="#options_11">9.33.4. OPTIONS</a></li>
-<li><a href="#see_also_28">9.33.5. SEE ALSO</a></li>
+<li><a href="#options_10">9.33.3. OPTIONS</a></li>
+<li><a href="#state_transfer_mode_options">9.33.4. STATE TRANSFER MODE OPTIONS</a></li>
+<li><a href="#examples_18">9.33.5. EXAMPLES</a></li>
 </ul>
 </li>
-<li><a href="#unalias1">9.34. UNALIAS(1)</a>
+<li><a href="#stats1">9.34. STATS(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_34">9.34.1. NAME</a></li>
 <li><a href="#synopsis_35">9.34.2. SYNOPSIS</a></li>
 <li><a href="#examples_19">9.34.3. EXAMPLES</a></li>
-<li><a href="#see_also_29">9.34.4. SEE ALSO</a></li>
+<li><a href="#see_also_27">9.34.4. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#user1">9.35. USER(1)</a>
+<li><a href="#task1">9.35. TASK(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_35">9.35.1. NAME</a></li>
 <li><a href="#synopsis_36">9.35.2. SYNOPSIS</a></li>
-<li><a href="#description_9">9.35.3. DESCRIPTION</a></li>
-<li><a href="#command_synopsis_3">9.35.4. COMMAND SYNOPSIS</a></li>
-<li><a href="#common_options_3">9.35.5. COMMON OPTIONS</a></li>
-<li><a href="#user_createmodify_options">9.35.6. USER CREATE/MODIFY OPTIONS</a></li>
-<li><a href="#user_ls_options">9.35.7. USER LS OPTIONS</a></li>
-<li><a href="#user_encrypt_all_options">9.35.8. USER ENCRYPT-ALL OPTIONS</a></li>
+<li><a href="#examples_20">9.35.3. EXAMPLES</a></li>
+<li><a href="#options_11">9.35.4. OPTIONS</a></li>
+<li><a href="#see_also_28">9.35.5. SEE ALSO</a></li>
 </ul>
 </li>
-<li><a href="#version1">9.36. VERSION(1)</a>
+<li><a href="#unalias1">9.36. UNALIAS(1)</a>
 <ul class="sectlevel3">
 <li><a href="#name_36">9.36.1. NAME</a></li>
 <li><a href="#synopsis_37">9.36.2. SYNOPSIS</a></li>
-<li><a href="#example_15">9.36.3. EXAMPLE</a></li>
-<li><a href="#see_also_30">9.36.4. SEE ALSO</a></li>
+<li><a href="#examples_21">9.36.3. EXAMPLES</a></li>
+<li><a href="#see_also_29">9.36.4. SEE ALSO</a></li>
+</ul>
+</li>
+<li><a href="#user1">9.37. USER(1)</a>
+<ul class="sectlevel3">
+<li><a href="#name_37">9.37.1. NAME</a></li>
+<li><a href="#synopsis_38">9.37.2. SYNOPSIS</a></li>
+<li><a href="#description_10">9.37.3. DESCRIPTION</a></li>
+<li><a href="#command_synopsis_3">9.37.4. COMMAND SYNOPSIS</a></li>
+<li><a href="#common_options_3">9.37.5. COMMON OPTIONS</a></li>
+<li><a href="#user_createmodify_options">9.37.6. USER CREATE/MODIFY OPTIONS</a></li>
+<li><a href="#user_ls_options">9.37.7. USER LS OPTIONS</a></li>
+<li><a href="#user_encrypt_all_options">9.37.8. USER ENCRYPT-ALL OPTIONS</a></li>
+</ul>
+</li>
+<li><a href="#version1">9.38. VERSION(1)</a>
+<ul class="sectlevel3">
+<li><a href="#name_38">9.38.1. NAME</a></li>
+<li><a href="#synopsis_39">9.38.2. SYNOPSIS</a></li>
+<li><a href="#example_15">9.38.3. EXAMPLE</a></li>
+<li><a href="#see_also_30">9.38.4. SEE ALSO</a></li>
 </ul>
 </li>
 </ul>
@@ -858,22 +959,20 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 servers to access data and perform administrative functions.</p>
 </div>
 <div class="sect2">
-<h3 id="user_create-cli"><a class="anchor" href="#user_create-cli"></a>1.1. Creating and Modifying Users</h3>
+<h3 id="creating-users_cli"><a class="anchor" href="#creating-users_cli"></a>1.1. Creating and Modifying Users</h3>
 <div class="paragraph">
-<p>Infinispan Server requires users to authenticate against a default property realm.
-Before you can access Infinispan Server, you must add credentials by creating at least one user and a password.
-You can also add and modify the security authorization groups to which users belong.</p>
+<p>Add Infinispan user credentials and assign permissions to control access to data.</p>
 </div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Open a terminal in <code>$ISPN_HOME</code>.</p>
-</li>
-<li>
-<p>Create and modify Infinispan users with the <code class="command">user</code> command.</p>
-</li>
-</ol>
+<div class="paragraph">
+<p>Infinispan server installations use a property realm to authenticate users for the Hot Rod and REST endpoints.
+This means you need to create at least one user before you can access Infinispan.</p>
+</div>
+<div class="paragraph">
+<p>By default, users also need roles with permissions to access caches and interact with Infinispan resources.
+You can assign roles to users individually or add users to groups that have role permissions.</p>
+</div>
+<div class="paragraph">
+<p>You create users and assign roles with the <code class="command">user</code> command in the Infinispan command line interface (CLI).</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -883,53 +982,241 @@ You can also add and modify the security authorization groups to which users bel
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Run <code class="command">help user</code> for more details about using the command.</p>
+<p>Run <code class="command">help user</code> from a CLI session to get complete command details.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
-<div class="ulist">
-<div class="title">Creating users and passwords</div>
-<ul>
+<div class="sect3">
+<h4 id="adding_credentials"><a class="anchor" href="#adding_credentials"></a>1.1.1. Adding Credentials</h4>
+<div class="paragraph">
+<p>You need an <code>admin</code> user for the Infinispan Console and full control over your Infinispan environment.
+For this reason you should create a user with <code>admin</code> permissions the first time you add credentials.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
 <li>
-<p>Linux</p>
+<p>Open a terminal in <code>$ISPN_HOME</code>.</p>
+</li>
+<li>
+<p>Create an <code>admin</code> user with the <code class="command">user create</code> command in the CLI.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ bin/cli.sh user create myuser -p &quot;qwer1234!&quot;</code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">$ bin/cli.sh user create myuser -p changeme -g admin</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Alternatively, the username "admin" automatically gets <code>admin</code> permissions.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">$ bin/cli.sh user create admin -p changeme</code></pre>
 </div>
 </div>
 </li>
 <li>
-<p>Microsoft Windows</p>
+<p>Open <code>user.properties</code> and <code>groups.properties</code> with any text editor to verify users and groups.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ bin\cli.bat user create myuser -p &quot;qwer1234!&quot;</code></pre>
+<pre class="CodeRay highlight nowrap"><code>$ cat server/conf/users.properties
+
+#$REALM_NAME=default$
+#$ALGORITHM=encrypted$
+myuser=scram-sha-1\:BYGcIAwvf6b...
+
+$ cat server/conf/groups.properties
+
+myuser=admin</code></pre>
 </div>
 </div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="assigning_roles_to_users"><a class="anchor" href="#assigning_roles_to_users"></a>1.1.2. Assigning Roles to Users</h4>
+<div class="paragraph">
+<p>Assign roles to users so they have the correct permissions to access data and modify Infinispan resources.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Start a CLI session with an <code>admin</code> user.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">$ bin/cli.sh</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Assign the <code>deployer</code> role to "katie".</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user roles grant --roles=deployer katie</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>List roles for "katie".</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user roles ls katie
+[&quot;deployer&quot;]</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="adding_users_to_groups"><a class="anchor" href="#adding_users_to_groups"></a>1.1.3. Adding Users to Groups</h4>
+<div class="paragraph">
+<p>Groups let you change permissions for multiple users.
+You assign a role to a group and then add users to that group.
+Users inherit permissions from the group role.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Start a CLI session with an <code>admin</code> user.</p>
+</li>
+<li>
+<p>Use the <code class="command">user create</code> command to create a group.</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Specify "developers" as the group name with the <code>--groups</code> argument.</p>
+</li>
+<li>
+<p>Set a username and password for the group.</p>
+<div class="paragraph">
+<p>In a property realm, a group is a special type of user that also requires a username and password.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user create --groups=developers developers -p changeme</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>List groups.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user ls --groups
+[&quot;developers&quot;]</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Assign the <code>application</code> role to the "developers" group.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user roles grant --roles=application developers</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>List roles for the "developers" group.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user roles ls developers
+[&quot;application&quot;]</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Add existing users, one at a time, to the group as required.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user groups john --groups=developers</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="user-roles-permissions_cli"><a class="anchor" href="#user-roles-permissions_cli"></a>1.1.4. User Roles and Permissions</h4>
+<div class="paragraph">
+<p>Infinispan includes a default set of roles that grant users with permissions to access data and interact with Infinispan resources.</p>
+</div>
+<div class="paragraph">
+<p><code>ClusterRoleMapper</code> is the default mechanism that Infinispan uses to associate security principals to authorization roles.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code>ClusterRoleMapper</code> matches principal names to role names.
+A user named <code>admin</code> gets <code>admin</code> permissions automatically, a user named <code>deployer</code> gets <code>deployer</code> permissions, and so on.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Role</th>
+<th class="tableblock halign-left valign-top">Permissions</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>admin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Superuser with all permissions including control of the Cache Manager lifecycle. Users must have this role to access Infinispan Console.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>deployer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL_READ, ALL_WRITE, LISTEN, EXEC, MONITOR, CREATE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Can create and delete Infinispan resources in addition to <code>application</code> permissions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>application</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL_READ, ALL_WRITE, LISTEN, EXEC, MONITOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Has read and write access to Infinispan resources in addition to <code>observer</code> permissions. Can also listen to events and execute server tasks and scripts.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>observer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL_READ, MONITOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Has read access to Infinispan resources in addition to <code>monitor</code> permissions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>monitor</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MONITOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Can view statistics via JMX and the <code>metrics</code> endpoint.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs">org.infinispan.security.AuthorizationPermission Enumeration</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema Reference</a></p>
 </li>
 </ul>
 </div>
-<div class="ulist">
-<div class="title">Creating users with group membership</div>
-<ul>
-<li>
-<p>Linux</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ bin/cli.sh user create myuser -p &quot;qwer1234!&quot; -g supervisor,reader,writer</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Microsoft Windows</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ bin\cli.bat user create myuser -p &quot;qwer1234!&quot; -g supervisor,reader,writer</code></pre>
-</div>
-</div>
-</li>
-</ul>
 </div>
 </div>
 <div class="sect2">
@@ -1354,61 +1641,21 @@ mycache</code></pre>
 </ul>
 </div>
 <div class="sect3">
-<h4 id="ref_xml_configuration"><a class="anchor" href="#ref_xml_configuration"></a>2.1.1. XML Configuration</h4>
+<h4 id="cache_configuration"><a class="anchor" href="#cache_configuration"></a>2.1.1. Cache Configuration</h4>
 <div class="paragraph">
-<p>Infinispan configuration in XML format must conform to the schema and include:</p>
+<p>You can provide cache configuration in XML or JSON format.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>&lt;infinispan&gt;</code> root element.</p>
-</li>
-<li>
-<p><code>&lt;cache-container&gt;</code> definition.</p>
-</li>
-</ul>
-</div>
-<div class="listingblock">
-<div class="title">Example XML Configuration</div>
+<div class="listingblock primary">
+<div class="title">XML</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-    <span class="tag">&lt;cache-container&gt;</span>
-        <span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myCache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-          <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-          <span class="tag">&lt;memory</span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">REMOVE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;/distributed-cache&gt;</span>
-    <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myCache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;memory</span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">REMOVE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
-</div>
-<div class="sect3">
-<h4 id="ref_json_configuration"><a class="anchor" href="#ref_json_configuration"></a>2.1.2. JSON Configuration</h4>
-<div class="paragraph">
-<p>Infinispan configuration in JSON format:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Requires the cache definition only.</p>
-</li>
-<li>
-<p>Must follow the structure of an XML configuration.</p>
-<div class="ulist">
-<ul>
-<li>
-<p>XML elements become JSON objects.</p>
-</li>
-<li>
-<p>XML attributes become JSON fields.</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-<div class="listingblock">
-<div class="title">Example JSON Configuration</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="json">{
   <span class="key"><span class="delimiter">&quot;</span><span class="content">distributed-cache</span><span class="delimiter">&quot;</span></span>: {
@@ -1424,6 +1671,12 @@ mycache</code></pre>
   }
 }</code></pre>
 </div>
+</div>
+<h5 id="json_format" class="discrete">JSON format</h5>
+<div class="paragraph">
+<p>Cache configuration in JSON format must follow the structure of an XML configuration.
+* XML elements become JSON objects.
+* XML attributes become JSON fields.</p>
 </div>
 </div>
 </div>
@@ -2118,7 +2371,7 @@ count of objects.</p>
 </ul>
 </div>
 <div class="sect2">
-<h3 id="configuring_media_types"><a class="anchor" href="#configuring_media_types"></a>6.1. Configuring Media Types</h3>
+<h3 id="cli-configuring-media-types_cli"><a class="anchor" href="#cli-configuring-media-types_cli"></a>6.1. Configuring Media Types</h3>
 <div class="paragraph">
 <p>Encode cache entries with different media types to store data in a format that best suits your requirements.</p>
 </div>
@@ -2132,21 +2385,17 @@ count of objects.</p>
 <p>Create a Infinispan configuration file that adds a distributed cache named <code>qcache</code> and configures the media type, for example:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-   <span class="tag">&lt;cache-container&gt;</span>
-      <span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">qcache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-         <span class="tag">&lt;encoding&gt;</span>
-            <span class="tag">&lt;key</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-            <span class="tag">&lt;value</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-         <span class="tag">&lt;/encoding&gt;</span>
-      <span class="tag">&lt;/distributed-cache&gt;</span>
-   <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">pcache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="tag">&lt;encoding&gt;</span>
+      <span class="tag">&lt;key</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;value</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+   <span class="tag">&lt;/encoding&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 </li>
 <li>
-<p>Create <code>qcache</code> from <code>pcache.xml</code> with the <code class="command">--file=</code> option.</p>
+<p>Create <code>pcache</code> from <code>pcache.xml</code> with the <code class="command">--file=</code> option.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; create cache --file=pcache.xml pcache</code></pre>
@@ -2435,7 +2684,7 @@ communicate with each other to backup data.</p>
 <p>Check if backup locations are online or offline with the <code class="command">site status</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site status --cache=cacheName --site=NYC</pre>
+<pre>[//containers/default]&gt; site status --cache=cacheName --site=NYC</pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -2462,7 +2711,7 @@ locations.</p>
 <p>Bring backup locations online with the <code class="command">bring-online</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site bring-online --cache=customers --site=NYC</pre>
+<pre>[//containers/default]&gt; site bring-online --cache=customers --site=NYC</pre>
 </div>
 </div>
 </li>
@@ -2470,7 +2719,7 @@ locations.</p>
 <p>Take backup locations offline with the <code class="command">take-offline</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site take-offline --cache=customers --site=NYC</pre>
+<pre>[//containers/default]&gt; site take-offline --cache=customers --site=NYC</pre>
 </div>
 </div>
 </li>
@@ -2484,7 +2733,60 @@ locations.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cli_xsite_push-cli"><a class="anchor" href="#cli_xsite_push-cli"></a>7.2. Pushing State to Backup Locations</h3>
+<h3 id="cli_xsite_push-cli"><a class="anchor" href="#cli_xsite_push-cli"></a>7.2. Configuring Cross-Site State Transfer Modes</h3>
+<div class="paragraph">
+<p>You can configure cross-site state transfer operations to happen automatically when Infinispan detects that backup locations come online.
+Alternatively you can use the default mode, which is to manually perform state transfer through the CLI or via JMX or REST.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a CLI connection to Infinispan.</p>
+</li>
+<li>
+<p>Use the <code class="command">site</code> command to configure state transfer modes, as in the following examples:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Retrieve the current state transfer mode.</p>
+<div class="listingblock">
+<div class="content">
+<pre>[//containers/default]&gt; site state-transfer-mode get --cache=cacheName --site=NYC
+"MANUAL"</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Configure automatic state transfer operations for a cache and backup location.</p>
+</li>
+</ul>
+</div>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>[//containers/default]&gt; site state-transfer-mode set --cache=cacheName --site=NYC --mode=AUTO</pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Run the <code class="command">help site</code> command for more information and examples.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cli_xsite_push-cli"><a class="anchor" href="#cli_xsite_push-cli"></a>7.3. Pushing State to Backup Locations</h3>
 <div class="paragraph">
 <p>Transfer cache state to remote backup locations.</p>
 </div>
@@ -2498,7 +2800,7 @@ locations.</p>
 <p>Use the <code class="command">site</code> command to push state transfer, as in the following example:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site push-site-state --cache=cacheName --site=NYC</pre>
+<pre>[//containers/default]&gt; site push-site-state --cache=cacheName --site=NYC</pre>
 </div>
 </div>
 </li>
@@ -2954,49 +3256,151 @@ Deletes the <code>example-backup</code> archive from the server.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cache1"><a class="anchor" href="#cache1"></a>9.4. CACHE(1)</h3>
+<h3 id="benchmark1"><a class="anchor" href="#benchmark1"></a>9.4. BENCHMARK(1)</h3>
 <div class="sect3">
 <h4 id="name_4"><a class="anchor" href="#name_4"></a>9.4.1. NAME</h4>
 <div class="paragraph">
-<p>cache - selects the default cache for subsequent commands.</p>
+<p>benchmark - runs a performance benchmark against a cache.</p>
+</div>
+<div class="paragraph">
+<p>You can run performance benchmarks for the following HTTP and Hot Rod
+protocols: <code>http</code>, <code>https</code>, <code>hotrod</code>, and <code>hotrods</code>. You specify the protocol
+for the benchmark with a URI. If you do not specify a protocol, the benchmark
+uses the URI of the current CLI connection.</p>
+</div>
+<div class="paragraph">
+<p>Benchmarks for Hot Rod URIs connect to the entire cluster. For HTTP URIs,
+benchmarks connect to a single node only.</p>
+</div>
+<div class="paragraph">
+<p>Benchmarks test performance against an existing cache. Before you run a
+benchmark, you should create a cache with the capabilities you want to measure.
+For example, if you want to evaluate the performance of cross-site replication,
+you should create a cache that has backup locations. If you want to test the
+performance of persistence, create a cache that uses an appropriate cache store.</p>
 </div>
 </div>
 <div class="sect3">
 <h4 id="synopsis_4"><a class="anchor" href="#synopsis_4"></a>9.4.2. SYNOPSIS</h4>
 <div class="paragraph">
+<p><strong>benchmark</strong> ['OPTIONS'] [<code>uri</code>]</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="benchmark_options"><a class="anchor" href="#benchmark_options"></a>9.4.3. BENCHMARK OPTIONS</h4>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><strong>-t, --threads</strong>='num'</dt>
+<dd>
+<p>Specifies the number of threads to create. Defaults to <code>10</code>.</p>
+</dd>
+<dt class="hdlist1"><strong>--cache</strong>='cache'</dt>
+<dd>
+<p>Names the cache against which the benchmark is performed. Defaults to <code>benchmark</code>. You must create the cache before running the benchmark if it does not already exist.</p>
+</dd>
+<dt class="hdlist1"><strong>*--key-size</strong>='num'</dt>
+<dd>
+<p>Sets the size, in bytes, of the key. Defaults to 16 bytes.</p>
+</dd>
+<dt class="hdlist1"><strong>*--value-size</strong>='num'</dt>
+<dd>
+<p>Sets the size, in bytes, of the value. Defaults to 1000 bytes.</p>
+</dd>
+<dt class="hdlist1"><strong>*--keyset-size</strong>='num'</dt>
+<dd>
+<p>Defines the size, in bytes, of the test key set. Defaults to <code>1000</code>.</p>
+</dd>
+<dt class="hdlist1"><strong>--verbosity</strong>=['SILENT', 'NORMAL', 'EXTRA']</dt>
+<dd>
+<p>Specifies the verbosity level of the output. Possible values, from least to most verbose, are <code>SILENT</code>, <code>NORMAL</code>, and <code>EXTRA</code>. The default is <code>NORMAL</code>.</p>
+</dd>
+<dt class="hdlist1"><strong>-c, --count</strong>='num'</dt>
+<dd>
+<p>Specifies how many measurement iterations to perform. Defaults to <code>5</code>.</p>
+</dd>
+<dt class="hdlist1"><strong>--time</strong>='time'</dt>
+<dd>
+<p>Sets the amount of time, in seconds, that each iteration takes. Defaults to <code>10</code>.</p>
+</dd>
+<dt class="hdlist1"><strong>--warmup-count</strong>='num'</dt>
+<dd>
+<p>Specifies how many warmup iterations to perform. Defaults to <code>5</code>.</p>
+</dd>
+<dt class="hdlist1"><strong>--warmup-time</strong>='time'</dt>
+<dd>
+<p>Sets the amount of time, in seconds, that each warmup iteration takes. Defaults to <code>1</code>.</p>
+</dd>
+<dt class="hdlist1"><strong>--mode</strong>='mode'</dt>
+<dd>
+<p>Specifies the benchmark mode. Possible values are <code>Throughput</code>, <code>AverageTime</code>, <code>SampleTime</code>, <code>SingleShotTime</code>, and <code>All</code>. The default is <code>Throughput</code>.</p>
+</dd>
+<dt class="hdlist1"><strong>--time-unit</strong>='unit'</dt>
+<dd>
+<p>Specifies the time unit for results in the benchmark report. Possible values are <code>NANOSECONDS</code>, <code>MICROSECONDS</code>, <code>MILLISECONDS</code>, and <code>SECONDS</code>. The default is <code>MICROSECONDS</code>.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="examples_4"><a class="anchor" href="#examples_4"></a>9.4.4. EXAMPLES</h4>
+<div class="paragraph">
+<p><code>benchmark hotrod://localhost:11222</code><br>
+Performs a benchmark test with the Hot Rod protocol.</p>
+</div>
+<div class="paragraph">
+<p><code>benchmark --value-size=10000 --cache=largecache hotrod://localhost:11222</code><br>
+Performs a benchmark test with the Hot Rod protocol against the <code>largecache</code> cache using test values that are 10000 bytes in size.</p>
+</div>
+<div class="paragraph">
+<p><code>benchmark --mode=All --threads=20 <a href="https://user:password@server:11222" class="bare">https://user:password@server:11222</a></code><br>
+Performs a benchmark test with the HTTPS protocol using 20 threads and includes all modes in the report.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cache1"><a class="anchor" href="#cache1"></a>9.5. CACHE(1)</h3>
+<div class="sect3">
+<h4 id="name_5"><a class="anchor" href="#name_5"></a>9.5.1. NAME</h4>
+<div class="paragraph">
+<p>cache - selects the default cache for subsequent commands.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="synopsis_5"><a class="anchor" href="#synopsis_5"></a>9.5.2. SYNOPSIS</h4>
+<div class="paragraph">
 <p><strong>cache</strong> ['CACHE_NAME']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example"><a class="anchor" href="#example"></a>9.4.3. EXAMPLE</h4>
+<h4 id="example"><a class="anchor" href="#example"></a>9.5.3. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>cache mycache</code><br>
 Selects <code>mycache</code> and is the same as navigating the resource tree using <code>cd caches/mycache</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_4"><a class="anchor" href="#see_also_4"></a>9.4.4. SEE ALSO</h4>
+<h4 id="see_also_4"><a class="anchor" href="#see_also_4"></a>9.5.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>cd(1), clear(1), container(1), get(1), put(1), remove(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cas1"><a class="anchor" href="#cas1"></a>9.5. CAS(1)</h3>
+<h3 id="cas1"><a class="anchor" href="#cas1"></a>9.6. CAS(1)</h3>
 <div class="sect3">
-<h4 id="name_5"><a class="anchor" href="#name_5"></a>9.5.1. NAME</h4>
+<h4 id="name_6"><a class="anchor" href="#name_6"></a>9.6.1. NAME</h4>
 <div class="paragraph">
 <p>cas - performs 'compare-and-swap' operations on strong counters.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_5"><a class="anchor" href="#synopsis_5"></a>9.5.2. SYNOPSIS</h4>
+<h4 id="synopsis_6"><a class="anchor" href="#synopsis_6"></a>9.6.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>cas</strong> ['OPTIONS'] ['COUNTER_NAME']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="options_2"><a class="anchor" href="#options_2"></a>9.5.3. OPTIONS</h4>
+<h4 id="options_2"><a class="anchor" href="#options_2"></a>9.6.3. OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>--expect</strong>='nnn'</dt>
@@ -3015,92 +3419,92 @@ Selects <code>mycache</code> and is the same as navigating the resource tree usi
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_2"><a class="anchor" href="#example_2"></a>9.5.4. EXAMPLE</h4>
+<h4 id="example_2"><a class="anchor" href="#example_2"></a>9.6.4. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>cas --expect=10 --value=20 cnt_a</code><br>
 Sets the value of <code>cnt_a</code> to <code>20</code> only if the current value is <code>10</code></p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_5"><a class="anchor" href="#see_also_5"></a>9.5.5. SEE ALSO</h4>
+<h4 id="see_also_5"><a class="anchor" href="#see_also_5"></a>9.6.5. SEE ALSO</h4>
 <div class="paragraph">
 <p>add(1), cas(1), reset(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cd1"><a class="anchor" href="#cd1"></a>9.6. CD(1)</h3>
+<h3 id="cd1"><a class="anchor" href="#cd1"></a>9.7. CD(1)</h3>
 <div class="sect3">
-<h4 id="name_6"><a class="anchor" href="#name_6"></a>9.6.1. NAME</h4>
+<h4 id="name_7"><a class="anchor" href="#name_7"></a>9.7.1. NAME</h4>
 <div class="paragraph">
 <p>cd - navigates the server resource tree.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="description"><a class="anchor" href="#description"></a>9.6.2. DESCRIPTION</h4>
+<h4 id="description"><a class="anchor" href="#description"></a>9.7.2. DESCRIPTION</h4>
 <div class="paragraph">
 <p><code>PATH</code> can be absolute or relative to the current resource.
 <code>../</code> specifies parent resources.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_6"><a class="anchor" href="#synopsis_6"></a>9.6.3. SYNOPSIS</h4>
+<h4 id="synopsis_7"><a class="anchor" href="#synopsis_7"></a>9.7.3. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>cd</strong> ['PATH']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_3"><a class="anchor" href="#example_3"></a>9.6.4. EXAMPLE</h4>
+<h4 id="example_3"><a class="anchor" href="#example_3"></a>9.7.4. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>cd caches</code><br>
 Changes to the <code>caches</code> path in the resource tree.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_6"><a class="anchor" href="#see_also_6"></a>9.6.5. SEE ALSO</h4>
+<h4 id="see_also_6"><a class="anchor" href="#see_also_6"></a>9.7.5. SEE ALSO</h4>
 <div class="paragraph">
 <p>cache(1), ls(1), container(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="clearcache1"><a class="anchor" href="#clearcache1"></a>9.7. CLEARCACHE(1)</h3>
+<h3 id="clearcache1"><a class="anchor" href="#clearcache1"></a>9.8. CLEARCACHE(1)</h3>
 <div class="sect3">
-<h4 id="name_7"><a class="anchor" href="#name_7"></a>9.7.1. NAME</h4>
+<h4 id="name_8"><a class="anchor" href="#name_8"></a>9.8.1. NAME</h4>
 <div class="paragraph">
 <p>clearcache - removes all entries from a cache.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_7"><a class="anchor" href="#synopsis_7"></a>9.7.2. SYNOPSIS</h4>
+<h4 id="synopsis_8"><a class="anchor" href="#synopsis_8"></a>9.8.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>clearcache</strong> ['CACHE_NAME']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_4"><a class="anchor" href="#examples_4"></a>9.7.3. EXAMPLES</h4>
+<h4 id="examples_5"><a class="anchor" href="#examples_5"></a>9.8.3. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>clearcache mycache</code><br>
 Removes all entries from <code>mycache</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_7"><a class="anchor" href="#see_also_7"></a>9.7.4. SEE ALSO</h4>
+<h4 id="see_also_7"><a class="anchor" href="#see_also_7"></a>9.8.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>cache(1), drop(1), remove(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="config1"><a class="anchor" href="#config1"></a>9.8. CONFIG(1)</h3>
+<h3 id="config1"><a class="anchor" href="#config1"></a>9.9. CONFIG(1)</h3>
 <div class="sect3">
-<h4 id="name_8"><a class="anchor" href="#name_8"></a>9.8.1. NAME</h4>
+<h4 id="name_9"><a class="anchor" href="#name_9"></a>9.9.1. NAME</h4>
 <div class="paragraph">
 <p>config - manages CLI configuration properties.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_8"><a class="anchor" href="#synopsis_8"></a>9.8.2. SYNOPSIS</h4>
+<h4 id="synopsis_9"><a class="anchor" href="#synopsis_9"></a>9.9.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>config</strong></p>
 </div>
@@ -3112,13 +3516,13 @@ Removes all entries from <code>mycache</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="description_2"><a class="anchor" href="#description_2"></a>9.8.3. DESCRIPTION</h4>
+<h4 id="description_2"><a class="anchor" href="#description_2"></a>9.9.3. DESCRIPTION</h4>
 <div class="paragraph">
 <p>Manage (list, set, get) CLI configuration properties.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="command_synopsis"><a class="anchor" href="#command_synopsis"></a>9.8.4. COMMAND SYNOPSIS</h4>
+<h4 id="command_synopsis"><a class="anchor" href="#command_synopsis"></a>9.9.4. COMMAND SYNOPSIS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>config</strong></dt>
@@ -3137,7 +3541,7 @@ Removes all entries from <code>mycache</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="common_options"><a class="anchor" href="#common_options"></a>9.8.5. COMMON OPTIONS</h4>
+<h4 id="common_options"><a class="anchor" href="#common_options"></a>9.9.5. COMMON OPTIONS</h4>
 <div class="paragraph">
 <p>These options apply to all commands:</p>
 </div>
@@ -3151,7 +3555,7 @@ Removes all entries from <code>mycache</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="properties"><a class="anchor" href="#properties"></a>9.8.6. PROPERTIES</h4>
+<h4 id="properties"><a class="anchor" href="#properties"></a>9.9.6. PROPERTIES</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>autoconnect-url</strong></dt>
@@ -3178,7 +3582,7 @@ Removes all entries from <code>mycache</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_5"><a class="anchor" href="#examples_5"></a>9.8.7. EXAMPLES</h4>
+<h4 id="examples_6"><a class="anchor" href="#examples_6"></a>9.9.7. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>config set autoconnect-url <a href="http://192.0.2.0:11222" class="bare">http://192.0.2.0:11222</a></code><br>
 Connects to a server at a custom IP address when you start the CLI.</p>
@@ -3205,35 +3609,35 @@ Sets the keystore password, if required.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_8"><a class="anchor" href="#see_also_8"></a>9.8.8. SEE ALSO</h4>
+<h4 id="see_also_8"><a class="anchor" href="#see_also_8"></a>9.9.8. SEE ALSO</h4>
 <div class="paragraph">
 <p>alias(1), unalias(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="connect1"><a class="anchor" href="#connect1"></a>9.9. CONNECT(1)</h3>
+<h3 id="connect1"><a class="anchor" href="#connect1"></a>9.10. CONNECT(1)</h3>
 <div class="sect3">
-<h4 id="name_9"><a class="anchor" href="#name_9"></a>9.9.1. NAME</h4>
+<h4 id="name_10"><a class="anchor" href="#name_10"></a>9.10.1. NAME</h4>
 <div class="paragraph">
 <p>connect - connects to running ${infinispan.brand.name} servers.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="description_3"><a class="anchor" href="#description_3"></a>9.9.2. DESCRIPTION</h4>
+<h4 id="description_3"><a class="anchor" href="#description_3"></a>9.10.2. DESCRIPTION</h4>
 <div class="paragraph">
 <p>Defaults to <code><a href="http://localhost:11222" class="bare">http://localhost:11222</a></code> and prompts for credentials if
 authentication is required.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_9"><a class="anchor" href="#synopsis_9"></a>9.9.3. SYNOPSIS</h4>
+<h4 id="synopsis_10"><a class="anchor" href="#synopsis_10"></a>9.10.3. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>connect</strong> ['OPTIONS'] ['SERVER_LOCATION']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="options_3"><a class="anchor" href="#options_3"></a>9.9.4. OPTIONS</h4>
+<h4 id="options_3"><a class="anchor" href="#options_3"></a>9.10.4. OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-u, --username</strong>='USERNAME'</dt>
@@ -3248,7 +3652,7 @@ authentication is required.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_4"><a class="anchor" href="#example_4"></a>9.9.5. EXAMPLE</h4>
+<h4 id="example_4"><a class="anchor" href="#example_4"></a>9.10.5. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>connect 127.0.0.1:11322 -u test -p changeme</code><br>
 Connects to a locally running server using a port offset of <code>100</code> and example
@@ -3256,28 +3660,28 @@ credentials.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_9"><a class="anchor" href="#see_also_9"></a>9.9.6. SEE ALSO</h4>
+<h4 id="see_also_9"><a class="anchor" href="#see_also_9"></a>9.10.6. SEE ALSO</h4>
 <div class="paragraph">
 <p>disconnect(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="container1"><a class="anchor" href="#container1"></a>9.10. CONTAINER(1)</h3>
+<h3 id="container1"><a class="anchor" href="#container1"></a>9.11. CONTAINER(1)</h3>
 <div class="sect3">
-<h4 id="name_10"><a class="anchor" href="#name_10"></a>9.10.1. NAME</h4>
+<h4 id="name_11"><a class="anchor" href="#name_11"></a>9.11.1. NAME</h4>
 <div class="paragraph">
 <p>container - selects the container for running subsequent commands.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_10"><a class="anchor" href="#synopsis_10"></a>9.10.2. SYNOPSIS</h4>
+<h4 id="synopsis_11"><a class="anchor" href="#synopsis_11"></a>9.11.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>container</strong> ['CONTAINER_NAME']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_5"><a class="anchor" href="#example_5"></a>9.10.3. EXAMPLE</h4>
+<h4 id="example_5"><a class="anchor" href="#example_5"></a>9.11.3. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>container default</code><br>
 Selects the default container and is the same as navigating the resource tree
@@ -3285,50 +3689,50 @@ using <code>cd containers/default</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_10"><a class="anchor" href="#see_also_10"></a>9.10.4. SEE ALSO</h4>
+<h4 id="see_also_10"><a class="anchor" href="#see_also_10"></a>9.11.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>cd(1), clear(1), container(1), get(1), put(1), remove(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="counter1"><a class="anchor" href="#counter1"></a>9.11. COUNTER(1)</h3>
+<h3 id="counter1"><a class="anchor" href="#counter1"></a>9.12. COUNTER(1)</h3>
 <div class="sect3">
-<h4 id="name_11"><a class="anchor" href="#name_11"></a>9.11.1. NAME</h4>
+<h4 id="name_12"><a class="anchor" href="#name_12"></a>9.12.1. NAME</h4>
 <div class="paragraph">
 <p>counter - selects the default counter for subsequent commands.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_11"><a class="anchor" href="#synopsis_11"></a>9.11.2. SYNOPSIS</h4>
+<h4 id="synopsis_12"><a class="anchor" href="#synopsis_12"></a>9.12.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>counter</strong> ['COUNTER_NAME']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_6"><a class="anchor" href="#example_6"></a>9.11.3. EXAMPLE</h4>
+<h4 id="example_6"><a class="anchor" href="#example_6"></a>9.12.3. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>counter cnt_a</code><br>
 Selects <code>cnt_a</code> and is the same as navigating the resource tree using <code>cd counters/cnt_a</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_11"><a class="anchor" href="#see_also_11"></a>9.11.4. SEE ALSO</h4>
+<h4 id="see_also_11"><a class="anchor" href="#see_also_11"></a>9.12.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>add(1), cas(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="create1"><a class="anchor" href="#create1"></a>9.12. CREATE(1)</h3>
+<h3 id="create1"><a class="anchor" href="#create1"></a>9.13. CREATE(1)</h3>
 <div class="sect3">
-<h4 id="name_12"><a class="anchor" href="#name_12"></a>9.12.1. NAME</h4>
+<h4 id="name_13"><a class="anchor" href="#name_13"></a>9.13.1. NAME</h4>
 <div class="paragraph">
 <p>create - creates caches and counters on ${infinispan.brand.name} servers.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_12"><a class="anchor" href="#synopsis_12"></a>9.12.2. SYNOPSIS</h4>
+<h4 id="synopsis_13"><a class="anchor" href="#synopsis_13"></a>9.13.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>create cache</strong> ['OPTIONS'] <code>CACHE_NAME</code></p>
 </div>
@@ -3337,7 +3741,7 @@ Selects <code>cnt_a</code> and is the same as navigating the resource tree using
 </div>
 </div>
 <div class="sect3">
-<h4 id="create_cache_options"><a class="anchor" href="#create_cache_options"></a>9.12.3. CREATE CACHE OPTIONS</h4>
+<h4 id="create_cache_options"><a class="anchor" href="#create_cache_options"></a>9.13.3. CREATE CACHE OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-f, --file</strong>='FILE'</dt>
@@ -3356,7 +3760,7 @@ Selects <code>cnt_a</code> and is the same as navigating the resource tree using
 </div>
 </div>
 <div class="sect3">
-<h4 id="create_counter_options"><a class="anchor" href="#create_counter_options"></a>9.12.4. CREATE COUNTER OPTIONS</h4>
+<h4 id="create_counter_options"><a class="anchor" href="#create_counter_options"></a>9.13.4. CREATE COUNTER OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-t, --type</strong>='[weak|strong]'</dt>
@@ -3387,7 +3791,7 @@ Selects <code>cnt_a</code> and is the same as navigating the resource tree using
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_6"><a class="anchor" href="#examples_6"></a>9.12.5. EXAMPLES</h4>
+<h4 id="examples_7"><a class="anchor" href="#examples_7"></a>9.13.5. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>create cache --template=org.infinispan.DIST_SYNC mycache</code><br>
 Creates a cache named <code>mycache</code> from the <code>DIST_SYNC</code> template.</p>
@@ -3398,22 +3802,22 @@ Creates a strong counter named <code>cnt_a</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_12"><a class="anchor" href="#see_also_12"></a>9.12.6. SEE ALSO</h4>
+<h4 id="see_also_12"><a class="anchor" href="#see_also_12"></a>9.13.6. SEE ALSO</h4>
 <div class="paragraph">
 <p>drop(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="credentials1"><a class="anchor" href="#credentials1"></a>9.13.  CREDENTIALS(1)</h3>
+<h3 id="credentials1"><a class="anchor" href="#credentials1"></a>9.14.  CREDENTIALS(1)</h3>
 <div class="sect3">
-<h4 id="name_13"><a class="anchor" href="#name_13"></a>9.13.1. NAME</h4>
+<h4 id="name_14"><a class="anchor" href="#name_14"></a>9.14.1. NAME</h4>
 <div class="paragraph">
 <p>credentials - manages keystores that contain ${infinispan.brand.name} Server credentials</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_13"><a class="anchor" href="#synopsis_13"></a>9.13.2. SYNOPSIS</h4>
+<h4 id="synopsis_14"><a class="anchor" href="#synopsis_14"></a>9.14.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>credentials ls</strong></p>
 </div>
@@ -3425,14 +3829,14 @@ Creates a strong counter named <code>cnt_a</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="description_4"><a class="anchor" href="#description_4"></a>9.13.3. DESCRIPTION</h4>
+<h4 id="description_4"><a class="anchor" href="#description_4"></a>9.14.3. DESCRIPTION</h4>
 <div class="paragraph">
 <p>List, create, and remove credentials inside a keystore.
 By default, commands manage the <code>credentials.pfx</code> keystore in the server configuration directory.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_14"><a class="anchor" href="#synopsis_14"></a>9.13.4. SYNOPSIS</h4>
+<h4 id="synopsis_15"><a class="anchor" href="#synopsis_15"></a>9.14.4. SYNOPSIS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>credentials ls</strong></dt>
@@ -3465,7 +3869,7 @@ By default, commands manage the <code>credentials.pfx</code> keystore in the ser
 </div>
 </div>
 <div class="sect3">
-<h4 id="options_4"><a class="anchor" href="#options_4"></a>9.13.5. OPTIONS</h4>
+<h4 id="options_4"><a class="anchor" href="#options_4"></a>9.14.5. OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-h, --help</strong></dt>
@@ -3492,7 +3896,7 @@ By default, commands manage the <code>credentials.pfx</code> keystore in the ser
 </div>
 </div>
 <div class="sect3">
-<h4 id="credentials_add_options"><a class="anchor" href="#credentials_add_options"></a>9.13.6. CREDENTIALS ADD OPTIONS</h4>
+<h4 id="credentials_add_options"><a class="anchor" href="#credentials_add_options"></a>9.14.6. CREDENTIALS ADD OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-c, --credential</strong>='credential'</dt>
@@ -3503,11 +3907,12 @@ By default, commands manage the <code>credentials.pfx</code> keystore in the ser
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_7"><a class="anchor" href="#examples_7"></a>9.13.7. EXAMPLES</h4>
+<h4 id="examples_8"><a class="anchor" href="#examples_8"></a>9.14.7. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>credentials add dbpassword -c changeme -p "secret1234!"</code><br>
 Creates a new default credential keystore, if does not already exist, and adds an alias of "dbpassword" for a password of "changeme".
-This command also sets "secret1234!" as the password for the credential keystore.</p>
+This command also sets "secret1234!" as the password for the credential keystore, which must match the password in the server configuration:
+ <code>&lt;clear-text-credential clear-text="secret1234!"/&gt;</code></p>
 </div>
 <div class="paragraph">
 <p><code>credentials ls -p "secret1234!"</code><br>
@@ -3521,21 +3926,21 @@ This command prompts you to specify the password that corresponds to the alias.<
 </div>
 </div>
 <div class="sect2">
-<h3 id="describe1"><a class="anchor" href="#describe1"></a>9.14. DESCRIBE(1)</h3>
+<h3 id="describe1"><a class="anchor" href="#describe1"></a>9.15. DESCRIBE(1)</h3>
 <div class="sect3">
-<h4 id="name_14"><a class="anchor" href="#name_14"></a>9.14.1. NAME</h4>
+<h4 id="name_15"><a class="anchor" href="#name_15"></a>9.15.1. NAME</h4>
 <div class="paragraph">
 <p>describe - displays information about resources.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_15"><a class="anchor" href="#synopsis_15"></a>9.14.2. SYNOPSIS</h4>
+<h4 id="synopsis_16"><a class="anchor" href="#synopsis_16"></a>9.15.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>describe</strong> ['PATH']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_8"><a class="anchor" href="#examples_8"></a>9.14.3. EXAMPLES</h4>
+<h4 id="examples_9"><a class="anchor" href="#examples_9"></a>9.15.3. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>describe //containers/default</code><br>
 Displays information about the default container.</p>
@@ -3554,50 +3959,50 @@ Displays information about the <code>cnt1</code> counter.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_13"><a class="anchor" href="#see_also_13"></a>9.14.4. SEE ALSO</h4>
+<h4 id="see_also_13"><a class="anchor" href="#see_also_13"></a>9.15.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>cd(1), ls(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="disconnect1"><a class="anchor" href="#disconnect1"></a>9.15. DISCONNECT(1)</h3>
+<h3 id="disconnect1"><a class="anchor" href="#disconnect1"></a>9.16. DISCONNECT(1)</h3>
 <div class="sect3">
-<h4 id="name_15"><a class="anchor" href="#name_15"></a>9.15.1. NAME</h4>
+<h4 id="name_16"><a class="anchor" href="#name_16"></a>9.16.1. NAME</h4>
 <div class="paragraph">
 <p>disconnect - ends CLI sessions with ${infinispan.brand.name} servers.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_16"><a class="anchor" href="#synopsis_16"></a>9.15.2. SYNOPSIS</h4>
+<h4 id="synopsis_17"><a class="anchor" href="#synopsis_17"></a>9.16.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>disconnect</strong></p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_7"><a class="anchor" href="#example_7"></a>9.15.3. EXAMPLE</h4>
+<h4 id="example_7"><a class="anchor" href="#example_7"></a>9.16.3. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>disconnect</code><br>
 Ends the current CLI session.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_14"><a class="anchor" href="#see_also_14"></a>9.15.4. SEE ALSO</h4>
+<h4 id="see_also_14"><a class="anchor" href="#see_also_14"></a>9.16.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>connect(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="drop1"><a class="anchor" href="#drop1"></a>9.16. DROP(1)</h3>
+<h3 id="drop1"><a class="anchor" href="#drop1"></a>9.17. DROP(1)</h3>
 <div class="sect3">
-<h4 id="name_16"><a class="anchor" href="#name_16"></a>9.16.1. NAME</h4>
+<h4 id="name_17"><a class="anchor" href="#name_17"></a>9.17.1. NAME</h4>
 <div class="paragraph">
 <p>drop - deletes caches and counters.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_17"><a class="anchor" href="#synopsis_17"></a>9.16.2. SYNOPSIS</h4>
+<h4 id="synopsis_18"><a class="anchor" href="#synopsis_18"></a>9.17.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>drop cache</strong> <code>CACHE_NAME</code></p>
 </div>
@@ -3606,7 +4011,7 @@ Ends the current CLI session.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_9"><a class="anchor" href="#examples_9"></a>9.16.3. EXAMPLES</h4>
+<h4 id="examples_10"><a class="anchor" href="#examples_10"></a>9.17.3. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>drop cache mycache</code><br>
 Deletes the <code>mycache</code> cache.</p>
@@ -3617,22 +4022,22 @@ Deletes the <code>cnt_a</code> counter.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_15"><a class="anchor" href="#see_also_15"></a>9.16.4. SEE ALSO</h4>
+<h4 id="see_also_15"><a class="anchor" href="#see_also_15"></a>9.17.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>create(1), clearcache(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="encoding1"><a class="anchor" href="#encoding1"></a>9.17. ENCODING(1)</h3>
+<h3 id="encoding1"><a class="anchor" href="#encoding1"></a>9.18. ENCODING(1)</h3>
 <div class="sect3">
-<h4 id="name_17"><a class="anchor" href="#name_17"></a>9.17.1. NAME</h4>
+<h4 id="name_18"><a class="anchor" href="#name_18"></a>9.18.1. NAME</h4>
 <div class="paragraph">
 <p>encoding - displays and sets the encoding for cache entries.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="description_5"><a class="anchor" href="#description_5"></a>9.17.2. DESCRIPTION</h4>
+<h4 id="description_5"><a class="anchor" href="#description_5"></a>9.18.2. DESCRIPTION</h4>
 <div class="paragraph">
 <p>Sets a default encoding for <strong>put</strong> and <strong>get</strong> operations on a cache. If no
 argument is specified, the <strong>encoding</strong> command displays the current encoding.</p>
@@ -3659,41 +4064,41 @@ such as the following:</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_18"><a class="anchor" href="#synopsis_18"></a>9.17.3. SYNOPSIS</h4>
+<h4 id="synopsis_19"><a class="anchor" href="#synopsis_19"></a>9.18.3. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>encoding</strong> ['ENCODING']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_8"><a class="anchor" href="#example_8"></a>9.17.4. EXAMPLE</h4>
+<h4 id="example_8"><a class="anchor" href="#example_8"></a>9.18.4. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>encoding application/json</code><br>
 Configures the currently selected cache to encode entries as <code>application/json</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_16"><a class="anchor" href="#see_also_16"></a>9.17.5. SEE ALSO</h4>
+<h4 id="see_also_16"><a class="anchor" href="#see_also_16"></a>9.18.5. SEE ALSO</h4>
 <div class="paragraph">
 <p>get(1), put(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="get1"><a class="anchor" href="#get1"></a>9.18. GET(1)</h3>
+<h3 id="get1"><a class="anchor" href="#get1"></a>9.19. GET(1)</h3>
 <div class="sect3">
-<h4 id="name_18"><a class="anchor" href="#name_18"></a>9.18.1. NAME</h4>
+<h4 id="name_19"><a class="anchor" href="#name_19"></a>9.19.1. NAME</h4>
 <div class="paragraph">
 <p>get - retrieves entries from a cache.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_19"><a class="anchor" href="#synopsis_19"></a>9.18.2. SYNOPSIS</h4>
+<h4 id="synopsis_20"><a class="anchor" href="#synopsis_20"></a>9.19.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>get</strong> ['OPTIONS'] <code>KEY</code></p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="options_5"><a class="anchor" href="#options_5"></a>9.18.3. OPTIONS</h4>
+<h4 id="options_5"><a class="anchor" href="#options_5"></a>9.19.3. OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-c, --cache</strong>='NAME'</dt>
@@ -3705,57 +4110,57 @@ selected cache.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_9"><a class="anchor" href="#example_9"></a>9.18.4. EXAMPLE</h4>
+<h4 id="example_9"><a class="anchor" href="#example_9"></a>9.19.4. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>get hello -c mycache</code><br>
 Retrieves the value of the key named <code>hello</code> from <code>mycache</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_17"><a class="anchor" href="#see_also_17"></a>9.18.5. SEE ALSO</h4>
+<h4 id="see_also_17"><a class="anchor" href="#see_also_17"></a>9.19.5. SEE ALSO</h4>
 <div class="paragraph">
 <p>query(1), put(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="help1"><a class="anchor" href="#help1"></a>9.19. HELP(1)</h3>
+<h3 id="help1"><a class="anchor" href="#help1"></a>9.20. HELP(1)</h3>
 <div class="sect3">
-<h4 id="name_19"><a class="anchor" href="#name_19"></a>9.19.1. NAME</h4>
+<h4 id="name_20"><a class="anchor" href="#name_20"></a>9.20.1. NAME</h4>
 <div class="paragraph">
 <p>help - prints manual pages for commands.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_20"><a class="anchor" href="#synopsis_20"></a>9.19.2. SYNOPSIS</h4>
+<h4 id="synopsis_21"><a class="anchor" href="#synopsis_21"></a>9.20.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>help</strong> ['COMMAND']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_10"><a class="anchor" href="#example_10"></a>9.19.3. EXAMPLE</h4>
+<h4 id="example_10"><a class="anchor" href="#example_10"></a>9.20.3. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>help get</code><br>
 Prints the manual page for the <strong>get</strong> command.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_18"><a class="anchor" href="#see_also_18"></a>9.19.4. SEE ALSO</h4>
+<h4 id="see_also_18"><a class="anchor" href="#see_also_18"></a>9.20.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>version(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="logging1"><a class="anchor" href="#logging1"></a>9.20. LOGGING(1)</h3>
+<h3 id="logging1"><a class="anchor" href="#logging1"></a>9.21. LOGGING(1)</h3>
 <div class="sect3">
-<h4 id="name_20"><a class="anchor" href="#name_20"></a>9.20.1. NAME</h4>
+<h4 id="name_21"><a class="anchor" href="#name_21"></a>9.21.1. NAME</h4>
 <div class="paragraph">
 <p>logging - inspects and manipulates the ${infinispan.brand.name} server runtime logging configuration.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_21"><a class="anchor" href="#synopsis_21"></a>9.20.2. SYNOPSIS</h4>
+<h4 id="synopsis_22"><a class="anchor" href="#synopsis_22"></a>9.21.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>logging list-loggers</strong></p>
 </div>
@@ -3770,7 +4175,7 @@ Prints the manual page for the <strong>get</strong> command.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="logging_set_options"><a class="anchor" href="#logging_set_options"></a>9.20.3. LOGGING SET OPTIONS</h4>
+<h4 id="logging_set_options"><a class="anchor" href="#logging_set_options"></a>9.21.3. LOGGING SET OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-l, --level</strong>='OFF|TRACE|DEBUG|INFO|WARN|ERROR|ALL'</dt>
@@ -3797,7 +4202,7 @@ calling <strong>logging set</strong> without a logger name will modify the root 
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_10"><a class="anchor" href="#examples_10"></a>9.20.4. EXAMPLES</h4>
+<h4 id="examples_11"><a class="anchor" href="#examples_11"></a>9.21.4. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>logging list-loggers</code><br>
 Lists all available loggers</p>
@@ -3809,21 +4214,21 @@ Sets the log level for the <code>org.infinispan</code> logger to <code>DEBUG</co
 </div>
 </div>
 <div class="sect2">
-<h3 id="ls1"><a class="anchor" href="#ls1"></a>9.21. LS(1)</h3>
+<h3 id="ls1"><a class="anchor" href="#ls1"></a>9.22. LS(1)</h3>
 <div class="sect3">
-<h4 id="name_21"><a class="anchor" href="#name_21"></a>9.21.1. NAME</h4>
+<h4 id="name_22"><a class="anchor" href="#name_22"></a>9.22.1. NAME</h4>
 <div class="paragraph">
 <p>ls - lists resources for the current path or a given path.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_22"><a class="anchor" href="#synopsis_22"></a>9.21.2. SYNOPSIS</h4>
+<h4 id="synopsis_23"><a class="anchor" href="#synopsis_23"></a>9.22.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>ls</strong> ['PATH']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_11"><a class="anchor" href="#examples_11"></a>9.21.3. EXAMPLES</h4>
+<h4 id="examples_12"><a class="anchor" href="#examples_12"></a>9.22.3. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>ls caches</code><br>
 Lists the available caches.</p>
@@ -3834,22 +4239,22 @@ Lists parent resources.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_19"><a class="anchor" href="#see_also_19"></a>9.21.4. SEE ALSO</h4>
+<h4 id="see_also_19"><a class="anchor" href="#see_also_19"></a>9.22.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>cd(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="migrate1"><a class="anchor" href="#migrate1"></a>9.22. MIGRATE(1)</h3>
+<h3 id="migrate1"><a class="anchor" href="#migrate1"></a>9.23. MIGRATE(1)</h3>
 <div class="sect3">
-<h4 id="name_22"><a class="anchor" href="#name_22"></a>9.22.1. NAME</h4>
+<h4 id="name_23"><a class="anchor" href="#name_23"></a>9.23.1. NAME</h4>
 <div class="paragraph">
 <p>migrate - migrates data from one version of ${infinispan.brand.name} to another.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_23"><a class="anchor" href="#synopsis_23"></a>9.22.2. SYNOPSIS</h4>
+<h4 id="synopsis_24"><a class="anchor" href="#synopsis_24"></a>9.23.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>migrate cluster synchronize</strong></p>
 </div>
@@ -3858,13 +4263,13 @@ Lists parent resources.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="description_6"><a class="anchor" href="#description_6"></a>9.22.3. DESCRIPTION</h4>
+<h4 id="description_6"><a class="anchor" href="#description_6"></a>9.23.3. DESCRIPTION</h4>
 <div class="paragraph">
 <p>Use the <code>migrate</code> command to migrate data from one version of ${infinispan.brand.name} to another.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="command_synopsis_2"><a class="anchor" href="#command_synopsis_2"></a>9.22.4. COMMAND SYNOPSIS</h4>
+<h4 id="command_synopsis_2"><a class="anchor" href="#command_synopsis_2"></a>9.23.4. COMMAND SYNOPSIS</h4>
 <div class="paragraph">
 <p>Migrate clusters</p>
 </div>
@@ -3882,7 +4287,7 @@ Lists parent resources.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="common_options_2"><a class="anchor" href="#common_options_2"></a>9.22.5. COMMON OPTIONS</h4>
+<h4 id="common_options_2"><a class="anchor" href="#common_options_2"></a>9.23.5. COMMON OPTIONS</h4>
 <div class="paragraph">
 <p>These options apply to all commands:</p>
 </div>
@@ -3896,7 +4301,7 @@ Lists parent resources.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="cluster_synchronize_options"><a class="anchor" href="#cluster_synchronize_options"></a>9.22.6. CLUSTER SYNCHRONIZE OPTIONS</h4>
+<h4 id="cluster_synchronize_options"><a class="anchor" href="#cluster_synchronize_options"></a>9.23.6. CLUSTER SYNCHRONIZE OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-c, --cache</strong>='name'</dt>
@@ -3915,7 +4320,7 @@ Lists parent resources.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="cluster_disconnect_options"><a class="anchor" href="#cluster_disconnect_options"></a>9.22.7. CLUSTER DISCONNECT OPTIONS</h4>
+<h4 id="cluster_disconnect_options"><a class="anchor" href="#cluster_disconnect_options"></a>9.23.7. CLUSTER DISCONNECT OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-c, --cache</strong>='name'</dt>
@@ -3927,15 +4332,15 @@ Lists parent resources.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="patch1"><a class="anchor" href="#patch1"></a>9.23. PATCH(1)</h3>
+<h3 id="patch1"><a class="anchor" href="#patch1"></a>9.24. PATCH(1)</h3>
 <div class="sect3">
-<h4 id="name_23"><a class="anchor" href="#name_23"></a>9.23.1. NAME</h4>
+<h4 id="name_24"><a class="anchor" href="#name_24"></a>9.24.1. NAME</h4>
 <div class="paragraph">
 <p>patch - manages server patches.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="description_7"><a class="anchor" href="#description_7"></a>9.23.2. DESCRIPTION</h4>
+<h4 id="description_7"><a class="anchor" href="#description_7"></a>9.24.2. DESCRIPTION</h4>
 <div class="paragraph">
 <p>List, describe, install, rollback, and create server patches.</p>
 </div>
@@ -3946,7 +4351,7 @@ multiple server installations with different versions.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_24"><a class="anchor" href="#synopsis_24"></a>9.23.3. SYNOPSIS</h4>
+<h4 id="synopsis_25"><a class="anchor" href="#synopsis_25"></a>9.24.3. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>patch ls</strong></p>
 </div>
@@ -3964,7 +4369,7 @@ multiple server installations with different versions.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="patch_list_options"><a class="anchor" href="#patch_list_options"></a>9.23.4. PATCH LIST OPTIONS</h4>
+<h4 id="patch_list_options"><a class="anchor" href="#patch_list_options"></a>9.24.4. PATCH LIST OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>--server</strong>='path/to/server'</dt>
@@ -3980,7 +4385,7 @@ individual files.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="patch_install_options"><a class="anchor" href="#patch_install_options"></a>9.23.5. PATCH INSTALL OPTIONS</h4>
+<h4 id="patch_install_options"><a class="anchor" href="#patch_install_options"></a>9.24.5. PATCH INSTALL OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>--dry-run</strong></dt>
@@ -3995,7 +4400,7 @@ individual files.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="patch_describe_options"><a class="anchor" href="#patch_describe_options"></a>9.23.6. PATCH DESCRIBE OPTIONS</h4>
+<h4 id="patch_describe_options"><a class="anchor" href="#patch_describe_options"></a>9.24.6. PATCH DESCRIBE OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-v, --verbose</strong></dt>
@@ -4006,7 +4411,7 @@ individual files.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="patch_rollback_options"><a class="anchor" href="#patch_rollback_options"></a>9.23.7. PATCH ROLLBACK OPTIONS</h4>
+<h4 id="patch_rollback_options"><a class="anchor" href="#patch_rollback_options"></a>9.24.7. PATCH ROLLBACK OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>--dry-run</strong></dt>
@@ -4021,7 +4426,7 @@ individual files.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="patch_create_options"><a class="anchor" href="#patch_create_options"></a>9.23.8. PATCH CREATE OPTIONS</h4>
+<h4 id="patch_create_options"><a class="anchor" href="#patch_create_options"></a>9.24.8. PATCH CREATE OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-q, --qualifier</strong>='name'</dt>
@@ -4032,7 +4437,7 @@ individual files.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_12"><a class="anchor" href="#examples_12"></a>9.23.9. EXAMPLES</h4>
+<h4 id="examples_13"><a class="anchor" href="#examples_13"></a>9.24.9. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>patch ls</code><br>
 Lists the patches currently installed on a server in order of installation.</p>
@@ -4061,27 +4466,27 @@ previous version.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="put1"><a class="anchor" href="#put1"></a>9.24. PUT(1)</h3>
+<h3 id="put1"><a class="anchor" href="#put1"></a>9.25. PUT(1)</h3>
 <div class="sect3">
-<h4 id="name_24"><a class="anchor" href="#name_24"></a>9.24.1. NAME</h4>
+<h4 id="name_25"><a class="anchor" href="#name_25"></a>9.25.1. NAME</h4>
 <div class="paragraph">
 <p>put - adds or updates cache entries.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="description_8"><a class="anchor" href="#description_8"></a>9.24.2. DESCRIPTION</h4>
+<h4 id="description_8"><a class="anchor" href="#description_8"></a>9.25.2. DESCRIPTION</h4>
 <div class="paragraph">
 <p>Creates entries for new keys. Replaces values for existing keys.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_25"><a class="anchor" href="#synopsis_25"></a>9.24.3. SYNOPSIS</h4>
+<h4 id="synopsis_26"><a class="anchor" href="#synopsis_26"></a>9.25.3. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>put</strong> ['OPTIONS'] <code>KEY</code> [<code>VALUE</code>]</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="options_6"><a class="anchor" href="#options_6"></a>9.24.4. OPTIONS</h4>
+<h4 id="options_6"><a class="anchor" href="#options_6"></a>9.25.4. OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-c, --cache</strong>='NAME'</dt>
@@ -4119,7 +4524,7 @@ entry is never deleted.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_13"><a class="anchor" href="#examples_13"></a>9.24.5. EXAMPLES</h4>
+<h4 id="examples_14"><a class="anchor" href="#examples_14"></a>9.25.5. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>put -c mycache hello world</code><br>
 Adds the <code>hello</code> key with a value of <code>world</code> to the <code>mycache</code> cache.</p>
@@ -4131,28 +4536,28 @@ maximum idle of <code>500</code> seconds.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_20"><a class="anchor" href="#see_also_20"></a>9.24.6. SEE ALSO</h4>
+<h4 id="see_also_20"><a class="anchor" href="#see_also_20"></a>9.25.6. SEE ALSO</h4>
 <div class="paragraph">
 <p>get(1), remove(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="query1"><a class="anchor" href="#query1"></a>9.25. QUERY(1)</h3>
+<h3 id="query1"><a class="anchor" href="#query1"></a>9.26. QUERY(1)</h3>
 <div class="sect3">
-<h4 id="name_25"><a class="anchor" href="#name_25"></a>9.25.1. NAME</h4>
+<h4 id="name_26"><a class="anchor" href="#name_26"></a>9.26.1. NAME</h4>
 <div class="paragraph">
 <p>query - retrieves entries that match Ickle query strings.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_26"><a class="anchor" href="#synopsis_26"></a>9.25.2. SYNOPSIS</h4>
+<h4 id="synopsis_27"><a class="anchor" href="#synopsis_27"></a>9.26.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>query</strong> ['OPTIONS'] <code>QUERY_STRING</code></p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="options_7"><a class="anchor" href="#options_7"></a>9.25.3. OPTIONS</h4>
+<h4 id="options_7"><a class="anchor" href="#options_7"></a>9.26.3. OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-c, --cache</strong>='NAME'</dt>
@@ -4176,7 +4581,7 @@ The default is <code>FETCH</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_14"><a class="anchor" href="#examples_14"></a>9.25.4. EXAMPLES</h4>
+<h4 id="examples_15"><a class="anchor" href="#examples_15"></a>9.26.4. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>query "from org.infinispan.rest.search.entity.Person p where p.gender = 'MALE'"</code><br>
 Queries the currently selected cache to return entries from a Protobuf <code>Person</code>
@@ -4184,22 +4589,22 @@ entity where the gender datatype is <code>MALE</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_21"><a class="anchor" href="#see_also_21"></a>9.25.5. SEE ALSO</h4>
+<h4 id="see_also_21"><a class="anchor" href="#see_also_21"></a>9.26.5. SEE ALSO</h4>
 <div class="paragraph">
 <p>schema(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="quit1"><a class="anchor" href="#quit1"></a>9.26. QUIT(1)</h3>
+<h3 id="quit1"><a class="anchor" href="#quit1"></a>9.27. QUIT(1)</h3>
 <div class="sect3">
-<h4 id="name_26"><a class="anchor" href="#name_26"></a>9.26.1. NAME</h4>
+<h4 id="name_27"><a class="anchor" href="#name_27"></a>9.27.1. NAME</h4>
 <div class="paragraph">
 <p>quit - exits the command line interface.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_27"><a class="anchor" href="#synopsis_27"></a>9.26.2. SYNOPSIS</h4>
+<h4 id="synopsis_28"><a class="anchor" href="#synopsis_28"></a>9.27.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>quit</strong></p>
 </div>
@@ -4208,7 +4613,7 @@ entity where the gender datatype is <code>MALE</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_11"><a class="anchor" href="#example_11"></a>9.26.3. EXAMPLE</h4>
+<h4 id="example_11"><a class="anchor" href="#example_11"></a>9.27.3. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>quit</code><br>
 Ends the CLI session.</p>
@@ -4223,28 +4628,28 @@ Ends the CLI session.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_22"><a class="anchor" href="#see_also_22"></a>9.26.4. SEE ALSO</h4>
+<h4 id="see_also_22"><a class="anchor" href="#see_also_22"></a>9.27.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>disconnect(1), shutdown(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="remove1"><a class="anchor" href="#remove1"></a>9.27. REMOVE(1)</h3>
+<h3 id="remove1"><a class="anchor" href="#remove1"></a>9.28. REMOVE(1)</h3>
 <div class="sect3">
-<h4 id="name_27"><a class="anchor" href="#name_27"></a>9.27.1. NAME</h4>
+<h4 id="name_28"><a class="anchor" href="#name_28"></a>9.28.1. NAME</h4>
 <div class="paragraph">
 <p>remove - deletes entries from a cache.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_28"><a class="anchor" href="#synopsis_28"></a>9.27.2. SYNOPSIS</h4>
+<h4 id="synopsis_29"><a class="anchor" href="#synopsis_29"></a>9.28.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>remove</strong> <code>KEY</code> ['OPTIONS']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="options_8"><a class="anchor" href="#options_8"></a>9.27.3. OPTIONS</h4>
+<h4 id="options_8"><a class="anchor" href="#options_8"></a>9.28.3. OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>--cache</strong>='NAME'</dt>
@@ -4256,63 +4661,63 @@ selected cache.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_12"><a class="anchor" href="#example_12"></a>9.27.4. EXAMPLE</h4>
+<h4 id="example_12"><a class="anchor" href="#example_12"></a>9.28.4. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>remove --cache=mycache hola</code><br>
 Deletes the <code>hola</code> entry from the <code>mycache</code> cache.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_23"><a class="anchor" href="#see_also_23"></a>9.27.5. SEE ALSO</h4>
+<h4 id="see_also_23"><a class="anchor" href="#see_also_23"></a>9.28.5. SEE ALSO</h4>
 <div class="paragraph">
 <p>cache(1), drop(1), clearcache(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="reset1"><a class="anchor" href="#reset1"></a>9.28. RESET(1)</h3>
+<h3 id="reset1"><a class="anchor" href="#reset1"></a>9.29. RESET(1)</h3>
 <div class="sect3">
-<h4 id="name_28"><a class="anchor" href="#name_28"></a>9.28.1. NAME</h4>
+<h4 id="name_29"><a class="anchor" href="#name_29"></a>9.29.1. NAME</h4>
 <div class="paragraph">
 <p>reset - restores the initial values of counters.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_29"><a class="anchor" href="#synopsis_29"></a>9.28.2. SYNOPSIS</h4>
+<h4 id="synopsis_30"><a class="anchor" href="#synopsis_30"></a>9.29.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>reset</strong> ['COUNTER_NAME']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_13"><a class="anchor" href="#example_13"></a>9.28.3. EXAMPLE</h4>
+<h4 id="example_13"><a class="anchor" href="#example_13"></a>9.29.3. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>reset cnt_a</code><br>
 Resets the <code>cnt_a</code> counter.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_24"><a class="anchor" href="#see_also_24"></a>9.28.4. SEE ALSO</h4>
+<h4 id="see_also_24"><a class="anchor" href="#see_also_24"></a>9.29.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>add(1), cas(1), drop(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="schema1"><a class="anchor" href="#schema1"></a>9.29. SCHEMA(1)</h3>
+<h3 id="schema1"><a class="anchor" href="#schema1"></a>9.30. SCHEMA(1)</h3>
 <div class="sect3">
-<h4 id="name_29"><a class="anchor" href="#name_29"></a>9.29.1. NAME</h4>
+<h4 id="name_30"><a class="anchor" href="#name_30"></a>9.30.1. NAME</h4>
 <div class="paragraph">
 <p>schema - uploads and registers protobuf schemas.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_30"><a class="anchor" href="#synopsis_30"></a>9.29.2. SYNOPSIS</h4>
+<h4 id="synopsis_31"><a class="anchor" href="#synopsis_31"></a>9.30.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>schema</strong> ['OPTIONS'] <code>SCHEMA_NAME</code></p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="options_9"><a class="anchor" href="#options_9"></a>9.29.3. OPTIONS</h4>
+<h4 id="options_9"><a class="anchor" href="#options_9"></a>9.30.3. OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-u, --upload</strong>='FILE'</dt>
@@ -4323,29 +4728,122 @@ Resets the <code>cnt_a</code> counter.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_14"><a class="anchor" href="#example_14"></a>9.29.4. EXAMPLE</h4>
+<h4 id="example_14"><a class="anchor" href="#example_14"></a>9.30.4. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>schema --upload=person.proto person.proto</code><br>
 Registers a <code>person.proto</code> Protobuf schema.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_25"><a class="anchor" href="#see_also_25"></a>9.29.5. SEE ALSO</h4>
+<h4 id="see_also_25"><a class="anchor" href="#see_also_25"></a>9.30.5. SEE ALSO</h4>
 <div class="paragraph">
 <p>query(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="shutdown1"><a class="anchor" href="#shutdown1"></a>9.30. SHUTDOWN(1)</h3>
+<h3 id="server1"><a class="anchor" href="#server1"></a>9.31. SERVER(1)</h3>
 <div class="sect3">
-<h4 id="name_30"><a class="anchor" href="#name_30"></a>9.30.1. NAME</h4>
+<h4 id="name_31"><a class="anchor" href="#name_31"></a>9.31.1. NAME</h4>
+<div class="paragraph">
+<p>server - server configuration and state management.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="description_9"><a class="anchor" href="#description_9"></a>9.31.2. DESCRIPTION</h4>
+<div class="paragraph">
+<p>The <strong>server</strong> command describes and manages server endpoint connectors and retrieves aggregated diagnostic reports about both the server and host.</p>
+</div>
+<div class="paragraph">
+<p>Reports provide details about CPU, memory, open files, network sockets and routing, threads, in addition to configuration and log files.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="synopsis_32"><a class="anchor" href="#synopsis_32"></a>9.31.3. SYNOPSIS</h4>
+<div class="paragraph">
+<p><strong>server report</strong></p>
+</div>
+<div class="paragraph">
+<p><strong>server connector ls</strong></p>
+</div>
+<div class="paragraph">
+<p><strong>server connector describe</strong> 'connector-name'</p>
+</div>
+<div class="paragraph">
+<p><strong>server connector start</strong> 'connector-name'</p>
+</div>
+<div class="paragraph">
+<p><strong>server connector stop</strong> 'connector-name'</p>
+</div>
+<div class="paragraph">
+<p><strong>server connector ipfilter ls</strong> 'connector-name'</p>
+</div>
+<div class="paragraph">
+<p><strong>server connector ipfilter set</strong> 'connector-name' --rules='[ACCEPT|REJECT]/cidr',&#8230;&#8203;</p>
+</div>
+<div class="paragraph">
+<p><strong>server connector ipfilter clear</strong> 'connector-name'</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="server_connector_ipfilter_options"><a class="anchor" href="#server_connector_ipfilter_options"></a>9.31.4. SERVER CONNECTOR IPFILTER OPTIONS</h4>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><strong>--rules</strong>='[ACCEPT|REJECT]/cidr',&#8230;&#8203;</dt>
+<dd>
+<p>One or more IP filtering rules.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="examples_16"><a class="anchor" href="#examples_16"></a>9.31.5. EXAMPLES</h4>
+<div class="paragraph">
+<p><code>server report</code><br>
+Obtains a server report, including information about network, threads, memory, etc.</p>
+</div>
+<div class="paragraph">
+<p><code>server connector ls</code><br>
+Lists all available connectors on the server.</p>
+</div>
+<div class="paragraph">
+<p><code>server connector describe endpoint-default</code><br>
+Shows information about the specified connector, including host, port, local and global connections, IP filtering rules.</p>
+</div>
+<div class="paragraph">
+<p><code>server connector stop my-hotrod-connector</code><br>
+Stops a connector dropping all established connections across the cluster.
+This command will be refused if attempting to stop the connector which is handling the request.</p>
+</div>
+<div class="paragraph">
+<p><code>server connector start my-hotrod-connector</code><br>
+Starts a connector so that it can accept connections across the cluster.</p>
+</div>
+<div class="paragraph">
+<p><code>server connector ipfilter ls my-hotrod-connector</code><br>
+Lists all IP filtering rules active on a connector across the cluster.</p>
+</div>
+<div class="paragraph">
+<p><code>server connector ipfilter set my-hotrod-connector --rules=ACCEPT/192.168.0.0/16,REJECT/10.0.0.0/8</code>
+Sets IP filtering rules on a connector across the cluster. Replaces all existing rules.
+This command will be refused if one of the rejection rules matches the address of the connection on which it is invoked.</p>
+</div>
+<div class="paragraph">
+<p><code>server connector ipfilter clear my-hotrod-connector</code><br>
+Removes all IP filtering rules on a connector across the cluster.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="shutdown1"><a class="anchor" href="#shutdown1"></a>9.32. SHUTDOWN(1)</h3>
+<div class="sect3">
+<h4 id="name_32"><a class="anchor" href="#name_32"></a>9.32.1. NAME</h4>
 <div class="paragraph">
 <p>shutdown - stops running servers or brings clusters down gracefully.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_31"><a class="anchor" href="#synopsis_31"></a>9.30.2. SYNOPSIS</h4>
+<h4 id="synopsis_33"><a class="anchor" href="#synopsis_33"></a>9.32.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>shutdown server</strong> ['SERVERS']</p>
 </div>
@@ -4354,7 +4852,7 @@ Registers a <code>person.proto</code> Protobuf schema.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_15"><a class="anchor" href="#examples_15"></a>9.30.3. EXAMPLES</h4>
+<h4 id="examples_17"><a class="anchor" href="#examples_17"></a>9.32.3. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>shutdown server</code><br>
 Stops the server to which the CLI is connected.</p>
@@ -4369,22 +4867,22 @@ Stores cluster state, persists entries if you use a cache store, and stops all n
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_26"><a class="anchor" href="#see_also_26"></a>9.30.4. SEE ALSO</h4>
+<h4 id="see_also_26"><a class="anchor" href="#see_also_26"></a>9.32.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>connect(1), disconnect(1), quit(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="site1"><a class="anchor" href="#site1"></a>9.31. SITE(1)</h3>
+<h3 id="site1"><a class="anchor" href="#site1"></a>9.33. SITE(1)</h3>
 <div class="sect3">
-<h4 id="name_31"><a class="anchor" href="#name_31"></a>9.31.1. NAME</h4>
+<h4 id="name_33"><a class="anchor" href="#name_33"></a>9.33.1. NAME</h4>
 <div class="paragraph">
 <p>site - manages backup locations and performs cross-site replication operations.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_32"><a class="anchor" href="#synopsis_32"></a>9.31.2. SYNOPSIS</h4>
+<h4 id="synopsis_34"><a class="anchor" href="#synopsis_34"></a>9.33.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>site status</strong> ['OPTIONS']</p>
 </div>
@@ -4406,9 +4904,18 @@ Stores cluster state, persists entries if you use a cache store, and stops all n
 <div class="paragraph">
 <p><strong>site push-site-status</strong> ['OPTIONS']</p>
 </div>
+<div class="paragraph">
+<p><strong>site state-transfer-mode get|set</strong> ['OPTIONS']</p>
+</div>
+<div class="paragraph">
+<p><strong>site name</strong></p>
+</div>
+<div class="paragraph">
+<p><strong>site view</strong></p>
+</div>
 </div>
 <div class="sect3">
-<h4 id="options_10"><a class="anchor" href="#options_10"></a>9.31.3. OPTIONS</h4>
+<h4 id="options_10"><a class="anchor" href="#options_10"></a>9.33.3. OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>--cache</strong>='CACHE_NAME'</dt>
@@ -4423,7 +4930,18 @@ Stores cluster state, persists entries if you use a cache store, and stops all n
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_16"><a class="anchor" href="#examples_16"></a>9.31.4. EXAMPLES</h4>
+<h4 id="state_transfer_mode_options"><a class="anchor" href="#state_transfer_mode_options"></a>9.33.4. STATE TRANSFER MODE OPTIONS</h4>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><strong>--mode</strong>='MODE'</dt>
+<dd>
+<p>Sets the state transfer mode. Values are <code>MANUAL</code> (default) or <code>AUTO</code>.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="examples_18"><a class="anchor" href="#examples_18"></a>9.33.5. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>site status --cache=mycache</code><br>
 Returns the status of all backup locations for <code>mycache</code>.</p>
@@ -4460,24 +4978,40 @@ Cancels the operation to receive state from <code>NYC</code>.</p>
 <p><code>site clear-push-state-status --cache=myCache</code><br>
 Clears the status of the push state operation for <code>mycache</code>.</p>
 </div>
+<div class="paragraph">
+<p><code>site state-transfer-mode get --cache=myCache --site=NYC</code><br>
+Retrieves the state transfer mode for <code>mycache</code> to <code>NYC</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>site state-transfer-mode set --cache=myCache --site=NYC --mode=AUTO</code><br>
+Configures automatic state transfer for <code>mycache</code> to <code>NYC</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>site name</code><br>
+Returns the name of the local site. If cross-site replication is not configured, the name of the local site is always "local".</p>
+</div>
+<div class="paragraph">
+<p><code>site view</code><br>
+Returns a list of names for all sites or an empty list ("[]") if cross-site replication is not configured.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="stats1"><a class="anchor" href="#stats1"></a>9.32. STATS(1)</h3>
+<h3 id="stats1"><a class="anchor" href="#stats1"></a>9.34. STATS(1)</h3>
 <div class="sect3">
-<h4 id="name_32"><a class="anchor" href="#name_32"></a>9.32.1. NAME</h4>
+<h4 id="name_34"><a class="anchor" href="#name_34"></a>9.34.1. NAME</h4>
 <div class="paragraph">
 <p>stats - displays statistics about resources.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_33"><a class="anchor" href="#synopsis_33"></a>9.32.2. SYNOPSIS</h4>
+<h4 id="synopsis_35"><a class="anchor" href="#synopsis_35"></a>9.34.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>stats</strong> ['PATH']</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_17"><a class="anchor" href="#examples_17"></a>9.32.3. EXAMPLES</h4>
+<h4 id="examples_19"><a class="anchor" href="#examples_19"></a>9.34.3. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>stats //containers/default</code><br>
 Displays statistics about the default container.</p>
@@ -4488,22 +5022,22 @@ Displays statistics about the <code>mycache</code> cache.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_27"><a class="anchor" href="#see_also_27"></a>9.32.4. SEE ALSO</h4>
+<h4 id="see_also_27"><a class="anchor" href="#see_also_27"></a>9.34.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>cd(1), ls(1), describe(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="task1"><a class="anchor" href="#task1"></a>9.33. TASK(1)</h3>
+<h3 id="task1"><a class="anchor" href="#task1"></a>9.35. TASK(1)</h3>
 <div class="sect3">
-<h4 id="name_33"><a class="anchor" href="#name_33"></a>9.33.1. NAME</h4>
+<h4 id="name_35"><a class="anchor" href="#name_35"></a>9.35.1. NAME</h4>
 <div class="paragraph">
 <p>task - executes and uploads server-side tasks and scripts</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_34"><a class="anchor" href="#synopsis_34"></a>9.33.2. SYNOPSIS</h4>
+<h4 id="synopsis_36"><a class="anchor" href="#synopsis_36"></a>9.35.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>task upload</strong> --file='script' 'TASK_NAME'</p>
 </div>
@@ -4512,7 +5046,7 @@ Displays statistics about the <code>mycache</code> cache.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_18"><a class="anchor" href="#examples_18"></a>9.33.3. EXAMPLES</h4>
+<h4 id="examples_20"><a class="anchor" href="#examples_20"></a>9.35.3. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>task upload --file=hello.js hello</code><br>
 Uploads a script from a <code>hello.js</code> file and names it <code>hello</code>.</p>
@@ -4528,7 +5062,7 @@ of <code>world</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="options_11"><a class="anchor" href="#options_11"></a>9.33.4. OPTIONS</h4>
+<h4 id="options_11"><a class="anchor" href="#options_11"></a>9.35.4. OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-P, --parameters</strong>='PARAMETERS'</dt>
@@ -4543,50 +5077,50 @@ of <code>world</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_28"><a class="anchor" href="#see_also_28"></a>9.33.5. SEE ALSO</h4>
+<h4 id="see_also_28"><a class="anchor" href="#see_also_28"></a>9.35.5. SEE ALSO</h4>
 <div class="paragraph">
 <p>ls(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="unalias1"><a class="anchor" href="#unalias1"></a>9.34. UNALIAS(1)</h3>
+<h3 id="unalias1"><a class="anchor" href="#unalias1"></a>9.36. UNALIAS(1)</h3>
 <div class="sect3">
-<h4 id="name_34"><a class="anchor" href="#name_34"></a>9.34.1. NAME</h4>
+<h4 id="name_36"><a class="anchor" href="#name_36"></a>9.36.1. NAME</h4>
 <div class="paragraph">
 <p>unalias - deletes aliases.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_35"><a class="anchor" href="#synopsis_35"></a>9.34.2. SYNOPSIS</h4>
+<h4 id="synopsis_37"><a class="anchor" href="#synopsis_37"></a>9.36.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>unalias</strong> 'ALIAS-NAME'</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_19"><a class="anchor" href="#examples_19"></a>9.34.3. EXAMPLES</h4>
+<h4 id="examples_21"><a class="anchor" href="#examples_21"></a>9.36.3. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>unalias q</code><br>
 Deletes the <code>q</code> alias.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_29"><a class="anchor" href="#see_also_29"></a>9.34.4. SEE ALSO</h4>
+<h4 id="see_also_29"><a class="anchor" href="#see_also_29"></a>9.36.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>config(1), alias(1)</p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="user1"><a class="anchor" href="#user1"></a>9.35. USER(1)</h3>
+<h3 id="user1"><a class="anchor" href="#user1"></a>9.37. USER(1)</h3>
 <div class="sect3">
-<h4 id="name_35"><a class="anchor" href="#name_35"></a>9.35.1. NAME</h4>
+<h4 id="name_37"><a class="anchor" href="#name_37"></a>9.37.1. NAME</h4>
 <div class="paragraph">
 <p>user - manages ${infinispan.brand.name} users in property security realms.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_36"><a class="anchor" href="#synopsis_36"></a>9.35.2. SYNOPSIS</h4>
+<h4 id="synopsis_38"><a class="anchor" href="#synopsis_38"></a>9.37.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>user ls</strong></p>
 </div>
@@ -4608,16 +5142,25 @@ Deletes the <code>q</code> alias.</p>
 <div class="paragraph">
 <p><strong>user encrypt-all</strong></p>
 </div>
-</div>
-<div class="sect3">
-<h4 id="description_9"><a class="anchor" href="#description_9"></a>9.35.3. DESCRIPTION</h4>
 <div class="paragraph">
-<p>Manage (list, create, describe, remove, modify) users stored in a property security realm.
-Note: You can use this command only with property realms.</p>
+<p><strong>user roles ls</strong> 'principal'</p>
+</div>
+<div class="paragraph">
+<p><strong>user roles grant</strong> --roles='role1'[,'role2'&#8230;&#8203;] 'principal'</p>
+</div>
+<div class="paragraph">
+<p><strong>user roles deny</strong> --roles='role1'[,'role2'&#8230;&#8203;] 'principal'</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="command_synopsis_3"><a class="anchor" href="#command_synopsis_3"></a>9.35.4. COMMAND SYNOPSIS</h4>
+<h4 id="description_10"><a class="anchor" href="#description_10"></a>9.37.3. DESCRIPTION</h4>
+<div class="paragraph">
+<p>Manage users in property realms with the <code>ls</code>, <code>create</code>, <code>describe</code>, <code>remove</code>, <code>password</code>, <code>groups</code> and <code>encrypt-all</code> subcommands.
+List and modify principal to role mappings with the <code>roles</code> subcommand when using the cluster role mapper for authorization.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="command_synopsis_3"><a class="anchor" href="#command_synopsis_3"></a>9.37.4. COMMAND SYNOPSIS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>user ls</strong></dt>
@@ -4648,11 +5191,23 @@ Note: You can use this command only with property realms.</p>
 <dd>
 <p>Encrypt all passwords in a plain-text user property file.</p>
 </dd>
+<dt class="hdlist1"><strong>user roles ls</strong> 'principal'</dt>
+<dd>
+<p>Lists all roles of the specified principal (user or group).</p>
+</dd>
+<dt class="hdlist1"><strong>user roles grant</strong> --roles='role1'[,'role2'&#8230;&#8203;] 'principal'</dt>
+<dd>
+<p>Grants one or more roles to a principal.</p>
+</dd>
+<dt class="hdlist1"><strong>user roles deny</strong> --roles='role1'[,'role2'&#8230;&#8203;] 'principal'</dt>
+<dd>
+<p>Denies one or more roles to a principal.</p>
+</dd>
 </dl>
 </div>
 </div>
 <div class="sect3">
-<h4 id="common_options_3"><a class="anchor" href="#common_options_3"></a>9.35.5. COMMON OPTIONS</h4>
+<h4 id="common_options_3"><a class="anchor" href="#common_options_3"></a>9.37.5. COMMON OPTIONS</h4>
 <div class="paragraph">
 <p>These options apply to all commands:</p>
 </div>
@@ -4678,7 +5233,7 @@ Note: You can use this command only with property realms.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="user_createmodify_options"><a class="anchor" href="#user_createmodify_options"></a>9.35.6. USER CREATE/MODIFY OPTIONS</h4>
+<h4 id="user_createmodify_options"><a class="anchor" href="#user_createmodify_options"></a>9.37.6. USER CREATE/MODIFY OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-a, --algorithms</strong></dt>
@@ -4705,7 +5260,7 @@ Note: You can use this command only with property realms.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="user_ls_options"><a class="anchor" href="#user_ls_options"></a>9.35.7. USER LS OPTIONS</h4>
+<h4 id="user_ls_options"><a class="anchor" href="#user_ls_options"></a>9.37.7. USER LS OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>--groups</strong></dt>
@@ -4716,7 +5271,7 @@ Note: You can use this command only with property realms.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="user_encrypt_all_options"><a class="anchor" href="#user_encrypt_all_options"></a>9.35.8. USER ENCRYPT-ALL OPTIONS</h4>
+<h4 id="user_encrypt_all_options"><a class="anchor" href="#user_encrypt_all_options"></a>9.37.8. USER ENCRYPT-ALL OPTIONS</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><strong>-a, --algorithms</strong></dt>
@@ -4728,28 +5283,28 @@ Note: You can use this command only with property realms.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="version1"><a class="anchor" href="#version1"></a>9.36. VERSION(1)</h3>
+<h3 id="version1"><a class="anchor" href="#version1"></a>9.38. VERSION(1)</h3>
 <div class="sect3">
-<h4 id="name_36"><a class="anchor" href="#name_36"></a>9.36.1. NAME</h4>
+<h4 id="name_38"><a class="anchor" href="#name_38"></a>9.38.1. NAME</h4>
 <div class="paragraph">
 <p>version - displays the server version and CLI version.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="synopsis_37"><a class="anchor" href="#synopsis_37"></a>9.36.2. SYNOPSIS</h4>
+<h4 id="synopsis_39"><a class="anchor" href="#synopsis_39"></a>9.38.2. SYNOPSIS</h4>
 <div class="paragraph">
 <p><strong>version</strong></p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_15"><a class="anchor" href="#example_15"></a>9.36.3. EXAMPLE</h4>
+<h4 id="example_15"><a class="anchor" href="#example_15"></a>9.38.3. EXAMPLE</h4>
 <div class="paragraph">
 <p><code>version</code><br>
 Returns the version for the server and the CLI.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="see_also_30"><a class="anchor" href="#see_also_30"></a>9.36.4. SEE ALSO</h4>
+<h4 id="see_also_30"><a class="anchor" href="#see_also_30"></a>9.38.4. SEE ALSO</h4>
 <div class="paragraph">
 <p>help(1)</p>
 </div>
@@ -4760,7 +5315,7 @@ Returns the version for the server and the CLI.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-03-12 07:41:09 -0500
+Last updated 2021-04-05 08:28:54 -0400
 </div>
 </div>
 <style>

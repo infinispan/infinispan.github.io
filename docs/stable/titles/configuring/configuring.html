@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.10">
-<title>Configuring Infinispan 12.0</title>
+<title>Configuring Infinispan 12.1</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -442,10 +442,86 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
 <script src="../../js/js.js"></script>
+<style>
+.hidden {
+    display: none;
+}
+
+.switch {
+    border-width: 1px 1px 0 1px;
+    border-style: solid;
+    border-color: #7a2518;
+    display: inline-block;
+}
+
+.switch--item {
+    padding: 10px;
+    background-color: #ffffff;
+    color: #7a2518;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.switch--item.selected {
+    background-color: #7a2519;
+    color: #ffffff;
+}
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script type="text/javascript">
+function addBlockSwitches() {
+    $('.primary').each(function() {
+        primary = $(this);
+        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
+        primary.children('.title').remove();
+    });
+    $('.secondary').each(function(idx, node) {
+        secondary = $(node);
+        primary = findPrimary(secondary);
+        switchItem = createSwitchItem(secondary, primary.children('.switch'));
+        switchItem.content.addClass('hidden');
+        findPrimary(secondary).append(switchItem.content);
+        secondary.remove();
+    });
+}
+
+function createBlockSwitch(primary) {
+    blockSwitch = $('<div class="switch"></div>');
+    primary.prepend(blockSwitch);
+    return blockSwitch;
+}
+
+function findPrimary(secondary) {
+    candidate = secondary.prev();
+    while (!candidate.is('.primary')) {
+        candidate = candidate.prev();
+    }
+    return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+    blockName = block.children('.title').text();
+    content = block.children('.content').first().append(block.next('.colist'));
+    item = $('<div class="switch--item">' + blockName + '</div>');
+    item.on('click', '', content, function(e) {
+        $(this).addClass('selected');
+        $(this).siblings().removeClass('selected');
+        e.data.siblings('.content').addClass('hidden');
+        e.data.removeClass('hidden');
+    });
+    blockSwitch.append(item);
+    return {'item': item, 'content': content};
+}
+
+$(addBlockSwitches);
+
+</script>
+
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
-<h1>Configuring Infinispan 12.0</h1>
+<h1>Configuring Infinispan 12.1</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
@@ -514,7 +590,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#declarative-configuring">4.1. Declarative Configuration</a>
 <ul class="sectlevel3">
-<li><a href="#templates-configuring">4.1.1. Cache Configuration Templates</a></li>
+<li><a href="#templates-configuring">4.1.1. Cache Templates</a></li>
 <li><a href="#cache_wildcards-configuring">4.1.2. Cache Configuration Wildcards</a></li>
 <li><a href="#cache_xinclude-configuring">4.1.3. Multiple Configuration Files</a></li>
 </ul>
@@ -753,7 +829,7 @@ properties. However, semantic differences do exist between
 <div class="title">Cache container declaration</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">clustered</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-  ...
+  <span class="comment">&lt;!-- Cache Manager configuration goes here. --&gt;</span>
 <span class="tag">&lt;/cache-container&gt;</span></code></pre>
 </div>
 </div>
@@ -1035,7 +1111,7 @@ away and simple cache can be used.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mySimpleCache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">simple-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="comment">&lt;!-- expiration, eviction, security... --&gt;</span>
+    <span class="comment">&lt;!-- Additional cache configuration goes here. --&gt;</span>
 <span class="tag">&lt;/local-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -1349,7 +1425,7 @@ key-to-segment mapping evenly distributes the number of segments allocated to ea
 </div>
 <div class="paragraph">
 <p>You can customize the key-to-segment mapping by configuring a
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/distribution/ch/KeyPartitioner.html">KeyPartitioner</a> or by using the
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/distribution/ch/KeyPartitioner.html">KeyPartitioner</a> or by using the
 <a href="#grouping_api">Grouping API</a>.</p>
 </div>
 <div class="paragraph">
@@ -1825,11 +1901,11 @@ If you are configuring Infinispan programmatically:</p>
 </div>
 <div class="dlist">
 <dl>
-<dt class="hdlist1"><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html#getGroup-java.lang.String-">getGroup(groupName)</a></dt>
+<dt class="hdlist1"><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/AdvancedCache.html#getGroup-java.lang.String-">getGroup(groupName)</a></dt>
 <dd>
 <p>Retrieves all keys in the cache that belong to a group.</p>
 </dd>
-<dt class="hdlist1"><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html#removeGroup-java.lang.String-">removeGroup(groupName)</a></dt>
+<dt class="hdlist1"><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/AdvancedCache.html#removeGroup-java.lang.String-">removeGroup(groupName)</a></dt>
 <dd>
 <p>Removes all the keys in the cache that belong to a group.</p>
 </dd>
@@ -1906,7 +1982,7 @@ the performance benefit.</p>
 <h4 id="async-configuring"><a class="anchor" href="#async-configuring"></a>3.5.1. Asynchronous Communications</h4>
 <div class="paragraph">
 <p>All clustered cache modes can be configured to use asynchronous communications with the
-<a href="https://docs.jboss.org/infinispan/12.0/configdocs/"><code>mode="ASYNC"</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/configdocs/"><code>mode="ASYNC"</code></a>
 attribute on the <code>&lt;replicated-cache/&gt;</code>, <code>&lt;distributed-cache&gt;</code>, or <code>&lt;invalidation-cache/&gt;</code>
 element.</p>
 </div>
@@ -2024,104 +2100,62 @@ combination of the two.</p>
 <div class="sect2">
 <h3 id="declarative-configuring"><a class="anchor" href="#declarative-configuring"></a>4.1. Declarative Configuration</h3>
 <div class="paragraph">
-<p>You configure Infinispan caches by defining properties in <code>infinispan.xml</code>.</p>
+<p>Declarative configuration conforms to a schema and is defined in XML or JSON formatted files.</p>
 </div>
 <div class="paragraph">
 <p>The following example shows the basic structure of a Infinispan configuration:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
-   <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b>
-      <span class="tag">&lt;transport</span> <span class="attribute-name">stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">udp</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">cluster</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycluster</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="3"></i><b>(3)</b>
-      <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="4"></i><b>(4)</b>
-      <span class="tag">&lt;invalidation-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">invalidation</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="5"></i><b>(5)</b>
-      <span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">replicated</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="6"></i><b>(6)</b>
-      <span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">distributed</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="7"></i><b>(7)</b>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+   <span class="comment">&lt;!-- Defines properties for all caches within the container and optionally names a default cache. --&gt;</span>
+   <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="comment">&lt;!-- Configures transport properties for clustered cache modes. --&gt;</span>
+      <span class="comment">&lt;!-- Specifies the default JGroups UDP stack and names the cluster. --&gt;</span>
+      <span class="tag">&lt;transport</span> <span class="attribute-name">stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">udp</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">cluster</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycluster</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="comment">&lt;!-- Configures a local cache. --&gt;</span>
+      <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="comment">&lt;!-- Configures an invalidation cache. --&gt;</span>
+      <span class="tag">&lt;invalidation-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">invalidation</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="comment">&lt;!-- Configures a replicated cache. --&gt;</span>
+      <span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">replicated</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="comment">&lt;!-- Configures a distributed cache. --&gt;</span>
+      <span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">distributed</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
    <span class="tag">&lt;/cache-container&gt;</span>
 <span class="tag">&lt;/infinispan&gt;</span></code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>adds the root element for the Infinispan configuration. The minimum valid configuration is <code>&lt;infinispan /&gt;</code>; however this provides very basic capabilities with no clustering and no cache instances.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>defines properties for all caches within the container and names the default cache.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>defines transport properties for clustered cache modes. In the preceding example, <code>stack="udp"</code> specifies the default JGroups UDP transport stack and names the Infinispan cluster.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="4"></i><b>4</b></td>
-<td>local cache.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="5"></i><b>5</b></td>
-<td>invalidation cache.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="6"></i><b>6</b></td>
-<td>replicated cache.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="7"></i><b>7</b></td>
-<td>distributed cache.</td>
-</tr>
-</table>
 </div>
 <div class="ulist">
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan 12.0 Configuration Schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan 12.1 Configuration Schema</a></p>
 </li>
 <li>
-<p><a href="http://infinispan.org/schemas/infinispan-config-12.0.xsd">infinispan-config-12.0.xsd</a></p>
+<p><a href="http://infinispan.org/schemas/infinispan-config-12.1.xsd">infinispan-config-12.1.xsd</a></p>
 </li>
 </ul>
 </div>
 <div class="sect3">
-<h4 id="templates-configuring"><a class="anchor" href="#templates-configuring"></a>4.1.1. Cache Configuration Templates</h4>
+<h4 id="templates-configuring"><a class="anchor" href="#templates-configuring"></a>4.1.1. Cache Templates</h4>
 <div class="paragraph">
-<p>Infinispan lets you define configuration templates that you can apply to
-multiple cache definitions or use as the basis for complex configurations.</p>
+<p>Infinispan lets you define templates that you can use to create cache configurations.</p>
 </div>
 <div class="paragraph">
-<p>For example, the following configuration contains a configuration template for
-local caches:</p>
+<p>For example, the following configuration contains a cache template:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-   <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
-      <span class="tag">&lt;local-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local-template</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b>
+   <span class="comment">&lt;!-- Specifies the cache named &quot;local&quot; as the default. --&gt;</span>
+   <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="comment">&lt;!-- Adds a cache template for local caches. --&gt;</span>
+      <span class="tag">&lt;local-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local-template</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
          <span class="tag">&lt;expiration</span> <span class="attribute-name">interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">lifespan</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-idle</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;/local-cache-configuration&gt;</span>
-      <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">configuration</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local-template</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span> <i class="conum" data-value="3"></i><b>(3)</b>
    <span class="tag">&lt;/cache-container&gt;</span>
 <span class="tag">&lt;/infinispan&gt;</span></code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>specifies the "local" cache as the default.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>defines a configuration template named "local-template" that defines an expiration policy for local caches.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>names a local cache instance that uses the configuration template.</td>
-</tr>
-</table>
 </div>
 <div class="paragraph">
 <div class="title">Inheritance with configuration templates</div>
@@ -2136,58 +2170,32 @@ override settings.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Configuration template inheritance is hierarchical. For a child configuration
-template to inherit from a parent, you must include it after the parent
-template.</p>
+<p>Cache template inheritance is hierarchical. For a child configuration template to inherit from a parent, you must include it after the parent template.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
-<p>The following is an example of configuration template inheritance:</p>
+<p>The following is an example of template inheritance:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-   <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;local-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">base-template</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+   <span class="tag">&lt;cache-container&gt;</span>
+     <span class="comment">&lt;!-- Defines a cache template named &quot;base-template&quot;. --&gt;</span>
+      <span class="tag">&lt;local-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">base-template</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
          <span class="tag">&lt;expiration</span> <span class="attribute-name">interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">lifespan</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-idle</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;/local-cache-configuration&gt;</span>
-
+      <span class="comment">&lt;!-- Defines a cache template named &quot;extended-template&quot; that inherits settings from &quot;base-template&quot;. --&gt;</span>
       <span class="tag">&lt;local-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">extended-template</span><span class="delimiter">&quot;</span></span>
-                                 <span class="attribute-name">configuration</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">base-template</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b>
+                                 <span class="attribute-name">configuration</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">base-template</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
          <span class="tag">&lt;expiration</span> <span class="attribute-name">lifespan</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">20</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-         <span class="tag">&lt;memory&gt;</span>
-            <span class="tag">&lt;object</span> <span class="attribute-name">size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-         <span class="tag">&lt;/memory&gt;</span>
+         <span class="tag">&lt;memory</span> <span class="attribute-name">max-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2GB</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
       <span class="tag">&lt;/local-cache-configuration&gt;</span>
-
-      <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">configuration</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">base-template</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span> <i class="conum" data-value="3"></i><b>(3)</b>
-      <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local-bounded</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">configuration</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">extended-template</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span> <i class="conum" data-value="4"></i><b>(4)</b>
    <span class="tag">&lt;/cache-container&gt;</span>
 <span class="tag">&lt;/infinispan&gt;</span></code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>defines a configuration template named "base-template" that defines an expiration policy for local caches. In this example, "base-template" is the parent configuration template.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>defines a configuration template named "extended-template" that inherits settings from "base-template", modifies the <code>lifespan</code> attribute for expiration, and adds a <code>memory</code> element to the configuration. In this example, "extended-template" is a child of "base-template".</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>names a local cache that uses the configuration settings in "base-template".</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="4"></i><b>4</b></td>
-<td>names a local cache that uses the configuration settings in "extended-template".</td>
-</tr>
-</table>
 </div>
 <div class="admonitionblock important">
 <table>
@@ -2219,31 +2227,17 @@ value_x="foo" value_y="bar" /&gt;</code>.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-    <span class="tag">&lt;cache-container&gt;</span>
-        <span class="tag">&lt;local-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">basecache*</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
-            <span class="tag">&lt;expiration</span> <span class="attribute-name">interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10500</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">lifespan</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">11</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-idle</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">11</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;/local-cache-configuration&gt;</span>
-        <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">basecache-1</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b>
-        <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">basecache-2</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="3"></i><b>(3)</b>
-    <span class="tag">&lt;/cache-container&gt;</span>
+  <span class="tag">&lt;cache-container&gt;</span>
+    <span class="comment">&lt;!-- Uses the `*` wildcard to match any cache names that start with &quot;basecache&quot;. --&gt;</span>
+    <span class="tag">&lt;local-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">basecache*</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;expiration</span> <span class="attribute-name">interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10500</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">lifespan</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">11</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-idle</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">11</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/local-cache-configuration&gt;</span>
+    <span class="comment">&lt;!-- Adds local caches that use the &quot;basecache*&quot; configuration. --&gt;</span>
+    <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">basecache-1</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">basecache-2</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;/cache-container&gt;</span>
 <span class="tag">&lt;/infinispan&gt;</span></code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>uses the <code>*</code> wildcard to match any cache names that start with "basecache".</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>names a local cache "basecache-1" that uses the "basecache*" configuration template.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>names a local cache "basecache-2" that uses the "basecache*" configuration template.</td>
-</tr>
-</table>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -2265,40 +2259,24 @@ value_x="foo" value_y="bar" /&gt;</code>.</p>
 <div class="paragraph">
 <p>Infinispan supports XML inclusions (XInclude) that allow you to split configuration across multiple files.</p>
 </div>
-<div class="paragraph">
-<p>For example, the following configuration uses an XInclude:</p>
-</div>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan</span> <span class="attribute-name">xmlns:xi</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">http://www.w3.org/2001/XInclude</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
     <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">cache-1</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-        <span class="tag">&lt;xi:include</span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local.xml</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+        <span class="comment">&lt;!-- Includes a local.xml file that contains a cache configuration. --&gt;</span>
+        <span class="tag">&lt;xi:include</span> <span class="attribute-name">href</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local.xml</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
     <span class="tag">&lt;/cache-container&gt;</span>
 <span class="tag">&lt;/infinispan&gt;</span></code></pre>
 </div>
 </div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>includes an <code>local.xml</code> file that contains the following cache definition:
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
-</div>
-</div></td>
-</tr>
-</table>
-</div>
 <div class="paragraph">
-<p>If you want to use a schema for your included fragments, use the <code>infinispan-config-fragment-12.0.xsd</code> schema:</p>
+<p>If you want to use a schema for your included fragments, use the <code>infinispan-config-fragment-12.1.xsd</code> schema:</p>
 </div>
 <div class="listingblock">
-<div class="title">include-with-schema.xml</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;local-cache</span> <span class="attribute-name">xmlns:xsi</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">http://www.w3.org/2001/XMLSchema-instance</span><span class="delimiter">&quot;</span></span>
-             <span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.0 https://infinispan.org/schemas/infinispan-config-fragment-12.0.xsd</span><span class="delimiter">&quot;</span></span>
-             <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.0</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.1 https://infinispan.org/schemas/infinispan-config-fragment-12.1.xsd</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.1</span><span class="delimiter">&quot;</span></span>
              <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
 </div>
 </div>
@@ -2310,9 +2288,7 @@ value_x="foo" value_y="bar" /&gt;</code>.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Infinispan configurations provides only minimal support for the XInclude
-specification. For example, you cannot use the <code>xpointer</code> attribute, the
-<code>xi:fallback</code> element, text processing, or content negotiation.</p>
+<p>Infinispan configuration provides only minimal support for the XInclude specification. For example, you cannot use the <code>xpointer</code> attribute, the <code>xi:fallback</code> element, text processing, or content negotiation.</p>
 </div>
 </td>
 </tr>
@@ -2365,10 +2341,10 @@ under the Cache Manager.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/global/GlobalConfiguration.html">org.infinispan.configuration.global.GlobalConfiguration</a>.</p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/global/GlobalConfiguration.html">org.infinispan.configuration.global.GlobalConfiguration</a>.</p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/global/package-summary.html">Global Configuration API</a>.</p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/global/package-summary.html">Global Configuration API</a>.</p>
 </li>
 </ul>
 </div>
@@ -2417,7 +2393,7 @@ under the Cache Manager.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/cache/ConfigurationBuilder.html">org.infinispan.configuration.cache.ConfigurationBuilder</a>.</p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/cache/ConfigurationBuilder.html">org.infinispan.configuration.cache.ConfigurationBuilder</a>.</p>
 </li>
 </ul>
 </div>
@@ -2551,22 +2527,22 @@ Cache&lt;<span class="predefined-type">String</span>, <span class="predefined-ty
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/manager/package-summary.html">CacheManager package summary</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/manager/package-summary.html">CacheManager package summary</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/cache/ConfigurationBuilder.html">org.infinispan.configuration.cache.ConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/cache/ConfigurationBuilder.html">org.infinispan.configuration.cache.ConfigurationBuilder</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/manager/EmbeddedCacheManager.html">org.infinispan.manager.EmbeddedCacheManager</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/manager/EmbeddedCacheManager.html">org.infinispan.manager.EmbeddedCacheManager</a></p>
 </li>
 <li>
 <p><a href="../hotrod_java/hotrod_java.html">HotRod Java Client Guide</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/client/hotrod/configuration/ConfigurationBuilder.html">org.infinispan.client.hotrod.configuration.ConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/client/hotrod/configuration/ConfigurationBuilder.html">org.infinispan.client.hotrod.configuration.ConfigurationBuilder</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocsorg/infinispan/client/hotrod/RemoteCacheManager.html">org.infinispan.client.hotrod.RemoteCacheManager</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocsorg/infinispan/client/hotrod/RemoteCacheManager.html">org.infinispan.client.hotrod.RemoteCacheManager</a></p>
 </li>
 </ul>
 </div>
@@ -2624,9 +2600,9 @@ Infinispan encodes data in Protobuf format.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;local-cache&gt;</span>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-<span class="tag">&lt;/local-cache&gt;</span></code></pre>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -2638,12 +2614,12 @@ Infinispan encodes data in Protobuf format.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache&gt;</span>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    <span class="tag">&lt;encoding&gt;</span>
       <span class="tag">&lt;key</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-java-object</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;value</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/xml; charset=UTF-8</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
    <span class="tag">&lt;/encoding&gt;</span>
-<span class="tag">&lt;/cache&gt;</span></code></pre>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -3004,10 +2980,10 @@ cfg
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Configuration Schema Reference</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema Reference</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/cache/MemoryConfigurationBuilder.html">org.infinispan.configuration.cache.MemoryConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/cache/MemoryConfigurationBuilder.html">org.infinispan.configuration.cache.MemoryConfigurationBuilder</a></p>
 </li>
 </ul>
 </div>
@@ -3087,13 +3063,13 @@ cfg
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Configuration Schema Reference</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema Reference</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/cache/EncodingConfiguration.html">org.infinispan.configuration.cache.EncodingConfiguration</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/cache/EncodingConfiguration.html">org.infinispan.configuration.cache.EncodingConfiguration</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/cache/MemoryConfigurationBuilder.html">org.infinispan.configuration.cache.MemoryConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/cache/MemoryConfigurationBuilder.html">org.infinispan.configuration.cache.MemoryConfigurationBuilder</a></p>
 </li>
 <li>
 <p><a href="../developing/developing.html#encoding_media_type">MediaType Configuration</a></p>
@@ -3104,85 +3080,74 @@ cfg
 <div class="sect4">
 <h5 id="eviction_example-config"><a class="anchor" href="#eviction_example-config"></a>Eviction Examples</h5>
 <div class="paragraph">
-<p>You configure eviction as part of your cache definition.</p>
+<p>Configure eviction as part of your cache definition.</p>
 </div>
 <div class="paragraph">
 <div class="title">Default memory configuration</div>
-<p>Eviction is not enabled, which is the default configuration. Infinispan stores
-cache entries as objects in the JVM heap.</p>
+<p>Eviction is not enabled, which is the default configuration. Infinispan stores cache entries as objects in the JVM heap.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;memory</span> <span class="tag">/&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default_memory</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;memory</span> <span class="tag">/&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
 <div class="title">Eviction based on the total number of entries</div>
-<p>Infinispan stores cache entries as objects in the JVM heap. Eviction happens
-when there are 100 entries in the data container and Infinispan gets a request
-to create a new entry:</p>
+<p>Infinispan stores cache entries as objects in the JVM heap. Eviction happens when there are 100 entries in the data container and Infinispan gets a request to create a new entry:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;memory</span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">total_number</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;memory</span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
 <div class="title">Eviction based maximum size in bytes</div>
-<p>Infinispan stores cache entries as <code>byte[]</code> arrays if you encode entries with
-binary storage formats, for example: <code>application/x-protostream</code> format.</p>
+<p>Infinispan stores cache entries as <code>byte[]</code> arrays if you encode entries with binary storage formats, for example: <code>application/x-protostream</code> format.</p>
 </div>
 <div class="paragraph">
-<p>In the following example, Infinispan performs eviction when the size of the
-data container reaches 500 MB (megabytes) in size and it gets a request to
-create a new entry:</p>
+<p>In the following example, Infinispan performs eviction when the size of the data container reaches 500 MB (megabytes) in size and it gets a request to create a new entry:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
-<span class="tag">&lt;memory</span> <span class="attribute-name">max-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">500 MB</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">binary_storage</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="comment">&lt;!-- Encodes the cache with a binary storage format. --&gt;</span>
+  <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="comment">&lt;!-- Bounds the data container to a maximum size in MB (megabytes). --&gt;</span>
+  <span class="tag">&lt;memory</span> <span class="attribute-name">max-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">500 MB</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Specifies a binary format for entries in the cache.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Defines the maximum size of the data container as MB (megabytes).</td>
-</tr>
-</table>
 </div>
 <div class="paragraph">
 <div class="title">Off-heap storage</div>
-<p>Infinispan stores cache entries as bytes in native memory. Eviction happens
-when there are 100 entries in the data container and Infinispan gets a request
-to create a new entry:</p>
+<p>Infinispan stores cache entries as bytes in native memory.
+Eviction happens when there are 100 entries in the data container and Infinispan gets a request to create a new entry:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;memory</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">OFF_HEAP</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">off_heap</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;memory</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">OFF_HEAP</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
 <div class="title">Off-heap storage with the exception strategy</div>
-<p>Infinispan stores cache entries as bytes in native memory. When there are 100
-entries in the data container, and Infinispan gets a request to create a new
-entry, it throws an exception and does not allow the new entry:</p>
+<p>Infinispan stores cache entries as bytes in native memory.
+When there are 100 entries in the data container, and Infinispan gets a request to create a new entry, it throws an exception and does not allow the new entry:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;transaction</span> <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NONE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-
-<span class="tag">&lt;memory</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">OFF_HEAP</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">EXCEPTION</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">eviction_exception</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;memory</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">OFF_HEAP</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">EXCEPTION</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
 <div class="title">Manual eviction</div>
-<p>Infinispan stores cache entries as objects in the JVM heap. Eviction is not
-enabled but performed manually using the <code>evict()</code> method.</p>
+<p>Infinispan stores cache entries as objects in the JVM heap. Eviction is not enabled but performed manually using the <code>evict()</code> method.</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -3192,8 +3157,7 @@ enabled but performed manually using the <code>evict()</code> method.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>This configuration prevents a warning message when you enable passivation but
-do not configure eviction.</p>
+<p>This configuration prevents a warning message when you enable passivation but do not configure eviction.</p>
 </div>
 </td>
 </tr>
@@ -3201,21 +3165,24 @@ do not configure eviction.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;memory</span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">MANUAL</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">eviction_manual</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;memory</span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">MANUAL</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
 <div class="title">Passivation with eviction</div>
-<p>Passivation persists data to cache stores when Infinispan evicts entries. You
-should always enable eviction if you enable passivation, for example:</p>
+<p>Passivation persists data to cache stores when Infinispan evicts entries.
+You should always enable eviction if you enable passivation, for example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence</span> <span class="attribute-name">passivation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-  ...
-<span class="tag">&lt;/persistence&gt;</span>
-
-<span class="tag">&lt;memory</span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">passivation</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;persistence</span> <span class="attribute-name">passivation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="comment">&lt;!-- Persistence configuration goes here. --&gt;</span>
+  <span class="tag">&lt;/persistence&gt;</span>
+  <span class="tag">&lt;memory</span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -3362,10 +3329,10 @@ case you cannot disable it.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/cache/ExpirationConfigurationBuilder.html">org.infinispan.configuration.cache.ExpirationConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/cache/ExpirationConfigurationBuilder.html">org.infinispan.configuration.cache.ExpirationConfigurationBuilder</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/expiration/ExpirationManager.html">org.infinispan.expiration.ExpirationManager</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/expiration/ExpirationManager.html">org.infinispan.expiration.ExpirationManager</a></p>
 </li>
 </ul>
 </div>
@@ -3536,13 +3503,13 @@ entries, the preceding <code>Cache.put()</code> requests cause the entries to ex
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Configuration Schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/cache/ExpirationConfigurationBuilder.html">org.infinispan.configuration.cache.ExpirationConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/cache/ExpirationConfigurationBuilder.html">org.infinispan.configuration.cache.ExpirationConfigurationBuilder</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/expiration/ExpirationManager.html">org.infinispan.expiration.ExpirationManager</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/expiration/ExpirationManager.html">org.infinispan.expiration.ExpirationManager</a></p>
 </li>
 </ul>
 </div>
@@ -3690,14 +3657,10 @@ heap space.</p>
 <div class="listingblock">
 <div class="title">Declarative cache configuration</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-  <span class="tag">&lt;cache-container&gt;</span>
-    <span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">off_heap</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;memory</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">OFF_HEAP</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1.5GB</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">REMOVE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-    <span class="tag">&lt;/distributed-cache&gt;</span>
-  <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">off_heap</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;memory</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">OFF_HEAP</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1.5GB</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">REMOVE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="listingblock">
@@ -3718,10 +3681,10 @@ cfg
 <div class="ulist">
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Configuration Schema Reference</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema Reference</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/cache/MemoryConfigurationBuilder.html">org.infinispan.configuration.cache.MemoryConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/cache/MemoryConfigurationBuilder.html">org.infinispan.configuration.cache.MemoryConfigurationBuilder</a></p>
 </li>
 </ul>
 </div>
@@ -3768,48 +3731,26 @@ caches that it controls. You must explicitly enable statistics for your caches.<
 <div class="listingblock">
 <div class="title">Declaratively</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container</span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
-  <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="comment">&lt;!-- Enables statistics for the Cache Manager. --&gt;</span>
+<span class="tag">&lt;cache-container</span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="comment">&lt;!-- Enables statistics for the named cache. --&gt;</span>
+  <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
 <span class="tag">&lt;/cache-container&gt;</span></code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Enables statistics for the Cache Manager.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Enables statistics for the named cache.</td>
-</tr>
-</table>
 </div>
 <div class="listingblock">
 <div class="title">Programmatically</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java">GlobalConfiguration globalConfig = <span class="keyword">new</span> GlobalConfigurationBuilder()
-  .cacheContainer().statistics(<span class="predefined-constant">true</span>) <i class="conum" data-value="1"></i><b>(1)</b>
+  <span class="comment">//Enables statistics for the Cache Manager.</span>
+  .cacheContainer().statistics(<span class="predefined-constant">true</span>)
   .build();
 
- ...
-
-Configuration config = <span class="keyword">new</span> ConfigurationBuilder()
-<span class="error"> </span> .statistics().enable() <i class="conum" data-value="2"></i><b>(2)</b>
+<span class="predefined-type">Configuration</span> config = <span class="keyword">new</span> ConfigurationBuilder()
+<span class="error"> </span> <span class="comment">//Enables statistics for the named cache.</span>
+  .statistics().enable()
   .build();</code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Enables statistics for the Cache Manager.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Enables statistics for the named cache.</td>
-</tr>
-</table>
 </div>
 </div>
 <div class="sect2">
@@ -3828,43 +3769,23 @@ Configuration config = <span class="keyword">new</span> ConfigurationBuilder()
 <div class="listingblock">
 <div class="title">Declaratively</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container</span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
-  <span class="tag">&lt;metrics</span> <span class="attribute-name">gauges</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">histograms</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span> <i class="conum" data-value="2"></i><b>(2)</b>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="comment">&lt;!-- Computes and collects statistics for the Cache Manager. --&gt;</span>
+<span class="tag">&lt;cache-container</span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="comment">&lt;!-- Exports collected statistics as gauge and histogram metrics. --&gt;</span>
+  <span class="tag">&lt;metrics</span> <span class="attribute-name">gauges</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">histograms</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
 <span class="tag">&lt;/cache-container&gt;</span></code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Computes and collects statistics about the Cache Manager.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Exports collected statistics as gauge and histogram metrics.</td>
-</tr>
-</table>
 </div>
 <div class="listingblock">
 <div class="title">Programmatically</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java">GlobalConfiguration globalConfig = <span class="keyword">new</span> GlobalConfigurationBuilder()
-  .statistics().enable() <i class="conum" data-value="1"></i><b>(1)</b>
-  .metrics().gauges(<span class="predefined-constant">true</span>).histograms(<span class="predefined-constant">true</span>) <i class="conum" data-value="2"></i><b>(2)</b>
+  <span class="comment">//Computes and collects statistics for the Cache Manager.</span>
+  .statistics().enable()
+  <span class="comment">//Exports collected statistics as gauge and histogram metrics.</span>
+  .metrics().gauges(<span class="predefined-constant">true</span>).histograms(<span class="predefined-constant">true</span>)
   .build();</code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Computes and collects statistics about the Cache Manager.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Exports collected statistics as gauge and histogram metrics.</td>
-</tr>
-</table>
 </div>
 <div class="sect3">
 <h4 id="metrics-configure"><a class="anchor" href="#metrics-configure"></a>6.2.1. Infinispan Metrics</h4>
@@ -3912,7 +3833,7 @@ attributes.</p>
 <div class="title">Procedure</div>
 <ul>
 <li>
-<p>Enable JMX declaratively or programmatically.</p>
+<p>Enable JMX declaratively or programmatically to register Infinispan JMX MBeans.</p>
 </li>
 </ul>
 </div>
@@ -3920,33 +3841,17 @@ attributes.</p>
 <div class="title">Declaratively</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container&gt;</span>
-  <span class="tag">&lt;jmx</span> <span class="attribute-name">enabled</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+  <span class="tag">&lt;jmx</span> <span class="attribute-name">enabled</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
 <span class="tag">&lt;/cache-container&gt;</span></code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Registers Infinispan JMX MBeans.</td>
-</tr>
-</table>
 </div>
 <div class="listingblock">
 <div class="title">Programmatically</div>
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java">GlobalConfiguration globalConfig = <span class="keyword">new</span> GlobalConfigurationBuilder()
-  .jmx().enable() <i class="conum" data-value="1"></i><b>(1)</b>
+  .jmx().enable()
   .build();</code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Registers Infinispan JMX MBeans.</td>
-</tr>
-</table>
 </div>
 <div class="sect3">
 <h4 id="name_cache_managers-configure"><a class="anchor" href="#name_cache_managers-configure"></a>6.3.1. Naming Multiple Cache Managers</h4>
@@ -3988,10 +3893,10 @@ name, which results in a JMX MBean named <code>org.infinispan:type=CacheManager,
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/global/GlobalConfigurationBuilder.html">GlobalConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/global/GlobalConfigurationBuilder.html">GlobalConfigurationBuilder</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Configuration Schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema</a></p>
 </li>
 </ul>
 </div>
@@ -4033,10 +3938,10 @@ register MBeans in custom MBeanServer instances.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Configuration Schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/jmx/MBeanServerLookup.html">MBeanServerLookup</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/jmx/MBeanServerLookup.html">MBeanServerLookup</a></p>
 </li>
 </ul>
 </div>
@@ -4065,7 +3970,7 @@ documentation.</p>
 </div>
 <div class="paragraph">
 <div class="title">Reference</div>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/jmxComponents.html">Infinispan JMX Components</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/jmxComponents.html">Infinispan JMX Components</a></p>
 </div>
 </div>
 </div>
@@ -4156,13 +4061,12 @@ should not fetch state or purge on startup.</p>
 <div class="title">Local (non-shared) file store</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence</span> <span class="attribute-name">passivation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   <span class="comment">&lt;!-- note that class is missing and is induced by the fileStore element name --&gt;</span>
-   <span class="tag">&lt;file-store</span>
-           <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">preload</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-           <span class="attribute-name">fetch-state</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-           <span class="attribute-name">read-only</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span>
-           <span class="attribute-name">purge</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-           <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${java.io.tmpdir}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="tag">&lt;file-store</span> <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span>
+               <span class="attribute-name">preload</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+               <span class="attribute-name">fetch-state</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+               <span class="attribute-name">read-only</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span>
+               <span class="attribute-name">purge</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+               <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${java.io.tmpdir}</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
       <span class="tag">&lt;write-behind</span> <span class="attribute-name">modification-queue-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">123</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
    <span class="tag">&lt;/file-store&gt;</span>
 <span class="tag">&lt;/persistence&gt;</span></code></pre>
@@ -4173,13 +4077,16 @@ should not fetch state or purge on startup.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myCustomStore</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    <span class="tag">&lt;persistence</span> <span class="attribute-name">passivation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;store</span>
-         <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.acme.CustomStore</span><span class="delimiter">&quot;</span></span>
-         <span class="attribute-name">fetch-state</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">preload</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span>
-         <span class="attribute-name">purge</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">read-only</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">segmented</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-
+      <span class="comment">&lt;!-- Specifies the fully qualified class name of a custom cache store. --&gt;</span>
+      <span class="tag">&lt;store</span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.acme.CustomStore</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">fetch-state</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">preload</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">purge</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">read-only</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span>
+             <span class="attribute-name">segmented</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
          <span class="tag">&lt;write-behind</span> <span class="attribute-name">modification-queue-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">123</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
-
+         <span class="comment">&lt;!-- Sets system properties for the custom cache store. --&gt;</span>
          <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myProp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>${system.property}<span class="tag">&lt;/property&gt;</span>
       <span class="tag">&lt;/store&gt;</span>
    <span class="tag">&lt;/persistence&gt;</span>
@@ -4207,7 +4114,7 @@ builder.persistence()
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Configuration Schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema</a></p>
 </li>
 <li>
 <p><a href="#cache_store_implementations">Infinispan Cache Store Implementations</a></p>
@@ -4306,10 +4213,10 @@ persistent location and global-state is enabled, Infinispan throws the following
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan configuration schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan configuration schema</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/global/GlobalStateConfiguration.html">org.infinispan.configuration.global.GlobalStateConfiguration</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/global/GlobalStateConfiguration.html">org.infinispan.configuration.global.GlobalStateConfiguration</a></p>
 </li>
 </ul>
 </div>
@@ -4778,13 +4685,13 @@ b.persistence()
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/infinispan-config-12.0.html">Infinispan configuration schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/infinispan-config-12.1.html">Infinispan configuration schema</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/cluster/ClusterLoader.html">ClusterLoader</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/cluster/ClusterLoader.html">ClusterLoader</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/cache/ClusterLoaderConfiguration.html">ClusterLoaderConfiguration</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/cache/ClusterLoaderConfiguration.html">ClusterLoaderConfiguration</a></p>
 </li>
 </ul>
 </div>
@@ -4851,7 +4758,7 @@ b.persistence()
 ConfigurationBuilder builder = <span class="keyword">new</span> ConfigurationBuilder();
 builder
   .remoteCache(<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span>)
-    .configuration(<span class="string"><span class="delimiter">&quot;</span><span class="content">&lt;infinispan&gt;&lt;cache-container&gt;&lt;distributed-cache name=</span><span class="char">\&quot;</span><span class="content">mycache</span><span class="char">\&quot;</span><span class="content">&gt;&lt;persistence&gt;&lt;file-store max-entries=</span><span class="char">\&quot;</span><span class="content">5000</span><span class="char">\&quot;</span><span class="content">/&gt;&lt;/persistence&gt;&lt;/distributed-cache&gt;&lt;/cache-container&gt;&lt;/infinispan&gt;</span><span class="delimiter">&quot;</span></span>);</code></pre>
+    .configuration(<span class="string"><span class="delimiter">&quot;</span><span class="content">&lt;distributed-cache name=</span><span class="char">\&quot;</span><span class="content">mycache</span><span class="char">\&quot;</span><span class="content">&gt;&lt;persistence&gt;&lt;file-store max-entries=</span><span class="char">\&quot;</span><span class="content">5000</span><span class="char">\&quot;</span><span class="content">/&gt;&lt;/persistence&gt;&lt;/distributed-cache&gt;</span><span class="delimiter">&quot;</span></span>);</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -4868,10 +4775,10 @@ data maps.</p>
 <p><a href="#setting_persistent_location-persistence">Setting a Global Persistent Location</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/infinispan-config-12.0.html">Infinispan configuration schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/infinispan-config-12.1.html">Infinispan configuration schema</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/file/SingleFileStore.html">SingleFileStore</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/file/SingleFileStore.html">SingleFileStore</a></p>
 </li>
 </ul>
 </div>
@@ -4990,16 +4897,16 @@ environments only.</p>
 <p><a href="https://agroal.github.io/">Agroal</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/jdbc/configuration/ConnectionFactoryConfigurationBuilder.html">ConnectionFactoryConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/jdbc/configuration/ConnectionFactoryConfigurationBuilder.html">ConnectionFactoryConfigurationBuilder</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/jdbc/configuration/PooledConnectionFactoryConfigurationBuilder.html">PooledConnectionFactoryConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/jdbc/configuration/PooledConnectionFactoryConfigurationBuilder.html">PooledConnectionFactoryConfigurationBuilder</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/jdbc/configuration/ManagedConnectionFactoryConfigurationBuilder.html">ManagedConnectionFactoryConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/jdbc/configuration/ManagedConnectionFactoryConfigurationBuilder.html">ManagedConnectionFactoryConfigurationBuilder</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/jdbc/configuration/SimpleConnectionFactoryConfigurationBuilder.html">SimpleConnectionFactoryConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/jdbc/configuration/SimpleConnectionFactoryConfigurationBuilder.html">SimpleConnectionFactoryConfigurationBuilder</a></p>
 </li>
 </ul>
 </div>
@@ -5020,7 +4927,7 @@ environments only.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence&gt;</span>
-   <span class="tag">&lt;string-keyed-jdbc-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:jdbc:12.0</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="tag">&lt;string-keyed-jdbc-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:jdbc:12.1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
       <span class="tag">&lt;connection-pool</span> <span class="attribute-name">connection-url</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:mem:infinispan_string_based;DB_CLOSE_DELAY=-1</span><span class="delimiter">&quot;</span></span>
                        <span class="attribute-name">username</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">sa</span><span class="delimiter">&quot;</span></span>
                        <span class="attribute-name">driver</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.h2.Driver</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
@@ -5045,7 +4952,7 @@ environments only.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence&gt;</span>
-  <span class="tag">&lt;string-keyed-jdbc-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:jdbc:12.0</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;string-keyed-jdbc-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:jdbc:12.1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
     <span class="tag">&lt;data-source</span> <span class="attribute-name">jndi-url</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">java:/StringStoreWithManagedConnectionTest/DS</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
     <span class="tag">&lt;string-keyed-table</span> <span class="attribute-name">drop-on-exit</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
                         <span class="attribute-name">create-on-start</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
@@ -5120,13 +5027,13 @@ builder.persistence().addStore(JdbcStringBasedStoreConfigurationBuilder.class)
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/infinispan-cachestore-jdbc-config-12.0.html">JDBC cache store configuration schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/infinispan-cachestore-jdbc-config-12.1.html">JDBC cache store configuration schema</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/jdbc/stringbased/JdbcStringBasedStore.html">JdbcStringBasedStore</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/jdbc/stringbased/JdbcStringBasedStore.html">JdbcStringBasedStore</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/jdbc/configuration/JdbcStringBasedStoreConfiguration.html">JdbcStringBasedStoreConfiguration</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/jdbc/configuration/JdbcStringBasedStoreConfiguration.html">JdbcStringBasedStoreConfiguration</a></p>
 </li>
 </ul>
 </div>
@@ -5167,7 +5074,7 @@ storage concurrently with Infinispan.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">vehicleCache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    <span class="tag">&lt;persistence</span> <span class="attribute-name">passivation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;jpa-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:jpa:12.0</span><span class="delimiter">&quot;</span></span>
+      <span class="tag">&lt;jpa-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:jpa:12.1</span><span class="delimiter">&quot;</span></span>
          <span class="attribute-name">persistence-unit</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.persistence.jpa.configurationTest</span><span class="delimiter">&quot;</span></span>
          <span class="attribute-name">entity-class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.persistence.jpa.entity.Vehicle</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
                 /<span class="error">&gt;</span>
@@ -5233,13 +5140,13 @@ storage concurrently with Infinispan.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/infinispan-cachestore-jpa-config-12.0.html">JPA cache store configuration schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/infinispan-cachestore-jpa-config-12.1.html">JPA cache store configuration schema</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/jpa/JpaStore.html">JpaStore</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/jpa/JpaStore.html">JpaStore</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/jpa/configuration/JpaStoreConfiguration.html">JpaStoreConfiguration</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/jpa/configuration/JpaStoreConfiguration.html">JpaStoreConfiguration</a></p>
 </li>
 <li>
 <p><a href="https://github.com/infinispan/infinispan/blob/master/persistence/jpa/src/test/java/org/infinispan/persistence/jpa/configuration/JpaConfigurationTest.java">JPA Cache Store test</a></p>
@@ -5273,7 +5180,7 @@ must create a <code>SerializationContextInitializer</code> implementation that r
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence-unit</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myPersistenceUnit</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-        ...
+        <span class="comment">&lt;!-- Persistence configuration goes here. --&gt;</span>
 <span class="tag">&lt;/persistence-unit&gt;</span></code></pre>
 </div>
 </div>
@@ -5402,7 +5309,7 @@ other words if <code>shared="true"</code> in your configuration then you must se
 <div class="title">Declarative configuration</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence&gt;</span>
-   <span class="tag">&lt;remote-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:remote:12.0</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">raw-values</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="tag">&lt;remote-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:remote:12.1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">raw-values</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
       <span class="tag">&lt;remote-server</span> <span class="attribute-name">host</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">one</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">port</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">12111</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
       <span class="tag">&lt;remote-server</span> <span class="attribute-name">host</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">two</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
       <span class="tag">&lt;connection-pool</span> <span class="attribute-name">max-active</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">exhausted-action</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">CREATE_NEW</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
@@ -5461,13 +5368,13 @@ case, you should disable segmentation for <code>RemoteStore</code>.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/infinispan-cachestore-remote-config-12.0.html">Remote cache store configuration schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/infinispan-cachestore-remote-config-12.1.html">Remote cache store configuration schema</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/remote/RemoteStore.html">RemoteStore</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/remote/RemoteStore.html">RemoteStore</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/remote/configuration/RemoteStoreConfigurationBuilder.html">RemoteStoreConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/remote/configuration/RemoteStoreConfigurationBuilder.html">RemoteStoreConfigurationBuilder</a></p>
 </li>
 </ul>
 </div>
@@ -5488,7 +5395,7 @@ Infinispan expires from memory.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">vehicleCache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    <span class="tag">&lt;persistence&gt;</span>
-      <span class="tag">&lt;rocksdb-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:rocksdb:12.0</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">rocksdb/data</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;rocksdb-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:rocksdb:12.1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">rocksdb/data</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
          <span class="tag">&lt;expiration</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">rocksdb/expired</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;/rocksdb-store&gt;</span>
    <span class="tag">&lt;/persistence&gt;</span>
@@ -5624,13 +5531,13 @@ significantly increases cache store start time.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/infinispan-cachestore-rocksdb-config-12.0.html">RocksDB cache store configuration schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/infinispan-cachestore-rocksdb-config-12.1.html">RocksDB cache store configuration schema</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/rocksdb/RocksDBStore.html">RocksDBStore</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/rocksdb/RocksDBStore.html">RocksDBStore</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/rocksdb/configuration/RocksDBStoreConfiguration.html">RocksDBStoreConfiguration</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/rocksdb/configuration/RocksDBStoreConfiguration.html">RocksDBStoreConfiguration</a></p>
 </li>
 <li>
 <p><a href="http://rocksdb.org/">rocksdb.org</a></p>
@@ -5705,7 +5612,7 @@ usage of space on the file system .</p>
 <div class="title">Declarative configuration</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence&gt;</span>
-    <span class="tag">&lt;soft-index-file-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:soft-index:12.0</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;soft-index-file-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:soft-index:12.1</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;index</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">testCache/index</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
         <span class="tag">&lt;data</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">testCache/data</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
     <span class="tag">&lt;/soft-index-file-store&gt;</span>
@@ -5733,13 +5640,13 @@ data maps.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/infinispan-persistence-soft-index-config-12.0.html">Soft-Index File cache store configuration schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/infinispan-persistence-soft-index-config-12.1.html">Soft-Index File cache store configuration schema</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/sifs/SoftIndexFileStore.html">SoftIndexFileStore</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/sifs/SoftIndexFileStore.html">SoftIndexFileStore</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/sifs/configuration/SoftIndexFileStoreConfiguration.html">SoftIndexFileStoreConfiguration</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/sifs/configuration/SoftIndexFileStoreConfiguration.html">SoftIndexFileStoreConfiguration</a></p>
 </li>
 </ul>
 </div>
@@ -5790,10 +5697,10 @@ writing to the wire.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/spi/package-summary.html">Persistence SPI</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/spi/package-summary.html">Persistence SPI</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/persistence/spi/NonBlockingStore.html">NonBlockingStore</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/persistence/spi/NonBlockingStore.html">NonBlockingStore</a></p>
 </li>
 <li>
 <p><a href="http://jcp.org/en/jsr/detail?id=107">JSR-107</a></p>
@@ -6730,7 +6637,7 @@ to have occurred if both a null and non-null value exists for a given key.</p>
 <div class="paragraph">
 <p>In the event of conflicts arising between one or more replicas of a given CacheEntry, it is necessary for a conflict
 resolution algorithm to be defined, therefore we provide the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/conflict/EntryMergePolicy.html">EntryMergePolicy</a> interface. This interface consists
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/conflict/EntryMergePolicy.html">EntryMergePolicy</a> interface. This interface consists
 of a single method, "merge", whose returned CacheEntry is utilised as the "resolved" entry for a given key. When a non-null
 CacheEntry is returned, this entries value is "put" to all replicas in the cache. However when the merge implementation
 returns a null value, all replicas associated with the conflicting key are removed from the cache.</p>
@@ -6884,8 +6791,9 @@ dcc.clustering().partitionHandling()
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">the-default-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   <span class="tag">&lt;partition-handling</span> <span class="attribute-name">when-split</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ALLOW_READ_WRITES</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">merge-policy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.example.CustomMergePolicy</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="tag">&lt;partition-handling</span> <span class="attribute-name">when-split</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ALLOW_READ_WRITES</span><span class="delimiter">&quot;</span></span>
+                       <span class="attribute-name">merge-policy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.example.CustomMergePolicy</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -6932,14 +6840,14 @@ Finally, object storage is never required if one of the provided merge policies 
 <h4 id="partition_handling_monitoring"><a class="anchor" href="#partition_handling_monitoring"></a>8.1.6. Monitoring and administration</h4>
 <div class="paragraph">
 <p>The availability mode of a cache is exposed in JMX as an attribute in the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/jmxComponents.html#Cache">Cache MBean</a>.
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/jmxComponents.html#Cache">Cache MBean</a>.
 The attribute is writable, allowing an administrator to forcefully migrate
 a cache from DEGRADED mode back to AVAILABLE (at the cost of
 consistency).</p>
 </div>
 <div class="paragraph">
 <p>The availability mode is also accessible via the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html">AdvancedCache</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/AdvancedCache.html">AdvancedCache</a>
 interface:</p>
 </div>
 <div class="listingblock">
@@ -6962,7 +6870,7 @@ interface:</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-03-12 07:41:09 -0500
+Last updated 2021-04-05 08:28:54 -0400
 </div>
 </div>
 <style>

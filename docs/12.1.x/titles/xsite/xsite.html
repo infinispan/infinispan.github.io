@@ -541,7 +541,11 @@ $(addBlockSwitches);
 </ul>
 </li>
 <li><a href="#xsite_auto_offline-xsite">1.4. Automatically Taking Backups Offline</a></li>
-<li><a href="#xsite_state_transfer-xsite">1.5. State Transfer</a></li>
+<li><a href="#xsite_state_transfer-xsite">1.5. State Transfer</a>
+<ul class="sectlevel3">
+<li><a href="#automatic_state_transfer">1.5.1. Automatic State Transfer</a></li>
+</ul>
+</li>
 <li><a href="#xsite_active_passive-xsite">1.6. Client Connections Across Sites</a>
 <ul class="sectlevel3">
 <li><a href="#conflict_resolution-xsite">1.6.1. Concurrent Writes and Conflicting Entries</a>
@@ -564,9 +568,10 @@ $(addBlockSwitches);
 </li>
 <li><a href="#configure_backups-xsite">2.2. Adding Backup Locations to Caches</a></li>
 <li><a href="#configure_backupfor-xsite">2.3. Backing Up to Caches with Different Names</a></li>
-<li><a href="#configure_conflict_resolver-xsite">2.4. Configuring Cross-Site Conflict Resolution</a></li>
-<li><a href="#verify_xsite_view-xsite">2.5. Verifying Cross-Site Views</a></li>
-<li><a href="#configure_clients-xsite">2.6. Configuring Hot Rod Clients for Cross-Site Replication</a></li>
+<li><a href="#configure_state_transfer-xsite">2.4. Configuring Cross-Site State Transfer</a></li>
+<li><a href="#configure_conflict_resolver-xsite">2.5. Configuring Cross-Site Conflict Resolution</a></li>
+<li><a href="#verify_xsite_view-xsite">2.6. Verifying Cross-Site Views</a></li>
+<li><a href="#configure_clients-xsite">2.7. Configuring Hot Rod Clients for Cross-Site Replication</a></li>
 </ul>
 </li>
 <li><a href="#xsite_manage">3. Performing Cross-Site Replication Operations</a>
@@ -574,7 +579,8 @@ $(addBlockSwitches);
 <li><a href="#xsite_operations_cli">3.1. Performing Cross-Site Operations with the CLI</a>
 <ul class="sectlevel3">
 <li><a href="#manage_sites-cli-ops">3.1.1. Bringing Backup Locations Offline and Online</a></li>
-<li><a href="#cli_xsite_push-cli-ops">3.1.2. Pushing State to Backup Locations</a></li>
+<li><a href="#cli_xsite_push-cli-ops">3.1.2. Configuring Cross-Site State Transfer Modes</a></li>
+<li><a href="#cli_xsite_push-cli-ops">3.1.3. Pushing State to Backup Locations</a></li>
 </ul>
 </li>
 <li><a href="#xsite_operations_rest">3.2. Performing Cross-Site Operations with the REST API</a>
@@ -592,8 +598,10 @@ $(addBlockSwitches);
 <li><a href="#rest_v2_cache_manager_site_status">3.2.11. Getting Status of Backup Locations</a></li>
 <li><a href="#rest_v2_cache_manager_take_offline">3.2.12. Taking Backup Locations Offline</a></li>
 <li><a href="#rest_v2_cache_manager_bring_online">3.2.13. Bringing Backup Locations Online</a></li>
-<li><a href="#rest_v2_cache_manager_start_push">3.2.14. Starting State Transfer</a></li>
-<li><a href="#rest_v2_cache_manager_cancel_push">3.2.15. Canceling State Transfer</a></li>
+<li><a href="#rest_v2_cache_manager_get_state_transfer_mode">3.2.14. Retrieving the State Transfer Mode</a></li>
+<li><a href="#rest_v2_cache_manager_get_state_transfer_mode">3.2.15. Setting the State Transfer Mode</a></li>
+<li><a href="#rest_v2_cache_manager_start_push">3.2.16. Starting State Transfer</a></li>
+<li><a href="#rest_v2_cache_manager_cancel_push">3.2.17. Canceling State Transfer</a></li>
 </ul>
 </li>
 <li><a href="#xsite_operations_jmx">3.3. Performing Cross-Site Operations with JMX</a>
@@ -835,7 +843,7 @@ them as failures.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="comment">&lt;!-- Operations to replicate data to NYC are recorded as failures if they do not complete after 10 seconds. --&gt;</span>
 <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-        ...
+        <span class="comment">&lt;!-- Configuration for backup locations goes here. --&gt;</span>
 <span class="tag">&lt;/backup&gt;</span></code></pre>
 </div>
 </div>
@@ -923,6 +931,9 @@ while <strong>LON</strong> is offline. When you bring <strong>LON</strong> back 
 at that location. If you push state from <strong>NYC</strong> to <strong>LON</strong>, the transfer does
 not affect "k2" on <strong>LON</strong>.</p>
 </div>
+</li>
+</ul>
+</div>
 <div class="admonitionblock tip">
 <table>
 <tr>
@@ -932,14 +943,17 @@ not affect "k2" on <strong>LON</strong>.</p>
 <td class="content">
 <div class="paragraph">
 <p>To ensure contents of the cache are identical after state transfer, remove all
-data from the cache on the receiving site before pushing state. Use the
-<code>clear()</code> method.</p>
+data from the cache on the receiving site before pushing state.</p>
+</div>
+<div class="paragraph">
+<p>Use the <code>clear()</code> method or the <code class="command">clearcache</code> command from the CLI.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
-</li>
+<div class="ulist">
+<ul>
 <li>
 <p>State transfer does not overwrite updates to data that occur after you
 initiate the push.</p>
@@ -955,6 +969,16 @@ that modification happened after you initiated the push.</p>
 </li>
 </ul>
 </div>
+<div class="sect3">
+<h4 id="automatic_state_transfer"><a class="anchor" href="#automatic_state_transfer"></a>1.5.1. Automatic State Transfer</h4>
+<div class="paragraph">
+<p>By default you must manually perform cross-site state transfer operations with the CLI or via JMX or REST.</p>
+</div>
+<div class="paragraph">
+<p>However, when using the asynchronous backup strategy, Infinispan can automatically perform cross-site state transfer operations.
+When it detects that a backup location has come back online, and the network connection is stable, Infinispan initiates bi-directional state transfer between backup locations.
+For example, Infinispan simultaneously transfers state from <strong>LON</strong> to <strong>NYC</strong> and <strong>NYC</strong> to <strong>LON</strong>.</p>
+</div>
 <div class="ulist">
 <div class="title">Reference</div>
 <ul>
@@ -963,25 +987,15 @@ that modification happened after you initiated the push.</p>
 </li>
 <li>
 <p><a href="../cli/cli.html#deleting_cache_entries">Clearing Caches with the CLI</a></p>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-tip" title="Tip"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Run <code>help clearcache</code> from the CLI for command details and examples.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
 </li>
 <li>
 <p><a href="../rest/rest.html#rest_v2_clear_cache">Clearing Caches with the REST API</a></p>
 </li>
+<li>
+<p><a href="#configure_state_transfer-xsite">Configure Cross-Site State Transfer</a></p>
+</li>
 </ul>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -1524,7 +1538,52 @@ different name on the local site.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configure_conflict_resolver-xsite"><a class="anchor" href="#configure_conflict_resolver-xsite"></a>2.4. Configuring Cross-Site Conflict Resolution</h3>
+<h3 id="configure_state_transfer-xsite"><a class="anchor" href="#configure_state_transfer-xsite"></a>2.4. Configuring Cross-Site State Transfer</h3>
+<div class="paragraph">
+<p>Change cross-site state transfer settings to optimize performance and specify whether operations happen manually or automatically.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Use <code>&lt;state-transfer&gt;</code> to configure state transfer operations.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For example, the following configuration automatically performs cross-site state transfer with custom settings:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">eu-customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="tag">&lt;backups&gt;</span>
+      <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+         <span class="tag">&lt;state-transfer</span> <span class="attribute-name">chunk-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">64</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">30000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-retries</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">30</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">wait-time</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">AUTO</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;/backup&gt;</span>
+   <span class="tag">&lt;/backups&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema</a></p>
+</li>
+<li>
+<p><a href="#cli_xsite_push-xsite">Pushing State to Backup Locations (CLI)</a></p>
+</li>
+<li>
+<p><a href="#rest_v2_cache_manager_start_push">Pushing State to Backup Locations (REST)</a></p>
+</li>
+<li>
+<p><a href="#performing_jmx_operations-xsite">Pushing State to Backup Locations (JMX)</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configure_conflict_resolver-xsite"><a class="anchor" href="#configure_conflict_resolver-xsite"></a>2.5. Configuring Cross-Site Conflict Resolution</h3>
 <div class="paragraph">
 <p>Specify the algorithm name of the implementation to use when conflict happens.</p>
 </div>
@@ -1572,7 +1631,7 @@ different name on the local site.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="verify_xsite_view-xsite"><a class="anchor" href="#verify_xsite_view-xsite"></a>2.5. Verifying Cross-Site Views</h3>
+<h3 id="verify_xsite_view-xsite"><a class="anchor" href="#verify_xsite_view-xsite"></a>2.6. Verifying Cross-Site Views</h3>
 <div class="paragraph">
 <p>After you configure Infinispan for cross-site replication, you should verify
 that Infinispan clusters successfully form cross-site views.</p>
@@ -1597,7 +1656,7 @@ INFO  [org.infinispan.XSITE] (jgroups-7,${server.hostname}) ISPN000439: Received
 </div>
 </div>
 <div class="sect2">
-<h3 id="configure_clients-xsite"><a class="anchor" href="#configure_clients-xsite"></a>2.6. Configuring Hot Rod Clients for Cross-Site Replication</h3>
+<h3 id="configure_clients-xsite"><a class="anchor" href="#configure_clients-xsite"></a>2.7. Configuring Hot Rod Clients for Cross-Site Replication</h3>
 <div class="paragraph">
 <p>Configure Hot Rod clients to use Infinispan clusters at different sites.</p>
 </div>
@@ -1700,7 +1759,7 @@ servers, manage sites, and push state transfer to backup locations.</p>
 <p>Check if backup locations are online or offline with the <code class="command">site status</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site status --cache=cacheName --site=NYC</pre>
+<pre>[//containers/default]&gt; site status --cache=cacheName --site=NYC</pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -1727,7 +1786,7 @@ locations.</p>
 <p>Bring backup locations online with the <code class="command">bring-online</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site bring-online --cache=customers --site=NYC</pre>
+<pre>[//containers/default]&gt; site bring-online --cache=customers --site=NYC</pre>
 </div>
 </div>
 </li>
@@ -1735,7 +1794,7 @@ locations.</p>
 <p>Take backup locations offline with the <code class="command">take-offline</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site take-offline --cache=customers --site=NYC</pre>
+<pre>[//containers/default]&gt; site take-offline --cache=customers --site=NYC</pre>
 </div>
 </div>
 </li>
@@ -1749,7 +1808,60 @@ locations.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="cli_xsite_push-cli-ops"><a class="anchor" href="#cli_xsite_push-cli-ops"></a>3.1.2. Pushing State to Backup Locations</h4>
+<h4 id="cli_xsite_push-cli-ops"><a class="anchor" href="#cli_xsite_push-cli-ops"></a>3.1.2. Configuring Cross-Site State Transfer Modes</h4>
+<div class="paragraph">
+<p>You can configure cross-site state transfer operations to happen automatically when Infinispan detects that backup locations come online.
+Alternatively you can use the default mode, which is to manually perform state transfer through the CLI or via JMX or REST.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a CLI connection to Infinispan.</p>
+</li>
+<li>
+<p>Use the <code class="command">site</code> command to configure state transfer modes, as in the following examples:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Retrieve the current state transfer mode.</p>
+<div class="listingblock">
+<div class="content">
+<pre>[//containers/default]&gt; site state-transfer-mode get --cache=cacheName --site=NYC
+"MANUAL"</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Configure automatic state transfer operations for a cache and backup location.</p>
+</li>
+</ul>
+</div>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>[//containers/default]&gt; site state-transfer-mode set --cache=cacheName --site=NYC --mode=AUTO</pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Run the <code class="command">help site</code> command for more information and examples.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="cli_xsite_push-cli-ops"><a class="anchor" href="#cli_xsite_push-cli-ops"></a>3.1.3. Pushing State to Backup Locations</h4>
 <div class="paragraph">
 <p>Transfer cache state to remote backup locations.</p>
 </div>
@@ -1763,7 +1875,7 @@ locations.</p>
 <p>Use the <code class="command">site</code> command to push state transfer, as in the following example:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site push-site-state --cache=cacheName --site=NYC</pre>
+<pre>[//containers/default]&gt; site push-site-state --cache=cacheName --site=NYC</pre>
 </div>
 </div>
 </li>
@@ -2140,7 +2252,29 @@ requests.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_v2_cache_manager_start_push"><a class="anchor" href="#rest_v2_cache_manager_start_push"></a>3.2.14. Starting State Transfer</h4>
+<h4 id="rest_v2_cache_manager_get_state_transfer_mode"><a class="anchor" href="#rest_v2_cache_manager_get_state_transfer_mode"></a>3.2.14. Retrieving the State Transfer Mode</h4>
+<div class="paragraph">
+<p>Check the state transfer mode with <code>GET</code> requests.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_cache_manager_get_state_transfer_mode"><a class="anchor" href="#rest_v2_cache_manager_get_state_transfer_mode"></a>3.2.15. Setting the State Transfer Mode</h4>
+<div class="paragraph">
+<p>Configure the state transfer mode with the <code>?action=set</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>POST /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode?action=set&amp;mode={mode}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_cache_manager_start_push"><a class="anchor" href="#rest_v2_cache_manager_start_push"></a>3.2.16. Starting State Transfer</h4>
 <div class="paragraph">
 <p>Push state of all caches to remote sites with the <code>?action=start-push-state</code> parameter.</p>
 </div>
@@ -2151,7 +2285,7 @@ requests.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_v2_cache_manager_cancel_push"><a class="anchor" href="#rest_v2_cache_manager_cancel_push"></a>3.2.15. Canceling State Transfer</h4>
+<h4 id="rest_v2_cache_manager_cancel_push"><a class="anchor" href="#rest_v2_cache_manager_cancel_push"></a>3.2.17. Canceling State Transfer</h4>
 <div class="paragraph">
 <p>Cancel ongoing state transfer operations with the <code>?action=cancel-push-state</code> parameter.</p>
 </div>
@@ -2677,7 +2811,7 @@ If you did not take the site offline manually, this message could indicate a fai
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-03-21 08:45:53 -0400
+Last updated 2021-04-05 08:28:54 -0400
 </div>
 </div>
 <style>

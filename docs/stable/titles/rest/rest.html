@@ -442,6 +442,82 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
 <script src="../../js/js.js"></script>
+<style>
+.hidden {
+    display: none;
+}
+
+.switch {
+    border-width: 1px 1px 0 1px;
+    border-style: solid;
+    border-color: #7a2518;
+    display: inline-block;
+}
+
+.switch--item {
+    padding: 10px;
+    background-color: #ffffff;
+    color: #7a2518;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.switch--item.selected {
+    background-color: #7a2519;
+    color: #ffffff;
+}
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script type="text/javascript">
+function addBlockSwitches() {
+    $('.primary').each(function() {
+        primary = $(this);
+        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
+        primary.children('.title').remove();
+    });
+    $('.secondary').each(function(idx, node) {
+        secondary = $(node);
+        primary = findPrimary(secondary);
+        switchItem = createSwitchItem(secondary, primary.children('.switch'));
+        switchItem.content.addClass('hidden');
+        findPrimary(secondary).append(switchItem.content);
+        secondary.remove();
+    });
+}
+
+function createBlockSwitch(primary) {
+    blockSwitch = $('<div class="switch"></div>');
+    primary.prepend(blockSwitch);
+    return blockSwitch;
+}
+
+function findPrimary(secondary) {
+    candidate = secondary.prev();
+    while (!candidate.is('.primary')) {
+        candidate = candidate.prev();
+    }
+    return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+    blockName = block.children('.title').text();
+    content = block.children('.content').first().append(block.next('.colist'));
+    item = $('<div class="switch--item">' + blockName + '</div>');
+    item.on('click', '', content, function(e) {
+        $(this).addClass('selected');
+        $(this).siblings().removeClass('selected');
+        e.data.siblings('.content').addClass('hidden');
+        e.data.removeClass('hidden');
+    });
+    blockSwitch.append(item);
+    return {'item': item, 'content': content};
+}
+
+$(addBlockSwitches);
+
+</script>
+
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
@@ -475,8 +551,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel3">
 <li><a href="#rest_v2_create_cache">2.1.1. Creating Caches</a>
 <ul class="sectlevel4">
-<li><a href="#ref_xml_configuration">XML Configuration</a></li>
-<li><a href="#ref_json_configuration">JSON Configuration</a></li>
+<li><a href="#cache_configuration">Cache Configuration</a></li>
 </ul>
 </li>
 <li><a href="#rest_v2_cache_exists">2.1.2. Verifying Caches</a></li>
@@ -531,15 +606,14 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#rest_server_counters_create">2.2.1. Creating Counters</a></li>
 <li><a href="#rest_server_counters_delete">2.2.2. Deleting Counters</a></li>
 <li><a href="#rest_server_counters_config">2.2.3. Retrieving Counter Configuration</a></li>
-<li><a href="#rest_server_counters_add">2.2.4. Adding Values to Counters</a></li>
-<li><a href="#rest_server_counters_get">2.2.5. Getting Counter Values</a></li>
-<li><a href="#rest_server_counters_reset">2.2.6. Resetting Counters</a></li>
-<li><a href="#rest_server_counters_inc_weak">2.2.7. Incrementing Counters</a></li>
-<li><a href="#rest_server_counters_add_weak">2.2.8. Adding Deltas to Counters</a></li>
-<li><a href="#rest_server_counters_dec">2.2.9. Decrementing Counter Values</a></li>
-<li><a href="#rest_server_counters_cmpset">2.2.10. Performing compareAndSet Operations on Strong Counters</a></li>
-<li><a href="#rest_server_counters_cmpswp">2.2.11. Performing compareAndSwap Operations on Strong Counters</a></li>
-<li><a href="#rest_server_counters_list">2.2.12. Listing Counters</a></li>
+<li><a href="#rest_server_counters_get">2.2.4. Getting Counter Values</a></li>
+<li><a href="#rest_server_counters_reset">2.2.5. Resetting Counters</a></li>
+<li><a href="#rest_server_counters_inc_weak">2.2.6. Incrementing Counters</a></li>
+<li><a href="#rest_server_counters_add_weak">2.2.7. Adding Deltas to Counters</a></li>
+<li><a href="#rest_server_counters_dec">2.2.8. Decrementing Counter Values</a></li>
+<li><a href="#rest_server_counters_cmpset">2.2.9. Performing compareAndSet Operations on Strong Counters</a></li>
+<li><a href="#rest_server_counters_cmpswp">2.2.10. Performing compareAndSwap Operations on Strong Counters</a></li>
+<li><a href="#rest_server_counters_list">2.2.11. Listing Counters</a></li>
 </ul>
 </li>
 <li><a href="#rest_v2_protobuf_schemas">2.3. Working with Protobuf Schemas</a>
@@ -581,6 +655,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#rest_v2_cache_manager_site_status">Getting Status of Backup Locations</a></li>
 <li><a href="#rest_v2_cache_manager_take_offline">Taking Backup Locations Offline</a></li>
 <li><a href="#rest_v2_cache_manager_bring_online">Bringing Backup Locations Online</a></li>
+<li><a href="#rest_v2_cache_manager_get_state_transfer_mode">Retrieving the State Transfer Mode</a></li>
+<li><a href="#rest_v2_cache_manager_get_state_transfer_mode">Setting the State Transfer Mode</a></li>
 <li><a href="#rest_v2_cache_manager_start_push">Starting State Transfer</a></li>
 <li><a href="#rest_v2_cache_manager_cancel_push">Canceling State Transfer</a></li>
 </ul>
@@ -635,6 +711,16 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#rest_v2_tasks_list">2.8.1. Retrieving Server Tasks Information</a></li>
 <li><a href="#rest_v2_tasks_execute">2.8.2. Executing Tasks</a></li>
 <li><a href="#rest_v2_tasks_upload">2.8.3. Uploading Script Tasks</a></li>
+</ul>
+</li>
+<li><a href="#rest_v2_security">2.9. Working with Infinispan Security</a>
+<ul class="sectlevel3">
+<li><a href="#rest_v2_security_user_acl">2.9.1. Retrieving the ACL of a user</a></li>
+<li><a href="#rest_v2_security_user_acl">2.9.2. Flushing the ACL cache</a></li>
+<li><a href="#rest_v2_security_user_acl">2.9.3. Retrieving the available roles</a></li>
+<li><a href="#rest_v2_security_roles_principal">2.9.4. Retrieving the roles for a principal</a></li>
+<li><a href="#rest_v2_security_roles_principal_grant">2.9.5. Granting roles to a principal</a></li>
+<li><a href="#rest_v2_security_roles_principal_deny">2.9.6. Denying roles to a principal</a></li>
 </ul>
 </li>
 </ul>
@@ -726,16 +812,16 @@ either the Jetty ALPN Agent or OpenSSL bindings.</p>
 <p>See the <a href="../developing/developing.html#data_encoding">Encoding</a> section for more information about MediaTypes and encoding data with Infinispan.</p>
 </div>
 <div class="paragraph">
-<p>The following example configures storage format for entries:</p>
+<p>The following example configures the storage format for entries:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache&gt;</span>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    <span class="tag">&lt;encoding&gt;</span>
       <span class="tag">&lt;key</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-java-object</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;value</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/xml; charset=UTF-8</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
    <span class="tag">&lt;/encoding&gt;</span>
-<span class="tag">&lt;/cache&gt;</span></code></pre>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1008,7 +1094,7 @@ other than "http://host1" or "https://host1" can perform the allowed methods
 and use the supplied headers.</p>
 </div>
 <div class="paragraph">
-<p>For information about configuring CORS rules, see the <a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Server Configuration Schema</a>.</p>
+<p>For information about configuring CORS rules, see the <a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Server Configuration Schema</a>.</p>
 </div>
 <div class="sect3">
 <h4 id="allowing_all_cors_permissions_for_some_origins"><a class="anchor" href="#allowing_all_cors_permissions_for_some_origins"></a>1.4.1. Allowing all CORS permissions for some origins</h4>
@@ -1034,6 +1120,21 @@ Example:</p>
 <div class="paragraph">
 <p>The Infinispan REST API lets you monitor, maintain, and manage Infinispan
 deployments and provides access to your data.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>By default Infinispan REST API operations return <code>200 (OK)</code> when successful.
+However, when some operations are processed successfully, they return an HTTP status code such as <code>204</code> or <code>202</code> instead of <code>200</code>.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="sect2">
 <h3 id="rest_v2_cache_operations"><a class="anchor" href="#rest_v2_cache_operations"></a>2.1. Creating and Managing Caches</h3>
@@ -1080,73 +1181,22 @@ Infinispan configuration payload; either <code>application/xml</code> or
 </tr>
 </tbody>
 </table>
-<div class="ulist">
-<div class="title">References</div>
-<ul>
-<li>
-<p><a href="#ref_xml_configuration">Infinispan XML Configuration</a></p>
-</li>
-<li>
-<p><a href="#ref_json_configuration">Infinispan JSON Configuration</a></p>
-</li>
-</ul>
-</div>
 <div class="sect4">
-<h5 id="ref_xml_configuration"><a class="anchor" href="#ref_xml_configuration"></a>XML Configuration</h5>
+<h5 id="cache_configuration"><a class="anchor" href="#cache_configuration"></a>Cache Configuration</h5>
 <div class="paragraph">
-<p>Infinispan configuration in XML format must conform to the schema and include:</p>
+<p>You can provide cache configuration in XML or JSON format.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>&lt;infinispan&gt;</code> root element.</p>
-</li>
-<li>
-<p><code>&lt;cache-container&gt;</code> definition.</p>
-</li>
-</ul>
-</div>
-<div class="listingblock">
-<div class="title">Example XML Configuration</div>
+<div class="listingblock primary">
+<div class="title">XML</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-    <span class="tag">&lt;cache-container&gt;</span>
-        <span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myCache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-          <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-          <span class="tag">&lt;memory</span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">REMOVE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;/distributed-cache&gt;</span>
-    <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myCache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;memory</span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">REMOVE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
-</div>
-<div class="sect4">
-<h5 id="ref_json_configuration"><a class="anchor" href="#ref_json_configuration"></a>JSON Configuration</h5>
-<div class="paragraph">
-<p>Infinispan configuration in JSON format:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Requires the cache definition only.</p>
-</li>
-<li>
-<p>Must follow the structure of an XML configuration.</p>
-<div class="ulist">
-<ul>
-<li>
-<p>XML elements become JSON objects.</p>
-</li>
-<li>
-<p>XML attributes become JSON fields.</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-<div class="listingblock">
-<div class="title">Example JSON Configuration</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="json">{
   <span class="key"><span class="delimiter">&quot;</span><span class="content">distributed-cache</span><span class="delimiter">&quot;</span></span>: {
@@ -1162,6 +1212,12 @@ Infinispan configuration payload; either <code>application/xml</code> or
   }
 }</code></pre>
 </div>
+</div>
+<h6 id="json_format" class="discrete">JSON format</h6>
+<div class="paragraph">
+<p>Cache configuration in JSON format must follow the structure of an XML configuration.
+* XML elements become JSON objects.
+* XML attributes become JSON fields.</p>
 </div>
 </div>
 </div>
@@ -1363,8 +1419,12 @@ cache with the <code>cacheKey</code> key. The request replaces any data that alr
 exists and updates the <code>Time-To-Live</code> and <code>Last-Modified</code> values, if they apply.</p>
 </div>
 <div class="paragraph">
-<p>If a value already exists for the specified key, the <code>POST</code> request returns an
-HTTP <code>CONFLICT</code> status and does not modify the value. To update values, you
+<p>If the entry is created successfully, the service returns <code>204 (No Content)</code>.</p>
+</div>
+<div class="paragraph">
+<p>If a value already exists for the specified key, the <code>POST</code> request returns
+<code>409 (Conflict)</code> and does not modify the value.
+To update values, you
 should use <code>PUT</code> requests. See <a href="#rest_v2_replace_entries">Replacing Entries</a>.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -1475,7 +1535,7 @@ The <code>flags</code> header also applies to all other operations involving dat
 <div class="paragraph">
 <p>If a value already exists for the specified key, the <code>PUT</code> request updates the
 value. If you do not want to modify existing values, use <code>POST</code> requests that
-return HTTP <code>CONFLICT</code> status instead of modifying values. See
+return <code>409 (Conflict)</code> instead of modifying values. See
 <a href="#rest_v2_add_entries">Adding Values</a>.</p>
 </div>
 </div>
@@ -1820,6 +1880,9 @@ Java objects, Infinispan does not de-serialize the content in the request.</p>
 <pre class="CodeRay highlight nowrap"><code>POST /rest/v2/caches/{cacheName}?action=clear</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
+</div>
 </div>
 <div class="sect3">
 <h4 id="rest_v2_cache_size"><a class="anchor" href="#rest_v2_cache_size"></a>2.1.16. Getting Cache Size</h4>
@@ -1984,10 +2047,10 @@ the <code>?action=size</code> parameter.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>sync</code> returns a response of <code>200</code> only after the re-indexing operation is complete.</p>
+<p><code>sync</code> returns <code>204 (No Content)</code> only after the re-indexing operation is complete.</p>
 </li>
 <li>
-<p><code>async</code> returns a response of <code>200</code> immediately and the re-indexing operation continues running in the cluster. You can check the status with the <a href="#rest_v2_query_index_stats">Index Statistics</a> REST call.</p>
+<p><code>async</code> returns <code>204 (No Content)</code> immediately and the re-indexing operation continues running in the cluster. You can check the status with the <a href="#rest_v2_query_index_stats">Index Statistics</a> REST call.</p>
 </li>
 </ul>
 </div>
@@ -2002,6 +2065,9 @@ parameter.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code>POST  /v2/caches/{cacheName}/search/indexes?action=clear</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
 </div>
 </div>
 <div class="sect3">
@@ -2559,6 +2625,9 @@ follows:</p>
 <pre class="CodeRay highlight nowrap"><code>PUT /v2/caches/{cacheName}/x-site/backups/{siteName}/take-offline-config</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
+</div>
 </li>
 </ol>
 </div>
@@ -2611,6 +2680,9 @@ cluster with <code>POST</code> requests and the <code>?action=disconnect-source<
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code>POST /v2/caches/{cacheName}?action=disconnect-source</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
 </div>
 </div>
 </div>
@@ -2681,53 +2753,7 @@ cluster with <code>POST</code> requests and the <code>?action=disconnect-source<
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_server_counters_add"><a class="anchor" href="#rest_server_counters_add"></a>2.2.4. Adding Values to Counters</h4>
-<div class="paragraph">
-<p>Add values to specific counters with <code>POST</code> requests.</p>
-</div>
-<div class="admonitionblock important">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-important" title="Important"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>This method processes <code>plain/text</code> content only.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code>POST /rest/v2/counters/{counterName}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>If the request payload is empty, the counter is incremented by one, otherwise
-the payload is interpreted as a signed long and added to the counter.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p><code>WEAK</code> counters never respond after operations.</p>
-</div>
-<div class="paragraph">
-<p><code>STRONG</code> counters return the current value after each operation.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect3">
-<h4 id="rest_server_counters_get"><a class="anchor" href="#rest_server_counters_get"></a>2.2.5. Getting Counter Values</h4>
+<h4 id="rest_server_counters_get"><a class="anchor" href="#rest_server_counters_get"></a>2.2.4. Getting Counter Values</h4>
 <div class="paragraph">
 <p>Retrieve counter values with <code>GET</code> requests.</p>
 </div>
@@ -2760,7 +2786,7 @@ the payload is interpreted as a signed long and added to the counter.</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="rest_server_counters_reset"><a class="anchor" href="#rest_server_counters_reset"></a>2.2.6. Resetting Counters</h4>
+<h4 id="rest_server_counters_reset"><a class="anchor" href="#rest_server_counters_reset"></a>2.2.5. Resetting Counters</h4>
 <div class="paragraph">
 <p>Restore the intial value of counters without <code>POST</code> requests and the
 <code>?action=reset</code> parameter.</p>
@@ -2770,9 +2796,12 @@ the payload is interpreted as a signed long and added to the counter.</p>
 <pre class="CodeRay highlight nowrap"><code>POST /rest/v2/counters/{counterName}?action=reset</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
+</div>
 </div>
 <div class="sect3">
-<h4 id="rest_server_counters_inc_weak"><a class="anchor" href="#rest_server_counters_inc_weak"></a>2.2.7. Incrementing Counters</h4>
+<h4 id="rest_server_counters_inc_weak"><a class="anchor" href="#rest_server_counters_inc_weak"></a>2.2.6. Incrementing Counters</h4>
 <div class="paragraph">
 <p>Increment counter values with <code>POST</code> request` and the <code>?action=increment</code>
 parameter.</p>
@@ -2790,10 +2819,10 @@ parameter.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p><code>WEAK</code> counters never respond after operations.</p>
+<p><code>WEAK</code> counters never respond after operations and return <code>204 (No Content)</code>.</p>
 </div>
 <div class="paragraph">
-<p><code>STRONG</code> counters return the current value after each operation.</p>
+<p><code>STRONG</code> counters return <code>200 (OK)</code> and the current value after each operation.</p>
 </div>
 </td>
 </tr>
@@ -2801,7 +2830,7 @@ parameter.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_server_counters_add_weak"><a class="anchor" href="#rest_server_counters_add_weak"></a>2.2.8. Adding Deltas to Counters</h4>
+<h4 id="rest_server_counters_add_weak"><a class="anchor" href="#rest_server_counters_add_weak"></a>2.2.7. Adding Deltas to Counters</h4>
 <div class="paragraph">
 <p>Add arbitrary values to counters with <code>POST</code> requests that include the
 <code>?action=add</code> and <code>delta</code> parameters.</p>
@@ -2819,10 +2848,10 @@ parameter.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p><code>WEAK</code> counters never respond after operations.</p>
+<p><code>WEAK</code> counters never respond after operations and return <code>204 (No Content)</code>.</p>
 </div>
 <div class="paragraph">
-<p><code>STRONG</code> counters return the current value after each operation.</p>
+<p><code>STRONG</code> counters return <code>200 (OK)</code> and the current value after each operation.</p>
 </div>
 </td>
 </tr>
@@ -2830,7 +2859,7 @@ parameter.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_server_counters_dec"><a class="anchor" href="#rest_server_counters_dec"></a>2.2.9. Decrementing Counter Values</h4>
+<h4 id="rest_server_counters_dec"><a class="anchor" href="#rest_server_counters_dec"></a>2.2.8. Decrementing Counter Values</h4>
 <div class="paragraph">
 <p>Decrement counter values with <code>POST</code> requests and the <code>?action=decrement</code>
 parameter.</p>
@@ -2848,10 +2877,10 @@ parameter.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p><code>WEAK</code> counters never respond after operations.</p>
+<p><code>WEAK</code> counters never respond after operations and return <code>204 (No Content)</code>.</p>
 </div>
 <div class="paragraph">
-<p><code>STRONG</code> counters return the current value after each operation.</p>
+<p><code>STRONG</code> counters return <code>200 (OK)</code> and the current value after each operation.</p>
 </div>
 </td>
 </tr>
@@ -2859,7 +2888,7 @@ parameter.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_server_counters_cmpset"><a class="anchor" href="#rest_server_counters_cmpset"></a>2.2.10. Performing compareAndSet Operations on Strong Counters</h4>
+<h4 id="rest_server_counters_cmpset"><a class="anchor" href="#rest_server_counters_cmpset"></a>2.2.9. Performing compareAndSet Operations on Strong Counters</h4>
 <div class="paragraph">
 <p>Atomically set values for strong counters with <code>GET</code> requests and the
 <code>compareAndSet</code> parameter.</p>
@@ -2875,7 +2904,7 @@ parameter.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_server_counters_cmpswp"><a class="anchor" href="#rest_server_counters_cmpswp"></a>2.2.11. Performing compareAndSwap Operations on Strong Counters</h4>
+<h4 id="rest_server_counters_cmpswp"><a class="anchor" href="#rest_server_counters_cmpswp"></a>2.2.10. Performing compareAndSwap Operations on Strong Counters</h4>
 <div class="paragraph">
 <p>Atomically set values for strong counters with <code>GET</code> requests and the
 <code>compareAndSwap</code> parameter.</p>
@@ -2892,7 +2921,7 @@ value in the payload.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_server_counters_list"><a class="anchor" href="#rest_server_counters_list"></a>2.2.12. Listing Counters</h4>
+<h4 id="rest_server_counters_list"><a class="anchor" href="#rest_server_counters_list"></a>2.2.11. Listing Counters</h4>
 <div class="paragraph">
 <p>Retrieve a list of counters in Infinispan clusters with <code>GET</code> requests.</p>
 </div>
@@ -2921,7 +2950,7 @@ include the content of a protobuf file in the payload.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>If the schema already exists, Infinispan returns <code>CONFLICT</code>.
+<p>If the schema already exists, Infinispan returns HTTP <code>409 (Conflict)</code>.
 If the schema is not valid, either because of syntax errors, or because some of its dependencies are missing,
 Infinispan stores the schema and returns the error in the response body.</p>
 </div>
@@ -2948,6 +2977,9 @@ Infinispan stores the schema and returns the error in the response body.</p>
 <p><code>error</code> is <code>null</code> for valid Protobuf schemas. If Infinispan cannot successfully validate the schema, it returns errors.</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>If the operation successfully completes, the service returns <code>201 (Created)</code>.</p>
 </div>
 </div>
 <div class="sect3">
@@ -3006,6 +3038,9 @@ Infinispan updates the schema and returns the error in the response body.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code>DELETE /rest/v2/schemas/{schemaName}</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
 </div>
 </div>
 <div class="sect3">
@@ -3111,8 +3146,12 @@ example:</p>
             <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">cache2</span><span class="delimiter">&quot;</span></span>,
             <span class="key"><span class="delimiter">&quot;</span><span class="content">started</span><span class="delimiter">&quot;</span></span>:<span class="value">true</span>
         }
+    ],
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">local_site</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">sites_view</span><span class="delimiter">&quot;</span></span>: [
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>,
+        <span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span>
     ]
-
 }</code></pre>
 </div>
 </div>
@@ -3160,6 +3199,14 @@ For possible values, check the <a href="https://docs.jboss.org/infinispan/9.4/ap
 </li>
 <li>
 <p><code>defined_caches</code> A list of all caches defined in the cache manager, excluding private caches but including internal caches that are accessible</p>
+</li>
+<li>
+<p><code>local_site</code> The name of the local site.<br>
+If cross-site replication is not configured, Infinispan returns "local".</p>
+</li>
+<li>
+<p><code>sites_view</code> The list of sites that participate in cross-site replication.<br>
+If cross-site replication is not configured, Infinispan returns an empty list.</p>
 </li>
 </ul>
 </div>
@@ -3346,7 +3393,7 @@ running and serving requests.</p>
 </table>
 <div class="paragraph">
 <div class="title">Reference</div>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/global/GlobalConfiguration.html">GlobalConfiguration</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/global/GlobalConfiguration.html">GlobalConfiguration</a></p>
 </div>
 </div>
 <div class="sect3">
@@ -3589,7 +3636,9 @@ stored in the cache manager.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>A <code>202</code> response indicates that the backup request is accepted for processing.</p>
+<p>If a backup with the same name already exists, the service responds with <code>409 (Conflict)</code>.
+If the <code>directory</code> parameter is not valid, the service returns <code>400 (Bad Request)</code>.
+A <code>202</code> response indicates that the backup request is accepted for processing.</p>
 </div>
 <div class="paragraph">
 <p>Optionally include a JSON payload with your request that contains parameters
@@ -3956,8 +4005,8 @@ failed.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>A <code>200</code> response indicates the restore operation is completed.
-A <code>202</code> response indicates the backup operation is in progress.</p>
+<p>A <code>201 (Created)</code> response indicates the restore operation is completed.
+A <code>202 (Accepted)</code> response indicates the backup operation is in progress.</p>
 </div>
 </div>
 <div class="sect3">
@@ -3973,8 +4022,8 @@ the request metadata, you can use the request name to perform subsequent restore
 </div>
 </div>
 <div class="paragraph">
-<p>A <code>204</code> response indicates that the restore metadata is deleted.
-A <code>202</code> response indicates that the restore operation is in progress and will be deleted when the operation
+<p>A <code>204 (No Content)</code> response indicates that the restore metadata is deleted.
+A <code>202 (Accepted)</code> response indicates that the restore operation is in progress and will be deleted when the operation
 completes.</p>
 </div>
 </div>
@@ -4067,6 +4116,28 @@ requests.</p>
 </div>
 </div>
 <div class="sect4">
+<h5 id="rest_v2_cache_manager_get_state_transfer_mode"><a class="anchor" href="#rest_v2_cache_manager_get_state_transfer_mode"></a>Retrieving the State Transfer Mode</h5>
+<div class="paragraph">
+<p>Check the state transfer mode with <code>GET</code> requests.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="rest_v2_cache_manager_get_state_transfer_mode"><a class="anchor" href="#rest_v2_cache_manager_get_state_transfer_mode"></a>Setting the State Transfer Mode</h5>
+<div class="paragraph">
+<p>Configure the state transfer mode with the <code>?action=set</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>POST /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode?action=set&amp;mode={mode}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
 <h5 id="rest_v2_cache_manager_start_push"><a class="anchor" href="#rest_v2_cache_manager_start_push"></a>Starting State Transfer</h5>
 <div class="paragraph">
 <p>Push state of all caches to remote sites with the <code>?action=start-push-state</code> parameter.</p>
@@ -4131,6 +4202,20 @@ as in the following example:</p>
 <p>Infinispan responds with an array of the cache manager names configured for
 the server.</p>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan currently supports one cache manager per server only.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </div>
 <div class="sect3">
 <h4 id="rest_v2_cache_ignore"><a class="anchor" href="#rest_v2_cache_ignore"></a>2.5.3. Adding Caches to Ignore Lists</h4>
@@ -4145,8 +4230,7 @@ name and the cache.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Infinispan returns a service unavailable status (<code>503</code>) for REST client
-requests and a Server Error (<code>code 0x85</code>) for Hot Rod client requests.</p>
+<p>Infinispan responds with <code>204 (No Content)</code> if the cache is successfully added to the ignore list or <code>404 (Not Found)</code> if the cache or cache manager are not found.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -4173,6 +4257,9 @@ compatibility you must provide the cache manager name in the requests.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code>DELETE /v2/server/ignored-caches/{cache-manager}/{cache}</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>Infinispan responds with <code>204 (No Content)</code> if the cache is successfully removed from ignore list or <code>404 (Not Found)</code> if the cache or cache manager are not found.</p>
 </div>
 </div>
 <div class="sect3">
@@ -4314,7 +4401,7 @@ routing, threads, in addition to configuration and log files.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Infinispan responds with <code>200(OK)</code> and then stops running.</p>
+<p>Infinispan responds with <code>204 (No Content)</code> and then stops running.</p>
 </div>
 </div>
 </div>
@@ -4334,7 +4421,7 @@ routing, threads, in addition to configuration and log files.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Infinispan responds with <code>200(OK)</code> and then performs an orderly shutdown of
+<p>Infinispan responds with <code>204 (No Content)</code> and then performs an orderly shutdown of
 the entire cluster.</p>
 </div>
 </div>
@@ -4350,7 +4437,7 @@ requests and the <code>?action=stop&amp;server</code> parameter.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Infinispan responds with <code>200(OK)</code>.</p>
+<p>Infinispan responds with <code>204 (No Content)</code>.</p>
 </div>
 </div>
 <div class="sect3">
@@ -4390,6 +4477,11 @@ for the backup operation, as follows:</p>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>If the backup operation successfully completes, the service returns <code>202 (Accepted)</code>.
+If a backup with the same name already exists, the service returns  <code>409 (Conflict)</code>.
+If the <code>directory</code> parameter is not valid, the service returns <code>400 (Bad Request)</code>.</p>
+</div>
 </div>
 <div class="sect3">
 <h4 id="rest_v2_backup_cluster_list"><a class="anchor" href="#rest_v2_backup_cluster_list"></a>2.6.4. Listing Backups</h4>
@@ -4648,7 +4740,7 @@ failed.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>A <code>200</code> response indicates the restore operation is completed.
+<p>A <code>201 (Created)</code> response indicates the restore operation is completed.
 A <code>202</code> response indicates the backup operation is in progress.</p>
 </div>
 </div>
@@ -4761,6 +4853,9 @@ completes.</p>
 Optionally, it is possible to set one or more appenders for the logger.
 If no appenders are specified, those specified in the root logger will be used.</p>
 </div>
+<div class="paragraph">
+<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
+</div>
 </div>
 <div class="sect3">
 <h4 id="rest_v2_logging_remove_logger"><a class="anchor" href="#rest_v2_logging_remove_logger"></a>2.7.4. Removing a logger</h4>
@@ -4774,6 +4869,9 @@ If no appenders are specified, those specified in the root logger will be used.<
 </div>
 <div class="paragraph">
 <p>Infinispan removes the logger identified by <code>{loggerName}</code>, effectively reverting to the use of the root logger configuration.</p>
+</div>
+<div class="paragraph">
+<p>If operation processed successfully, the service returns a response code <code>204 (No Content)</code>.</p>
 </div>
 </div>
 </div>
@@ -4856,11 +4954,11 @@ security role in <code>JSON</code> format, as in the following example:</p>
 <div class="sect3">
 <h4 id="rest_v2_tasks_execute"><a class="anchor" href="#rest_v2_tasks_execute"></a>2.8.2. Executing Tasks</h4>
 <div class="paragraph">
-<p>Execute tasks with <code>GET</code> requests that include the task name and required parameters prefixed with <code>param</code>.</p>
+<p>Execute tasks with <code>POST</code> requests that include the task name and required parameters prefixed with <code>param</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code>GET /rest/v2/tasks/myTask?action=exec&amp;param.p1=v1&amp;param.p2=v2</code></pre>
+<pre class="CodeRay highlight nowrap"><code>POST /rest/v2/tasks/myTask?action=exec&amp;param.p1=v1&amp;param.p2=v2</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -4881,6 +4979,172 @@ uploads the script, you can execute it with <code>GET</code> requests.</p>
 <pre class="CodeRay highlight nowrap"><code>POST /rest/v2/tasks/taskName</code></pre>
 </div>
 </div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="rest_v2_security"><a class="anchor" href="#rest_v2_security"></a>2.9. Working with Infinispan Security</h3>
+<div class="paragraph">
+<p>View and modify security information.</p>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_security_user_acl"><a class="anchor" href="#rest_v2_security_user_acl"></a>2.9.1. Retrieving the ACL of a user</h4>
+<div class="paragraph">
+<p>View information about the user&#8217;s principals and access-control list.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /rest/v2/security/user/acl</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan responds with information about the user who has performed the request.
+The list includes the principals of the user, and a list of resources and the permissions that user has when accessing them.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">subject</span><span class="delimiter">&quot;</span></span>: [
+    {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">deployer</span><span class="delimiter">&quot;</span></span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">type</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">NamePrincipal</span><span class="delimiter">&quot;</span></span>
+    }
+  ],
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">global</span><span class="delimiter">&quot;</span></span>: [
+    <span class="string"><span class="delimiter">&quot;</span><span class="content">READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">WRITE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">EXEC</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">LISTEN</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">BULK_READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">BULK_WRITE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">CREATE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">MONITOR</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">ALL_READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">ALL_WRITE</span><span class="delimiter">&quot;</span></span>  ],
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">caches</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">___protobuf_metadata</span><span class="delimiter">&quot;</span></span>: [
+      <span class="string"><span class="delimiter">&quot;</span><span class="content">READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">WRITE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">EXEC</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">LISTEN</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">BULK_READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">BULK_WRITE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">CREATE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">MONITOR</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">ALL_READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">ALL_WRITE</span><span class="delimiter">&quot;</span></span>
+    ],
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span>: [
+      <span class="string"><span class="delimiter">&quot;</span><span class="content">LIFECYCLE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">WRITE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">EXEC</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">LISTEN</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">BULK_READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">BULK_WRITE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">ADMIN</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">CREATE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">MONITOR</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">ALL_READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">ALL_WRITE</span><span class="delimiter">&quot;</span></span>
+    ],
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">___script_cache</span><span class="delimiter">&quot;</span></span>: [
+      <span class="string"><span class="delimiter">&quot;</span><span class="content">READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">WRITE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">EXEC</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">LISTEN</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">BULK_READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">BULK_WRITE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">CREATE</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">MONITOR</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">ALL_READ</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">ALL_WRITE</span><span class="delimiter">&quot;</span></span>
+    ]
+  }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_security_user_acl"><a class="anchor" href="#rest_v2_security_user_acl"></a>2.9.2. Flushing the ACL cache</h4>
+<div class="paragraph">
+<p>Flush the access-control list cache across the cluster.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>POST /rest/v2/security/cache?action=flush</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_security_user_acl"><a class="anchor" href="#rest_v2_security_user_acl"></a>2.9.3. Retrieving the available roles</h4>
+<div class="paragraph">
+<p>View all the available roles defined in the server.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /rest/v2/security/roles</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan responds with a list of available roles.
+If authorization is enabled, only a user with the <code>ADMIN</code> permission can call this API.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">[<span class="string"><span class="delimiter">&quot;</span><span class="content">observer</span><span class="delimiter">&quot;</span></span>,<span class="string"><span class="delimiter">&quot;</span><span class="content">application</span><span class="delimiter">&quot;</span></span>,<span class="string"><span class="delimiter">&quot;</span><span class="content">admin</span><span class="delimiter">&quot;</span></span>,<span class="string"><span class="delimiter">&quot;</span><span class="content">monitor</span><span class="delimiter">&quot;</span></span>,<span class="string"><span class="delimiter">&quot;</span><span class="content">deployer</span><span class="delimiter">&quot;</span></span>]</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_security_roles_principal"><a class="anchor" href="#rest_v2_security_roles_principal"></a>2.9.4. Retrieving the roles for a principal</h4>
+<div class="paragraph">
+<p>View all the roles which map to a principal.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /rest/v2/security/roles/some_principal</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan responds with a list of available roles for the specified principal.
+The principal need not exist in the realm in use.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">[<span class="string"><span class="delimiter">&quot;</span><span class="content">observer</span><span class="delimiter">&quot;</span></span>]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>/v2/security/roles/{principal}</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_security_roles_principal_grant"><a class="anchor" href="#rest_v2_security_roles_principal_grant"></a>2.9.5. Granting roles to a principal</h4>
+<div class="paragraph">
+<p>Grant one or more new roles to a principal.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>PUT /v2/security/roles/some_principal?action=grant&amp;role=role1&amp;role=role2</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 27. Request Parameters</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Required or Optional</th>
+<th class="tableblock halign-left valign-top">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>role</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">REQUIRED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The name of a role</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="rest_v2_security_roles_principal_deny"><a class="anchor" href="#rest_v2_security_roles_principal_deny"></a>2.9.6. Denying roles to a principal</h4>
+<div class="paragraph">
+<p>Remove one or more roles that were previously granted to a principal.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>PUT /v2/security/roles/some_principal?action=deny&amp;role=role1&amp;role=role2</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 28. Request Parameters</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Required or Optional</th>
+<th class="tableblock halign-left valign-top">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>role</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">REQUIRED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The name of a role</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -5239,7 +5503,7 @@ print(resp.read().decode(<span class="string"><span class="delimiter">'</span><s
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-03-12 07:41:09 -0500
+Last updated 2021-04-05 08:28:54 -0400
 </div>
 </div>
 <style>

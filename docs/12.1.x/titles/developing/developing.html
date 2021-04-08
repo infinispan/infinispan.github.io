@@ -600,8 +600,7 @@ $(addBlockSwitches);
 <li><a href="#data_transcoding">4.8. Transcoders and Data Conversion</a>
 <ul class="sectlevel3">
 <li><a href="#mediatype_override">4.8.1. Converting Data on Demand</a></li>
-<li><a href="#installing_transcoders_in_embedded_deloyments">4.8.2. Installing Transcoders in Embedded Deloyments</a></li>
-<li><a href="#transcoders_and_encoders">4.8.3. Transcoders and Encoders</a></li>
+<li><a href="#installing_transcoders_in_embedded_deployments">4.8.2. Installing Transcoders in Embedded Deployments</a></li>
 </ul>
 </li>
 </ul>
@@ -622,7 +621,7 @@ $(addBlockSwitches);
 <li><a href="#kryo_marshalling">5.3.3. Using the Kryo Marshaller</a></li>
 <li><a href="#protostuff_marshalling">5.3.4. Using the Protostuff Marshaller</a></li>
 <li><a href="#custom_marshallers">5.3.5. Using Custom Marshallers</a></li>
-<li><a href="#deserialization_allowlist-marshallers">5.3.6. Adding Java Classes to Deserialization Allow Lists</a></li>
+<li><a href="#deserialization-allowlist_marshallers">5.3.6. Adding Java Classes to Deserialization Allow Lists</a></li>
 </ul>
 </li>
 </ul>
@@ -990,7 +989,7 @@ artifact you add as a dependency to your project.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;properties&gt;</span>
-  <span class="tag">&lt;version.infinispan&gt;</span>12.1.0.CR2<span class="tag">&lt;/version.infinispan&gt;</span>
+  <span class="tag">&lt;version.infinispan&gt;</span>12.1.0.Final<span class="tag">&lt;/version.infinispan&gt;</span>
 <span class="tag">&lt;/properties&gt;</span>
 
 <span class="tag">&lt;dependencyManagement&gt;</span>
@@ -2221,6 +2220,18 @@ Java objects.</p>
 </div>
 <div class="sect2">
 <h3 id="data_encoding"><a class="anchor" href="#data_encoding"></a>4.7. Data Encoding</h3>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+This section describes deprecated APIs that will be removed in a future release.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>Encoding is the data conversion operation done by Infinispan caches before storing data, and when reading back from storage.</p>
 </div>
@@ -2527,7 +2538,7 @@ Cache&lt;<span class="predefined-type">Integer</span>, <span class="type">byte</
 </div>
 </div>
 <div class="sect3">
-<h4 id="installing_transcoders_in_embedded_deloyments"><a class="anchor" href="#installing_transcoders_in_embedded_deloyments"></a>4.8.2. Installing Transcoders in Embedded Deloyments</h4>
+<h4 id="installing_transcoders_in_embedded_deployments"><a class="anchor" href="#installing_transcoders_in_embedded_deployments"></a>4.8.2. Installing Transcoders in Embedded Deployments</h4>
 <div class="paragraph">
 <p>Infinispan Server includes transcoders by default. However, when running
 Infinispan as a library, you must add the following to your project:</p>
@@ -2536,94 +2547,6 @@ Infinispan as a library, you must add the following to your project:</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code>org.infinispan:infinispan-server-core</code></pre>
 </div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="transcoders_and_encoders"><a class="anchor" href="#transcoders_and_encoders"></a>4.8.3. Transcoders and Encoders</h4>
-<div class="paragraph">
-<p>Usually there will be none or only one data conversion involved in a cache operation:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>No conversion by default on caches using in embedded or server mode;</p>
-</li>
-<li>
-<p><em>Encoder</em> based conversion for embedded caches without MediaType configured, but using OFF_HEAP or BINARY;</p>
-</li>
-<li>
-<p><em>Transcoder</em> based conversion for caches used in server mode with multiple REST and Hot Rod clients sending
-and receiving data in different formats. Those caches will have MediaType configured describing the storage.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>But it&#8217;s possible to have both encoders and transcoders being used simultaneously for advanced use cases.</p>
-</div>
-<div class="paragraph">
-<p>Consider an example, a cache that stores marshalled objects (with jboss marshaller) content but for security reasons a transparent encryption layer should be added in order to avoid storing "plain" data to an external store.
-Clients should be able to read and write data in multiple formats.</p>
-</div>
-<div class="paragraph">
-<p>This can be achieved by configuring the cache with the the MediaType that describes the storage regardless of the encoding layer:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">ConfigurationBuilder cfg = <span class="keyword">new</span> ConfigurationBuilder();
-cfg.encoding().key().mediaType(<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-jboss-marshalling</span><span class="delimiter">&quot;</span></span>);
-cfg.encoding().key().mediaType(<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-jboss-marshalling</span><span class="delimiter">&quot;</span></span>);</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The transparent encryption can be added by decorating the cache with a special <em>Encoder</em> that encrypts/decrypts with storing/retrieving, for example:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">class</span> <span class="class">Scrambler</span> <span class="directive">implements</span> <span class="predefined-type">Encoder</span> {
-
-   <span class="directive">public</span> <span class="predefined-type">Object</span> toStorage(<span class="predefined-type">Object</span> content) {
-   <span class="comment">// Encrypt data</span>
-   }
-
-   <span class="directive">public</span> <span class="predefined-type">Object</span> fromStorage(<span class="predefined-type">Object</span> content) {
-   <span class="comment">// Decrypt data</span>
-   }
-
-   <span class="annotation">@Override</span>
-   <span class="directive">public</span> <span class="type">boolean</span> isStorageFormatFilterable() {
-
-   }
-
-   <span class="directive">public</span> MediaType getStorageFormat() {
-   <span class="keyword">return</span> <span class="keyword">new</span> MediaType(<span class="string"><span class="delimiter">&quot;</span><span class="content">application</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">scrambled</span><span class="delimiter">&quot;</span></span>);
-   }
-
-   <span class="annotation">@Override</span>
-   <span class="directive">public</span> <span class="type">short</span> id() {
-   <span class="comment">//return id</span>
-   }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>To make sure all data written to the cache will be stored encrypted, it&#8217;s necessary to decorate the cache with the Encoder above and perform all cache operations in this decorated cache:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">Cache&lt;?,?&gt; secureStorageCache = cache.getAdvancedCache().withEncoding(Scrambler.class).put(k,v);</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The capability of reading data in multiple formats can be added by decorating the cache with the desired MediaType:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="comment">// Obtain a stream of values in XML format from the secure cache</span>
-secureStorageCache.getAdvancedCache().withMediaType(<span class="string"><span class="delimiter">&quot;</span><span class="content">application/xml</span><span class="delimiter">&quot;</span></span>,<span class="string"><span class="delimiter">&quot;</span><span class="content">application/xml</span><span class="delimiter">&quot;</span></span>).values().stream();</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Internally, Infinispan will first apply the encoder <em>fromStorage</em> operation to obtain the entries, that will be in "application/x-jboss-marshalling" format and then apply a successive conversion to "application/xml" by using the adequate Transcoder.</p>
 </div>
 </div>
 </div>
@@ -3039,8 +2962,8 @@ builder.serialization()
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;serialization</span> <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.jboss.marshalling.commons.GenericJBossMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;allow-list&gt;</span>
-      <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
-      <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
+    <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
+    <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
   <span class="tag">&lt;/allow-list&gt;</span>
 <span class="tag">&lt;/serialization&gt;</span></code></pre>
 </div>
@@ -3055,7 +2978,7 @@ builder.serialization()
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization-allowlist_marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
 </li>
 <li>
 <p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/marshall/AdvancedExternalizer.html">AdvancedExternalizer</a></p>
@@ -3096,10 +3019,10 @@ builder.serialization()
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;serialization</span> <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.commons.marshall.JavaSerializationMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;allow-list&gt;</span>
-        <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
-        <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
-    <span class="tag">&lt;/allow-list&gt;</span>
+  <span class="tag">&lt;allow-list&gt;</span>
+    <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
+    <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
+  <span class="tag">&lt;/allow-list&gt;</span>
 <span class="tag">&lt;/serialization&gt;</span></code></pre>
 </div>
 </div>
@@ -3113,7 +3036,7 @@ builder.serialization()
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization-allowlist_marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
 </li>
 <li>
 <p><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Serializable.html">Serializable</a></p>
@@ -3220,7 +3143,7 @@ for example:</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization-allowlist_marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
 </li>
 <li>
 <p><a href="https://github.com/EsotericSoftware/kryo">Kryo on GitHub</a></p>
@@ -3328,7 +3251,7 @@ marshalling:</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization-allowlist_marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
 </li>
 <li>
 <p><a href="https://github.com/protostuff/protostuff">Protostuff on GitHub</a></p>
@@ -3370,10 +3293,10 @@ builder.serialization()
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;serialization</span> <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.example.marshall.CustomMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;allow-list&gt;</span>
-        <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
-        <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
-    <span class="tag">&lt;/allow-list&gt;</span>
+  <span class="tag">&lt;allow-list&gt;</span>
+    <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
+    <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
+  <span class="tag">&lt;/allow-list&gt;</span>
 <span class="tag">&lt;/serialization&gt;</span></code></pre>
 </div>
 </div>
@@ -3405,13 +3328,13 @@ builder.serialization()
 <p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/marshall/Marshaller.html">org.infinispan.commons.marshall.Marshaller</a></p>
 </li>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization-allowlist_marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect3">
-<h4 id="deserialization_allowlist-marshallers"><a class="anchor" href="#deserialization_allowlist-marshallers"></a>5.3.6. Adding Java Classes to Deserialization Allow Lists</h4>
+<h4 id="deserialization-allowlist_marshallers"><a class="anchor" href="#deserialization-allowlist_marshallers"></a>5.3.6. Adding Java Classes to Deserialization Allow Lists</h4>
 <div class="paragraph">
 <p>Infinispan does not allow deserialization of arbritrary Java classes for
 security reasons, which applies to JSON, XML, and marshalled <code>byte[]</code> content.</p>
@@ -3434,12 +3357,13 @@ properties or specifying them in the Infinispan configuration.</p>
 <div class="title">Declarative</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container&gt;</span>
-   <span class="tag">&lt;serialization</span> <span class="attribute-name">version</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1.0</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.marshall.TestObjectStreamMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;allow-list&gt;</span>
-         <span class="tag">&lt;class&gt;</span>org.infinispan.test.data.Person<span class="tag">&lt;/class&gt;</span>
-         <span class="tag">&lt;regex&gt;</span>org.infinispan.test.data.*<span class="tag">&lt;/regex&gt;</span>
-       <span class="tag">&lt;/allow-list&gt;</span>
-   <span class="tag">&lt;/serialization&gt;</span>
+  <span class="tag">&lt;serialization</span> <span class="attribute-name">version</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1.0</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.marshall.TestObjectStreamMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;allow-list&gt;</span>
+      <span class="tag">&lt;class&gt;</span>org.infinispan.test.data.Person<span class="tag">&lt;/class&gt;</span>
+      <span class="tag">&lt;regex&gt;</span>org.infinispan.test.data.*<span class="tag">&lt;/regex&gt;</span>
+    <span class="tag">&lt;/allow-list&gt;</span>
+  <span class="tag">&lt;/serialization&gt;</span>
 <span class="tag">&lt;/cache-container&gt;</span></code></pre>
 </div>
 </div>
@@ -3672,14 +3596,15 @@ clm1.defineLock(<span class="string"><span class="delimiter">&quot;</span><span 
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="preprocessor">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
 <span class="tag">&lt;infinispan</span>
+        <span class="attribute-name">xmlns:xsi</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">http://www.w3.org/2001/XMLSchema-instance</span><span class="delimiter">&quot;</span></span>
+        <span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.1 https://infinispan.org/schemas/infinispan-config-12.1.xsd</span><span class="delimiter">&quot;</span></span>
         <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.1</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    ...
+
     <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;transport</span><span class="tag">/&gt;</span>
         <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
             <span class="tag">&lt;locking</span> <span class="attribute-name">concurrency-level</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">acquire-timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
         <span class="tag">&lt;/local-cache&gt;</span>
-
         <span class="tag">&lt;clustered-locks</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:clustered-locks:12.1</span><span class="delimiter">&quot;</span></span>
                          <span class="attribute-name">num-owners</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span>
                          <span class="attribute-name">reliability</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">AVAILABLE</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
@@ -3687,7 +3612,7 @@ clm1.defineLock(<span class="string"><span class="delimiter">&quot;</span><span 
             <span class="tag">&lt;clustered-lock</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">lock2</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
         <span class="tag">&lt;/clustered-locks&gt;</span>
     <span class="tag">&lt;/cache-container&gt;</span>
-    ...
+    <span class="comment">&lt;!-- Cache configuration goes here. --&gt;</span>
 <span class="tag">&lt;/infinispan&gt;</span></code></pre>
 </div>
 </div>
@@ -3758,9 +3683,9 @@ clm1.defineLock(<span class="string"><span class="delimiter">&quot;</span><span 
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   <span class="tag">&lt;indexing&gt;</span>
-      ...
-   <span class="tag">&lt;/indexing&gt;</span>
+  <span class="tag">&lt;indexing&gt;</span>
+    <span class="comment">&lt;!-- Indexing configuration goes here. --&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -3773,11 +3698,11 @@ clm1.defineLock(<span class="string"><span class="delimiter">&quot;</span><span 
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   <span class="tag">&lt;indexing&gt;</span>
-     <span class="tag">&lt;indexed-entities&gt;</span>
-       <span class="tag">&lt;indexed-entity&gt;</span>...<span class="tag">&lt;/indexed-entity&gt;</span>
-     <span class="tag">&lt;/indexed-entities&gt;</span>
-   <span class="tag">&lt;/indexing&gt;</span>
+  <span class="tag">&lt;indexing&gt;</span>
+    <span class="tag">&lt;indexed-entities&gt;</span>
+      <span class="tag">&lt;indexed-entity&gt;</span>...<span class="tag">&lt;/indexed-entity&gt;</span>
+    <span class="tag">&lt;/indexed-entities&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -3913,9 +3838,9 @@ You should store indexes in JVM heap memory only for small datasets.</p>
 <div class="title">File system</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   <span class="tag">&lt;indexing</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">filesystem</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${java.io.tmpdir}/baseDir</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-     ...
-   <span class="tag">&lt;/indexing&gt;</span>
+  <span class="tag">&lt;indexing</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">filesystem</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${java.io.tmpdir}/baseDir</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="comment">&lt;!-- Indexing configuration goes here. --&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -3924,7 +3849,8 @@ You should store indexes in JVM heap memory only for small datasets.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;indexing</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local-heap</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   ...
+    <span class="comment">&lt;!-- Additional indexing configuration goes here. --&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -3942,7 +3868,8 @@ By default Infinispan reads the index before each query if the index changed sin
   <span class="tag">&lt;indexing</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">filesystem</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${java.io.tmpdir}/baseDir</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
     <span class="comment">&lt;!-- Sets an interval of one second for the index reader. --&gt;</span>
     <span class="tag">&lt;index-reader</span> <span class="attribute-name">refresh-interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-     ...
+    <span class="comment">&lt;!-- Additional indexing configuration goes here. --&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -3990,7 +3917,8 @@ The defaults should work for most cases and custom configurations should only be
                    <span class="attribute-name">min-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span>
                    <span class="attribute-name">max-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">20</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
     <span class="tag">&lt;/index-writer&gt;</span>
-      ...
+    <span class="comment">&lt;!-- Additional indexing configuration goes here. --&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -4657,26 +4585,18 @@ Indexing and querying are both done on top of Java objects.</p>
 <div class="sect3">
 <h4 id="embedded_query_example"><a class="anchor" href="#embedded_query_example"></a>7.3.1. Embedded Query Example</h4>
 <div class="paragraph">
-<p>We&#8217;re going to store <code>Book</code> instances in an Infinispan cache called "books". <code>Book</code> instances will be indexed, so we enable indexing for the cache:</p>
-</div>
-<div class="paragraph">
-<p>Infinispan configuration:</p>
+<p>We&#8217;re going to store <code>Book</code> instances in an Infinispan cache called "books". <code>Book</code> instances will be indexed, so we enable indexing for the cache configuration:</p>
 </div>
 <div class="listingblock">
 <div class="title">infinispan.xml</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-    <span class="tag">&lt;cache-container&gt;</span>
-        <span class="tag">&lt;transport</span> <span class="attribute-name">cluster</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">infinispan-cluster</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-            <span class="tag">&lt;indexing</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${user.home}/index</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-                <span class="tag">&lt;indexed-entities&gt;</span>
-                    <span class="tag">&lt;indexed-entity&gt;</span>org.infinispan.sample.Book<span class="tag">&lt;/indexed-entity&gt;</span>
-                <span class="tag">&lt;/indexed-entities&gt;</span>
-            <span class="tag">&lt;/indexing&gt;</span>
-        <span class="tag">&lt;/distributed-cache&gt;</span>
-    <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;indexing</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${user.home}/index</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;indexed-entities&gt;</span>
+      <span class="tag">&lt;indexed-entity&gt;</span>org.infinispan.sample.Book<span class="tag">&lt;/indexed-entity&gt;</span>
+    <span class="tag">&lt;/indexed-entities&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -4817,11 +4737,12 @@ will be picked up automatically:</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">test</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;indexing</span> <span class="attribute-name">auto-config</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-        <span class="tag">&lt;key-transformers&gt;</span>
-            <span class="tag">&lt;key-transformer</span> <span class="attribute-name">key</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomKey</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">transformer</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomTransformer</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;/key-transformers&gt;</span>
-    <span class="tag">&lt;/indexing&gt;</span>
+  <span class="tag">&lt;indexing</span> <span class="attribute-name">auto-config</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;key-transformers&gt;</span>
+      <span class="tag">&lt;key-transformer</span> <span class="attribute-name">key</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomKey</span><span class="delimiter">&quot;</span></span>
+                       <span class="attribute-name">transformer</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomTransformer</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/key-transformers&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -4922,17 +4843,13 @@ Additionally, remote queries require Protobuf schemas (<code>.proto</code> files
 <div class="listingblock">
 <div class="title">infinispan.xml</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-  <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;indexing&gt;</span>
-        <span class="tag">&lt;indexed-entities&gt;</span>
-          <span class="tag">&lt;indexed-entity&gt;</span>book_sample.Book<span class="tag">&lt;/indexed-entity&gt;</span>
-        <span class="tag">&lt;/indexed-entities&gt;</span>
-      <span class="tag">&lt;/indexing&gt;</span>
-    <span class="tag">&lt;/replicated-cache&gt;</span>
-  <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;indexing&gt;</span>
+    <span class="tag">&lt;indexed-entities&gt;</span>
+      <span class="tag">&lt;indexed-entity&gt;</span>book_sample.Book<span class="tag">&lt;/indexed-entity&gt;</span>
+    <span class="tag">&lt;/indexed-entities&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
+<span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -4941,13 +4858,9 @@ Additionally, remote queries require Protobuf schemas (<code>.proto</code> files
 <div class="listingblock">
 <div class="title">infinispan.xml</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-  <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-    <span class="tag">&lt;/replicated-cache&gt;</span>
-  <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -5086,7 +4999,8 @@ Registering a new schema is therefore as simple as performing a <code>put()</cod
 </td>
 <td class="content">
 <div class="paragraph">
-<p>If caches use authorization, users must belong to the <code>___schema_manager</code> role to add entries in the <code>___protobuf_metadata</code> cache.</p>
+<p>If caches use authorization, users must have <code>CREATE</code> permissions to add entries in the <code>___protobuf_metadata</code> cache.
+Assign users the <code>deployer</code> role at minimum if you use default authorization settings.</p>
 </div>
 </td>
 </tr>
@@ -5583,11 +5497,11 @@ Theses counters are started eagerly and they are available in all the cluster&#8
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="preprocessor">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
 <span class="tag">&lt;infinispan&gt;</span>
     <span class="tag">&lt;cache-container</span> <span class="attribute-name">...</span><span class="tag">&gt;</span>
-        <span class="comment">&lt;!-- if needed to persist counter, global state needs to be configured --&gt;</span>
+        <span class="comment">&lt;!-- To persist counters, you need to configure the global state. --&gt;</span>
         <span class="tag">&lt;global-state&gt;</span>
-            ...
+        <span class="comment">&lt;!-- Global state configuration goes here. --&gt;</span>
         <span class="tag">&lt;/global-state&gt;</span>
-        <span class="comment">&lt;!-- your caches configuration goes here --&gt;</span>
+        <span class="comment">&lt;!-- Cache configuration goes here. --&gt;</span>
          <span class="tag">&lt;counters</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:counters:12.1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">num-owners</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">reliability</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">CONSISTENT</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
              <span class="tag">&lt;strong-counter</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">c1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">initial-value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">PERSISTENT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
              <span class="tag">&lt;strong-counter</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">c2</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">initial-value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">VOLATILE</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
@@ -10682,7 +10596,7 @@ for a detail example on how to implement this.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-03-21 08:45:53 -0400
+Last updated 2021-04-05 08:28:54 -0400
 </div>
 </div>
 <style>

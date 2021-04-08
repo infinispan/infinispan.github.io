@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.10">
-<title>Tuning Infinispan 12.0 Performance</title>
+<title>Tuning Infinispan 12.1 Performance</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -442,10 +442,86 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
 <script src="../../js/js.js"></script>
+<style>
+.hidden {
+    display: none;
+}
+
+.switch {
+    border-width: 1px 1px 0 1px;
+    border-style: solid;
+    border-color: #7a2518;
+    display: inline-block;
+}
+
+.switch--item {
+    padding: 10px;
+    background-color: #ffffff;
+    color: #7a2518;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.switch--item.selected {
+    background-color: #7a2519;
+    color: #ffffff;
+}
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script type="text/javascript">
+function addBlockSwitches() {
+    $('.primary').each(function() {
+        primary = $(this);
+        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
+        primary.children('.title').remove();
+    });
+    $('.secondary').each(function(idx, node) {
+        secondary = $(node);
+        primary = findPrimary(secondary);
+        switchItem = createSwitchItem(secondary, primary.children('.switch'));
+        switchItem.content.addClass('hidden');
+        findPrimary(secondary).append(switchItem.content);
+        secondary.remove();
+    });
+}
+
+function createBlockSwitch(primary) {
+    blockSwitch = $('<div class="switch"></div>');
+    primary.prepend(blockSwitch);
+    return blockSwitch;
+}
+
+function findPrimary(secondary) {
+    candidate = secondary.prev();
+    while (!candidate.is('.primary')) {
+        candidate = candidate.prev();
+    }
+    return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+    blockName = block.children('.title').text();
+    content = block.children('.content').first().append(block.next('.colist'));
+    item = $('<div class="switch--item">' + blockName + '</div>');
+    item.on('click', '', content, function(e) {
+        $(this).addClass('selected');
+        $(this).siblings().removeClass('selected');
+        e.data.siblings('.content').addClass('hidden');
+        e.data.removeClass('hidden');
+    });
+    blockSwitch.append(item);
+    return {'item': item, 'content': content};
+}
+
+$(addBlockSwitches);
+
+</script>
+
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
-<h1>Tuning Infinispan 12.0 Performance</h1>
+<h1>Tuning Infinispan 12.1 Performance</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
@@ -460,13 +536,14 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#network_configuration">3. Network configuration</a></li>
 <li><a href="#number_of_threads_for_hot_rod_connectors">4. Number of threads for Hot Rod connectors</a></li>
-<li><a href="#cache_store_performance">5. Cache Store performance</a></li>
-<li><a href="#hints_for_program_developers">6. Hints for program developers</a>
+<li><a href="#ssl_provider">5. SSL provider</a></li>
+<li><a href="#cache_store_performance">6. Cache Store performance</a></li>
+<li><a href="#hints_for_program_developers">7. Hints for program developers</a>
 <ul class="sectlevel2">
-<li><a href="#ignore_return_values">6.1. Ignore return values</a></li>
-<li><a href="#use_externalizer_for_marshalling">6.2. Use <code>Externalizer</code> for marshalling</a></li>
-<li><a href="#storing_strings_efficiently">6.3. Storing Strings efficiently</a></li>
-<li><a href="#use_simple_cache_for_local_caches">6.4. Use simple cache for local caches</a></li>
+<li><a href="#ignore_return_values">7.1. Ignore return values</a></li>
+<li><a href="#use_externalizer_for_marshalling">7.2. Use <code>Externalizer</code> for marshalling</a></li>
+<li><a href="#storing_strings_efficiently">7.3. Storing Strings efficiently</a></li>
+<li><a href="#use_simple_cache_for_local_caches">7.4. Use simple cache for local caches</a></li>
 </ul>
 </li>
 </ul>
@@ -697,7 +774,19 @@ threads to the number of concurrent client requests:</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="cache_store_performance"><a class="anchor" href="#cache_store_performance"></a>5. Cache Store performance</h2>
+<h2 id="ssl_provider"><a class="anchor" href="#ssl_provider"></a>5. SSL provider</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan server will automatically use the native implementation of the OpenSSL libraries on supported platforms to
+achieve much higher performance than what is possible with the JDK implementation of SSL.
+OpenSSL is loaded dynamically, and its location can be specified by the <code>org.wildfly.openssl.path</code> system property.
+If this property is not present, the standard system library search path will be used instead.
+Because the library is loaded dynamically, it should be possible to use different versions of OpenSSL without the need to recompile.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cache_store_performance"><a class="anchor" href="#cache_store_performance"></a>6. Cache Store performance</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>In order to achieve the best performance, please follow the recommendations below when using Cache Stores:</p>
@@ -731,13 +820,13 @@ threads to the number of concurrent client requests:</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="hints_for_program_developers"><a class="anchor" href="#hints_for_program_developers"></a>6. Hints for program developers</h2>
+<h2 id="hints_for_program_developers"><a class="anchor" href="#hints_for_program_developers"></a>7. Hints for program developers</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>There are also several hints for developers which can be easily applied to the client application and will boost up the performance.</p>
 </div>
 <div class="sect2">
-<h3 id="ignore_return_values"><a class="anchor" href="#ignore_return_values"></a>6.1. Ignore return values</h3>
+<h3 id="ignore_return_values"><a class="anchor" href="#ignore_return_values"></a>7.1. Ignore return values</h3>
 <div class="paragraph">
 <p>When you&#8217;re not interested in returning value of the <code>#put(k, v)</code> or <code>#remove(k)</code> method, use <code>Flag.IGNORE_RETURN_VALUES</code> flag as shown below:</p>
 </div>
@@ -760,7 +849,7 @@ cb.unsafe().unreliableReturnValues(<span class="predefined-constant">true</span>
 </div>
 </div>
 <div class="sect2">
-<h3 id="use_externalizer_for_marshalling"><a class="anchor" href="#use_externalizer_for_marshalling"></a>6.2. Use <code>Externalizer</code> for marshalling</h3>
+<h3 id="use_externalizer_for_marshalling"><a class="anchor" href="#use_externalizer_for_marshalling"></a>7.2. Use <code>Externalizer</code> for marshalling</h3>
 <div class="paragraph">
 <p>Infinispan uses JBoss Marshalling to transfer objects over the wire. The most efficient way to marshall user data is to provide an AdvancedExternalizer.
 This solutions prevents JBoss Marshalling from sending class name over the network and allows to save some bandwidth:</p>
@@ -831,7 +920,7 @@ builder.serialization().addAdvancedExternalizer(<span class="keyword">new</span>
 </div>
 </div>
 <div class="sect2">
-<h3 id="storing_strings_efficiently"><a class="anchor" href="#storing_strings_efficiently"></a>6.3. Storing Strings efficiently</h3>
+<h3 id="storing_strings_efficiently"><a class="anchor" href="#storing_strings_efficiently"></a>7.3. Storing Strings efficiently</h3>
 <div class="paragraph">
 <p>If your strings are mostly ASCII, convert them to <code>UTF-8</code> and store them as <code>byte[]</code>:</p>
 </div>
@@ -847,7 +936,7 @@ builder.serialization().addAdvancedExternalizer(<span class="keyword">new</span>
 </div>
 </div>
 <div class="sect2">
-<h3 id="use_simple_cache_for_local_caches"><a class="anchor" href="#use_simple_cache_for_local_caches"></a>6.4. Use simple cache for local caches</h3>
+<h3 id="use_simple_cache_for_local_caches"><a class="anchor" href="#use_simple_cache_for_local_caches"></a>7.4. Use simple cache for local caches</h3>
 <div class="paragraph">
 <p>When you don&#8217;t need the full feature set of caches, you can set local cache to "simple" mode and achieve non-trivial speedup while still using Infinispan API.</p>
 </div>
@@ -908,7 +997,7 @@ builder.serialization().addAdvancedExternalizer(<span class="keyword">new</span>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-03-12 07:41:09 -0500
+Last updated 2021-04-05 08:28:54 -0400
 </div>
 </div>
 <style>

@@ -527,7 +527,14 @@ $(addBlockSwitches);
 <ul class="sectlevel1">
 <li><a href="#getting_started">1. Getting Started with the Infinispan CLI</a>
 <ul class="sectlevel2">
-<li><a href="#user_create-cli">1.1. Creating and Modifying Users</a></li>
+<li><a href="#creating-users_cli">1.1. Creating and Modifying Users</a>
+<ul class="sectlevel3">
+<li><a href="#adding_credentials">1.1.1. Adding Credentials</a></li>
+<li><a href="#assigning_roles_to_users">1.1.2. Assigning Roles to Users</a></li>
+<li><a href="#adding_users_to_groups">1.1.3. Adding Users to Groups</a></li>
+<li><a href="#user-roles-permissions_cli">1.1.4. User Roles and Permissions</a></li>
+</ul>
+</li>
 <li><a href="#cli_start-cli">1.2. Connecting to Infinispan Servers</a></li>
 <li><a href="#navigating_cli_resources">1.3. Navigating CLI Resources</a>
 <ul class="sectlevel3">
@@ -575,7 +582,7 @@ $(addBlockSwitches);
 </li>
 <li><a href="#protobuf_query">6. Querying Caches with Protobuf Metadata</a>
 <ul class="sectlevel2">
-<li><a href="#configuring_media_types">6.1. Configuring Media Types</a></li>
+<li><a href="#cli-configuring-media-types_cli">6.1. Configuring Media Types</a></li>
 <li><a href="#registering_protobuf_schemas">6.2. Registering Protobuf Schemas</a></li>
 <li><a href="#querying_caches_with_protobuf_schemas">6.3. Querying Caches with Protobuf Schemas</a></li>
 </ul>
@@ -583,7 +590,8 @@ $(addBlockSwitches);
 <li><a href="#xsite_commands">7. Performing Cross-Site Replication Operations</a>
 <ul class="sectlevel2">
 <li><a href="#manage_sites-cli">7.1. Bringing Backup Locations Offline and Online</a></li>
-<li><a href="#cli_xsite_push-cli">7.2. Pushing State to Backup Locations</a></li>
+<li><a href="#cli_xsite_push-cli">7.2. Configuring Cross-Site State Transfer Modes</a></li>
+<li><a href="#cli_xsite_push-cli">7.3. Pushing State to Backup Locations</a></li>
 </ul>
 </li>
 <li><a href="#backup">8. Backing Up and Restoring Infinispan Clusters</a>
@@ -888,7 +896,8 @@ $(addBlockSwitches);
 <li><a href="#name_33">9.33.1. NAME</a></li>
 <li><a href="#synopsis_34">9.33.2. SYNOPSIS</a></li>
 <li><a href="#options_10">9.33.3. OPTIONS</a></li>
-<li><a href="#examples_18">9.33.4. EXAMPLES</a></li>
+<li><a href="#state_transfer_mode_options">9.33.4. STATE TRANSFER MODE OPTIONS</a></li>
+<li><a href="#examples_18">9.33.5. EXAMPLES</a></li>
 </ul>
 </li>
 <li><a href="#stats1">9.34. STATS(1)</a>
@@ -950,22 +959,20 @@ $(addBlockSwitches);
 servers to access data and perform administrative functions.</p>
 </div>
 <div class="sect2">
-<h3 id="user_create-cli"><a class="anchor" href="#user_create-cli"></a>1.1. Creating and Modifying Users</h3>
+<h3 id="creating-users_cli"><a class="anchor" href="#creating-users_cli"></a>1.1. Creating and Modifying Users</h3>
 <div class="paragraph">
-<p>Infinispan Server requires users to authenticate against a default property realm.
-Before you can access Infinispan Server, you must add credentials by creating at least one user and a password.
-You can also add and modify the security authorization groups to which users belong.</p>
+<p>Add Infinispan user credentials and assign permissions to control access to data.</p>
 </div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Open a terminal in <code>$ISPN_HOME</code>.</p>
-</li>
-<li>
-<p>Create and modify Infinispan users with the <code class="command">user</code> command.</p>
-</li>
-</ol>
+<div class="paragraph">
+<p>Infinispan server installations use a property realm to authenticate users for the Hot Rod and REST endpoints.
+This means you need to create at least one user before you can access Infinispan.</p>
+</div>
+<div class="paragraph">
+<p>By default, users also need roles with permissions to access caches and interact with Infinispan resources.
+You can assign roles to users individually or add users to groups that have role permissions.</p>
+</div>
+<div class="paragraph">
+<p>You create users and assign roles with the <code class="command">user</code> command in the Infinispan command line interface (CLI).</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -975,53 +982,241 @@ You can also add and modify the security authorization groups to which users bel
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Run <code class="command">help user</code> for more details about using the command.</p>
+<p>Run <code class="command">help user</code> from a CLI session to get complete command details.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
-<div class="ulist">
-<div class="title">Creating users and passwords</div>
-<ul>
+<div class="sect3">
+<h4 id="adding_credentials"><a class="anchor" href="#adding_credentials"></a>1.1.1. Adding Credentials</h4>
+<div class="paragraph">
+<p>You need an <code>admin</code> user for the Infinispan Console and full control over your Infinispan environment.
+For this reason you should create a user with <code>admin</code> permissions the first time you add credentials.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
 <li>
-<p>Linux</p>
+<p>Open a terminal in <code>$ISPN_HOME</code>.</p>
+</li>
+<li>
+<p>Create an <code>admin</code> user with the <code class="command">user create</code> command in the CLI.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ bin/cli.sh user create myuser -p &quot;qwer1234!&quot;</code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">$ bin/cli.sh user create myuser -p changeme -g admin</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Alternatively, the username "admin" automatically gets <code>admin</code> permissions.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">$ bin/cli.sh user create admin -p changeme</code></pre>
 </div>
 </div>
 </li>
 <li>
-<p>Microsoft Windows</p>
+<p>Open <code>user.properties</code> and <code>groups.properties</code> with any text editor to verify users and groups.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ bin\cli.bat user create myuser -p &quot;qwer1234!&quot;</code></pre>
+<pre class="CodeRay highlight nowrap"><code>$ cat server/conf/users.properties
+
+#$REALM_NAME=default$
+#$ALGORITHM=encrypted$
+myuser=scram-sha-1\:BYGcIAwvf6b...
+
+$ cat server/conf/groups.properties
+
+myuser=admin</code></pre>
 </div>
 </div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="assigning_roles_to_users"><a class="anchor" href="#assigning_roles_to_users"></a>1.1.2. Assigning Roles to Users</h4>
+<div class="paragraph">
+<p>Assign roles to users so they have the correct permissions to access data and modify Infinispan resources.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Start a CLI session with an <code>admin</code> user.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">$ bin/cli.sh</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Assign the <code>deployer</code> role to "katie".</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user roles grant --roles=deployer katie</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>List roles for "katie".</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user roles ls katie
+[&quot;deployer&quot;]</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="adding_users_to_groups"><a class="anchor" href="#adding_users_to_groups"></a>1.1.3. Adding Users to Groups</h4>
+<div class="paragraph">
+<p>Groups let you change permissions for multiple users.
+You assign a role to a group and then add users to that group.
+Users inherit permissions from the group role.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Start a CLI session with an <code>admin</code> user.</p>
+</li>
+<li>
+<p>Use the <code class="command">user create</code> command to create a group.</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Specify "developers" as the group name with the <code>--groups</code> argument.</p>
+</li>
+<li>
+<p>Set a username and password for the group.</p>
+<div class="paragraph">
+<p>In a property realm, a group is a special type of user that also requires a username and password.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user create --groups=developers developers -p changeme</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>List groups.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user ls --groups
+[&quot;developers&quot;]</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Assign the <code>application</code> role to the "developers" group.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user roles grant --roles=application developers</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>List roles for the "developers" group.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user roles ls developers
+[&quot;application&quot;]</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Add existing users, one at a time, to the group as required.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sh">[//containers/default]&gt; user groups john --groups=developers</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="user-roles-permissions_cli"><a class="anchor" href="#user-roles-permissions_cli"></a>1.1.4. User Roles and Permissions</h4>
+<div class="paragraph">
+<p>Infinispan includes a default set of roles that grant users with permissions to access data and interact with Infinispan resources.</p>
+</div>
+<div class="paragraph">
+<p><code>ClusterRoleMapper</code> is the default mechanism that Infinispan uses to associate security principals to authorization roles.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code>ClusterRoleMapper</code> matches principal names to role names.
+A user named <code>admin</code> gets <code>admin</code> permissions automatically, a user named <code>deployer</code> gets <code>deployer</code> permissions, and so on.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Role</th>
+<th class="tableblock halign-left valign-top">Permissions</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>admin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Superuser with all permissions including control of the Cache Manager lifecycle. Users must have this role to access Infinispan Console.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>deployer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL_READ, ALL_WRITE, LISTEN, EXEC, MONITOR, CREATE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Can create and delete Infinispan resources in addition to <code>application</code> permissions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>application</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL_READ, ALL_WRITE, LISTEN, EXEC, MONITOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Has read and write access to Infinispan resources in addition to <code>observer</code> permissions. Can also listen to events and execute server tasks and scripts.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>observer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL_READ, MONITOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Has read access to Infinispan resources in addition to <code>monitor</code> permissions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>monitor</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MONITOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Can view statistics via JMX and the <code>metrics</code> endpoint.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="ulist">
+<div class="title">Reference</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs">org.infinispan.security.AuthorizationPermission Enumeration</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema Reference</a></p>
 </li>
 </ul>
 </div>
-<div class="ulist">
-<div class="title">Creating users with group membership</div>
-<ul>
-<li>
-<p>Linux</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ bin/cli.sh user create myuser -p &quot;qwer1234!&quot; -g supervisor,reader,writer</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Microsoft Windows</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ bin\cli.bat user create myuser -p &quot;qwer1234!&quot; -g supervisor,reader,writer</code></pre>
-</div>
-</div>
-</li>
-</ul>
 </div>
 </div>
 <div class="sect2">
@@ -1453,14 +1648,10 @@ mycache</code></pre>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-    <span class="tag">&lt;cache-container&gt;</span>
-        <span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myCache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-          <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-          <span class="tag">&lt;memory</span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">REMOVE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;/distributed-cache&gt;</span>
-    <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myCache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;memory</span> <span class="attribute-name">max-count</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">when-full</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">REMOVE</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
@@ -2180,7 +2371,7 @@ count of objects.</p>
 </ul>
 </div>
 <div class="sect2">
-<h3 id="configuring_media_types"><a class="anchor" href="#configuring_media_types"></a>6.1. Configuring Media Types</h3>
+<h3 id="cli-configuring-media-types_cli"><a class="anchor" href="#cli-configuring-media-types_cli"></a>6.1. Configuring Media Types</h3>
 <div class="paragraph">
 <p>Encode cache entries with different media types to store data in a format that best suits your requirements.</p>
 </div>
@@ -2194,21 +2385,17 @@ count of objects.</p>
 <p>Create a Infinispan configuration file that adds a distributed cache named <code>qcache</code> and configures the media type, for example:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-   <span class="tag">&lt;cache-container&gt;</span>
-      <span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">qcache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-         <span class="tag">&lt;encoding&gt;</span>
-            <span class="tag">&lt;key</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-            <span class="tag">&lt;value</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-         <span class="tag">&lt;/encoding&gt;</span>
-      <span class="tag">&lt;/distributed-cache&gt;</span>
-   <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">pcache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="tag">&lt;encoding&gt;</span>
+      <span class="tag">&lt;key</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;value</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+   <span class="tag">&lt;/encoding&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 </li>
 <li>
-<p>Create <code>qcache</code> from <code>pcache.xml</code> with the <code class="command">--file=</code> option.</p>
+<p>Create <code>pcache</code> from <code>pcache.xml</code> with the <code class="command">--file=</code> option.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; create cache --file=pcache.xml pcache</code></pre>
@@ -2497,7 +2684,7 @@ communicate with each other to backup data.</p>
 <p>Check if backup locations are online or offline with the <code class="command">site status</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site status --cache=cacheName --site=NYC</pre>
+<pre>[//containers/default]&gt; site status --cache=cacheName --site=NYC</pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -2524,7 +2711,7 @@ locations.</p>
 <p>Bring backup locations online with the <code class="command">bring-online</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site bring-online --cache=customers --site=NYC</pre>
+<pre>[//containers/default]&gt; site bring-online --cache=customers --site=NYC</pre>
 </div>
 </div>
 </li>
@@ -2532,7 +2719,7 @@ locations.</p>
 <p>Take backup locations offline with the <code class="command">take-offline</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site take-offline --cache=customers --site=NYC</pre>
+<pre>[//containers/default]&gt; site take-offline --cache=customers --site=NYC</pre>
 </div>
 </div>
 </li>
@@ -2546,7 +2733,60 @@ locations.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cli_xsite_push-cli"><a class="anchor" href="#cli_xsite_push-cli"></a>7.2. Pushing State to Backup Locations</h3>
+<h3 id="cli_xsite_push-cli"><a class="anchor" href="#cli_xsite_push-cli"></a>7.2. Configuring Cross-Site State Transfer Modes</h3>
+<div class="paragraph">
+<p>You can configure cross-site state transfer operations to happen automatically when Infinispan detects that backup locations come online.
+Alternatively you can use the default mode, which is to manually perform state transfer through the CLI or via JMX or REST.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a CLI connection to Infinispan.</p>
+</li>
+<li>
+<p>Use the <code class="command">site</code> command to configure state transfer modes, as in the following examples:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Retrieve the current state transfer mode.</p>
+<div class="listingblock">
+<div class="content">
+<pre>[//containers/default]&gt; site state-transfer-mode get --cache=cacheName --site=NYC
+"MANUAL"</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Configure automatic state transfer operations for a cache and backup location.</p>
+</li>
+</ul>
+</div>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>[//containers/default]&gt; site state-transfer-mode set --cache=cacheName --site=NYC --mode=AUTO</pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Run the <code class="command">help site</code> command for more information and examples.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cli_xsite_push-cli"><a class="anchor" href="#cli_xsite_push-cli"></a>7.3. Pushing State to Backup Locations</h3>
 <div class="paragraph">
 <p>Transfer cache state to remote backup locations.</p>
 </div>
@@ -2560,7 +2800,7 @@ locations.</p>
 <p>Use the <code class="command">site</code> command to push state transfer, as in the following example:</p>
 <div class="listingblock">
 <div class="content">
-<pre>//containers/default]&gt; site push-site-state --cache=cacheName --site=NYC</pre>
+<pre>[//containers/default]&gt; site push-site-state --cache=cacheName --site=NYC</pre>
 </div>
 </div>
 </li>
@@ -4665,6 +4905,9 @@ Stores cluster state, persists entries if you use a cache store, and stops all n
 <p><strong>site push-site-status</strong> ['OPTIONS']</p>
 </div>
 <div class="paragraph">
+<p><strong>site state-transfer-mode get|set</strong> ['OPTIONS']</p>
+</div>
+<div class="paragraph">
 <p><strong>site name</strong></p>
 </div>
 <div class="paragraph">
@@ -4687,7 +4930,18 @@ Stores cluster state, persists entries if you use a cache store, and stops all n
 </div>
 </div>
 <div class="sect3">
-<h4 id="examples_18"><a class="anchor" href="#examples_18"></a>9.33.4. EXAMPLES</h4>
+<h4 id="state_transfer_mode_options"><a class="anchor" href="#state_transfer_mode_options"></a>9.33.4. STATE TRANSFER MODE OPTIONS</h4>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><strong>--mode</strong>='MODE'</dt>
+<dd>
+<p>Sets the state transfer mode. Values are <code>MANUAL</code> (default) or <code>AUTO</code>.</p>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="examples_18"><a class="anchor" href="#examples_18"></a>9.33.5. EXAMPLES</h4>
 <div class="paragraph">
 <p><code>site status --cache=mycache</code><br>
 Returns the status of all backup locations for <code>mycache</code>.</p>
@@ -4723,6 +4977,14 @@ Cancels the operation to receive state from <code>NYC</code>.</p>
 <div class="paragraph">
 <p><code>site clear-push-state-status --cache=myCache</code><br>
 Clears the status of the push state operation for <code>mycache</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>site state-transfer-mode get --cache=myCache --site=NYC</code><br>
+Retrieves the state transfer mode for <code>mycache</code> to <code>NYC</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>site state-transfer-mode set --cache=myCache --site=NYC --mode=AUTO</code><br>
+Configures automatic state transfer for <code>mycache</code> to <code>NYC</code>.</p>
 </div>
 <div class="paragraph">
 <p><code>site name</code><br>
@@ -5053,7 +5315,7 @@ Returns the version for the server and the CLI.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-03-21 08:45:53 -0400
+Last updated 2021-04-05 08:28:54 -0400
 </div>
 </div>
 <style>

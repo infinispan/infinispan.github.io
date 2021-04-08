@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.10">
-<title>Developing for Infinispan 12.0</title>
+<title>Developing for Infinispan 12.1</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -442,10 +442,86 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
 <script src="../../js/js.js"></script>
+<style>
+.hidden {
+    display: none;
+}
+
+.switch {
+    border-width: 1px 1px 0 1px;
+    border-style: solid;
+    border-color: #7a2518;
+    display: inline-block;
+}
+
+.switch--item {
+    padding: 10px;
+    background-color: #ffffff;
+    color: #7a2518;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.switch--item.selected {
+    background-color: #7a2519;
+    color: #ffffff;
+}
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script type="text/javascript">
+function addBlockSwitches() {
+    $('.primary').each(function() {
+        primary = $(this);
+        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
+        primary.children('.title').remove();
+    });
+    $('.secondary').each(function(idx, node) {
+        secondary = $(node);
+        primary = findPrimary(secondary);
+        switchItem = createSwitchItem(secondary, primary.children('.switch'));
+        switchItem.content.addClass('hidden');
+        findPrimary(secondary).append(switchItem.content);
+        secondary.remove();
+    });
+}
+
+function createBlockSwitch(primary) {
+    blockSwitch = $('<div class="switch"></div>');
+    primary.prepend(blockSwitch);
+    return blockSwitch;
+}
+
+function findPrimary(secondary) {
+    candidate = secondary.prev();
+    while (!candidate.is('.primary')) {
+        candidate = candidate.prev();
+    }
+    return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+    blockName = block.children('.title').text();
+    content = block.children('.content').first().append(block.next('.colist'));
+    item = $('<div class="switch--item">' + blockName + '</div>');
+    item.on('click', '', content, function(e) {
+        $(this).addClass('selected');
+        $(this).siblings().removeClass('selected');
+        e.data.siblings('.content').addClass('hidden');
+        e.data.removeClass('hidden');
+    });
+    blockSwitch.append(item);
+    return {'item': item, 'content': content};
+}
+
+$(addBlockSwitches);
+
+</script>
+
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
-<h1>Developing for Infinispan 12.0</h1>
+<h1>Developing for Infinispan 12.1</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
@@ -524,8 +600,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#data_transcoding">4.8. Transcoders and Data Conversion</a>
 <ul class="sectlevel3">
 <li><a href="#mediatype_override">4.8.1. Converting Data on Demand</a></li>
-<li><a href="#installing_transcoders_in_embedded_deloyments">4.8.2. Installing Transcoders in Embedded Deloyments</a></li>
-<li><a href="#transcoders_and_encoders">4.8.3. Transcoders and Encoders</a></li>
+<li><a href="#installing_transcoders_in_embedded_deployments">4.8.2. Installing Transcoders in Embedded Deployments</a></li>
 </ul>
 </li>
 </ul>
@@ -546,7 +621,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#kryo_marshalling">5.3.3. Using the Kryo Marshaller</a></li>
 <li><a href="#protostuff_marshalling">5.3.4. Using the Protostuff Marshaller</a></li>
 <li><a href="#custom_marshallers">5.3.5. Using Custom Marshallers</a></li>
-<li><a href="#deserialization_allowlist-marshallers">5.3.6. Adding Java Classes to Deserialization Allow Lists</a></li>
+<li><a href="#deserialization-allowlist_marshallers">5.3.6. Adding Java Classes to Deserialization Allow Lists</a></li>
 </ul>
 </li>
 </ul>
@@ -584,13 +659,13 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#embedded_queries-querying">7.3. Embedded Queries</a>
 <ul class="sectlevel3">
 <li><a href="#embedded_query_example">7.3.1. Embedded Query Example</a></li>
-<li><a href="#mapping_entities">7.3.2. Mapping Entities</a></li>
+<li><a href="#embedded_query_mapping">7.3.2. Mapping Entities</a></li>
 </ul>
 </li>
 <li><a href="#remote_queries-querying">7.4. Remote Queries</a>
 <ul class="sectlevel3">
 <li><a href="#remote_query_example">7.4.1. Remote Query Example</a></li>
-<li><a href="#registering_protobuf_schemas">7.4.2. Registering Protobuf Schemas</a></li>
+<li><a href="#remote_query_register_protobuf">7.4.2. Registering Protobuf Schemas</a></li>
 <li><a href="#analysis">7.4.3. Analysis</a></li>
 </ul>
 </li>
@@ -914,7 +989,7 @@ artifact you add as a dependency to your project.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;properties&gt;</span>
-  <span class="tag">&lt;version.infinispan&gt;</span>12.0.2.Final<span class="tag">&lt;/version.infinispan&gt;</span>
+  <span class="tag">&lt;version.infinispan&gt;</span>12.1.0.Final<span class="tag">&lt;/version.infinispan&gt;</span>
 <span class="tag">&lt;/properties&gt;</span>
 
 <span class="tag">&lt;dependencyManagement&gt;</span>
@@ -995,7 +1070,7 @@ Manager safely stops any caches that it controls.</p>
 <p>After you configure the <code>CacheManager</code>, you can obtain and control caches.</p>
 </div>
 <div class="paragraph">
-<p>Invoke the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/manager/EmbeddedCacheManager.html#getCache(java.lang.String)"><code>getCache(String)</code></a> method to obtain caches, as follows:</p>
+<p>Invoke the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/manager/EmbeddedCacheManager.html#getCache(java.lang.String)"><code>getCache(String)</code></a> method to obtain caches, as follows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1009,7 +1084,7 @@ Manager safely stops any caches that it controls.</p>
 <p>Using the <code>getCache()</code> method creates the cache only on the node where you invoke the method. In other words, it performs a local operation that must be invoked on each node across the cluster. Typically, applications deployed across multiple nodes obtain caches during initialization to ensure that caches are <em>symmetric</em> and exist on each node.</p>
 </div>
 <div class="paragraph">
-<p>Invoke the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/manager/EmbeddedCacheManagerAdmin.html#createCache(java.lang.String,java.lang.String)"><code>createCache()</code></a> method to create caches dynamically across the entire cluster, as follows:</p>
+<p>Invoke the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/manager/EmbeddedCacheManagerAdmin.html#createCache(java.lang.String,java.lang.String)"><code>createCache()</code></a> method to create caches dynamically across the entire cluster, as follows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1034,7 +1109,7 @@ Manager safely stops any caches that it controls.</p>
 <p>For the PERMANENT flag to take effect, you must enable global state and set a configuration storage provider.</p>
 </div>
 <div class="paragraph">
-<p>For more information about configuration storage providers, see <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/global/GlobalStateConfigurationBuilder.html#configurationStorage(org.infinispan.globalstate.ConfigurationStorage)">GlobalStateConfigurationBuilder#configurationStorage()</a>.</p>
+<p>For more information about configuration storage providers, see <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/global/GlobalStateConfigurationBuilder.html#configurationStorage(org.infinispan.globalstate.ConfigurationStorage)">GlobalStateConfigurationBuilder#configurationStorage()</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1053,14 +1128,14 @@ is configured).</p>
 about membership in the cluster including who is the owner of the cluster.</p>
 </div>
 <div class="paragraph">
-<div class="title"><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/manager/EmbeddedCacheManager.html#getMembers()">getMembers()</a></div>
+<div class="title"><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/manager/EmbeddedCacheManager.html#getMembers()">getMembers()</a></div>
 <p>The getMembers() method returns all of the nodes in the current cluster.</p>
 </div>
 <div class="paragraph">
-<div class="title"><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/manager/EmbeddedCacheManager.html#getCoordinator()">getCoordinator()</a></div>
+<div class="title"><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/manager/EmbeddedCacheManager.html#getCoordinator()">getCoordinator()</a></div>
 <p>The getCoordinator() method will tell you which one of the members is the coordinator
 of the cluster.  For most intents you shouldn&#8217;t need to care who the coordinator is.
-You can use <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/manager/EmbeddedCacheManager.html#isCoordinator()">isCoordinator()</a>
+You can use <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/manager/EmbeddedCacheManager.html#isCoordinator()">isCoordinator()</a>
 method directly to see if the local node is the coordinator as well.</p>
 </div>
 </div>
@@ -1070,7 +1145,7 @@ method directly to see if the local node is the coordinator as well.</p>
 <h2 id="cache_api"><a class="anchor" href="#cache_api"></a>3. Infinispan Cache Interface</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan provides a <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html">Cache</a> interface that exposes simple methods for adding, retrieving and removing entries, including atomic mechanisms exposed by the JDK&#8217;s ConcurrentMap interface.  Based on the cache mode used, invoking these methods will trigger a number of things to happen, potentially even including replicating an entry to a remote node or looking up an entry from a remote node, or potentially a cache store.</p>
+<p>Infinispan provides a <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html">Cache</a> interface that exposes simple methods for adding, retrieving and removing entries, including atomic mechanisms exposed by the JDK&#8217;s ConcurrentMap interface.  Based on the cache mode used, invoking these methods will trigger a number of things to happen, potentially even including replicating an entry to a remote node or looking up an entry from a remote node, or potentially a cache store.</p>
 </div>
 <div class="sect2">
 <h3 id="cache_api_2"><a class="anchor" href="#cache_api_2"></a>3.1. Cache API</h3>
@@ -1081,23 +1156,23 @@ method directly to see if the local node is the coordinator as well.</p>
 <h4 id="performance_concerns_of_certain_map_methods"><a class="anchor" href="#performance_concerns_of_certain_map_methods"></a>3.1.1. Performance Concerns of Certain Map Methods</h4>
 <div class="paragraph">
 <p>Certain methods exposed in Map have certain performance consequences when used with Infinispan, such as
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#size()">size()</a> ,
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#values()">values()</a> ,
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#keySet()">keySet()</a> and
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#entrySet()">entrySet()</a> .
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#size()">size()</a> ,
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#values()">values()</a> ,
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#keySet()">keySet()</a> and
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#entrySet()">entrySet()</a> .
 Specific methods on the <code>keySet</code>, <code>values</code> and <code>entrySet</code> are fine for use please see their Javadoc for further details.</p>
 </div>
 <div class="paragraph">
 <p>Attempting to perform these operations globally would have large performance impact as well as become a scalability bottleneck.  As such, these methods should only be used for informational or debugging purposes only.</p>
 </div>
 <div class="paragraph">
-<p>It should be noted that using certain flags with the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html#withFlags(java.util.Collection)">withFlags()</a> method can mitigate some of these concerns, please check each method&#8217;s documentation for more details.</p>
+<p>It should be noted that using certain flags with the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/AdvancedCache.html#withFlags(java.util.Collection)">withFlags()</a> method can mitigate some of these concerns, please check each method&#8217;s documentation for more details.</p>
 </div>
 </div>
 <div class="sect3">
 <h4 id="mortal_and_immortal_data"><a class="anchor" href="#mortal_and_immortal_data"></a>3.1.2. Mortal and Immortal Data</h4>
 <div class="paragraph">
-<p>Further to simply storing entries, Infinispan&#8217;s cache API allows you to attach mortality information to data.  For example, simply using <a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#put-K-V-">put(key, value)</a> would create an <em>immortal</em> entry, i.e., an entry that lives in the cache forever, until it is removed (or evicted from memory to prevent running out of memory).  If, however, you put data in the cache using <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/api/BasicCache.html#put(K,V,long,java.util.concurrent.TimeUnit)">put(key, value, lifespan, timeunit)</a> , this creates a <em>mortal</em> entry, i.e., an entry that has a fixed lifespan and expires after that lifespan.</p>
+<p>Further to simply storing entries, Infinispan&#8217;s cache API allows you to attach mortality information to data.  For example, simply using <a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#put-K-V-">put(key, value)</a> would create an <em>immortal</em> entry, i.e., an entry that lives in the cache forever, until it is removed (or evicted from memory to prevent running out of memory).  If, however, you put data in the cache using <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/api/BasicCache.html#put(K,V,long,java.util.concurrent.TimeUnit)">put(key, value, lifespan, timeunit)</a> , this creates a <em>mortal</em> entry, i.e., an entry that has a fixed lifespan and expires after that lifespan.</p>
 </div>
 <div class="paragraph">
 <p>In addition to <em>lifespan</em> , Infinispan also supports <em>maxIdle</em> as an additional metric with which to determine expiration.  Any combination of lifespans or maxIdles can be used.</p>
@@ -1106,13 +1181,13 @@ Specific methods on the <code>keySet</code>, <code>values</code> and <code>entry
 <div class="sect3">
 <h4 id="putforexternalread_operation"><a class="anchor" href="#putforexternalread_operation"></a>3.1.3. putForExternalRead operation</h4>
 <div class="paragraph">
-<p>Infinispan&#8217;s <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html">Cache</a> class contains a different 'put' operation called <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> . This operation is particularly useful when Infinispan is used as a temporary cache for data that is persisted elsewhere.  Under heavy read scenarios, contention in the cache should not delay the real transactions at hand, since caching should just be an optimization and not something that gets in the way.</p>
+<p>Infinispan&#8217;s <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html">Cache</a> class contains a different 'put' operation called <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> . This operation is particularly useful when Infinispan is used as a temporary cache for data that is persisted elsewhere.  Under heavy read scenarios, contention in the cache should not delay the real transactions at hand, since caching should just be an optimization and not something that gets in the way.</p>
 </div>
 <div class="paragraph">
 <p>To achieve this, <code>putForExternalRead()</code> acts as a put call that only operates if the key is not present in the cache, and fails fast and silently if another thread is trying to store the same key at the same time. In this particular scenario, caching data is a way to optimise the system and it&#8217;s not desirable that a failure in caching affects the on-going transaction, hence why failure is handled differently. <code>putForExternalRead()</code> is considered to be a fast operation because regardless of whether it&#8217;s successful or not, it doesn&#8217;t wait for any locks, and so returns to the caller promptly.</p>
 </div>
 <div class="paragraph">
-<p>To understand how to use this operation, let&#8217;s look at basic example. Imagine a cache of Person instances, each keyed by a PersonId , whose data originates in a separate data store. The following code shows the most common pattern of using <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> within the context of this example:</p>
+<p>To understand how to use this operation, let&#8217;s look at basic example. Imagine a cache of Person instances, each keyed by a PersonId , whose data originates in a separate data store. The following code shows the most common pattern of using <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> within the context of this example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1140,14 +1215,14 @@ Person cachedPerson = cache.get(id);
 </div>
 </div>
 <div class="paragraph">
-<p>Note that <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> should never be used as a mechanism to update the cache with a new Person instance originating from application execution (i.e. from a transaction that modifies a Person&#8217;s address). When updating cached values, please use the standard <a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#put-K-V-">put</a> operation, otherwise the possibility of caching corrupt data is likely.</p>
+<p>Note that <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> should never be used as a mechanism to update the cache with a new Person instance originating from application execution (i.e. from a transaction that modifies a Person&#8217;s address). When updating cached values, please use the standard <a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#put-K-V-">put</a> operation, otherwise the possibility of caching corrupt data is likely.</p>
 </div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="advancedcache_api"><a class="anchor" href="#advancedcache_api"></a>3.2. AdvancedCache API</h3>
 <div class="paragraph">
-<p>In addition to the simple Cache interface, Infinispan offers an <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html">AdvancedCache</a> interface, geared towards extension authors.  The AdvancedCache offers the ability to access certain internal components and to apply flags to alter the default behavior of certain cache methods.  The following code snippet depicts how an AdvancedCache can be obtained:</p>
+<p>In addition to the simple Cache interface, Infinispan offers an <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/AdvancedCache.html">AdvancedCache</a> interface, geared towards extension authors.  The AdvancedCache offers the ability to access certain internal components and to apply flags to alter the default behavior of certain cache methods.  The following code snippet depicts how an AdvancedCache can be obtained:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1157,7 +1232,7 @@ Person cachedPerson = cache.get(id);
 <div class="sect3">
 <h4 id="flags"><a class="anchor" href="#flags"></a>3.2.1. Flags</h4>
 <div class="paragraph">
-<p>Flags are applied to regular cache methods to alter the behavior of certain methods.  For a list of all available flags, and their effects, see the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/context/Flag.html">Flag</a> enumeration.  Flags are applied using <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html#withFlags(java.util.Collection)">AdvancedCache.withFlags()</a> .  This builder method can be used to apply any number of flags to a cache invocation, for example:</p>
+<p>Flags are applied to regular cache methods to alter the behavior of certain methods.  For a list of all available flags, and their effects, see the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/context/Flag.html">Flag</a> enumeration.  Flags are applied using <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/AdvancedCache.html#withFlags(java.util.Collection)">AdvancedCache.withFlags()</a> .  This builder method can be used to apply any number of flags to a cache invocation, for example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1174,7 +1249,7 @@ Person cachedPerson = cache.get(id);
 <p>Infinispan offers a listener API, where clients can register for and get notified when events take place.  This annotation-driven API applies to 2 different levels: cache level events and cache manager level events.</p>
 </div>
 <div class="paragraph">
-<p>Events trigger a notification which is dispatched to listeners.   Listeners are simple <a href="http://en.wikipedia.org/wiki/Plain_Old_Java_Object">POJO</a>s annotated with <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/notifications/Listener.html">@Listener</a> and registered using the methods defined in the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/notifications/Listenable.html">Listenable</a> interface.</p>
+<p>Events trigger a notification which is dispatched to listeners.   Listeners are simple <a href="http://en.wikipedia.org/wiki/Plain_Old_Java_Object">POJO</a>s annotated with <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/notifications/Listener.html">@Listener</a> and registered using the methods defined in the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/notifications/Listenable.html">Listenable</a> interface.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -1207,7 +1282,7 @@ Both Cache and CacheManager implement Listenable, which means you can attach lis
 </div>
 </div>
 <div class="paragraph">
-<p>For more comprehensive examples, please see the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/notifications/Listener.html">Javadocs for @Listener</a>.</p>
+<p>For more comprehensive examples, please see the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/notifications/Listener.html">Javadocs for @Listener</a>.</p>
 </div>
 <div class="sect3">
 <h4 id="cache_level_notifications"><a class="anchor" href="#cache_level_notifications"></a>3.3.1. Cache-level notifications</h4>
@@ -1215,7 +1290,7 @@ Both Cache and CacheManager implement Listenable, which means you can attach lis
 <p>Cache-level events occur on a per-cache basis, and by default are only raised on nodes where the events occur.  Note in a distributed cache these events are only raised on the owners of data being affected.  Examples of cache-level events are entries being added, removed, modified, etc.  These events trigger notifications to listeners registered to a specific cache.</p>
 </div>
 <div class="paragraph">
-<p>Please see the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/notifications/cachelistener/annotation/package-summary.html">Javadocs on the org.infinispan.notifications.cachelistener.annotation package</a> for a comprehensive list of all cache-level notifications, and their respective method-level annotations.</p>
+<p>Please see the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/notifications/cachelistener/annotation/package-summary.html">Javadocs on the org.infinispan.notifications.cachelistener.annotation package</a> for a comprehensive list of all cache-level notifications, and their respective method-level annotations.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -1224,7 +1299,7 @@ Both Cache and CacheManager implement Listenable, which means you can attach lis
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-Please refer to the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/notifications/cachelistener/annotation/package-summary.html">Javadocs on the org.infinispan.notifications.cachelistener.annotation package</a> for the list of cache-level notifications available in Infinispan.
+Please refer to the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/notifications/cachelistener/annotation/package-summary.html">Javadocs on the org.infinispan.notifications.cachelistener.annotation package</a> for the list of cache-level notifications available in Infinispan.
 </td>
 </tr>
 </table>
@@ -1260,7 +1335,7 @@ Please refer to the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/
 <div class="sect4">
 <h5 id="event_filtering_and_conversion"><a class="anchor" href="#event_filtering_and_conversion"></a>Event filtering and conversion</h5>
 <div class="paragraph">
-<p>All applicable events on the node where the listener is installed will be raised to the listener.  It is possible to dynamically filter what events are raised by using a <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/filter/KeyFilter.html">KeyFilter</a> (only allows filtering on keys) or <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/notifications/cachelistener/filter/CacheEventFilter.html">CacheEventFilter</a> (used to filter for keys, old value, old metadata, new value, new metadata, whether command was retried, if the event is before the event (ie. isPre) and also the command type).</p>
+<p>All applicable events on the node where the listener is installed will be raised to the listener.  It is possible to dynamically filter what events are raised by using a <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/filter/KeyFilter.html">KeyFilter</a> (only allows filtering on keys) or <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/notifications/cachelistener/filter/CacheEventFilter.html">CacheEventFilter</a> (used to filter for keys, old value, old metadata, new value, new metadata, whether command was retried, if the event is before the event (ie. isPre) and also the command type).</p>
 </div>
 <div class="paragraph">
 <p>The example here shows a simple <code>KeyFilter</code> that will only allow events to be raised when an event modified the entry for the key <code>Only Me</code>.</p>
@@ -1291,7 +1366,7 @@ cache.addListener(listener, <span class="keyword">new</span> SpecificKeyFilter(<
 <p>This can be useful when you want to limit what events you receive in a more efficient manner.</p>
 </div>
 <div class="paragraph">
-<p>There is also a <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/notifications/cachelistener/filter/CacheEventConverter.html">CacheEventConverter</a> that can be supplied that allows for converting a value to another before raising the event.  This can be nice to modularize any code that does value conversions.</p>
+<p>There is also a <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/notifications/cachelistener/filter/CacheEventConverter.html">CacheEventConverter</a> that can be supplied that allows for converting a value to another before raising the event.  This can be nice to modularize any code that does value conversions.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -1352,7 +1427,7 @@ This only works for clustered listeners at this time.  <a href="https://issues.j
 </div>
 </div>
 <div class="paragraph">
-<p>Also when using a <code>CacheEventFilter</code> or <code>CacheEventConverter</code> the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/notifications/cachelistener/filter/EventType.html">EventType</a> contains a method <code>isRetry</code> to tell if the event was generated due to retry.</p>
+<p>Also when using a <code>CacheEventFilter</code> or <code>CacheEventConverter</code> the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/notifications/cachelistener/filter/EventType.html">EventType</a> contains a method <code>isRetry</code> to tell if the event was generated due to retry.</p>
 </div>
 </div>
 </div>
@@ -1362,7 +1437,7 @@ This only works for clustered listeners at this time.  <a href="https://issues.j
 <p>Cache manager-level events occur on a cache manager.  These too are global and  cluster-wide, but involve events that affect all caches created by a single cache manager.  Examples of cache manager-level events are nodes joining or leaving a cluster, or caches starting or stopping.</p>
 </div>
 <div class="paragraph">
-<p>See the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/notifications/cachemanagerlistener/annotation/package-summary.html">org.infinispan.notifications.cachemanagerlistener.annotation package</a> for a comprehensive list of all cache manager-level notifications,  and their respective method-level annotations.</p>
+<p>See the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/notifications/cachemanagerlistener/annotation/package-summary.html">org.infinispan.notifications.cachemanagerlistener.annotation package</a> for a comprehensive list of all cache manager-level notifications,  and their respective method-level annotations.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1413,7 +1488,7 @@ To do this, simply annotate your listener such:</p>
 <div class="sect4">
 <h5 id="asynchronous_thread_pool"><a class="anchor" href="#asynchronous_thread_pool"></a>Asynchronous thread pool</h5>
 <div class="paragraph">
-<p>To tune the thread pool used to dispatch such asynchronous notifications, use the <a href="https://docs.jboss.org/infinispan/12.0/configdocs//infinispan-config-12.0.html"><code>&lt;listener-executor /&gt;</code></a> XML element in your configuration file.</p>
+<p>To tune the thread pool used to dispatch such asynchronous notifications, use the <a href="https://docs.jboss.org/infinispan/12.1/configdocs//infinispan-config-12.1.html"><code>&lt;listener-executor /&gt;</code></a> XML element in your configuration file.</p>
 </div>
 </div>
 </div>
@@ -1424,7 +1499,7 @@ To do this, simply annotate your listener such:</p>
 <p>In addition to synchronous API methods like <a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#put-K-V-">Cache.put()</a> , <a href="https://docs.oracle.com/javase/8/docs/api/java/util/Map.html#remove-java.lang.Object-">Cache.remove()</a> , etc., Infinispan also has an asynchronous, non-blocking API where you can achieve the same results in a non-blocking fashion.</p>
 </div>
 <div class="paragraph">
-<p>These methods are named in a similar fashion to their blocking counterparts, with "Async" appended.  E.g., <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/api/AsyncCache.html#putAsync(K,V)">Cache.putAsync()</a> , <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/api/AsyncCache.html#removeAsync(java.lang.Object)">Cache.removeAsync()</a> , etc.  These asynchronous counterparts return a <a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html">CompletableFuture</a> that contains the actual result of the operation.</p>
+<p>These methods are named in a similar fashion to their blocking counterparts, with "Async" appended.  E.g., <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/api/AsyncCache.html#putAsync(K,V)">Cache.putAsync()</a> , <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/api/AsyncCache.html#removeAsync(java.lang.Object)">Cache.removeAsync()</a> , etc.  These asynchronous counterparts return a <a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html">CompletableFuture</a> that contains the actual result of the operation.</p>
 </div>
 <div class="paragraph">
 <p>For example, in a cache parameterized as <code>Cache&lt;String, String&gt;</code>, <code>Cache.put(String key, String value)</code> returns <code>String</code> while <code>Cache.putAsync(String key, String value)</code> returns <code>CompletableFuture&lt;String&gt;</code>.</p>
@@ -1700,10 +1775,12 @@ objects, or a text-based format.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;encoding&gt;</span>
-  <span class="tag">&lt;key</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text/plain</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-  <span class="tag">&lt;value</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-<span class="tag">&lt;/encoding&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;encoding&gt;</span>
+    <span class="tag">&lt;key</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text/plain</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;value</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;/encoding&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 </li>
@@ -1793,9 +1870,9 @@ Infinispan encodes data in Protobuf format.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;local-cache&gt;</span>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-<span class="tag">&lt;/local-cache&gt;</span></code></pre>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -1807,12 +1884,12 @@ Infinispan encodes data in Protobuf format.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache&gt;</span>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    <span class="tag">&lt;encoding&gt;</span>
       <span class="tag">&lt;key</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-java-object</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;value</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/xml; charset=UTF-8</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
    <span class="tag">&lt;/encoding&gt;</span>
-<span class="tag">&lt;/cache&gt;</span></code></pre>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -1945,12 +2022,12 @@ plain</code>, <code>application/json</code>, or <code>application/xml</code>.</p
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache&gt;</span>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    <span class="tag">&lt;encoding&gt;</span>
       <span class="tag">&lt;key</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text/plain; charset=UTF-8</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;value</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">text/plain; charset=UTF-8</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
    <span class="tag">&lt;/encoding&gt;</span>
-<span class="tag">&lt;/cache&gt;</span></code></pre>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 </li>
@@ -2051,7 +2128,7 @@ instance is either serialized or deserialized.</p>
 <p><a href="../developing/developing.html#marshalling">Marshalling Java Objects</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/marshall/WrappedBytes.html">org.infinispan.commons.marshall.WrappedBytes</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/marshall/WrappedBytes.html">org.infinispan.commons.marshall.WrappedBytes</a></p>
 </li>
 </ul>
 </div>
@@ -2075,7 +2152,7 @@ custom code you should convert data on demand.</p>
 <p>Specify <code>application/x-java-object</code> as the MediaType for keys and values as follows:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    <span class="tag">&lt;encoding&gt;</span>
       <span class="tag">&lt;key</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-java-object</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;value</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-java-object</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
@@ -2143,6 +2220,18 @@ Java objects.</p>
 </div>
 <div class="sect2">
 <h3 id="data_encoding"><a class="anchor" href="#data_encoding"></a>4.7. Data Encoding</h3>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+This section describes deprecated APIs that will be removed in a future release.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>Encoding is the data conversion operation done by Infinispan caches before storing data, and when reading back from storage.</p>
 </div>
@@ -2449,7 +2538,7 @@ Cache&lt;<span class="predefined-type">Integer</span>, <span class="type">byte</
 </div>
 </div>
 <div class="sect3">
-<h4 id="installing_transcoders_in_embedded_deloyments"><a class="anchor" href="#installing_transcoders_in_embedded_deloyments"></a>4.8.2. Installing Transcoders in Embedded Deloyments</h4>
+<h4 id="installing_transcoders_in_embedded_deployments"><a class="anchor" href="#installing_transcoders_in_embedded_deployments"></a>4.8.2. Installing Transcoders in Embedded Deployments</h4>
 <div class="paragraph">
 <p>Infinispan Server includes transcoders by default. However, when running
 Infinispan as a library, you must add the following to your project:</p>
@@ -2458,94 +2547,6 @@ Infinispan as a library, you must add the following to your project:</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code>org.infinispan:infinispan-server-core</code></pre>
 </div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="transcoders_and_encoders"><a class="anchor" href="#transcoders_and_encoders"></a>4.8.3. Transcoders and Encoders</h4>
-<div class="paragraph">
-<p>Usually there will be none or only one data conversion involved in a cache operation:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>No conversion by default on caches using in embedded or server mode;</p>
-</li>
-<li>
-<p><em>Encoder</em> based conversion for embedded caches without MediaType configured, but using OFF_HEAP or BINARY;</p>
-</li>
-<li>
-<p><em>Transcoder</em> based conversion for caches used in server mode with multiple REST and Hot Rod clients sending
-and receiving data in different formats. Those caches will have MediaType configured describing the storage.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>But it&#8217;s possible to have both encoders and transcoders being used simultaneously for advanced use cases.</p>
-</div>
-<div class="paragraph">
-<p>Consider an example, a cache that stores marshalled objects (with jboss marshaller) content but for security reasons a transparent encryption layer should be added in order to avoid storing "plain" data to an external store.
-Clients should be able to read and write data in multiple formats.</p>
-</div>
-<div class="paragraph">
-<p>This can be achieved by configuring the cache with the the MediaType that describes the storage regardless of the encoding layer:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">ConfigurationBuilder cfg = <span class="keyword">new</span> ConfigurationBuilder();
-cfg.encoding().key().mediaType(<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-jboss-marshalling</span><span class="delimiter">&quot;</span></span>);
-cfg.encoding().key().mediaType(<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-jboss-marshalling</span><span class="delimiter">&quot;</span></span>);</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The transparent encryption can be added by decorating the cache with a special <em>Encoder</em> that encrypts/decrypts with storing/retrieving, for example:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="type">class</span> <span class="class">Scrambler</span> <span class="directive">implements</span> <span class="predefined-type">Encoder</span> {
-
-   <span class="directive">public</span> <span class="predefined-type">Object</span> toStorage(<span class="predefined-type">Object</span> content) {
-   <span class="comment">// Encrypt data</span>
-   }
-
-   <span class="directive">public</span> <span class="predefined-type">Object</span> fromStorage(<span class="predefined-type">Object</span> content) {
-   <span class="comment">// Decrypt data</span>
-   }
-
-   <span class="annotation">@Override</span>
-   <span class="directive">public</span> <span class="type">boolean</span> isStorageFormatFilterable() {
-
-   }
-
-   <span class="directive">public</span> MediaType getStorageFormat() {
-   <span class="keyword">return</span> <span class="keyword">new</span> MediaType(<span class="string"><span class="delimiter">&quot;</span><span class="content">application</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">scrambled</span><span class="delimiter">&quot;</span></span>);
-   }
-
-   <span class="annotation">@Override</span>
-   <span class="directive">public</span> <span class="type">short</span> id() {
-   <span class="comment">//return id</span>
-   }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>To make sure all data written to the cache will be stored encrypted, it&#8217;s necessary to decorate the cache with the Encoder above and perform all cache operations in this decorated cache:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java">Cache&lt;?,?&gt; secureStorageCache = cache.getAdvancedCache().withEncoding(Scrambler.class).put(k,v);</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The capability of reading data in multiple formats can be added by decorating the cache with the desired MediaType:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="comment">// Obtain a stream of values in XML format from the secure cache</span>
-secureStorageCache.getAdvancedCache().withMediaType(<span class="string"><span class="delimiter">&quot;</span><span class="content">application/xml</span><span class="delimiter">&quot;</span></span>,<span class="string"><span class="delimiter">&quot;</span><span class="content">application/xml</span><span class="delimiter">&quot;</span></span>).values().stream();</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Internally, Infinispan will first apply the encoder <em>fromStorage</em> operation to obtain the entries, that will be in "application/x-jboss-marshalling" format and then apply a successive conversion to "application/xml" by using the adequate Transcoder.</p>
 </div>
 </div>
 </div>
@@ -2961,8 +2962,8 @@ builder.serialization()
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;serialization</span> <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.jboss.marshalling.commons.GenericJBossMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;allow-list&gt;</span>
-      <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
-      <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
+    <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
+    <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
   <span class="tag">&lt;/allow-list&gt;</span>
 <span class="tag">&lt;/serialization&gt;</span></code></pre>
 </div>
@@ -2977,10 +2978,10 @@ builder.serialization()
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization-allowlist_marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/marshall/AdvancedExternalizer.html">AdvancedExternalizer</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/marshall/AdvancedExternalizer.html">AdvancedExternalizer</a></p>
 </li>
 </ul>
 </div>
@@ -3018,10 +3019,10 @@ builder.serialization()
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;serialization</span> <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.commons.marshall.JavaSerializationMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;allow-list&gt;</span>
-        <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
-        <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
-    <span class="tag">&lt;/allow-list&gt;</span>
+  <span class="tag">&lt;allow-list&gt;</span>
+    <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
+    <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
+  <span class="tag">&lt;/allow-list&gt;</span>
 <span class="tag">&lt;/serialization&gt;</span></code></pre>
 </div>
 </div>
@@ -3035,13 +3036,13 @@ builder.serialization()
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization-allowlist_marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
 </li>
 <li>
 <p><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Serializable.html">Serializable</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/marshall/JavaSerializationMarshaller.html">org.infinispan.commons.marshall.JavaSerializationMarshaller</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/marshall/JavaSerializationMarshaller.html">org.infinispan.commons.marshall.JavaSerializationMarshaller</a></p>
 </li>
 </ul>
 </div>
@@ -3074,7 +3075,7 @@ runtime class files for the Kryo marshalling implementation as follows:</p>
 <ol class="arabic">
 <li>
 <p>Download the
-<a href="http://central.maven.org/maven2/org/infinispan/infinispan-marshaller-kryo-bundle/12.0/infinispan-marshaller-kryo-bundle-12.0.jar">Kryo Bundle</a>.</p>
+<a href="http://central.maven.org/maven2/org/infinispan/infinispan-marshaller-kryo-bundle/12.1/infinispan-marshaller-kryo-bundle-12.1.jar">Kryo Bundle</a>.</p>
 </li>
 <li>
 <p>Add the JAR file to the <code>server/lib</code> directory in your Infinispan server installation directory.</p>
@@ -3142,7 +3143,7 @@ for example:</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization-allowlist_marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
 </li>
 <li>
 <p><a href="https://github.com/EsotericSoftware/kryo">Kryo on GitHub</a></p>
@@ -3180,7 +3181,7 @@ follows:</p>
 <ol class="arabic">
 <li>
 <p>Download the
-<a href="http://central.maven.org/maven2/org/infinispan/infinispan-marshaller-protostuff-bundle/12.0/infinispan-marshaller-protostuff-bundle-12.0.jar">Protostuff Bundle JAR</a>.</p>
+<a href="http://central.maven.org/maven2/org/infinispan/infinispan-marshaller-protostuff-bundle/12.1/infinispan-marshaller-protostuff-bundle-12.1.jar">Protostuff Bundle JAR</a>.</p>
 </li>
 <li>
 <p>Add the JAR file to the <code>server/lib</code> directory in your Infinispan server installation directory.</p>
@@ -3250,7 +3251,7 @@ marshalling:</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization-allowlist_marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
 </li>
 <li>
 <p><a href="https://github.com/protostuff/protostuff">Protostuff on GitHub</a></p>
@@ -3292,10 +3293,10 @@ builder.serialization()
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;serialization</span> <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.example.marshall.CustomMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;allow-list&gt;</span>
-        <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
-        <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
-    <span class="tag">&lt;/allow-list&gt;</span>
+  <span class="tag">&lt;allow-list&gt;</span>
+    <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
+    <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
+  <span class="tag">&lt;/allow-list&gt;</span>
 <span class="tag">&lt;/serialization&gt;</span></code></pre>
 </div>
 </div>
@@ -3314,7 +3315,7 @@ builder.serialization()
 <td class="content">
 <div class="paragraph">
 <p>Custom marshaller implementations can access a configured access list via the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/marshall/Marshaller.html#initialize(org.infinispan.commons.configuration.ClassAllowList)">initialize()</a> method, which is called during startup.</p>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/marshall/Marshaller.html#initialize(org.infinispan.commons.configuration.ClassAllowList)">initialize()</a> method, which is called during startup.</p>
 </div>
 </td>
 </tr>
@@ -3324,16 +3325,16 @@ builder.serialization()
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/marshall/Marshaller.html">org.infinispan.commons.marshall.Marshaller</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/marshall/Marshaller.html">org.infinispan.commons.marshall.Marshaller</a></p>
 </li>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization-allowlist_marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect3">
-<h4 id="deserialization_allowlist-marshallers"><a class="anchor" href="#deserialization_allowlist-marshallers"></a>5.3.6. Adding Java Classes to Deserialization Allow Lists</h4>
+<h4 id="deserialization-allowlist_marshallers"><a class="anchor" href="#deserialization-allowlist_marshallers"></a>5.3.6. Adding Java Classes to Deserialization Allow Lists</h4>
 <div class="paragraph">
 <p>Infinispan does not allow deserialization of arbritrary Java classes for
 security reasons, which applies to JSON, XML, and marshalled <code>byte[]</code> content.</p>
@@ -3356,12 +3357,13 @@ properties or specifying them in the Infinispan configuration.</p>
 <div class="title">Declarative</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container&gt;</span>
-   <span class="tag">&lt;serialization</span> <span class="attribute-name">version</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1.0</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.marshall.TestObjectStreamMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;allow-list&gt;</span>
-         <span class="tag">&lt;class&gt;</span>org.infinispan.test.data.Person<span class="tag">&lt;/class&gt;</span>
-         <span class="tag">&lt;regex&gt;</span>org.infinispan.test.data.*<span class="tag">&lt;/regex&gt;</span>
-       <span class="tag">&lt;/allow-list&gt;</span>
-   <span class="tag">&lt;/serialization&gt;</span>
+  <span class="tag">&lt;serialization</span> <span class="attribute-name">version</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1.0</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.marshall.TestObjectStreamMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;allow-list&gt;</span>
+      <span class="tag">&lt;class&gt;</span>org.infinispan.test.data.Person<span class="tag">&lt;/class&gt;</span>
+      <span class="tag">&lt;regex&gt;</span>org.infinispan.test.data.*<span class="tag">&lt;/regex&gt;</span>
+    <span class="tag">&lt;/allow-list&gt;</span>
+  <span class="tag">&lt;/serialization&gt;</span>
 <span class="tag">&lt;/cache-container&gt;</span></code></pre>
 </div>
 </div>
@@ -3433,13 +3435,13 @@ acquires the lock if it is available and the second call is blocked.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/lock/EmbeddedClusteredLockManagerFactory.html">EmbeddedClusteredLockManagerFactory</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/lock/EmbeddedClusteredLockManagerFactory.html">EmbeddedClusteredLockManagerFactory</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/lock/api/ClusteredLockManager.html">ClusteredLockManager</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/lock/api/ClusteredLockManager.html">ClusteredLockManager</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/lock/api/ClusteredLock.html">ClusteredLock</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/lock/api/ClusteredLock.html">ClusteredLock</a></p>
 </li>
 </ul>
 </div>
@@ -3594,22 +3596,23 @@ clm1.defineLock(<span class="string"><span class="delimiter">&quot;</span><span 
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="preprocessor">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
 <span class="tag">&lt;infinispan</span>
-        <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.0</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    ...
+        <span class="attribute-name">xmlns:xsi</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">http://www.w3.org/2001/XMLSchema-instance</span><span class="delimiter">&quot;</span></span>
+        <span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.1 https://infinispan.org/schemas/infinispan-config-12.1.xsd</span><span class="delimiter">&quot;</span></span>
+        <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.1</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+
     <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;transport</span><span class="tag">/&gt;</span>
         <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
             <span class="tag">&lt;locking</span> <span class="attribute-name">concurrency-level</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">100</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">acquire-timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
         <span class="tag">&lt;/local-cache&gt;</span>
-
-        <span class="tag">&lt;clustered-locks</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:clustered-locks:12.0</span><span class="delimiter">&quot;</span></span>
+        <span class="tag">&lt;clustered-locks</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:clustered-locks:12.1</span><span class="delimiter">&quot;</span></span>
                          <span class="attribute-name">num-owners</span> = <span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span>
                          <span class="attribute-name">reliability</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">AVAILABLE</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
             <span class="tag">&lt;clustered-lock</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">lock1</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
             <span class="tag">&lt;clustered-lock</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">lock2</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
         <span class="tag">&lt;/clustered-locks&gt;</span>
     <span class="tag">&lt;/cache-container&gt;</span>
-    ...
+    <span class="comment">&lt;!-- Cache configuration goes here. --&gt;</span>
 <span class="tag">&lt;/infinispan&gt;</span></code></pre>
 </div>
 </div>
@@ -3623,10 +3626,10 @@ clm1.defineLock(<span class="string"><span class="delimiter">&quot;</span><span 
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/lock/configuration/ClusteredLockManagerConfiguration.html">ClusteredLockManagerConfiguration</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/lock/configuration/ClusteredLockManagerConfiguration.html">ClusteredLockManagerConfiguration</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/configdocs/infinispan-clustered-locks-config-infinispan-clustered-locks-config-12.0.html.html">Clustered Locks Configuration Schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/infinispan-clustered-locks-config-infinispan-clustered-locks-config-12.0.html.html">Clustered Locks Configuration Schema</a></p>
 </li>
 </ul>
 </div>
@@ -3680,19 +3683,14 @@ clm1.defineLock(<span class="string"><span class="delimiter">&quot;</span><span 
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   <span class="tag">&lt;indexing&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
-      ...
-   <span class="tag">&lt;/indexing&gt;</span>
+  <span class="tag">&lt;indexing&gt;</span>
+    <span class="comment">&lt;!-- Indexing configuration goes here. --&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Adding an <code>&lt;indexing&gt;</code> element automatically enables indexing. You do not need to include the <code>enabled</code> attribute, even though the default value of the <code>enabled</code> attribute is <code>false</code> in the configuration schema.</td>
-</tr>
-</table>
+<div class="paragraph">
+<p>Adding an <code>&lt;indexing&gt;</code> element automatically enables indexing. You do not need to include the <code>enabled</code> attribute, even though the default value of the <code>enabled</code> attribute is <code>false</code> in the configuration schema.</p>
 </div>
 </li>
 <li>
@@ -3700,11 +3698,11 @@ clm1.defineLock(<span class="string"><span class="delimiter">&quot;</span><span 
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   <span class="tag">&lt;indexing&gt;</span>
-     <span class="tag">&lt;indexed-entities&gt;</span>
-       <span class="tag">&lt;indexed-entity&gt;</span>...<span class="tag">&lt;/indexed-entity&gt;</span>
-     <span class="tag">&lt;/indexed-entities&gt;</span>
-   <span class="tag">&lt;/indexing&gt;</span>
+  <span class="tag">&lt;indexing&gt;</span>
+    <span class="tag">&lt;indexed-entities&gt;</span>
+      <span class="tag">&lt;indexed-entity&gt;</span>...<span class="tag">&lt;/indexed-entity&gt;</span>
+    <span class="tag">&lt;/indexed-entities&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -3788,7 +3786,7 @@ config.indexing().enable().storage(FILESYSTEM).path(<span class="string"><span c
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/configuration/cache/IndexingConfigurationBuilder.html"><code>org.infinispan.configuration.cache.IndexingConfigurationBuilder</code></a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/configuration/cache/IndexingConfigurationBuilder.html"><code>org.infinispan.configuration.cache.IndexingConfigurationBuilder</code></a></p>
 </li>
 </ul>
 </div>
@@ -3840,9 +3838,9 @@ You should store indexes in JVM heap memory only for small datasets.</p>
 <div class="title">File system</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   <span class="tag">&lt;indexing</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">filesystem</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${java.io.tmpdir}/baseDir</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-     ...
-   <span class="tag">&lt;/indexing&gt;</span>
+  <span class="tag">&lt;indexing</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">filesystem</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${java.io.tmpdir}/baseDir</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="comment">&lt;!-- Indexing configuration goes here. --&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -3851,7 +3849,8 @@ You should store indexes in JVM heap memory only for small datasets.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;indexing</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">local-heap</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   ...
+    <span class="comment">&lt;!-- Additional indexing configuration goes here. --&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -3867,18 +3866,12 @@ By default Infinispan reads the index before each query if the index changed sin
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">my-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
   <span class="tag">&lt;indexing</span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">filesystem</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${java.io.tmpdir}/baseDir</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;index-reader</span> <span class="attribute-name">refresh-interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span> <i class="conum" data-value="1"></i><b>(1)</b>
-     ...
+    <span class="comment">&lt;!-- Sets an interval of one second for the index reader. --&gt;</span>
+    <span class="tag">&lt;index-reader</span> <span class="attribute-name">refresh-interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="comment">&lt;!-- Additional indexing configuration goes here. --&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
-</div>
-<div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Sets an interval of one second for the <code>IndexReader</code>.</td>
-</tr>
-</table>
 </div>
 </div>
 <div class="sect4">
@@ -3924,7 +3917,8 @@ The defaults should work for most cases and custom configurations should only be
                    <span class="attribute-name">min-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span>
                    <span class="attribute-name">max-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">20</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
     <span class="tag">&lt;/index-writer&gt;</span>
-      ...
+    <span class="comment">&lt;!-- Additional indexing configuration goes here. --&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -4015,7 +4009,7 @@ The defaults should work for most cases and custom configurations should only be
 </table>
 <div class="paragraph">
 <div class="title">Reference</div>
-<p>For more information about indexing elements and attributes, refer to the <a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Infinispan Configuration Schema</a>.</p>
+<p>For more information about indexing elements and attributes, refer to the <a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema</a>.</p>
 </div>
 </div>
 </div>
@@ -4591,26 +4585,18 @@ Indexing and querying are both done on top of Java objects.</p>
 <div class="sect3">
 <h4 id="embedded_query_example"><a class="anchor" href="#embedded_query_example"></a>7.3.1. Embedded Query Example</h4>
 <div class="paragraph">
-<p>We&#8217;re going to store <code>Book</code> instances in an Infinispan cache called "books". <code>Book</code> instances will be indexed, so we enable indexing for the cache:</p>
-</div>
-<div class="paragraph">
-<p>Infinispan configuration:</p>
+<p>We&#8217;re going to store <code>Book</code> instances in an Infinispan cache called "books". <code>Book</code> instances will be indexed, so we enable indexing for the cache configuration:</p>
 </div>
 <div class="listingblock">
 <div class="title">infinispan.xml</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-    <span class="tag">&lt;cache-container&gt;</span>
-        <span class="tag">&lt;transport</span> <span class="attribute-name">cluster</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">infinispan-cluster</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-            <span class="tag">&lt;indexing</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${user.home}/index</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-                <span class="tag">&lt;indexed-entities&gt;</span>
-                    <span class="tag">&lt;indexed-entity&gt;</span>org.infinispan.sample.Book<span class="tag">&lt;/indexed-entity&gt;</span>
-                <span class="tag">&lt;/indexed-entities&gt;</span>
-            <span class="tag">&lt;/indexing&gt;</span>
-        <span class="tag">&lt;/distributed-cache&gt;</span>
-    <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;indexing</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">${user.home}/index</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;indexed-entities&gt;</span>
+      <span class="tag">&lt;indexed-entity&gt;</span>org.infinispan.sample.Book<span class="tag">&lt;/indexed-entity&gt;</span>
+    <span class="tag">&lt;/indexed-entities&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -4703,7 +4689,7 @@ QueryFactory queryFactory = org.infinispan.query.Search.getQueryFactory(cache);
 </div>
 </div>
 <div class="sect3">
-<h4 id="mapping_entities"><a class="anchor" href="#mapping_entities"></a>7.3.2. Mapping Entities</h4>
+<h4 id="embedded_query_mapping"><a class="anchor" href="#embedded_query_mapping"></a>7.3.2. Mapping Entities</h4>
 <div class="paragraph">
 <p>Infinispan relies on the API of <a href="http://hibernate.org/search/">Hibernate Search</a> in order to define fine grained configuration for indexing at entity level.
 This configuration includes which fields are annotated, which analyzers should be used, how to map nested objects and so on.
@@ -4751,11 +4737,12 @@ will be picked up automatically:</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">test</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;indexing</span> <span class="attribute-name">auto-config</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-        <span class="tag">&lt;key-transformers&gt;</span>
-            <span class="tag">&lt;key-transformer</span> <span class="attribute-name">key</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomKey</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">transformer</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomTransformer</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;/key-transformers&gt;</span>
-    <span class="tag">&lt;/indexing&gt;</span>
+  <span class="tag">&lt;indexing</span> <span class="attribute-name">auto-config</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;key-transformers&gt;</span>
+      <span class="tag">&lt;key-transformer</span> <span class="attribute-name">key</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomKey</span><span class="delimiter">&quot;</span></span>
+                       <span class="attribute-name">transformer</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomTransformer</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/key-transformers&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
 <span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -4856,17 +4843,13 @@ Additionally, remote queries require Protobuf schemas (<code>.proto</code> files
 <div class="listingblock">
 <div class="title">infinispan.xml</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-  <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;indexing&gt;</span>
-        <span class="tag">&lt;indexed-entities&gt;</span>
-          <span class="tag">&lt;indexed-entity&gt;</span>book_sample.Book<span class="tag">&lt;/indexed-entity&gt;</span>
-        <span class="tag">&lt;/indexed-entities&gt;</span>
-      <span class="tag">&lt;/indexing&gt;</span>
-    <span class="tag">&lt;/replicated-cache&gt;</span>
-  <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;indexing&gt;</span>
+    <span class="tag">&lt;indexed-entities&gt;</span>
+      <span class="tag">&lt;indexed-entity&gt;</span>book_sample.Book<span class="tag">&lt;/indexed-entity&gt;</span>
+    <span class="tag">&lt;/indexed-entities&gt;</span>
+  <span class="tag">&lt;/indexing&gt;</span>
+<span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -4875,13 +4858,9 @@ Additionally, remote queries require Protobuf schemas (<code>.proto</code> files
 <div class="listingblock">
 <div class="title">infinispan.xml</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-  <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-    <span class="tag">&lt;/replicated-cache&gt;</span>
-  <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;replicated-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/replicated-cache&gt;</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -5003,7 +4982,7 @@ This concrete class can be used directly in the Hot Rod client code to initializ
 </div>
 </div>
 <div class="sect3">
-<h4 id="registering_protobuf_schemas"><a class="anchor" href="#registering_protobuf_schemas"></a>7.4.2. Registering Protobuf Schemas</h4>
+<h4 id="remote_query_register_protobuf"><a class="anchor" href="#remote_query_register_protobuf"></a>7.4.2. Registering Protobuf Schemas</h4>
 <div class="paragraph">
 <p>To query protobuf entities, you must provide the client and server with the relevant metadata about your entities in a Protobuf schema (<code>.proto</code> file).</p>
 </div>
@@ -5012,11 +4991,23 @@ This concrete class can be used directly in the Hot Rod client code to initializ
 Both keys and values in this cache are plain strings.
 Registering a new schema is therefore as simple as performing a <code>put()</code> operation on this cache using the schema name as key and the schema file itself as the value.</p>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
 <div class="paragraph">
-<p>Alternatively you can use the <code class="command">schema</code> command with the Infinispan CLI, Infinispan Console, REST endpoint <code>/rest/v2/schemas</code>, or the <code>ProtobufMetadataManager</code> MBean via JMX.</p>
+<p>If caches use authorization, users must have <code>CREATE</code> permissions to add entries in the <code>___protobuf_metadata</code> cache.
+Assign users the <code>deployer</code> role at minimum if you use default authorization settings.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
-<p>Note that, if you enable authorization on caches, users must belong to the ['<em>_schema_manager'] role to add to the <code></em>_protobuf_metadata</code> cache.</p>
+<p>Alternatively you can use the <code class="command">schema</code> command with the Infinispan CLI, Infinispan Console, REST endpoint <code>/rest/v2/schemas</code>, or the <code>ProtobufMetadataManager</code> MBean via JMX.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -5045,7 +5036,7 @@ Registering a new schema is therefore as simple as performing a <code>put()</cod
 <h4 id="analysis"><a class="anchor" href="#analysis"></a>7.4.3. Analysis</h4>
 <div class="paragraph">
 <p>Analysis is a process that converts input data into one or more terms that you can index and query.
-While in <a href="#mapping_embedded">Embedded Query</a> mapping is done through <a href="https://docs.jboss.org/hibernate/stable/search/reference/en-US/html_single/#_analysis">Hibernate Search annotations</a>, that supports
+While in <a href="#embedded_query_mapping">Embedded Query</a> mapping is done through <a href="https://docs.jboss.org/hibernate/stable/search/reference/en-US/html_single/#_analysis">Hibernate Search annotations</a>, that supports
 a rich set of Lucene based analyzers, in client-server mode the analyzer definitions are declared in a platform neutral way.</p>
 </div>
 <h5 id="default_analyzers" class="discrete">Default Analyzers</h5>
@@ -5506,12 +5497,12 @@ Theses counters are started eagerly and they are available in all the cluster&#8
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="preprocessor">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
 <span class="tag">&lt;infinispan&gt;</span>
     <span class="tag">&lt;cache-container</span> <span class="attribute-name">...</span><span class="tag">&gt;</span>
-        <span class="comment">&lt;!-- if needed to persist counter, global state needs to be configured --&gt;</span>
+        <span class="comment">&lt;!-- To persist counters, you need to configure the global state. --&gt;</span>
         <span class="tag">&lt;global-state&gt;</span>
-            ...
+        <span class="comment">&lt;!-- Global state configuration goes here. --&gt;</span>
         <span class="tag">&lt;/global-state&gt;</span>
-        <span class="comment">&lt;!-- your caches configuration goes here --&gt;</span>
-         <span class="tag">&lt;counters</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:counters:12.0</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">num-owners</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">reliability</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">CONSISTENT</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="comment">&lt;!-- Cache configuration goes here. --&gt;</span>
+         <span class="tag">&lt;counters</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:counters:12.1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">num-owners</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">reliability</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">CONSISTENT</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
              <span class="tag">&lt;strong-counter</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">c1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">initial-value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">PERSISTENT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
              <span class="tag">&lt;strong-counter</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">c2</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">initial-value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">storage</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">VOLATILE</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
                  <span class="tag">&lt;lower-bound</span> <span class="attribute-name">value</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">0</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
@@ -6533,7 +6524,7 @@ import javax.inject.Qualifier;
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>creates a <code>@GreetingCache</code> qualifier.</td>
+<td>Creates a <code>@GreetingCache</code> qualifier.</td>
 </tr>
 </table>
 </div>
@@ -6566,11 +6557,11 @@ import org.infinispan.configuration.cache.Configuration;
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>names the cache to inject.</td>
+<td>Names the cache to inject.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>adds the cache qualifier.</td>
+<td>Adds the cache qualifier.</td>
 </tr>
 </table>
 </div>
@@ -6598,15 +6589,15 @@ package org.infinispan.configuration.global.GlobalConfigurationBuilder;
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>adds the cache qualifier.</td>
+<td>Adds the cache qualifier.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>creates the bean once for the application. Producers that create cache managers should always include the <code>@ApplicationScoped</code> annotation to avoid creating multiple cache managers.</td>
+<td>Creates the bean once for the application. Producers that create cache managers should always include the <code>@ApplicationScoped</code> annotation to avoid creating multiple cache managers.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>creates a new <code>DefaultCacheManager</code> instance that is bound to the <code>@GreetingCache</code> qualifier.</td>
+<td>Creates a new <code>DefaultCacheManager</code> instance that is bound to the <code>@GreetingCache</code> qualifier.</td>
 </tr>
 </table>
 </div>
@@ -6931,7 +6922,7 @@ the cache name as in the following example:</p>
 </div>
 <div class="paragraph">
 <p>In order to do this, the cache has to be provided with a reference to the environment&#8217;s <a href="https://docs.oracle.com/javaee/7/api/javax/transaction/TransactionManager.html">TransactionManager</a>.
-This is usually done by configuring the cache with the class name of an implementation of the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/transaction/lookup/TransactionManagerLookup.html">TransactionManagerLookup</a> interface.
+This is usually done by configuring the cache with the class name of an implementation of the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/transaction/lookup/TransactionManagerLookup.html">TransactionManagerLookup</a> interface.
 When the cache starts, it will create an instance of this class and invoke its <code>getTransactionManager()</code> method, which returns a reference to the <code>TransactionManager</code>.</p>
 </div>
 <div class="paragraph">
@@ -6941,21 +6932,21 @@ When the cache starts, it will create an instance of this class and invoke its <
 <div class="title">Transaction manager lookup implementations</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/transaction/lookup/EmbeddedTransactionManagerLookup.html">EmbeddedTransactionManagerLookup</a>:
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/transaction/lookup/EmbeddedTransactionManagerLookup.html">EmbeddedTransactionManagerLookup</a>:
 This provides with a basic transaction manager which should only be used for embedded mode when no other implementation is available.
 This implementation has some severe limitations to do with concurrent transactions and recovery.</p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/transaction/lookup/JBossStandaloneJTAManagerLookup.html">JBossStandaloneJTAManagerLookup</a>:
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/transaction/lookup/JBossStandaloneJTAManagerLookup.html">JBossStandaloneJTAManagerLookup</a>:
 If you&#8217;re running Infinispan in a standalone environment, or in JBoss AS 7 and earlier, and WildFly 8, 9, and 10, this should be your default choice for transaction manager.
 It&#8217;s a fully fledged transaction manager based on <a href="http://narayana.io/">JBoss Transactions</a> which overcomes all the deficiencies of the <code>EmbeddedTransactionManager</code>.</p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/transaction/lookup/WildflyTransactionManagerLookup.html">WildflyTransactionManagerLookup</a>:
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/transaction/lookup/WildflyTransactionManagerLookup.html">WildflyTransactionManagerLookup</a>:
 If you&#8217;re running Infinispan in WildFly 11 or later, this should be your default choice for transaction manager.</p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/transaction/lookup/GenericTransactionManagerLookup.html">GenericTransactionManagerLookup</a>:
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/transaction/lookup/GenericTransactionManagerLookup.html">GenericTransactionManagerLookup</a>:
 This is a lookup class that locate transaction managers in the most popular Java EE application servers.
 If no transaction manager can be found, it defaults on the <code>EmbeddedTransactionManager</code>.</p>
 </li>
@@ -7084,7 +7075,7 @@ Default is <code>org.infinispan.transaction.lookup.GenericTransactionManagerLook
 </div>
 <div class="paragraph">
 <p>For more details on how Two-Phase-Commit (2PC) is implemented in Infinispan and how locks are being acquired see the section below.
-More details about the configuration settings are available in <a href="https://docs.jboss.org/infinispan/12.0/configdocs/">Configuration reference</a>.</p>
+More details about the configuration settings are available in <a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Configuration reference</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -7327,7 +7318,7 @@ checking for write skews.</p>
 <div class="sect2">
 <h3 id="dealing_with_exceptions"><a class="anchor" href="#dealing_with_exceptions"></a>11.5. Dealing with exceptions</h3>
 <div class="paragraph">
-<p>If a <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/CacheException.html">CacheException</a> (or a subclass of it) is thrown by a cache method within the scope of a JTA transaction, then the transaction is automatically marked for rollback.</p>
+<p>If a <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/CacheException.html">CacheException</a> (or a subclass of it) is thrown by a cache method within the scope of a JTA transaction, then the transaction is automatically marked for rollback.</p>
 </div>
 </div>
 <div class="sect2">
@@ -7501,7 +7492,7 @@ If not specified Infinispan will configure a local cache for you.</p>
 </div>
 <div class="paragraph">
 <p>It is possible (though not mandated) to share same recovery cache between all the Infinispan caches that have recovery enabled.
-If the default recovery cache is overridden, then the specified recovery cache must use a <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/transaction/lookup/TransactionManagerLookup.html">TransactionManagerLookup</a> that returns a different transaction manager than the one used by the cache itself.</p>
+If the default recovery cache is overridden, then the specified recovery cache must use a <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/transaction/lookup/TransactionManagerLookup.html">TransactionManagerLookup</a> that returns a different transaction manager than the one used by the cache itself.</p>
 </div>
 </div>
 <div class="sect3">
@@ -7603,7 +7594,7 @@ data which takes advantage of the functional programming additions and
 improved asynchronous programming capabilities available in Java 8.</p>
 </div>
 <div class="paragraph">
-<p>Infinispan&#8217;s <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.html">Functional Map API</a>
+<p>Infinispan&#8217;s <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.html">Functional Map API</a>
 is a distilled map-like asynchronous API which uses functions to interact with data.</p>
 </div>
 <div class="sect2">
@@ -7617,7 +7608,7 @@ receive callbacks when the
 has completed, or you can chain or compose them with other CompletableFuture.</p>
 </div>
 <div class="paragraph">
-<p>For those operations that return multiple results, the API returns instances of a <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Traversable.html">Traversable</a> interface which offers a lazy pull-style API for working with multiple results.</p>
+<p>For those operations that return multiple results, the API returns instances of a <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Traversable.html">Traversable</a> interface which offers a lazy pull-style API for working with multiple results.</p>
 </div>
 <div class="paragraph">
 <p><code>Traversable</code>, being a lazy pull-style API, can still be asynchronous underneath since the user can decide to work on the traversable at a later stage, and the <code>Traversable</code> implementation itself can decide when to compute those results.</p>
@@ -7628,11 +7619,11 @@ has completed, or you can chain or compose them with other CompletableFuture.</p
 <div class="paragraph">
 <p>Since the content of the functions is transparent to Infinispan, the API
 has been split into 3 interfaces for read-only (
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.ReadOnlyMap.html"><code>ReadOnlyMap</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.ReadOnlyMap.html"><code>ReadOnlyMap</code></a>
 ), read-write (
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html"><code>ReadWriteMap</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html"><code>ReadWriteMap</code></a>
 ) and write-only (
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html"><code>WriteOnlyMap</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html"><code>WriteOnlyMap</code></a>
 ) operations respectively, in order to provide hints to the Infinispan
 internals on the type of work needed to support functions.</p>
 </div>
@@ -7642,16 +7633,16 @@ internals on the type of work needed to support functions.</p>
 <div class="paragraph">
 <p>To construct any of the read-only, write-only or read-write map
 instances, an Infinispan
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html"><code>AdvancedCache</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/AdvancedCache.html"><code>AdvancedCache</code></a>
 is required, which is retrieved from the Cache Manager, and using the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html"><code>AdvancedCache</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/AdvancedCache.html"><code>AdvancedCache</code></a>
 , static method
 factory methods are used to create
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.ReadOnlyMap.html"><code>ReadOnlyMap</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.ReadOnlyMap.html"><code>ReadOnlyMap</code></a>
 ,
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html"><code>ReadWriteMap</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html"><code>ReadWriteMap</code></a>
 or
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html"><code>WriteOnlyMap</code></a></p>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html"><code>WriteOnlyMap</code></a></p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -7724,24 +7715,24 @@ as entries, which include both key and value information.</p>
 <h4 id="read_only_entry_view"><a class="anchor" href="#read_only_entry_view"></a>12.4.1. Read-Only Entry View</h4>
 <div class="paragraph">
 <p>The function parameters for read-only maps provide the user with a
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/EntryView.ReadEntryView.html">read-only entry view</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/EntryView.ReadEntryView.html">read-only entry view</a>
 to interact with the data in the cache, which include these operations:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/EntryView.ReadEntryView.html#key()"><code>key()</code></a>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/EntryView.ReadEntryView.html#key()"><code>key()</code></a>
 method returns the key for which this function is being executed.</p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/EntryView.ReadEntryView.html#find()"><code>find()</code></a>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/EntryView.ReadEntryView.html#find()"><code>find()</code></a>
 returns a Java 8 <code>Optional</code> wrapping the value if present,
 otherwise it returns an empty optional. Unless the value is guaranteed to
 be associated with the key, it&#8217;s recommended to use <code>find()</code> to verify
 whether there&#8217;s a value associated with the key.</p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/EntryView.ReadEntryView.html#get()"><code>get()</code></a>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/EntryView.ReadEntryView.html#get()"><code>get()</code></a>
 returns the value associated with the key. If the key has no value
 associated with it, calling <code>get()</code> throws a <code>NoSuchElementException</code>.
 <code>get()</code> can be considered as a shortcut of <code>ReadEntryView.find().get()</code>
@@ -7749,7 +7740,7 @@ which should be used only when the caller has guarantees that there&#8217;s
 definitely a value associated with the key.</p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/MetaParam.Lookup.html#findMetaParam(java.lang.Class)"><code>findMetaParam(Class&lt;T&gt; type)</code></a>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/MetaParam.Lookup.html#findMetaParam(java.lang.Class)"><code>findMetaParam(Class&lt;T&gt; type)</code></a>
 allows metadata parameter information
 associated with the cache entry to be looked up, for example: entry
 lifespan, last  accessed time&#8230;&#8203;etc.
@@ -7773,7 +7764,7 @@ optimization is provided as a first-class citizen.</p>
 </div>
 <div class="paragraph">
 <p>Using
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html">write-only map API</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html">write-only map API</a>
 , an operation equivalent to
 <a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java"><code>javax.cache.Cache</code> (<code>JCache</code>)</a>
 's void returning
@@ -7798,7 +7789,7 @@ readFuture.thenAccept(<span class="predefined-type">System</span>.out::println);
 </div>
 <div class="paragraph">
 <p>Multiple key/value pairs can be stored in one go using
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html#evalMany(java.util.Map,java.util.function.BiConsumer)"><code>evalMany</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html#evalMany(java.util.Map,java.util.function.BiConsumer)"><code>evalMany</code></a>
 API:</p>
 </div>
 <div class="listingblock">
@@ -7815,7 +7806,7 @@ writerAllFuture.thenAccept(x -&gt; <span class="string"><span class="delimiter">
 <div class="paragraph">
 <p>To remove all contents of the cache, there are two possibilities with
 different semantics. If using
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html#evalAll(java.util.function.Consumer)"><code>evalAll</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html#evalAll(java.util.function.Consumer)"><code>evalAll</code></a>
 each cached entry is iterated over and the function is called
 with that entry&#8217;s information. Using this method also results in listeners being invoked.</p>
 </div>
@@ -7829,7 +7820,7 @@ removeAllFuture.thenAccept(x -&gt; <span class="string"><span class="delimiter">
 </div>
 <div class="paragraph">
 <p>The alternative way to remove all entries is to call
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html#truncate()"><code>truncate</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html#truncate()"><code>truncate</code></a>
 operation which clears the entire cache contents in one go without
 invoking any listeners and is best-effort:</p>
 </div>
@@ -7845,21 +7836,21 @@ truncateFuture.thenAccept(x -&gt; <span class="string"><span class="delimiter">&
 <h4 id="write_only_entry_view"><a class="anchor" href="#write_only_entry_view"></a>12.5.1. Write-Only Entry View</h4>
 <div class="paragraph">
 <p>The function parameters for write-only maps provide the user with a
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/EntryView.WriteEntryView.html">write-only entry view</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/EntryView.WriteEntryView.html">write-only entry view</a>
 to modify the data in the cache, which include these
 operations:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/EntryView.WriteEntryView.html#set(V,org.infinispan.functional.MetaParam.Writable&#8230;&#8203;)"><code>set(V, MetaParam.Writable&#8230;&#8203;)</code></a>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/EntryView.WriteEntryView.html#set(V,org.infinispan.functional.MetaParam.Writable&#8230;&#8203;)"><code>set(V, MetaParam.Writable&#8230;&#8203;)</code></a>
 method allows for a new value to be
 associated with the cache entry for which this function is executed, and it
 optionally takes zero or more metadata parameters to be stored along with
 the value. See <a href="#meta_parameter">Metadata Parameter Handling</a> for more information.</p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/EntryView.WriteEntryView.html#remove()"><code>remove()</code></a>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/EntryView.WriteEntryView.html#remove()"><code>remove()</code></a>
 method removes the cache entry, including both value and metadata
 parameters associated with this key.</p>
 </li>
@@ -7879,9 +7870,9 @@ The vast majority of operations within
 and
 <a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java"><code>JCache</code></a>
 APIs fall within this category, and they can easily be implemented using the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html">read-write map API</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html">read-write map API</a>
 . Moreover, with
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html">read-write map API</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html">read-write map API</a>
 , you can make CAS­like comparisons not only based on value equality
 but based on metadata parameter equality such as version information,
 and you can send back previous value or boolean instances to signal
@@ -7956,7 +7947,7 @@ value and metadata parameters to be read.</p>
 <p>The function parameters for read-write maps provide the user with the
 possibility to query the information associated with the key, including
 value and metadata parameters, and the user can also use this
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/EntryView.ReadWriteEntryView.html">read-write entry view</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/EntryView.ReadWriteEntryView.html">read-write entry view</a>
 to modify the data in the cache.</p>
 </div>
 <div class="paragraph">
@@ -7969,7 +7960,7 @@ and <a href="#write_only_entry_view">write-only entry views</a>.</p>
 <div class="sect2">
 <h3 id="meta_parameter"><a class="anchor" href="#meta_parameter"></a>12.7. Metadata Parameter Handling</h3>
 <div class="paragraph">
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/MetaParam.html">Metadata parameters</a>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/MetaParam.html">Metadata parameters</a>
 provide extra information about the cache entry, such
 as version information, lifespan, last accessed/used time&#8230;&#8203;etc. Some of
 these can be provided by the user, e.g. version, lifespan&#8230;&#8203;etc, but some
@@ -7980,14 +7971,14 @@ accessed/used time.</p>
 <p>The functional map API provides a flexible way to store metadata parameters
 along with an cache entry. To be able to store a metadata parameter, it must
 extend
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/MetaParam.Lookup.html"><code>MetaParam.Writable</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/MetaParam.Lookup.html"><code>MetaParam.Writable</code></a>
 interface, and implement the methods to allow the
 internal logic to extra the data. Storing is done via the
 <code>set(V, MetaParam.Writable&#8230;&#8203;)</code> method in the <a href="#write_only_entry_view">write-only entry view</a> or <a href="#read_write_entry_view">read-write entry view</a> function parameters.</p>
 </div>
 <div class="paragraph">
 <p>Querying metadata parameters is available via the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/MetaParam.Lookup.html#findMetaParam(java.lang.Class)"><code>findMetaParam(Class)</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/MetaParam.Lookup.html#findMetaParam(java.lang.Class)"><code>findMetaParam(Class)</code></a>
 method
 available via <a href="#read_write_entry_view">read-write entry view</a> or
 <a href="#read_only_entry_view">read-only entry views</a> or function parameters.</p>
@@ -8015,7 +8006,7 @@ readFuture.thenAccept(<span class="predefined-type">System</span>.out::println);
 </div>
 <div class="paragraph">
 <p>If the metadata parameter is generic, for example
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/MetaParam.MetaEntryVersion.html"><code>MetaEntryVersion&lt;T&gt;</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/MetaParam.MetaEntryVersion.html"><code>MetaEntryVersion&lt;T&gt;</code></a>
 , retrieving the metadata parameter along with a specific type can be tricky
 if using <code>.class</code> static helper in a class because it does not return a
 <code>Class&lt;T&gt;</code> but only <code>Class</code>, and hence any generic information in the class is
@@ -8065,15 +8056,15 @@ for the metadata parameters already provided by the functional map API.</p>
 <div class="sect2">
 <h3 id="_invocation_parameter"><a class="anchor" href="#_invocation_parameter"></a>12.8. Invocation Parameter</h3>
 <div class="paragraph">
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Param.html">Per-invocation parameters</a>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Param.html">Per-invocation parameters</a>
 are applied to regular functional map API calls to
 alter the behaviour of certain aspects. Adding per invocation parameters is
 done using the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.html#withParams(org.infinispan.functional.Param&#8230;&#8203;)"><code>withParams(Param&lt;?&gt;&#8230;&#8203;)</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.html#withParams(org.infinispan.functional.Param&#8230;&#8203;)"><code>withParams(Param&lt;?&gt;&#8230;&#8203;)</code></a>
 method.</p>
 </div>
 <div class="paragraph">
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Param.FutureMode.html"><code>Param.FutureMode</code></a>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Param.FutureMode.html"><code>Param.FutureMode</code></a>
 tweaks whether a method returning a
 <a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html"><code>CompletableFuture</code></a>
 will span a thread to invoke the method, or instead will use the caller
@@ -8083,7 +8074,7 @@ thread. By default, whenever a call is made to a method returning a
 However, if the caller will immediately block waiting for the
 <a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html"><code>CompletableFuture</code></a>
 to complete, spanning a different thread is wasteful, and hence
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Param.FutureMode.html#COMPLETED"><code>Param.FutureMode.COMPLETED</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Param.FutureMode.html#COMPLETED"><code>Param.FutureMode.COMPLETED</code></a>
 can be passed as per-invocation parameter to avoid creating that extra thread. Example:</p>
 </div>
 <div class="listingblock">
@@ -8105,7 +8096,7 @@ a persistence store. By passing PersistenceMode.SKIP as parameter,
 the write operation skips the persistence store and its effects are only
 seen in the in-memory contents of the cache. PersistenceMode.SKIP can
 be used to implement an
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#evict-K-"><code>Cache.evict()</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#evict-K-"><code>Cache.evict()</code></a>
 method which removes data from memory but leaves the persistence store
 untouched:</p>
 </div>
@@ -8144,14 +8135,14 @@ that means the events are received after the event has happened.</p>
 </div>
 <div class="paragraph">
 <p>The listeners that can be registered are split into two categories:
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.WriteListeners.html">write listeners</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.WriteListeners.html">write listeners</a>
 and
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.html">read-write listeners</a>.</p>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.html">read-write listeners</a>.</p>
 </div>
 <div class="sect3">
 <h4 id="write_listeners"><a class="anchor" href="#write_listeners"></a>12.9.1. Write Listeners</h4>
 <div class="paragraph">
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.WriteListeners.html">Write listeners</a>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.WriteListeners.html">Write listeners</a>
 enable user to register listeners for any cache entry write events
 that happen in either a read-write or write-only functional map.</p>
 </div>
@@ -8165,24 +8156,24 @@ entry has been written.</p>
 <p>However, write event listeners can distinguish between entry removals
 and cache entry create/modify-update events because they can query
 what the new entry&#8217;s value via
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/EntryView.ReadEntryView.html#find()"><code>ReadEntryView.find()</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/EntryView.ReadEntryView.html#find()"><code>ReadEntryView.find()</code></a>
 method.</p>
 </div>
 <div class="paragraph">
 <p>Adding a write listener is done via the WriteListeners interface
 which is accessible via both
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html#listeners()"><code>ReadWriteMap.listeners()</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html#listeners()"><code>ReadWriteMap.listeners()</code></a>
 and
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html#listeners()"><code>WriteOnlyMap.listeners()</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html#listeners()"><code>WriteOnlyMap.listeners()</code></a>
  method.</p>
 </div>
 <div class="paragraph">
 <p>A write listener implementation can be defined either passing a function
 to
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.WriteListeners.html#onWrite(java.util.function.Consumer)"><code>onWrite(Consumer&lt;ReadEntryView&lt;K, V&gt;&gt;)</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.WriteListeners.html#onWrite(java.util.function.Consumer)"><code>onWrite(Consumer&lt;ReadEntryView&lt;K, V&gt;&gt;)</code></a>
 method, or passing a
 WriteListener implementation to
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.WriteListeners.html#add(org.infinispan.functional.Listeners.WriteListeners.WriteListener)"><code>add(WriteListener&lt;K, V&gt;)</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.WriteListeners.html#add(org.infinispan.functional.Listeners.WriteListeners.WriteListener)"><code>add(WriteListener&lt;K, V&gt;)</code></a>
 method.
 Either way, all these methods return an
 <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html">AutoCloseable</a>
@@ -8220,7 +8211,7 @@ writeCloseHanlder.close();</code></pre>
 <div class="sect3">
 <h4 id="read_write_listeners"><a class="anchor" href="#read_write_listeners"></a>12.9.2. Read-Write Listeners</h4>
 <div class="paragraph">
-<p><a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.html">Read-write listeners</a>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.html">Read-write listeners</a>
 enable users to register listeners for cache entry created, modified
 and removed events, and also register listeners for any cache entry
 write events.</p>
@@ -8234,19 +8225,19 @@ guaranteed.</p>
 </div>
 <div class="paragraph">
 <p>Adding a read-write listener is done via the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.html"><code>ReadWriteListeners</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.html"><code>ReadWriteListeners</code></a>
 interface which is accessible via
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html#listeners()"><code>ReadWriteMap.listeners()</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html#listeners()"><code>ReadWriteMap.listeners()</code></a>
 method.</p>
 </div>
 <div class="paragraph">
 <p>If interested in only one of the event types, the simplest way to add a
 listener is to pass a function to either
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.ReadWriteListener.html#onCreate(java.util.function.Consumer)"><code>onCreate</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.ReadWriteListener.html#onCreate(java.util.function.Consumer)"><code>onCreate</code></a>
 ,
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.ReadWriteListener.html#onModify(java.util.function.BiConsumer)"><code>onModify</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.ReadWriteListener.html#onModify(java.util.function.BiConsumer)"><code>onModify</code></a>
 or
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.ReadWriteListener.html#onRemove(java.util.function.Consumer)"><code>onRemove</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.ReadWriteListener.html#onRemove(java.util.function.Consumer)"><code>onRemove</code></a>
 methods. All these methods return an AutoCloseable instance that can be
 used to de-register the function listener:</p>
 </div>
@@ -8287,9 +8278,9 @@ modifyClose.close();</code></pre>
 <div class="paragraph">
 <p>If listening for two or more event types, it&#8217;s better to pass in an
 implementation of
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.WriteListeners.WriteListener.html"><code>ReadWriteListener</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.WriteListeners.WriteListener.html"><code>ReadWriteListener</code></a>
 interface via the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.html#add(org.infinispan.functional.Listeners.ReadWriteListeners.ReadWriteListener)"><code>ReadWriteListeners.add()</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/functional/Listeners.ReadWriteListeners.html#add(org.infinispan.functional.Listeners.ReadWriteListeners.ReadWriteListener)"><code>ReadWriteListeners.add()</code></a>
 method. <code>ReadWriteListener</code> offers the same <code>onCreate</code>/<code>onModify</code>/<code>onRemove</code>
 callbacks with default method implementations that are empty:</p>
 </div>
@@ -8382,7 +8373,7 @@ CompletableFuture&lt;<span class="predefined-type">Void</span>&gt; writeFuture =
 </div>
 <div class="paragraph">
 <p>A more economical way to marshall a function is to provide an Infinispan
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/marshall/Externalizer.html"><code>Externalizer</code></a> for it:</p>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/marshall/Externalizer.html"><code>Externalizer</code></a> for it:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -8419,7 +8410,7 @@ CompletableFuture&lt;<span class="predefined-type">Void</span>&gt; writeFuture =
 <p>To help users take advantage of the tiny payloads generated by
 <code>Externalizer</code>-based functions, the functional API comes with a helper
 class called
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/marshall/MarshallableFunctions.html"><code>org.infinispan.commons.marshall.MarshallableFunctions</code></a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/marshall/MarshallableFunctions.html"><code>org.infinispan.commons.marshall.MarshallableFunctions</code></a>
 which provides marshallable functions for some of the most commonly user
 functions.</p>
 </div>
@@ -8429,7 +8420,7 @@ functions.</p>
 and
 <a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java"><code>JCache</code></a>
 using the functional map API have been defined in
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/commons/marshall/MarshallableFunctions.html"><code>MarshallableFunctions</code></a>.
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/commons/marshall/MarshallableFunctions.html"><code>MarshallableFunctions</code></a>.
 For example, here is an implementation of JCache&#8217;s
 <a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java#L283"><code>boolean putIfAbsent(K, V)</code></a>
 using functional map API which can be run in a cluster:</p>
@@ -8515,7 +8506,7 @@ if you are using a remote cache you should review details about executing code i
 computing power for executing code on all of them them.
 The cache manager comes with a nice utility that allows you to
 execute arbitrary code in the cluster. Note this feature requires no Cache to be used.  This
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/manager/ClusterExecutor.html">Cluster Executor</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/manager/ClusterExecutor.html">Cluster Executor</a>
 can be retrieved by calling executor() on the <code>EmbeddedCacheManager</code>. This executor is retrievable
 in both clustered and non clustered configurations.</p>
 </div>
@@ -8593,7 +8584,7 @@ as configured on the Transport Configuration. This timeout works in both a clust
 cache manager. The executor may or may not interrupt the threads executing a task when the timeout expires. However
 when the timeout occurs any <code>Consumer</code> or <code>Future</code> will be completed passing back a <code>TimeoutException</code>.
 This value can be overridden by ivoking the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/manager/ClusterExecutor.html#timeout-long-java.util.concurrent.TimeUnit-">timeout</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/manager/ClusterExecutor.html#timeout-long-java.util.concurrent.TimeUnit-">timeout</a>
 method and supplying the desired duration.</p>
 </div>
 </div>
@@ -8622,7 +8613,7 @@ the command again.
 When this occurs the Cluster Executor will choose a single node again to resubmit the command to
 up to the desired number of failover attempts. Note the chosen node could be any node that passes
 the topology or predicate check. Failover is enabled by invoking the overridden
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/manager/ClusterExecutor.html#singleNodeSubmission-int-">singleNodeSubmission</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/manager/ClusterExecutor.html#singleNodeSubmission-int-">singleNodeSubmission</a>
 method. The given command will be resubmitted again to a single node until either
 the command completes without exception or the total submission amount is equal to the provided
 failover count.</p>
@@ -8738,9 +8729,9 @@ upon the entirety of your cache, possibly a very large data set, but in an effic
 <p>Also since we can control how the entries are iterated upon we can more efficiently perform the operations in a cache that is distributed if you want it to perform all of the operations across the cluster concurrently.</p>
 </div>
 <div class="paragraph">
-<p>A stream is retrieved from the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#entrySet--">entrySet</a>,
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#keySet--">keySet</a> or
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/Cache.html#values--">values</a> collections returned from the
+<p>A stream is retrieved from the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#entrySet--">entrySet</a>,
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#keySet--">keySet</a> or
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#values--">values</a> collections returned from the
 Cache by invoking the <a href="https://docs.oracle.com/javase/8/docs/api/java/util/Collection.html#stream--">stream</a> or
 <a href="https://docs.oracle.com/javase/8/docs/api/java/util/Collection.html#parallelStream--">parallelStream</a> methods.</p>
 </div>
@@ -8756,14 +8747,14 @@ you are using.</p>
 <div class="paragraph">
 <p>It is possible to filter the stream so that it only operates upon a given subset of keys.  This can be done
 by invoking the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/CacheStream.html#filterKeys-java.util.Set-">filterKeys</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/CacheStream.html#filterKeys-java.util.Set-">filterKeys</a>
 method on the <code>CacheStream</code>.  This should always be used over a Predicate
 <a href="https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html?is-external=true#filter-java.util.function.Predicate-">filter</a>
 and will be faster if the predicate was holding all keys.</p>
 </div>
 <div class="paragraph">
 <p>If you are familiar with the <code>AdvancedCache</code> interface you may be wondering why you even use
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html#getAll-java.util.Set-">getAll</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/AdvancedCache.html#getAll-java.util.Set-">getAll</a>
 over this keyFilter.  There are some small benefits (mostly smaller payloads) to using getAll
 if you need the entries as is and need them all in memory in the local node.  However if you
 need to do processing on these elements a stream is recommended since you will get both
@@ -8790,9 +8781,9 @@ This can be useful when integrating with other tools such as
 <div class="paragraph">
 <p>This option is only supported for replicated and distributed caches.  This allows the user to operate upon
 a subset of data at a time as determined by the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/distribution/ch/KeyPartitioner.html">KeyPartitioner</a>.
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/distribution/ch/KeyPartitioner.html">KeyPartitioner</a>.
 The segments can be filtered by invoking
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/CacheStream.html#filterKeySegments-java.util.Set-">filterKeySegments</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/CacheStream.html#filterKeySegments-java.util.Set-">filterKeySegments</a>
 method on the <code>CacheStream</code>.  This is applied after the key filter but before any intermediate operations are performed.</p>
 </div>
 </div>
@@ -8844,7 +8835,7 @@ duplicate processing.</p>
 <div class="paragraph">
 <p>It is possible but highly discouraged to disable rehash awareness on the stream.  This should only be considered if
 your request can handle only seeing a subset of data if a rehash occurs.  This can be done by invoking
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/CacheStream.html#disableRehashAware--">CacheStream.disableRehashAware()</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/CacheStream.html#disableRehashAware--">CacheStream.disableRehashAware()</a>
 The performance gain for most operations when a rehash doesn&#8217;t occur is completely negligible.
 The only exceptions are for iterator and forEach, which will use less memory, since they do not have
 to keep track of processed keys.</p>
@@ -8873,7 +8864,7 @@ operations to be sent to the other nodes.</p>
 Infinispan overrides all of the various Stream intermediate and terminal methods to take
 Serializable versions of the arguments (ie. SerializableFunction, SerializablePredicate&#8230;&#8203;)
 You can find these methods at
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/stream/CacheStream.html">CacheStream</a>.
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/stream/CacheStream.html">CacheStream</a>.
 This relies on the spec to pick the most specific method as defined <a href="https://docs.oracle.com/javase/specs/jls/se8/html/jls-15.html#jls-15.12.2.5">here</a>.</p>
 </div>
 <div class="paragraph">
@@ -8883,7 +8874,7 @@ class doesn&#8217;t produce Serializable instances.  Thus if you need to use the
 </div>
 <div class="paragraph">
 <p>One option would be to use the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/stream/CacheCollectors.html">CacheCollectors</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/stream/CacheCollectors.html">CacheCollectors</a>
 class which allows for a <code>Supplier&lt;Collector&gt;</code> to be provided.  This instance could then use the
 <a href="https://docs.oracle.com/javase/8/docs/api/java/util/stream/Collectors.html">Collectors</a>
 to supply a <code>Collector</code> which is not serialized.</p>
@@ -8897,7 +8888,7 @@ to supply a <code>Collector</code> which is not serialized.</p>
 </div>
 <div class="paragraph">
 <p>Alternatively, you can avoid the use of
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/stream/CacheCollectors.html">CacheCollectors</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/stream/CacheCollectors.html">CacheCollectors</a>
 and instead use the overloaded <code>collect</code> methods that take <code>Supplier&lt;Collector&gt;</code>.
 These overloaded <code>collect</code> methods are only available via <code>CacheStream</code> interface.</p>
 </div>
@@ -9049,8 +9040,8 @@ only performs sequential requests which actually performs slightly better.</p>
 </div>
 <div class="paragraph">
 <p>If a user wishes to change this default however they can do so by invoking the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/CacheStream.html#sequentialDistribution--">sequentialDistribution</a>
-or <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/CacheStream.html#parallelDistribution--">parallelDistribution</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/CacheStream.html#sequentialDistribution--">sequentialDistribution</a>
+or <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/CacheStream.html#parallelDistribution--">parallelDistribution</a>
 methods on the <code>CacheStream</code>.</p>
 </div>
 </div>
@@ -9070,7 +9061,7 @@ stream.timeout(<span class="integer">1</span>, <span class="predefined-type">Tim
 </div>
 <div class="paragraph">
 <p>For more information about this, please check the java doc in
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/CacheStream.html#timeout-long-java.util.concurrent.TimeUnit-">timeout</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/CacheStream.html#timeout-long-java.util.concurrent.TimeUnit-">timeout</a>
 javadoc.</p>
 </div>
 </div>
@@ -9082,7 +9073,7 @@ has a terminal operation called
 <a href="https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html#forEach-java.util.function.Consumer-">forEach</a>
 which allows for running some sort of side effect operation on the data.  In this case it may be desirable to get a reference to
 the <code>Cache</code> that is backing this Stream.  If your <code>Consumer</code> implements the
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/stream/CacheAware.html">CacheAware</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/stream/CacheAware.html">CacheAware</a>
 interface the <code>injectCache</code> method be invoked before the accept method from the <code>Consumer</code> interface.</p>
 </div>
 </div>
@@ -9189,9 +9180,9 @@ a value coming from the combiner doesn&#8217;t have to be Serializable.</p>
 <div class="sect2">
 <h3 id="key_based_rehash_aware_operators"><a class="anchor" href="#key_based_rehash_aware_operators"></a>14.11. Key based rehash aware operators</h3>
 <div class="paragraph">
-<p>The <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/CacheStream.html#iterator--">iterator</a>,
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/CacheStream.html#spliterator--">spliterator</a>
-and <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/CacheStream.html#forEach-java.util.function.Consumer-">forEach</a>
+<p>The <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/CacheStream.html#iterator--">iterator</a>,
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/CacheStream.html#spliterator--">spliterator</a>
+and <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/CacheStream.html#forEach-java.util.function.Consumer-">forEach</a>
 are unlike the other terminal operators in that the rehash awareness has to keep
 track of what keys per segment have been processed instead of just segments.  This is
 to guarantee an exactly once (iterator &amp; spliterator) or at least once behavior (forEach)
@@ -9216,7 +9207,7 @@ node will not cause this issue as the rehash failover doesn&#8217;t occur until 
 </div>
 <div class="paragraph">
 <p>These operations batch sizes are both controlled by the same value which can be configured by invoking
-<a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/CacheStream.html#distributedBatchSize-int-">distributedBatchSize</a>
+<a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/CacheStream.html#distributedBatchSize-int-">distributedBatchSize</a>
 method on the <code>CacheStream</code>.  This value will default to the <code>chunkSize</code> configured in state transfer.
 Unfortunately this value is a tradeoff with memory usage vs performance vs at least once and your
 mileage may vary.</p>
@@ -10144,13 +10135,13 @@ For now, configuring a cache with anchored keys requires a replicated cache with
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="preprocessor">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
 <span class="tag">&lt;infinispan</span>
-      <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.0</span><span class="delimiter">&quot;</span></span>
-      <span class="attribute-name">xmlns:anchored</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:anchored:12.0</span><span class="delimiter">&quot;</span></span>
+      <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.1</span><span class="delimiter">&quot;</span></span>
+      <span class="attribute-name">xmlns:anchored</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:anchored:12.1</span><span class="delimiter">&quot;</span></span>
       <span class="attribute-name">xmlns:xsi</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">http://www.w3.org/2001/XMLSchema-instance</span><span class="delimiter">&quot;</span></span>
-      <span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.0</span>
-            <span class="content">https://infinispan.org/schemas/infinispan-config-12.0.xsd</span>
-            <span class="content">urn:infinispan:config:anchored:12.0</span>
-            <span class="content">https://infinispan.org/schemas/infinispan-anchored-config-12.0.xsd</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.1</span>
+            <span class="content">https://infinispan.org/schemas/infinispan-config-12.1.xsd</span>
+            <span class="content">urn:infinispan:config:anchored:12.1</span>
+            <span class="content">https://infinispan.org/schemas/infinispan-anchored-config-12.1.xsd</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
 
     <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;transport</span><span class="tag">/&gt;</span>
@@ -10330,13 +10321,13 @@ and a topic.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="preprocessor">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
 <span class="tag">&lt;infinispan</span>
-<span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.0</span><span class="delimiter">&quot;</span></span>
-<span class="attribute-name">xmlns:ce</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:cloudevents:12.0</span><span class="delimiter">&quot;</span></span>
+<span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.1</span><span class="delimiter">&quot;</span></span>
+<span class="attribute-name">xmlns:ce</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:cloudevents:12.1</span><span class="delimiter">&quot;</span></span>
 <span class="attribute-name">xmlns:xsi</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">http://www.w3.org/2001/XMLSchema-instance</span><span class="delimiter">&quot;</span></span>
-<span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.0</span>
-<span class="content">https://infinispan.org/schemas/infinispan-config-12.0.xsd</span>
-<span class="content">urn:infinispan:config:cloudevents:12.0</span>
-<span class="content">https://infinispan.org/schemas/infinispan-cloudevents-config-12.0.xsd</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+<span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:12.1</span>
+<span class="content">https://infinispan.org/schemas/infinispan-config-12.1.xsd</span>
+<span class="content">urn:infinispan:config:cloudevents:12.1</span>
+<span class="content">https://infinispan.org/schemas/infinispan-cloudevents-config-12.1.xsd</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
 
     <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
         <span class="tag">&lt;transport</span><span class="tag">/&gt;</span>
@@ -10456,19 +10447,21 @@ future version.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">cacheWithCustomInterceptors</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="comment">&lt;!--
-      Define custom interceptors.  All custom interceptors need to extend org.jboss.cache.interceptors.base.CommandInterceptor
-      --&gt;</span>
-      <span class="tag">&lt;custom-interceptors&gt;</span>
-         <span class="tag">&lt;interceptor</span> <span class="attribute-name">position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">FIRST</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomInterceptor1</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-               <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">attributeOne</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>value1<span class="tag">&lt;/property&gt;</span>
-               <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">attributeTwo</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>value2<span class="tag">&lt;/property&gt;</span>
-         <span class="tag">&lt;/interceptor&gt;</span>
-         <span class="tag">&lt;interceptor</span> <span class="attribute-name">position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LAST</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomInterceptor2</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-         <span class="tag">&lt;interceptor</span> <span class="attribute-name">index</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomInterceptor1</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-         <span class="tag">&lt;interceptor</span> <span class="attribute-name">before</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispanpan.interceptors.CallInterceptor</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomInterceptor2</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-         <span class="tag">&lt;interceptor</span> <span class="attribute-name">after</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispanpan.interceptors.CallInterceptor</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomInterceptor1</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;/custom-interceptors&gt;</span>
+  <span class="comment">&lt;!-- Define custom interceptors. --&gt;</span>
+  <span class="comment">&lt;!-- Custom interceptors should extend
+       org.infinispan.interceptors.BaseCustomAsyncInterceptor --&gt;</span>
+  <span class="tag">&lt;custom-interceptors&gt;</span>
+    <span class="tag">&lt;interceptor</span> <span class="attribute-name">position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">FIRST</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomInterceptor1</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">attributeOne</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>value1<span class="tag">&lt;/property&gt;</span>
+      <span class="tag">&lt;property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">attributeTwo</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>value2<span class="tag">&lt;/property&gt;</span>
+    <span class="tag">&lt;/interceptor&gt;</span>
+    <span class="tag">&lt;interceptor</span> <span class="attribute-name">position</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LAST</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomInterceptor2</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;interceptor</span> <span class="attribute-name">index</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomInterceptor1</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;interceptor</span> <span class="attribute-name">before</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispanpan.interceptors.CallInterceptor</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomInterceptor2</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;interceptor</span> <span class="attribute-name">after</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispanpan.interceptors.CallInterceptor</span><span class="delimiter">&quot;</span></span>
+                 <span class="attribute-name">class</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.mycompany.CustomInterceptor1</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;/custom-interceptors&gt;</span>
 <span class="tag">&lt;/local-cache&gt;</span></code></pre>
 </div>
 </div>
@@ -10476,7 +10469,7 @@ future version.</p>
 <div class="sect2">
 <h3 id="adding_custom_interceptors_programatically"><a class="anchor" href="#adding_custom_interceptors_programatically"></a>19.2. Adding custom interceptors programatically</h3>
 <div class="paragraph">
-<p>In order to do that one needs to obtain a reference to the <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html"><code>AdvancedCache</code></a>. This can be done as follows:</p>
+<p>In order to do that one needs to obtain a reference to the <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/AdvancedCache.html"><code>AdvancedCache</code></a>. This can be done as follows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -10486,7 +10479,7 @@ AdvancedCache advCache = aCache.getAdvancedCache();</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Then one of the <em>addInterceptor()</em> methods should be used to add the actual interceptor. For further documentation refer to <a href="https://docs.jboss.org/infinispan/12.0/apidocs/org/infinispan/AdvancedCache.html"><code>AdvancedCache</code></a> javadoc.</p>
+<p>Then one of the <em>addInterceptor()</em> methods should be used to add the actual interceptor. For further documentation refer to <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/AdvancedCache.html"><code>AdvancedCache</code></a> javadoc.</p>
 </div>
 </div>
 <div class="sect2">
@@ -10603,7 +10596,7 @@ for a detail example on how to implement this.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-03-12 07:41:09 -0500
+Last updated 2021-04-05 08:28:54 -0400
 </div>
 </div>
 <style>
