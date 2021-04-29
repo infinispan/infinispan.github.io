@@ -562,13 +562,13 @@ $(addBlockSwitches);
 </li>
 <li><a href="#batch_operations">3. Performing Batch Operations</a>
 <ul class="sectlevel2">
-<li><a href="#performing_batch_operations_with_files">3.1. Performing Batch Operations with Files</a></li>
-<li><a href="#performing_batch_operations_interactively">3.2. Performing Batch Operations Interactively</a></li>
+<li><a href="#cli-batching-files_cli">3.1. Performing Batch Operations with Files</a></li>
+<li><a href="#cli-batching-interactive_cli">3.2. Performing Batch Operations Interactively</a></li>
 </ul>
 </li>
 <li><a href="#cli_config">4. Configuring the Infinispan CLI</a>
 <ul class="sectlevel2">
-<li><a href="#cli_configuring_startup_properties-cli">4.1. Setting Infinispan CLI Properties and Persistent Storage</a></li>
+<li><a href="#configuring-cli-startup_cli">4.1. Setting Infinispan CLI Properties and Persistent Storage</a></li>
 <li><a href="#cli_creating_command_aliases-cli">4.2. Creating Command Aliases</a></li>
 <li><a href="#cli_configuring_tls_properties-cli">4.3. Trusting Infinispan Server Connections</a></li>
 <li><a href="#cli_storage_directory-cli">4.4. Infinispan CLI Storage Directory</a></li>
@@ -590,8 +590,8 @@ $(addBlockSwitches);
 <li><a href="#xsite_commands">7. Performing Cross-Site Replication Operations</a>
 <ul class="sectlevel2">
 <li><a href="#manage_sites-cli">7.1. Bringing Backup Locations Offline and Online</a></li>
-<li><a href="#cli_xsite_push-cli">7.2. Configuring Cross-Site State Transfer Modes</a></li>
-<li><a href="#cli_xsite_push-cli">7.3. Pushing State to Backup Locations</a></li>
+<li><a href="#configuring-xsite-state-transfer-modes_cli">7.2. Configuring Cross-Site State Transfer Modes</a></li>
+<li><a href="#pushing-xsite-state-transfer_cli">7.3. Pushing State to Backup Locations</a></li>
 </ul>
 </li>
 <li><a href="#backup">8. Backing Up and Restoring Infinispan Clusters</a>
@@ -1182,7 +1182,7 @@ A user named <code>admin</code> gets <code>admin</code> permissions automaticall
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>admin</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ALL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Superuser with all permissions including control of the Cache Manager lifecycle. Users must have this role to access Infinispan Console.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Superuser with all permissions including control of the Cache Manager lifecycle.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>deployer</code></p></td>
@@ -1806,7 +1806,7 @@ world</code></pre>
 </ul>
 </div>
 <div class="sect2">
-<h3 id="performing_batch_operations_with_files"><a class="anchor" href="#performing_batch_operations_with_files"></a>3.1. Performing Batch Operations with Files</h3>
+<h3 id="cli-batching-files_cli"><a class="anchor" href="#cli-batching-files_cli"></a>3.1. Performing Batch Operations with Files</h3>
 <div class="paragraph">
 <p>Create files that contain a set of operations and then pass them to the Infinispan CLI.</p>
 </div>
@@ -1820,35 +1820,34 @@ world</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ cat &gt; batch&lt;&lt;EOF
+<pre class="CodeRay highlight nowrap"><code>connect --username=&lt;username&gt; --password=&lt;password&gt; &lt;hostname&gt;:11222
 create cache --template=org.infinispan.DIST_SYNC mybatch
 put --cache=mybatch hello world
 put --cache=mybatch hola mundo
-disconnect
-EOF</code></pre>
+ls caches/mybatch
+disconnect</code></pre>
 </div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Configure the CLI with the <code>autoconnect-url</code> property instead of using the <code>connect</code> command directly in your batch files.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 </li>
 <li>
 <p>Run the CLI and specify the file as input.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ bin/cli.sh -c localhost:11222 -f batch</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Create a new Infinispan CLI connection and verify <code>mybatch</code>.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; ls caches
-___protobuf_metadata
-mybatch
-[//containers/default]&gt; ls caches/mybatch
-hola
-hello
-[//containers/default]&gt; disconnect
-[disconnected]&gt;</code></pre>
+<pre class="CodeRay highlight nowrap"><code>$ bin/cli.sh -f batch</code></pre>
 </div>
 </div>
 </li>
@@ -1872,7 +1871,7 @@ property.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="performing_batch_operations_interactively"><a class="anchor" href="#performing_batch_operations_interactively"></a>3.2. Performing Batch Operations Interactively</h3>
+<h3 id="cli-batching-interactive_cli"><a class="anchor" href="#cli-batching-interactive_cli"></a>3.2. Performing Batch Operations Interactively</h3>
 <div class="paragraph">
 <p>Use the standard input stream, <strong>stdin</strong>, to perform batch operations interactively.</p>
 </div>
@@ -1886,21 +1885,15 @@ property.</p>
 <pre>$ bin/cli.sh -c localhost:11222 -f -</pre>
 </div>
 </div>
-<div class="admonitionblock note">
+<div class="admonitionblock tip">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-note" title="Note"></i>
+<i class="fa icon-tip" title="Tip"></i>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>If you do not use the <code class="command">-c</code> flag, you must run the <code class="command">connect</code> command.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>$ bin/cli.sh -f -
-connect</pre>
-</div>
+<p>You can configure the CLI connection with the <code>autoconnect-url</code> property instead of using the <code class="command">-c</code> argument.</p>
 </div>
 </td>
 </tr>
@@ -1976,7 +1969,7 @@ quit</pre>
 <p>Define configuration properties for the Infinispan CLI.</p>
 </div>
 <div class="sect2">
-<h3 id="cli_configuring_startup_properties-cli"><a class="anchor" href="#cli_configuring_startup_properties-cli"></a>4.1. Setting Infinispan CLI Properties and Persistent Storage</h3>
+<h3 id="configuring-cli-startup_cli"><a class="anchor" href="#configuring-cli-startup_cli"></a>4.1. Setting Infinispan CLI Properties and Persistent Storage</h3>
 <div class="paragraph">
 <p>Configure Infinispan CLI startup operations and customize the location for persistent storage.</p>
 </div>
@@ -2013,6 +2006,38 @@ $ bin/cli.sh ...</code></pre>
 </li>
 <li>
 <p>Set values for configuration properties with the <code class="command">config set</code> command.</p>
+<div class="paragraph">
+<p>For example, set the <code>autoconnect-url</code> property so that the CLI automatically connects to that URL.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>For remote connections, specify the URL and provide credentials:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>http[s]://&lt;username&gt;:&lt;password&gt;@&lt;hostname&gt;:&lt;port&gt;</code> for basic authentication.</p>
+</li>
+<li>
+<p><code>http[s]://&lt;token&gt;@&lt;hostname&gt;:&lt;port&gt;</code> for OAuth authentication.</p>
+</li>
+</ul>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">$ bin/cli.sh config set autoconnect-url http://&lt;username&gt;:&lt;password&gt;@&lt;hostname&gt;:11222</code></pre>
+</div>
+</div>
 </li>
 <li>
 <p>Verify configuration properties with the <code class="command">config get</code> command.</p>
@@ -2733,7 +2758,7 @@ locations.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cli_xsite_push-cli"><a class="anchor" href="#cli_xsite_push-cli"></a>7.2. Configuring Cross-Site State Transfer Modes</h3>
+<h3 id="configuring-xsite-state-transfer-modes_cli"><a class="anchor" href="#configuring-xsite-state-transfer-modes_cli"></a>7.2. Configuring Cross-Site State Transfer Modes</h3>
 <div class="paragraph">
 <p>You can configure cross-site state transfer operations to happen automatically when Infinispan detects that backup locations come online.
 Alternatively you can use the default mode, which is to manually perform state transfer through the CLI or via JMX or REST.</p>
@@ -2786,7 +2811,7 @@ Alternatively you can use the default mode, which is to manually perform state t
 </div>
 </div>
 <div class="sect2">
-<h3 id="cli_xsite_push-cli"><a class="anchor" href="#cli_xsite_push-cli"></a>7.3. Pushing State to Backup Locations</h3>
+<h3 id="pushing-xsite-state-transfer_cli"><a class="anchor" href="#pushing-xsite-state-transfer_cli"></a>7.3. Pushing State to Backup Locations</h3>
 <div class="paragraph">
 <p>Transfer cache state to remote backup locations.</p>
 </div>

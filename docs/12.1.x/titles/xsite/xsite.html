@@ -548,11 +548,7 @@ $(addBlockSwitches);
 </li>
 <li><a href="#xsite_active_passive-xsite">1.6. Client Connections Across Sites</a>
 <ul class="sectlevel3">
-<li><a href="#conflict_resolution-xsite">1.6.1. Concurrent Writes and Conflicting Entries</a>
-<ul class="sectlevel4">
-<li><a href="#custom_conflict_resolution">Custom Conflict Resolution</a></li>
-</ul>
-</li>
+<li><a href="#conflict-resolution_xsite">1.6.1. Concurrent Writes and Conflicting Entries</a></li>
 </ul>
 </li>
 <li><a href="#xsite_expiration-xsite">1.7. Expiration with Cross-Site Replication</a></li>
@@ -568,8 +564,8 @@ $(addBlockSwitches);
 </li>
 <li><a href="#configure_backups-xsite">2.2. Adding Backup Locations to Caches</a></li>
 <li><a href="#configure_backupfor-xsite">2.3. Backing Up to Caches with Different Names</a></li>
-<li><a href="#configure_state_transfer-xsite">2.4. Configuring Cross-Site State Transfer</a></li>
-<li><a href="#configure_conflict_resolver-xsite">2.5. Configuring Cross-Site Conflict Resolution</a></li>
+<li><a href="#configuring-state-transfer_xsite">2.4. Configuring Cross-Site State Transfer</a></li>
+<li><a href="#customizing-conflict-resolution_xsite">2.5. Customizing the Conflict Resolution Algorithm</a></li>
 <li><a href="#verify_xsite_view-xsite">2.6. Verifying Cross-Site Views</a></li>
 <li><a href="#configure_clients-xsite">2.7. Configuring Hot Rod Clients for Cross-Site Replication</a></li>
 </ul>
@@ -579,8 +575,8 @@ $(addBlockSwitches);
 <li><a href="#xsite_operations_cli">3.1. Performing Cross-Site Operations with the CLI</a>
 <ul class="sectlevel3">
 <li><a href="#manage_sites-cli-ops">3.1.1. Bringing Backup Locations Offline and Online</a></li>
-<li><a href="#cli_xsite_push-cli-ops">3.1.2. Configuring Cross-Site State Transfer Modes</a></li>
-<li><a href="#cli_xsite_push-cli-ops">3.1.3. Pushing State to Backup Locations</a></li>
+<li><a href="#configuring-xsite-state-transfer-modes_cli-ops">3.1.2. Configuring Cross-Site State Transfer Modes</a></li>
+<li><a href="#pushing-xsite-state-transfer_cli-ops">3.1.3. Pushing State to Backup Locations</a></li>
 </ul>
 </li>
 <li><a href="#xsite_operations_rest">3.2. Performing Cross-Site Operations with the REST API</a>
@@ -599,7 +595,7 @@ $(addBlockSwitches);
 <li><a href="#rest_v2_cache_manager_take_offline">3.2.12. Taking Backup Locations Offline</a></li>
 <li><a href="#rest_v2_cache_manager_bring_online">3.2.13. Bringing Backup Locations Online</a></li>
 <li><a href="#rest_v2_cache_manager_get_state_transfer_mode">3.2.14. Retrieving the State Transfer Mode</a></li>
-<li><a href="#rest_v2_cache_manager_get_state_transfer_mode">3.2.15. Setting the State Transfer Mode</a></li>
+<li><a href="#rest_v2_cache_manager_set_state_transfer_mode">3.2.15. Setting the State Transfer Mode</a></li>
 <li><a href="#rest_v2_cache_manager_start_push">3.2.16. Starting State Transfer</a></li>
 <li><a href="#rest_v2_cache_manager_cancel_push">3.2.17. Canceling State Transfer</a></li>
 </ul>
@@ -1076,7 +1072,7 @@ offline sites back online, push state to synchronize data, and switch clients
 as required.</p>
 </div>
 <div class="sect3">
-<h4 id="conflict_resolution-xsite"><a class="anchor" href="#conflict_resolution-xsite"></a>1.6.1. Concurrent Writes and Conflicting Entries</h4>
+<h4 id="conflict-resolution_xsite"><a class="anchor" href="#conflict-resolution_xsite"></a>1.6.1. Concurrent Writes and Conflicting Entries</h4>
 <div class="paragraph">
 <p>Conflicting entries can occur with Active/Active site configurations if clients
 write to the same entries at the same time but at different sites.</p>
@@ -1150,63 +1146,45 @@ priority for resolving conflicting entries; for example, <strong>1LON</strong> a
 </tr>
 </table>
 </div>
-<div class="sect4">
-<h5 id="custom_conflict_resolution"><a class="anchor" href="#custom_conflict_resolution"></a>Custom Conflict Resolution</h5>
+<h5 id="conflict_resolution_algorithms" class="discrete">Conflict resolution algorithms</h5>
 <div class="paragraph">
-<p>Infinispan provides other algorithms for conflict resolution.
-They can found in <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">XSiteMergePolicy</a> enum.</p>
+<p>Infinispan provides different algorithms for resolving conflicts in addition to an <code>XSiteEntryMergePolicy</code> SPI that lets you implement custom conflict resolution strategies.</p>
+</div>
+<div class="paragraph">
+<p>Apart from the default conflict resolution strategy, which uses lexicographical comparison, you can use Infinispan conflict resolution algorithms to:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>DEFAULT</code>: Uses the algorithm described above.</p>
+<p>Always remove conflicting entries.</p>
 </li>
 <li>
-<p><code>PREFER_NON_NULL</code>: If there is a write/remove conflict it keeps the write operation and discards the remove operation.
-For all other combinations, it uses the <code>DEFAULT</code>.</p>
+<p>Keep write operations when write/remove conflicts occur.</p>
 </li>
 <li>
-<p><code>PREFER_NULL</code>: Similar to <code>PREFER_NON_NULL</code> but, instead, it discards the write operation.</p>
-</li>
-<li>
-<p><code>ALWAYS_REMOVE</code>: In case of any conflict, it removes the <code>key</code> from both sites.</p>
+<p>Remove entries when write/remove conflicts occur.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>In addition, <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">XSiteEntryMergePolicy</a> interface can be implemented to add your own conflict resolution algorithm:</p>
+<p>Find all available algorithms and their descriptions in the <code>org.infinispan.xsite.spi.XSiteMergePolicy</code> enum.</p>
 </div>
-<div class="listingblock">
-<div class="title"><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">XSiteEntryMergePolicy</a> class</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="java"><span class="directive">public</span> <span class="type">interface</span> <span class="class">XSiteEntryMergePolicy</span>&lt;K, V&gt; {
-   CompletionStage&lt;SiteEntry&lt;V&gt;&gt; mrege(K key, SiteEntry&lt;V&gt; localEntry, SiteEntry&lt;V&gt; remoteEntry);
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/SiteEntry.html">SiteEntry</a> contains the <code>value</code> and <code>Metadata</code> associates with a specific site.</p>
-</div>
-<div class="ulist">
-<div class="title">Reference</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
 <ul>
 <li>
 <p><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html#compareTo-java.lang.String-">java.lang.String#compareTo()</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">XSiteEntryMergePolicy</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">org.infinispan.xsite.spi.XSiteMergePolicy</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">XSiteMergePolicy</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">org.infinispan.xsite.spi.XSiteEntryMergePolicy</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/SiteEntry.html">SiteEntry</a></p>
-</li>
-<li>
-<p><a href="#configure_conflict_resolver-xsite">Configure Cross-Site Conflict Resolution</a></p>
+<p><a href="#customizing-conflict-resolution_xsite">Customizing the Conflict Resolution Strategy</a></p>
 </li>
 </ul>
-</div>
 </div>
 </div>
 </div>
@@ -1538,7 +1516,7 @@ different name on the local site.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configure_state_transfer-xsite"><a class="anchor" href="#configure_state_transfer-xsite"></a>2.4. Configuring Cross-Site State Transfer</h3>
+<h3 id="configuring-state-transfer_xsite"><a class="anchor" href="#configuring-state-transfer_xsite"></a>2.4. Configuring Cross-Site State Transfer</h3>
 <div class="paragraph">
 <p>Change cross-site state transfer settings to optimize performance and specify whether operations happen manually or automatically.</p>
 </div>
@@ -1558,45 +1536,41 @@ different name on the local site.</p>
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">eu-customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    <span class="tag">&lt;backups&gt;</span>
       <span class="tag">&lt;backup</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">strategy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ASYNC</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-         <span class="tag">&lt;state-transfer</span> <span class="attribute-name">chunk-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">64</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">30000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max-retries</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">30</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">wait-time</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">AUTO</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+         <span class="tag">&lt;state-transfer</span> <span class="attribute-name">chunk-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">64</span><span class="delimiter">&quot;</span></span>
+                         <span class="attribute-name">timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">30000</span><span class="delimiter">&quot;</span></span>
+                         <span class="attribute-name">max-retries</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">30</span><span class="delimiter">&quot;</span></span>
+                         <span class="attribute-name">wait-time</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2000</span><span class="delimiter">&quot;</span></span>
+                         <span class="attribute-name">mode</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">AUTO</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;/backup&gt;</span>
    <span class="tag">&lt;/backups&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
-<div class="ulist">
-<div class="title">Reference</div>
-<ul>
-<li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema</a></p>
-</li>
-<li>
-<p><a href="#cli_xsite_push-xsite">Pushing State to Backup Locations (CLI)</a></p>
-</li>
-<li>
-<p><a href="#rest_v2_cache_manager_start_push">Pushing State to Backup Locations (REST)</a></p>
-</li>
-<li>
-<p><a href="#performing_jmx_operations-xsite">Pushing State to Backup Locations (JMX)</a></p>
-</li>
-</ul>
-</div>
 </div>
 <div class="sect2">
-<h3 id="configure_conflict_resolver-xsite"><a class="anchor" href="#configure_conflict_resolver-xsite"></a>2.5. Configuring Cross-Site Conflict Resolution</h3>
+<h3 id="customizing-conflict-resolution_xsite"><a class="anchor" href="#customizing-conflict-resolution_xsite"></a>2.5. Customizing the Conflict Resolution Algorithm</h3>
 <div class="paragraph">
-<p>Specify the algorithm name of the implementation to use when conflict happens.</p>
+<p>Configure Infinispan to use a different algorithm to resolve conflicting entries between backup locations.</p>
 </div>
-<div class="ulist">
+<div class="olist arabic">
 <div class="title">Procedure</div>
-<ul>
+<ol class="arabic">
 <li>
-<p>Use <code>merge-policy</code> to configure the conflict resolution algorithm.</p>
+<p>Open your Infinispan configuration for editing.</p>
 </li>
-</ul>
+<li>
+<p>Specify one of the Infinispan algorithms or a custom implementation with the <code>merge-policy</code> attribute for the <code>backups</code> element.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Using Infinispan algorithms</div>
+<p>Find all Infinispan algorithms and their descriptions in the <code>org.infinispan.xsite.spi.XSiteMergePolicy</code> enum.</p>
+</div>
+<div class="paragraph">
+<p>The following example configuration uses the <code>ALWAYS_REMOVE</code> algorithm that deletes conflicting entries from both sites:</p>
 </div>
 <div class="listingblock">
-<div class="title">Using Infinispan algorithm</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">eu-customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    <span class="tag">&lt;backups</span> <span class="attribute-name">merge-policy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ALWAYS_REMOVE</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
@@ -1605,8 +1579,22 @@ different name on the local site.</p>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
+<div class="olist arabic">
+<div class="title">Using custom implementations</div>
+<ol class="arabic">
+<li>
+<p>Create a custom <code>XSiteEntryMergePolicy</code> implementation.</p>
 <div class="listingblock">
-<div class="title">Using a custom implementation</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="java"><span class="directive">public</span> <span class="type">interface</span> <span class="class">XSiteEntryMergePolicy</span>&lt;K, V&gt; {
+   CompletionStage&lt;SiteEntry&lt;V&gt;&gt; merge(K key, SiteEntry&lt;V&gt; localEntry, SiteEntry&lt;V&gt; remoteEntry);
+}</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Specify the fully qualified class name as the value of the <code>merge-policy</code> attribute, as in the following example:</p>
+<div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">eu-customers</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
    <span class="tag">&lt;backups</span> <span class="attribute-name">merge-policy</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.mycompany.MyCustomXSiteEntryMergePolicy</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
@@ -1615,14 +1603,20 @@ different name on the local site.</p>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
 </div>
-<div class="ulist">
-<div class="title">Reference</div>
+</li>
+</ol>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">XSiteEntryMergePolicy</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">org.infinispan.xsite.spi.XSiteEntryMergePolicy</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">XSiteMergePolicy</a></p>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">org.infinispan.xsite.spi.XSiteMergePolicy</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/SiteEntry.html">org.infinispan.xsite.spi.SiteEntry</a></p>
 </li>
 <li>
 <p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema</a></p>
@@ -1808,7 +1802,7 @@ locations.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="cli_xsite_push-cli-ops"><a class="anchor" href="#cli_xsite_push-cli-ops"></a>3.1.2. Configuring Cross-Site State Transfer Modes</h4>
+<h4 id="configuring-xsite-state-transfer-modes_cli-ops"><a class="anchor" href="#configuring-xsite-state-transfer-modes_cli-ops"></a>3.1.2. Configuring Cross-Site State Transfer Modes</h4>
 <div class="paragraph">
 <p>You can configure cross-site state transfer operations to happen automatically when Infinispan detects that backup locations come online.
 Alternatively you can use the default mode, which is to manually perform state transfer through the CLI or via JMX or REST.</p>
@@ -1861,7 +1855,7 @@ Alternatively you can use the default mode, which is to manually perform state t
 </div>
 </div>
 <div class="sect3">
-<h4 id="cli_xsite_push-cli-ops"><a class="anchor" href="#cli_xsite_push-cli-ops"></a>3.1.3. Pushing State to Backup Locations</h4>
+<h4 id="pushing-xsite-state-transfer_cli-ops"><a class="anchor" href="#pushing-xsite-state-transfer_cli-ops"></a>3.1.3. Pushing State to Backup Locations</h4>
 <div class="paragraph">
 <p>Transfer cache state to remote backup locations.</p>
 </div>
@@ -2263,7 +2257,7 @@ requests.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_v2_cache_manager_get_state_transfer_mode"><a class="anchor" href="#rest_v2_cache_manager_get_state_transfer_mode"></a>3.2.15. Setting the State Transfer Mode</h4>
+<h4 id="rest_v2_cache_manager_set_state_transfer_mode"><a class="anchor" href="#rest_v2_cache_manager_set_state_transfer_mode"></a>3.2.15. Setting the State Transfer Mode</h4>
 <div class="paragraph">
 <p>Configure the state transfer mode with the <code>?action=set</code> parameter.</p>
 </div>
@@ -2299,7 +2293,7 @@ requests.</p>
 <div class="sect2">
 <h3 id="xsite_operations_jmx"><a class="anchor" href="#xsite_operations_jmx"></a>3.3. Performing Cross-Site Operations with JMX</h3>
 <div class="paragraph">
-<p>Infinispan provides JMX tooling to perfrom cross-site operations such as
+<p>Infinispan provides JMX tooling to perform cross-site operations such as
 pushing state transfer and bringing sites online.</p>
 </div>
 <div class="sect3">
