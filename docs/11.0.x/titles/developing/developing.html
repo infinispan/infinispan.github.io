@@ -926,7 +926,7 @@ artifact you add as a dependency to your project.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;properties&gt;</span>
-  <span class="tag">&lt;version.infinispan&gt;</span>11.0.9.Final<span class="tag">&lt;/version.infinispan&gt;</span>
+  <span class="tag">&lt;version.infinispan&gt;</span>11.0.11.Final<span class="tag">&lt;/version.infinispan&gt;</span>
 <span class="tag">&lt;/properties&gt;</span>
 
 <span class="tag">&lt;dependencyManagement&gt;</span>
@@ -2869,6 +2869,23 @@ named <em>authors</em>, which is the <em>Author</em> message type.</p>
 <li>
 <p>Use the <code>org.infinispan.protostream.MessageMarshaller</code> interface to implement
 marshallers for your classes.</p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The <code>MessageMarshaller</code> interface is now deprecated.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan 12 provides an alternative implementation that lets you create an adaptor class that uses the <code>@ProtoAdaptor</code> annotation for any external, third-party Java object classes.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <div class="listingblock">
 <div class="title">BookMarshaller.java</div>
 <div class="content">
@@ -3030,8 +3047,7 @@ implementations.</p>
 <div class="sect3">
 <h4 id="jboss_marshalling"><a class="anchor" href="#jboss_marshalling"></a>5.3.1. Using JBoss Marshalling</h4>
 <div class="paragraph">
-<p>JBoss Marshalling is a serialization-based marshalling library and was the
-default marshaller in previous Infinispan versions.</p>
+<p>JBoss Marshalling is a serialization-based marshalling library and was the default marshaller in previous Infinispan versions.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -3066,10 +3082,10 @@ JBoss Marshalling.</p>
 <p>Add the <code>infinispan-jboss-marshalling</code> dependency to your classpath.</p>
 </li>
 <li>
-<p>Configure Infinispan to use the <code>JBossUserMarshaller</code>.</p>
+<p>Configure Infinispan to use the <code>GenericJBossMarshaller</code>.</p>
 </li>
 <li>
-<p>Add your Java classes to the deserialization allowlist.</p>
+<p>Add your Java classes to the deserialization whitelist.</p>
 <div class="ulist">
 <ul>
 <li>
@@ -3077,7 +3093,10 @@ JBoss Marshalling.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight"><code data-lang="java">GlobalConfigurationBuilder builder = <span class="keyword">new</span> GlobalConfigurationBuilder();
-builder.serialization().marshaller(<span class="keyword">new</span> JBossUserMarshaller());</code></pre>
+builder.serialization()
+       .marshaller(<span class="keyword">new</span> GenericJBossMarshaller())
+       .whiteList()
+       .addRegexps(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.example.</span><span class="delimiter">&quot;</span></span>, <span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.concrete.SomeClass</span><span class="delimiter">&quot;</span></span>);</code></pre>
 </div>
 </div>
 </li>
@@ -3085,7 +3104,12 @@ builder.serialization().marshaller(<span class="keyword">new</span> JBossUserMar
 <p>Declaratively:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;serialization</span> <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.jboss.marshalling.core.JBossUserMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;serialization</span> <span class="attribute-name">marshaller</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.infinispan.jboss.marshalling.commons.GenericJBossMarshaller</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;white-list&gt;</span>
+      <span class="tag">&lt;class&gt;</span>org.infinispan.concrete.SomeClass<span class="tag">&lt;/class&gt;</span>
+      <span class="tag">&lt;regex&gt;</span>org.infinispan.example.*<span class="tag">&lt;/regex&gt;</span>
+  <span class="tag">&lt;white-list&gt;</span>
+<span class="tag">&lt;/serialization&gt;</span></code></pre>
 </div>
 </div>
 </li>
@@ -3119,7 +3143,7 @@ only if your Java objects implement the Java <code>Serializable</code> interface
 <p>Configure Infinispan to use <code>JavaSerializationMarshaller</code> as the marshaller.</p>
 </li>
 <li>
-<p>Add your Java classes to the deserialization allowlist.</p>
+<p>Add your Java classes to the deserialization whitelist.</p>
 <div class="ulist">
 <ul>
 <li>
@@ -3249,7 +3273,7 @@ for example:</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization_whitelist">Adding Java Classes to Deserialization White Lists</a></p>
 </li>
 <li>
 <p><a href="https://github.com/EsotericSoftware/kryo">Kryo on GitHub</a></p>
@@ -3343,7 +3367,7 @@ marshalling:</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="#deserialization_whitelist">Adding Java Classes to Deserialization White Lists</a></p>
 </li>
 <li>
 <p><a href="https://github.com/protostuff/protostuff">Protostuff on GitHub</a></p>
@@ -3366,7 +3390,7 @@ marshalling:</p>
 <p>Configure Infinispan to use your marshaller.</p>
 </li>
 <li>
-<p>Add your Java classes to the deserialization allowlist.</p>
+<p>Add your Java classes to the deserialization whitelist.</p>
 <div class="ulist">
 <ul>
 <li>
@@ -3417,10 +3441,10 @@ builder.serialization()
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/commons/marshall/Marshaller.html">org.infinispan.commons.marshall.Marshaller</a></p>
+<p><a href="#deserialization_whitelist">Adding Java Classes to Deserialization White Lists</a></p>
 </li>
 <li>
-<p><a href="#deserialization_allowlist-marshallers">Adding Java Classes to Deserialization Allow Lists</a></p>
+<p><a href="https://docs.jboss.org/infinispan/11.0/apidocs/org/infinispan/commons/marshall/Marshaller.html">org.infinispan.commons.marshall.Marshaller</a></p>
 </li>
 </ul>
 </div>
@@ -3432,7 +3456,7 @@ builder.serialization()
 security reasons, which applies to JSON, XML, and marshalled <code>byte[]</code> content.</p>
 </div>
 <div class="paragraph">
-<p>You must add Java classes to a deserialization white list, either using system
+<p>You must add Java classes to a deserialization whitelist, either using system
 properties or specifying them in the Infinispan configuration.</p>
 </div>
 <div class="listingblock">
@@ -10160,7 +10184,7 @@ for a detail example on how to implement this.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-01-15 08:44:32 -0500
+Last updated 2021-05-14 08:44:10 -0400
 </div>
 </div>
 <style>

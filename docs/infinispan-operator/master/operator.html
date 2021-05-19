@@ -3155,7 +3155,8 @@ $ kubectl apply -f deploy/clusterrole_binding.yaml</code></pre>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>$ kubectl create serviceaccount site-a -n ns-site-a
-$ kubectl create clusterrolebinding add-on-cluster-admin --clusterrole=cluster-admin --serviceaccount=ns-site-a:site-a
+$ kubectl create clusterrole xsite-cluster-role --verb=get,list,watch --resource=nodes,services
+$ kubectl create clusterrolebinding xsite-cluster-role-binding --clusterrole=xsite-cluster-role --serviceaccount=ns-site-a:site-a
 $ TOKENNAME=kubectl get serviceaccount/site-a -o jsonpath='{.secrets[0].name}' -n ns-site-a
 $ TOKEN=kubectl get secret $TOKENNAME -o jsonpath='{.data.token}' -n ns-site-a | base64 --decode
 $ kubectl create secret generic site-a-secret -n ns-site-a --from-literal=token=$TOKEN</code></pre>
@@ -3212,7 +3213,7 @@ Clusters use these tokens to authenticate with each other so Infinispan Operator
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>$ kubectl create sa lon
+<pre class="highlight nowrap"><code>$ oc create sa lon
 serviceaccount/lon created</code></pre>
 </div>
 </div>
@@ -3222,6 +3223,14 @@ serviceaccount/lon created</code></pre>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>$ oc policy add-role-to-user view system:serviceaccount:&lt;namespace&gt;:lon</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>If you use a node port service to expose Infinispan clusters on the network, you must also add the <code>cluster-reader</code> role to the service account:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ oc adm policy add-cluster-role-to-user cluster-reader -z &lt;service-account-name&gt; -n &lt;namespace&gt;</code></pre>
 </div>
 </div>
 </li>
@@ -3344,9 +3353,6 @@ spec:
         expose:
           type: LoadBalancer
       locations:
-        - name: LON
-          url: openshift://api.rhdg-lon.openshift-aws.myhost.com:6443
-          secretName: lon-token
         - name: NYC
           clusterName: &lt;nyc_cluster_name&gt;
           namespace: &lt;nyc_cluster_namespace&gt;
@@ -3377,9 +3383,6 @@ spec:
         expose:
           type: LoadBalancer
       locations:
-        - name: NYC
-          url: openshift://api.rhdg-nyc.openshift-aws.myhost.com:6443
-          secretName: nyc-token
         - name: LON
           clusterName: example-infinispan
           namespace: ispn-namespace
@@ -3464,9 +3467,6 @@ locations to caches.</p>
         expose:
           type: LoadBalancer
       locations:
-      - name: LON
-        url: openshift://api.site-a.devcluster.openshift.com:6443
-        secretName: lon-token
       - name: NYC
         clusterName: &lt;nyc_cluster_name&gt;
         namespace: &lt;nyc_cluster_namespace&gt;
@@ -3596,8 +3596,6 @@ spec:
         expose:
           type: LoadBalancer
       locations:
-        - name: LON
-          url: infinispan+xsite://infinispan-lon.myhost.com:7900
         - name: NYC
           url: infinispan+xsite://infinispan-nyc.myhost.com:7900
     logging:
@@ -3625,8 +3623,6 @@ spec:
         expose:
           type: LoadBalancer
       locations:
-        - name: NYC
-          url: infinispan+xsite://infinispan-nyc.myhost.com:7900
         - name: LON
           url: infinispan+xsite://infinispan-lon.myhost.com
     logging:
@@ -3708,8 +3704,6 @@ locations to caches.</p>
         expose:
           type: LoadBalancer
       locations:
-      - name: LON
-        url: infinispan+xsite://infinispan-lon.myhost.com:7900
       - name: NYC
         url: infinispan+xsite://infinispan-nyc.myhost.com:7900</code></pre>
 </div>
@@ -5283,7 +5277,7 @@ spec:
 <p>You can send <code>CloudEvents</code> from Infinispan clusters when entries in caches are created, updated, removed, or expired.</p>
 </div>
 <div class="paragraph">
-<p>Infinispan sends structured events to Apache Kafka in JSON format, as in the following example:</p>
+<p>Infinispan sends structured events to Kafka in JSON format, as in the following example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -5336,9 +5330,13 @@ spec:
 <div class="paragraph _abstract">
 <p>Configure Infinispan to send <code>CloudEvents</code>.</p>
 </div>
-<div class="paragraph">
+<div class="ulist">
 <div class="title">Prerequisites</div>
-<p>Before you can send <code>CloudEvents</code>, you need to set up an Apache Kafka cluster that listens for Infinispan topics.</p>
+<ul>
+<li>
+<p>Set up an Kafka cluster that listens for Infinispan topics.</p>
+</li>
+</ul>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -5360,7 +5358,7 @@ spec:
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">spec:
   cloudEvents:
     acks: "1"
-    bootstrapServers: 127.0.0.1:9092,192.168.1.14:9092
+    bootstrapServers: my-cluster-kafka-bootstrap_1.&lt;namespace_1&gt;.svc:9092,my-cluster-kafka-bootstrap_2.&lt;namespace_2&gt;.svc:9092
     cacheEntriesTopic: target-topic</code></pre>
 </div>
 </div>
@@ -5949,7 +5947,7 @@ should create Data Grid Service nodes instead of Cache Service nodes.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-05-06 09:55:30 -0400
+Last updated 2021-05-18 11:36:19 -0400
 </div>
 </div>
 <script>
