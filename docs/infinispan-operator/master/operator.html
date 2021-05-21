@@ -571,8 +571,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#manual-xsite-views_cross-site">8.2. Manually connecting Infinispan clusters</a>
 <ul class="sectlevel3">
-<li><a href="#configuring-sites-manually_cross-site">8.2.1. Specifying static hosts and ports for Infinispan clusters</a></li>
-<li><a href="#cross-site-resources-manual_cross-site">8.2.2. Resources for manual cross-site connections</a></li>
+<li><a href="#cross-site-resources-manual_cross-site">8.2.1. Resources for manual cross-site connections</a></li>
 </ul>
 </li>
 <li><a href="#configuring-sites-in-clusters_cross-site">8.3. Configuring sites in the same Kubernetes cluster</a></li>
@@ -3063,7 +3062,8 @@ Changing the value moves the dashboard to that namespace.</p>
 <div class="sect2">
 <h3 id="cross-site-replication_cross-site">8.1. Using Infinispan Operator to manage cross-site connections</h3>
 <div class="paragraph _abstract">
-<p>An Infinispan Operator in one data center can discover an Infinispan Operator in another data center and automatically form cross-site views to create global Infinispan clusters.</p>
+<p>Infinispan Operator in one data center can discover a Infinispan cluster that Infinispan Operator manages in another data center.
+This discovery allows Infinispan to automatically form cross-site views and create global clusters.</p>
 </div>
 <div class="paragraph">
 <p>The following illustration provides an example in which Infinispan Operator manages a Infinispan cluster at a data center in New York City, <strong>NYC</strong>.
@@ -3086,7 +3086,7 @@ Infinispan Operator then creates a cross-site replication service so Infinispan 
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Infinispan Operator in each OpenShift cluster must have network access to the Kubernetes API.</p>
+<p>Infinispan Operator in each OpenShift cluster must have network access to the remote Kubernetes API.</p>
 </div>
 </td>
 </tr>
@@ -3100,7 +3100,7 @@ Infinispan Operator then creates a cross-site replication service so Infinispan 
 </td>
 <td class="content">
 <div class="paragraph">
-<p>When you configure automatic connections, Infinispan clusters do not start running until Infinispan Operator can establish connections with all backup locations in the configuration.</p>
+<p>When you configure automatic connections, Infinispan clusters do not start running until Infinispan Operator discovers all backup locations in the configuration.</p>
 </div>
 </td>
 </tr>
@@ -3358,10 +3358,10 @@ spec:
           namespace: &lt;nyc_cluster_namespace&gt;
           url: openshift://api.rhdg-nyc.openshift-aws.myhost.com:6443
           secretName: nyc-token
-    logging:
-      categories:
-        org.jgroups.protocols.TCP: error
-        org.jgroups.protocols.relay.RELAY2: error</code></pre>
+  logging:
+    categories:
+      org.jgroups.protocols.TCP: error
+      org.jgroups.protocols.relay.RELAY2: error</code></pre>
 </div>
 </div>
 </li>
@@ -3388,10 +3388,10 @@ spec:
           namespace: ispn-namespace
           url: openshift://api.rhdg-lon.openshift-aws.myhost.com:6443
           secretName: lon-token
-    logging:
-      categories:
-        org.jgroups.protocols.TCP: error
-        org.jgroups.protocols.relay.RELAY2: error</code></pre>
+  logging:
+    categories:
+      org.jgroups.protocols.TCP: error
+      org.jgroups.protocols.relay.RELAY2: error</code></pre>
 </div>
 </div>
 <div class="admonitionblock important">
@@ -3532,36 +3532,28 @@ locations to caches.</p>
 <div class="sect2">
 <h3 id="manual-xsite-views_cross-site">8.2. Manually connecting Infinispan clusters</h3>
 <div class="paragraph _abstract">
-<p>You can specify static network connection details to perform cross-site replication with Infinispan clusters running outside Kubernetes.</p>
+<p>You can specify static network connection details to perform cross-site replication with Infinispan clusters running outside Kubernetes.
+Manual cross-site connections are necessary in any scenario where access to the Kubernetes API is not available outside the Kubernetes cluster where Infinispan runs.</p>
 </div>
-<div class="paragraph">
-<p>Manual cross-site connections are necessary in any scenario where access to the Kubernetes API is not available outside the Kubernetes cluster where Infinispan runs.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
 <div class="paragraph">
 <p>You can use both automatic and manual connections for Infinispan clusters in the same <code>Infinispan</code> CR.
 However, you must ensure that Infinispan clusters establish connections in the same way at each site.</p>
 </div>
-</td>
-</tr>
-</table>
+<div class="paragraph">
+<div class="title">Prerequisites</div>
+<p>Manually connecting Infinispan clusters to form cross-site views requires predictable network locations for Infinispan services.</p>
 </div>
-<div class="sect3">
-<h4 id="configuring-sites-manually_cross-site">8.2.1. Specifying static hosts and ports for Infinispan clusters</h4>
-<div class="paragraph _abstract">
-<p>Specify static hosts and ports for Infinispan clusters so they can establish connections and form cross-site views.</p>
+<div class="paragraph">
+<p>You need to know the network locations before they are created, which requires you to:</p>
 </div>
 <div class="ulist">
-<div class="title">Prerequisites</div>
 <ul>
 <li>
 <p>Have the host names and ports for each Infinispan cluster that you plan to configure as a backup location.</p>
+</li>
+<li>
+<p>Have the host name of the <code>&lt;cluster-name&gt;-site</code> service for any remote Infinispan cluster that is running on Kubernetes.<br>
+You must use the <code>&lt;cluster-name&gt;-site</code> service to form a cross-site view between a cluster that Infinispan Operator manages and any other cluster.</p>
 </li>
 </ul>
 </div>
@@ -3598,10 +3590,10 @@ spec:
       locations:
         - name: NYC
           url: infinispan+xsite://infinispan-nyc.myhost.com:7900
-    logging:
-      categories:
-        org.jgroups.protocols.TCP: error
-        org.jgroups.protocols.relay.RELAY2: error</code></pre>
+  logging:
+    categories:
+      org.jgroups.protocols.TCP: error
+      org.jgroups.protocols.relay.RELAY2: error</code></pre>
 </div>
 </div>
 </li>
@@ -3625,10 +3617,10 @@ spec:
       locations:
         - name: LON
           url: infinispan+xsite://infinispan-lon.myhost.com
-    logging:
-      categories:
-        org.jgroups.protocols.TCP: error
-        org.jgroups.protocols.relay.RELAY2: error</code></pre>
+  logging:
+    categories:
+      org.jgroups.protocols.TCP: error
+      org.jgroups.protocols.relay.RELAY2: error</code></pre>
 </div>
 </div>
 <div class="admonitionblock important">
@@ -3687,9 +3679,8 @@ This prevents a large number of log files from uses container storage.</p>
 <p>If your clusters have formed a cross-site view, you can start adding backup
 locations to caches.</p>
 </div>
-</div>
 <div class="sect3">
-<h4 id="cross-site-resources-manual_cross-site">8.2.2. Resources for manual cross-site connections</h4>
+<h4 id="cross-site-resources-manual_cross-site">8.2.1. Resources for manual cross-site connections</h4>
 <div class="paragraph _abstract">
 <p>This topic describes resources for cross-site connections that you maintain manually.</p>
 </div>
@@ -3788,10 +3779,8 @@ spec:
         expose:
           type: ClusterIP
       locations:
-        - name: SiteA
-          url: infinispan+xsite://example-clustera-site
         - name: SiteB
-          url: infinispan+xsite://example-clusterb-site</code></pre>
+          url: infinispan+xsite://example-clusterb-site.&lt;namespace&gt;.svc:7900</code></pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -4917,6 +4906,19 @@ spec:
       - wordStream.js</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>You can also use the <code>*</code> wildcard character to back up all resources.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>spec:
+  resources:
+    caches:
+      - "*"
+    protoSchemas:
+      - "*"</code></pre>
+</div>
+</div>
 </li>
 <li>
 <p>Apply your <code>Backup</code> CR.</p>
@@ -5472,15 +5474,13 @@ You should separate Infinispan configuration from application code for easier va
 <div class="title">Prerequisites</div>
 <ul>
 <li>
-<p>Download the server distribution so you can run the CLI.</p>
+<p>Download a CLI distribution so you can connect to Infinispan clusters on OpenShift.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The CLI is available as part of the server distribution, which you can run on your local host to establish remote connections to Infinispan clusters on OpenShift.</p>
-</div>
-<div class="paragraph">
-<p>Alternatively, you can use the infinispan/cli image at <a href="https://github.com/infinispan/infinispan-images">https://github.com/infinispan/infinispan-images</a>.</p>
+<p>The CLI is available as part of the server distribution.
+Alternatively, you can use the CLI container image available from <a href="https://infinispan.org/download/stable/cli-image.html">infinispan.org/download</a>.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -5505,6 +5505,7 @@ You should separate Infinispan configuration from application code for easier va
 </table>
 </div>
 <div class="olist arabic">
+<div class="title">Procedure</div>
 <ol class="arabic">
 <li>
 <p>Create a CLI connection to your Infinispan cluster.</p>
@@ -5550,7 +5551,7 @@ mycache</code></pre>
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://infinispan.org/docs/stable/titles/server/server.html">Downloading Server Distributions</a></p>
+<p><a href="https://infinispan.org/docs/stable/titles/server/server.html#start_server">Getting Started with Infinispan Server</a></p>
 </li>
 <li>
 <p><a href="https://infinispan.org/docs/stable/titles/cli/cli.html">Using the Infinispan Command Line Interface</a></p>
@@ -5643,7 +5644,8 @@ ConfigurationBuilder builder = new ConfigurationBuilder();
                .saslMechanism("SCRAM-SHA-512")
              .ssl()
                .sniHostName("$SERVICE_HOSTNAME")
-               .trustStorePath("/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt");</code></pre>
+               .trustStoreFileName("/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt")
+               .trustStoreType("pem");</code></pre>
 </div>
 </div>
 <h5 id="_outside_kubernetes" class="discrete">Outside Kubernetes</h5>
@@ -5669,7 +5671,10 @@ ConfigurationBuilder builder = new ConfigurationBuilder();
                .saslMechanism("SCRAM-SHA-512")
              .ssl()
                .sniHostName("$SERVICE_HOSTNAME")
-               .trustStorePath("/path/to/tls.crt");
+               //Create a client trust store with tls.crt from your project.
+               .trustStoreFileName("/path/to/truststore.pkcs12")
+               .trustStorePassword("trust_store_password")
+               .trustStoreType("PCKS12");
       builder.clientIntelligence(ClientIntelligence.BASIC);</code></pre>
 </div>
 </div>
@@ -5713,9 +5718,8 @@ infinispan.client.hotrod.sasl_mechanism=SCRAM-SHA-512
 
 # Encryption
 infinispan.client.hotrod.sni_host_name=$SERVICE_HOSTNAME
-# Path to the TLS certificate.
-# Clients automatically generate trust stores from certificates.
-infinispan.client.hotrod.trust_store_path=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt</code></pre>
+infinispan.client.hotrod.trust_store_file_name=/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+infinispan.client.hotrod.trust_store_type=pem</code></pre>
 </div>
 </div>
 <h5 id="_outside_kubernetes_2" class="discrete">Outside Kubernetes</h5>
@@ -5740,9 +5744,10 @@ infinispan.client.hotrod.sasl_mechanism=SCRAM-SHA-512
 
 # Encryption
 infinispan.client.hotrod.sni_host_name=$SERVICE_HOSTNAME
-# Path to the TLS certificate.
-# Clients automatically generate trust stores from certificates.
-infinispan.client.hotrod.trust_store_path=tls.crt</code></pre>
+# Create a client trust store with tls.crt from your project.
+infinispan.client.hotrod.trust_store_file_name=/path/to/truststore.pkcs12
+infinispan.client.hotrod.trust_store_password=trust_store_password
+infinispan.client.hotrod.trust_store_type=PCKS12</code></pre>
 </div>
 </div>
 </div>
@@ -5788,16 +5793,12 @@ import org.infinispan.commons.configuration.XMLStringConfiguration;
 
 private void createCacheWithXMLConfiguration() {
     String cacheName = "CacheWithXMLConfiguration";
-    String xml = String.format("&lt;infinispan&gt;" +
-                                  "&lt;cache-container&gt;" +
-                                  "&lt;distributed-cache name=\"%s\" mode=\"SYNC\"&gt;" +
-                                    "&lt;encoding media-type=\"application/x-protostream\"/&gt;" +
-                                    "&lt;locking isolation=\"READ_COMMITTED\"/&gt;" +
-                                    "&lt;transaction mode=\"NON_XA\"/&gt;" +
-                                    "&lt;expiration lifespan=\"60000\" interval=\"20000\"/&gt;" +
-                                  "&lt;/distributed-cache&gt;" +
-                                  "&lt;/cache-container&gt;" +
-                                "&lt;/infinispan&gt;"
+    String xml = String.format("&lt;distributed-cache name=\"%s\"&gt;" +
+                                  "&lt;encoding media-type=\"application/x-protostream\"/&gt;" +
+                                  "&lt;locking isolation=\"READ_COMMITTED\"/&gt;" +
+                                  "&lt;transaction mode=\"NON_XA\"/&gt;" +
+                                  "&lt;expiration lifespan=\"60000\" interval=\"20000\"/&gt;" +
+                                "&lt;/distributed-cache&gt;"
                                 , cacheName);
     manager.administration().getOrCreateCache(cacheName, new XMLStringConfiguration(xml));
     System.out.println("Cache with configuration exists or is created.");
@@ -5947,7 +5948,7 @@ should create Data Grid Service nodes instead of Cache Service nodes.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-05-18 11:36:19 -0400
+Last updated 2021-05-20 05:06:17 -0400
 </div>
 </div>
 <script>
