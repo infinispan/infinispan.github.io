@@ -27,7 +27,6 @@ group :jekyll_plugins do
   gem "optimist"
   gem "bigdecimal"
   gem "nokogiri"
-  gem "webrick"
 end
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
