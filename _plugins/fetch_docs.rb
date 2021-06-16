@@ -176,8 +176,8 @@ else
     %x( mkdir -p docs/infinispan-operator/#{version}/ )
     %x( mkdir -p docs/infinispan-operator/topics/images/ )
     %x( mv _optmp/*.html _optmp/**/documentation/asciidoc/css _optmp/**/documentation/asciidoc/js "docs/infinispan-operator/#{version}/" )
-    #Use images only on master. Causes harmless "cannot stat" messages.
-    %x( cp -r _optmp/infinispan-operator-master/documentation/asciidoc/topics/images/* "docs/infinispan-operator/topics/images/" )
+    #Use images only on main. Causes harmless "cannot stat" messages.
+    %x( cp -r _optmp/infinispan-operator-main/documentation/asciidoc/topics/images/* "docs/infinispan-operator/topics/images/" )
     %x( rm -rf _optmp* )
     operatorDocIndex.push "#{version}"
   end
