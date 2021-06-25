@@ -160,6 +160,63 @@ else
     end
   end
 
+  # Hot Rod JS client latest
+  cfg["hr_js_client"].each do |version, sub|
+    puts "#{version} wget"
+    zipUrl = sub["zip-url"]
+    puts "#{version} wget #{zipUrl}"
+    %x( wget #{zipUrl} -O _jstmp.zip)
+    %x( unzip _jstmp.zip "*documentation/*" -d _jstmp)
+    Dir.glob("_jstmp/**/*.asciidoc").each do |f|
+      %x( asciidoctor #{f} )
+    end
+    Dir.glob("_jstmp/**/*.html").each do |f|
+      %x( cp -r #{f} _jstmp )
+    end
+    %x( mkdir -p docs/hotrod-clients/js/latest/ )
+    %x( mv _jstmp/*.html "docs/hotrod-clients/js/latest/" )
+    %x( rm -rf _jstmp* )
+    operatorDocIndex.push "main"
+  end
+
+  # Hot Rod C++ client latest
+  cfg["hr_cpp_client"].each do |version, sub|
+    puts "#{version} wget"
+    zipUrl = sub["zip-url"]
+    puts "#{version} wget #{zipUrl}"
+    %x( wget #{zipUrl} -O _cpptmp.zip)
+    %x( unzip _cpptmp.zip "*documentation/*" -d _cpptmp)
+    Dir.glob("_cpptmp/**/*.asciidoc").each do |f|
+      %x( asciidoctor #{f} )
+    end
+    Dir.glob("_cpptmp/**/*.html").each do |f|
+      %x( cp -r #{f} _cpptmp )
+    end
+    %x( mkdir -p docs/hotrod-clients/cpp/latest/ )
+    %x( mv _cpptmp/*.html "docs/hotrod-clients/cpp/latest/" )
+    %x( rm -rf _cpptmp* )
+    operatorDocIndex.push "main"
+  end
+
+  # Hot Rod .NET/C# client latest
+  cfg["hr_dotnet_client"].each do |version, sub|
+    puts "#{version} wget"
+    zipUrl = sub["zip-url"]
+    puts "#{version} wget #{zipUrl}"
+    %x( wget #{zipUrl} -O _dotnettmp.zip)
+    %x( unzip _dotnettmp.zip "*documentation/*" -d _dotnettmp)
+    Dir.glob("_dotnettmp/**/*.asciidoc").each do |f|
+      %x( asciidoctor #{f} )
+    end
+    Dir.glob("_dotnettmp/**/*.html").each do |f|
+      %x( cp -r #{f} _dotnettmp )
+    end
+    %x( mkdir -p docs/hotrod-clients/dotnet/latest/ )
+    %x( mv _dotnettmp/*.html "docs/hotrod-clients/dotnet/latest/" )
+    %x( rm -rf _dotnettmp* )
+    operatorDocIndex.push "main"
+  end
+
   # and then it's operator's turn
   cfg["ispn_operator"].each do |version, sub|
     puts "#{version} wget"
