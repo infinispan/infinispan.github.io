@@ -176,7 +176,6 @@ else
     %x( mkdir -p docs/hotrod-clients/js/latest/ )
     %x( mv _jstmp/*.html "docs/hotrod-clients/js/latest/" )
     %x( rm -rf _jstmp* )
-    operatorDocIndex.push "main"
   end
 
   # Hot Rod C++ client latest
@@ -195,7 +194,6 @@ else
     %x( mkdir -p docs/hotrod-clients/cpp/latest/ )
     %x( mv _cpptmp/*.html "docs/hotrod-clients/cpp/latest/" )
     %x( rm -rf _cpptmp* )
-    operatorDocIndex.push "main"
   end
 
   # Hot Rod .NET/C# client latest
@@ -214,7 +212,6 @@ else
     %x( mkdir -p docs/hotrod-clients/dotnet/latest/ )
     %x( mv _dotnettmp/*.html "docs/hotrod-clients/dotnet/latest/" )
     %x( rm -rf _dotnettmp* )
-    operatorDocIndex.push "main"
   end
 
   # and then it's operator's turn
