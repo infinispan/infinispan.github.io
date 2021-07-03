@@ -557,7 +557,7 @@ $(addBlockSwitches);
 <li><a href="#hotrod_auth_tgt">2.2.2. Creating GSSAPI Login Contexts</a></li>
 </ul>
 </li>
-<li><a href="#configuring-hotrod-encryption_hotrod-client-configuration">2.3. Configuring Hot Rod Client Encryption</a></li>
+<li><a href="#configuring-hotrod-encryption_hotrod-client-configuration">2.3. Configuring Hot Rod client encryption</a></li>
 <li><a href="#configuring-hotrod-jmx_hotrod-client-configuration">2.4. Monitoring Hot Rod Client Statistics</a></li>
 <li><a href="#near-caches-hotrod-client-configuration">2.5. Near Caches</a>
 <ul class="sectlevel3">
@@ -832,7 +832,7 @@ artifact you add as a dependency to your project.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;properties&gt;</span>
-  <span class="tag">&lt;version.infinispan&gt;</span>12.1.4.Final<span class="tag">&lt;/version.infinispan&gt;</span>
+  <span class="tag">&lt;version.infinispan&gt;</span>12.1.6.Final<span class="tag">&lt;/version.infinispan&gt;</span>
 <span class="tag">&lt;/properties&gt;</span>
 
 <span class="tag">&lt;dependencyManagement&gt;</span>
@@ -1431,33 +1431,62 @@ authenticate with Kerberos and verify <code>krb5.conf</code>.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-hotrod-encryption_hotrod-client-configuration"><a class="anchor" href="#configuring-hotrod-encryption_hotrod-client-configuration"></a>2.3. Configuring Hot Rod Client Encryption</h3>
+<h3 id="configuring-hotrod-encryption_hotrod-client-configuration"><a class="anchor" href="#configuring-hotrod-encryption_hotrod-client-configuration"></a>2.3. Configuring Hot Rod client encryption</h3>
 <div class="paragraph">
 <p>Infinispan Server can enforce SSL/TLS encryption and present Hot Rod clients with certificates to establish trust and negotiate secure connections.</p>
 </div>
 <div class="paragraph">
-<p>To verify server-issued certificates, Hot Rod clients require part of the TLS
-certificate chain.
-For example, the following image shows a certificate authority (CA), named "CA", that has issued a certificate for a server instance named "HotRodServer":</p>
+<p>To verify certificates issued to Infinispan Server, Hot Rod clients require either the full certificate chain or a partial chain that starts with the Root CA.
+You provide server certificates to Hot Rod clients as trust stores.</p>
 </div>
-<div class="imageblock text-center">
-<div class="content">
-<img src="../../topics/images/cert_chain.png" alt="cert chain">
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Alternatively to providing trust stores you can use shared system certificates.</p>
 </div>
-<div class="title">Figure 1. Certificate chain</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Create a trust store that Hot Rod clients can use to verify Infinispan Server identities.</p>
+</li>
+<li>
+<p>If you configure Infinispan Server to validate or authenticate client certificates, create a keystore as appropriate.</p>
+</li>
+</ul>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Create a Java keystore with part of the server certificate chain. In most cases you should use the public certificate for the CA.</p>
+<p>Add the trust store to the client configuration with the <code>trustStoreFileName()</code> and <code>trustStorePassword()</code> methods or corresponding properties.</p>
 </li>
 <li>
-<p>Specify the keystore as a <em>TrustStore</em> in the client configuration with the <code>SslConfigurationBuilder</code> class.</p>
+<p>If you configure client certificate authentication, do the following:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Add the keystore to the client configuration with the <code>keyStoreFileName()</code> and <code>keyStorePassword()</code> methods or corresponding properties.</p>
+</li>
+<li>
+<p>Configure clients to use the <code>EXTERNAL</code> authentication mechanism.</p>
 </li>
 </ol>
 </div>
-<div class="listingblock">
+</li>
+</ol>
+</div>
+<div class="listingblock primary">
+<div class="title">ConfigurationBuilder</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="java">ConfigurationBuilder clientBuilder = <span class="keyword">new</span> ConfigurationBuilder();
 clientBuilder
@@ -1468,16 +1497,61 @@ clientBuilder
       .ssl()
          <span class="comment">// Server SNI hostname.</span>
          .sniHostName(<span class="string"><span class="delimiter">&quot;</span><span class="content">myservername</span><span class="delimiter">&quot;</span></span>)
-         <span class="comment">// Server certificate keystore.</span>
-         .trustStoreFileName(<span class="string"><span class="delimiter">&quot;</span><span class="content">/path/to/truststore</span><span class="delimiter">&quot;</span></span>)
+         <span class="comment">// Keystore that contains the public keys for Infinispan Server.</span>
+         <span class="comment">// Clients use the trust store to verify Infinispan Server identities.</span>
+         .trustStoreFileName(<span class="string"><span class="delimiter">&quot;</span><span class="content">/path/to/server/truststore</span><span class="delimiter">&quot;</span></span>)
          .trustStorePassword(<span class="string"><span class="delimiter">&quot;</span><span class="content">truststorepassword</span><span class="delimiter">&quot;</span></span>.toCharArray())
          .trustStoreType(<span class="string"><span class="delimiter">&quot;</span><span class="content">PCKS12</span><span class="delimiter">&quot;</span></span>)
-         <span class="comment">// Client certificate keystore.</span>
+         <span class="comment">// Keystore that contains client certificates.</span>
+         <span class="comment">// Clients present these certificates to Infinispan Server.</span>
          .keyStoreFileName(<span class="string"><span class="delimiter">&quot;</span><span class="content">/path/to/client/keystore</span><span class="delimiter">&quot;</span></span>)
          .keyStorePassword(<span class="string"><span class="delimiter">&quot;</span><span class="content">keystorepassword</span><span class="delimiter">&quot;</span></span>.toCharArray())
-         .keyStoreType(<span class="string"><span class="delimiter">&quot;</span><span class="content">PCKS12</span><span class="delimiter">&quot;</span></span>);
-RemoteCache&lt;<span class="predefined-type">String</span>, <span class="predefined-type">String</span>&gt; cache=remoteCacheManager.getCache(<span class="string"><span class="delimiter">&quot;</span><span class="content">secured</span><span class="delimiter">&quot;</span></span>);</code></pre>
+         .keyStoreType(<span class="string"><span class="delimiter">&quot;</span><span class="content">PCKS12</span><span class="delimiter">&quot;</span></span>)
+      .authentication()
+         <span class="comment">// Clients must use the EXTERNAL mechanism for certificate authentication.</span>
+         .saslMechanism(<span class="string"><span class="delimiter">&quot;</span><span class="content">EXTERNAL</span><span class="delimiter">&quot;</span></span>);</code></pre>
 </div>
+</div>
+<div class="listingblock secondary">
+<div class="title">hotrod-client.properties</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>infinispan.client.hotrod.server_list = 127.0.0.1:11222
+infinispan.client.hotrod.use_ssl = true
+infinispan.client.hotrod.sni_host_name = myservername
+# Keystore that contains the public keys for Infinispan Server.
+# Clients use the trust store to verify Infinispan Server identities.
+infinispan.client.hotrod.trust_store_file_name = server_truststore.pkcs12
+infinispan.client.hotrod.trust_store_password = changeme
+infinispan.client.hotrod.trust_store_type = PCKS12
+# Keystore that contains client certificates.
+# Clients present these certificates to Infinispan Server.
+infinispan.client.hotrod.key_store_file_name = client_keystore.pkcs12
+infinispan.client.hotrod.key_store_password = changeme
+infinispan.client.hotrod.key_store_type = PCKS12
+# Clients must use the EXTERNAL mechanism for certificate authentication.
+infinispan.client.hotrod.sasl_mechanism = EXTERNAL</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<div class="title">Next steps</div>
+<p>Add a client trust store to the <code>$$ISPN_HOME/server/conf</code> directory and configure Infinispan Server to use it, if necessary.</p>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="../server/server.html#endpoint-encryption">Encrypting Infinispan Server Connections</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/client/hotrod/configuration/SslConfigurationBuilder.html">SslConfigurationBuilder</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/client/hotrod/configuration/package-summary.html">Hot Rod client configuration properties</a></p>
+</li>
+<li>
+<p><a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/security_guide/sec-shared-system-certificates">Using Shared System Certificates</a> (Red Hat Enterprise Linux 7 Security Guide)</p>
+</li>
+</ul>
 </div>
 </div>
 <div class="sect2">
@@ -3164,7 +3238,7 @@ tm.commit();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-06-01 14:28:26 -0400
+Last updated 2021-06-25 12:11:29 -0400
 </div>
 </div>
 <style>

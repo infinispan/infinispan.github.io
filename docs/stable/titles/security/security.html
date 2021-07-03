@@ -551,8 +551,9 @@ $(addBlockSwitches);
 <li><a href="#acl-cache_authz">2.4. Access Control List (ACL) Cache</a></li>
 <li><a href="#customizing-authorization_authz">2.5. Customizing Roles and Permissions</a></li>
 <li><a href="#disabling-authorization_authz">2.6. Disabling Security Authorization</a></li>
-<li><a href="#prog_authz_config-authz">2.7. Programmatically Configuring Authorization</a></li>
-<li><a href="#executing_secure_caches-authz">2.8. Code Execution with Secure Caches</a></li>
+<li><a href="#configuring-client-certificate-authorization_authz">2.7. Configuring Authorization with Client Certificates</a></li>
+<li><a href="#prog_authz_config-authz">2.8. Programmatically Configuring Authorization</a></li>
+<li><a href="#executing_secure_caches-authz">2.9. Code Execution with Secure Caches</a></li>
 </ul>
 </li>
 <li><a href="#jgroups_encrypt">3. Encrypting Cluster Transport</a>
@@ -1052,7 +1053,8 @@ Whenever you grant or deny roles to users, Infinispan flushes the ACL cache to e
   <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">restricted</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">custom-authorization</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
     <span class="tag">&lt;security&gt;</span>
       <span class="tag">&lt;authorization&gt;</span>
-        <span class="comment">&lt;!-- Declare a role mapper that associates a security principal to each role. --&gt;</span>
+        <span class="comment">&lt;!-- Declare a role mapper that associates a security principal
+             to each role. --&gt;</span>
         <span class="tag">&lt;identity-role-mapper</span> <span class="tag">/&gt;</span>
         <span class="comment">&lt;!-- Specify user roles and corresponding permissions. --&gt;</span>
         <span class="tag">&lt;role</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">admin</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">permissions</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ALL</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
@@ -1097,7 +1099,51 @@ Disabling security authorization means that any user can access data and interac
 </div>
 </div>
 <div class="sect2">
-<h3 id="prog_authz_config-authz"><a class="anchor" href="#prog_authz_config-authz"></a>2.7. Programmatically Configuring Authorization</h3>
+<h3 id="configuring-client-certificate-authorization_authz"><a class="anchor" href="#configuring-client-certificate-authorization_authz"></a>2.7. Configuring Authorization with Client Certificates</h3>
+<div class="paragraph">
+<p>Enabling client certificate authentication means you do not need to specify Infinispan user credentials in client configuration, which means you must associate roles with the Common Name (CN) field in the client certificate(s).</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Provide clients with a Java keystore that contains either their public certificates or part of the certificate chain, typically a public CA certificate.</p>
+</li>
+<li>
+<p>Configure Infinispan Server to perform client certificate authentication.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Enable the <code>common-name-role-mapper</code> in the security authorization configuration.</p>
+</li>
+<li>
+<p>Assign the Common Name (<code>CN</code>) from the client certificate a role with the appropriate permissions.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">certificate-authentication</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="tag">&lt;security&gt;</span>
+     <span class="tag">&lt;authorization&gt;</span>
+       <span class="comment">&lt;!-- Declare a role mapper that associates the common name (CN) field
+            in client certificate trust stores with authorization roles. --&gt;</span>
+       <span class="tag">&lt;common-name-role-mapper</span><span class="tag">/&gt;</span>
+       <span class="comment">&lt;!-- In this example, if a client certificate contains `CN=Client1` then
+            clients with matching certificates get ALL permissions. --&gt;</span>
+       <span class="tag">&lt;role</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Client1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">permissions</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ALL</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+     <span class="tag">&lt;/authorization&gt;</span>
+   <span class="tag">&lt;/security&gt;</span>
+<span class="tag">&lt;/cache-container&gt;</span></code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="prog_authz_config-authz"><a class="anchor" href="#prog_authz_config-authz"></a>2.8. Programmatically Configuring Authorization</h3>
 <div class="paragraph">
 <p>When using Infinispan as an embedded library, you can configure authorization
 with the <code>GlobalSecurityConfigurationBuilder</code> and <code>ConfigurationBuilder</code>
@@ -1204,7 +1250,7 @@ config
 </div>
 </div>
 <div class="sect2">
-<h3 id="executing_secure_caches-authz"><a class="anchor" href="#executing_secure_caches-authz"></a>2.8. Code Execution with Secure Caches</h3>
+<h3 id="executing_secure_caches-authz"><a class="anchor" href="#executing_secure_caches-authz"></a>2.9. Code Execution with Secure Caches</h3>
 <div class="paragraph">
 <p>When you configure Infinispan authorization and then construct a
 <code>DefaultCacheManager</code>, it returns a <code>SecureCache</code> that checks the security
@@ -1652,7 +1698,7 @@ nftables utility.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-06-01 14:28:26 -0400
+Last updated 2021-06-25 12:11:29 -0400
 </div>
 </div>
 <style>
