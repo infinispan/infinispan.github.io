@@ -153,7 +153,7 @@ else
         %x( rm _tmp/*/documentation/.gitignore )
         %x( mv _tmp/*/documentation "docs/hotrod-clients/#{client}/docs/#{docs_version}" )
         Dir.glob("docs/hotrod-clients/#{client}/docs/**/*.adoc").each do |f|
-          %x( asciidoctor #{f} )
+          %x( asciidoctor -q #{f} )
         end
         %x( rm -rf _tmp _tmp.zip )
       end
