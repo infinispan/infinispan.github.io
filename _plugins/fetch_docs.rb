@@ -160,6 +160,24 @@ else
     end
   end
 
+  # Simple tutorials latest
+  cfg["simple_tutorials"].each do |version, sub|
+    puts "#{version} wget"
+    zipUrl = sub["zip-url"]
+    puts "#{version} wget #{zipUrl}"
+    %x( wget #{zipUrl} -O _jstmp.zip)
+    %x( unzip _jstmp.zip "*documentation/*" -d _jstmp)
+    Dir.glob("_jstmp/**/*.asciidoc").each do |f|
+      %x( asciidoctor #{f} )
+    end
+    Dir.glob("_jstmp/**/*.html").each do |f|
+      %x( cp -r #{f} _jstmp )
+    end
+    %x( mkdir -p tutorials/simple/ )
+    %x( mv _jstmp/*.html "tutorials/simple/" )
+    %x( rm -rf _jstmp* )
+  end
+
   # Hot Rod JS client latest
   cfg["hr_js_client"].each do |version, sub|
     puts "#{version} wget"
