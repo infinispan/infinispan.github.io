@@ -453,6 +453,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#install-olm_install">1.1. Installing Infinispan Operator on Red Hat OpenShift</a></li>
 <li><a href="#install-operatorhub_install">1.2. Installing Infinispan Operator from OperatorHub.io</a></li>
 <li><a href="#install-manually_install">1.3. Building and installing Infinispan Operator manually</a></li>
+<li><a href="#upgrades_install">1.4. Infinispan cluster upgrades</a></li>
 </ul>
 </li>
 <li><a href="#creating-clusters">2. Getting started with Infinispan CR</a>
@@ -513,10 +514,10 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#client-certificates">5. Configuring client certificate authentication</a>
 <ul class="sectlevel2">
-<li><a href="#enabling-client-certificate-authentication_client-certificates">5.1. Enabling client certificate authentication</a></li>
-<li><a href="#providing-client-truststores_client-certificates">5.2. Providing client truststores</a></li>
-<li><a href="#providing-client-certificates_client-certificates">5.3. Providing client certificates</a></li>
-<li><a href="#configuring-clients-present-certificates_client-certificates">5.4. Configuring clients to present certificates</a></li>
+<li><a href="#client-certificate-authentication_client-certificates">5.1. Client certificate authentication</a></li>
+<li><a href="#enabling-client-certificate-authentication_client-certificates">5.2. Enabling client certificate authentication</a></li>
+<li><a href="#providing-client-truststores_client-certificates">5.3. Providing client truststores</a></li>
+<li><a href="#providing-client-certificates_client-certificates">5.4. Providing client certificates</a></li>
 </ul>
 </li>
 <li><a href="#configuring-encryption">6. Configuring encryption</a>
@@ -640,8 +641,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#deploying-code">16. Deploying custom code to Infinispan</a>
 <ul class="sectlevel2">
-<li><a href="#copying-code_custom-code">16.1. Copying code artifacts</a></li>
-<li><a href="#deploying-code_custom-code">16.2. Deploying custom code</a></li>
+<li><a href="#copying-code_custom-code">16.1. Copying code artifacts to Infinispan clusters</a></li>
+<li><a href="#downloading-code_custom-code">16.2. Downloading code artifacts</a></li>
 </ul>
 </li>
 <li><a href="#eventing">17. Sending cloud events from Infinispan clusters</a>
@@ -660,7 +661,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel3">
 <li><a href="#hotrod-configuration-builder_clients">18.5.1. Hot Rod client configuration API</a></li>
 <li><a href="#hotrod-properties_clients">18.5.2. Hot Rod client properties</a></li>
-<li><a href="#creating-caches-hotrod_clients">18.5.3. Creating caches from Hot Rod clients</a></li>
+<li><a href="#configuring-clients-present-certificates_clients">18.5.3. Configuring Hot Rod clients for certificate authentication</a></li>
+<li><a href="#creating-caches-hotrod_clients">18.5.4. Creating caches from Hot Rod clients</a></li>
 </ul>
 </li>
 <li><a href="#connecting-rest_clients">18.6. Accessing the REST API</a></li>
@@ -802,6 +804,32 @@ Infinispan Operator updates clusters one node at a time, gracefully shutting dow
 <p>Follow the appropriate instructions in the <a href="https://github.com/infinispan/infinispan-operator/blob/main/README.md">Infinispan Operator README</a>.</p>
 </li>
 </ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="upgrades_install">1.4. Infinispan cluster upgrades</h3>
+<div class="paragraph _abstract">
+<p>Infinispan Operator can automatically upgrade Infinispan clusters when new versions become available.
+You can also perform upgrades manually if you prefer to control when they occur.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan Operator requires the Operator Lifecycle Manager to perform cluster upgrades.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<h4 id="_upgrade_notifications" class="discrete">Upgrade notifications</h4>
+<div class="paragraph">
+<p>If you upgrade Infinispan clusters manually and have upgraded the channel for your Infinispan Operator subscription from <strong>2.0.x</strong> to <strong>2.1.x</strong> you should apply the upgrade for the latest Infinispan 12.x version as soon as possible.
+This upgrade avoids potential data loss that can occur in earlier versions with <a href="https://issues.redhat.com/browse/ISPN-13116">ISPN-13116</a>.</p>
 </div>
 </div>
 </div>
@@ -2136,28 +2164,38 @@ You should disable authentication for development environments only.</p>
 <h2 id="client-certificates">5. Configuring client certificate authentication</h2>
 <div class="sectionbody">
 <div class="paragraph _abstract">
-<p>Configure certificate authentication so that Infinispan allows connections only for clients that present valid certificates.</p>
+<p>Add client trust stores to your project and configure Infinispan to allow connections only from clients that present valid certificates.
+This increases security of your deployment by ensuring that clients are trusted by a public certificate authority (CA).</p>
 </div>
 <div class="sect2">
-<h3 id="enabling-client-certificate-authentication_client-certificates">5.1. Enabling client certificate authentication</h3>
+<h3 id="client-certificate-authentication_client-certificates">5.1. Client certificate authentication</h3>
 <div class="paragraph _abstract">
-<p>Infinispan clusters do not use client certificate authentication by default.
-Complete the following procedure to enable it.</p>
+<p>Client certificate authentication restricts in-bound connections based on the certificates that clients present.</p>
 </div>
 <div class="paragraph">
-<p>You can configure Infinispan to verify client identities from certificates in a trust store in two ways:</p>
+<p>You can configure Infinispan to use trust stores with either of the following strategies:</p>
 </div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1"><code>Validate</code></dt>
-<dd>
-<p>Requires a trust store that contains only the signing certificate, which is typically a Certificate Authority (CA). Any client that presents a certificate signed by the CA can connect to Infinispan.</p>
-</dd>
-<dt class="hdlist1"><code>Authenticate</code></dt>
-<dd>
-<p>Requires a trust store that contains all client certificates in addition to the signing certificate. Only clients that present a signed certificate that is present in the trust store can connect to Infinispan.</p>
-</dd>
-</dl>
+<div class="paragraph">
+<div class="title">Validate</div>
+<p>To validate client certificates, Infinispan requires a trust store that contains any part of the certificate chain for the signing authority, typically the root CA certificate.
+Any client that presents a certificate signed by the CA can connect to Infinispan.</p>
+</div>
+<div class="paragraph">
+<p>If you use the <code>Validate</code> strategy for verifying client certificates, you must also configure clients to provide valid Infinispan credentials if you enable authentication.</p>
+</div>
+<div class="paragraph">
+<div class="title">Authenticate</div>
+<p>Requires a trust store that contains all public client certificates in addition to the root CA certificate.
+Only clients that present a signed certificate can connect to Infinispan.</p>
+</div>
+<div class="paragraph">
+<p>If you use the <code>Authenticate</code> strategy for verifying client certificates, you must ensure that certificates contain valid Infinispan credentials as part of the distinguished name (DN).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="enabling-client-certificate-authentication_client-certificates">5.2. Enabling client certificate authentication</h3>
+<div class="paragraph _abstract">
+<p>To enable client certificate authentication, you configure Infinispan to use trust stores with either the <code>Validate</code> or <code>Authenticate</code> strategy.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -2180,11 +2218,9 @@ Complete the following procedure to enable it.</p>
 </div>
 </li>
 <li>
-<p>Optionally specify the secret that contains the client trust store with the <code>spec.security.endpointEncryption.clientCertSecretName</code> field.</p>
+<p>Specify the secret that contains the client trust store with the <code>spec.security.endpointEncryption.clientCertSecretName</code> field.</p>
 <div class="paragraph">
-<p>By default Infinispan Operator uses a trust store secret named <code>example-infinispan-client-cert-secret</code>.
-If you want to use this secret you do not need to specify the <code>clientCertSecretName</code> field.
-However, you must create the secret if it does not already exist.</p>
+<p>By default Infinispan Operator expects a trust store secret named <code>&lt;cluster-name&gt;-client-cert-secret</code>.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -2209,7 +2245,7 @@ When you delete the <code>Infinispan</code> CR, Kubernetes also automatically de
         type: Service
         certSecretName: tls-secret
         clientCert: Validate
-        clientCertSecretName: my-truststore-secret</code></pre>
+        clientCertSecretName: example-infinispan-client-cert-secret</code></pre>
 </div>
 </div>
 </li>
@@ -2225,16 +2261,12 @@ Alternatively you can provide certificates in PEM format and let Infinispan gene
 </div>
 </div>
 <div class="sect2">
-<h3 id="providing-client-truststores_client-certificates">5.2. Providing client truststores</h3>
+<h3 id="providing-client-truststores_client-certificates">5.3. Providing client truststores</h3>
 <div class="paragraph _abstract">
 <p>If you have a trust store that contains the required certificates you can make it available to Infinispan Operator.</p>
 </div>
 <div class="paragraph">
 <p>Infinispan supports trust stores in <code>PKCS12</code> format only.</p>
-</div>
-<div class="paragraph">
-<p>The trust store that you provide must contain the signing certificate, or CA certificate bundle.
-If you use the <code>Authenticate</code> method to verify client identities, the trust store must contain the certificate for each client that can connect to Infinispan endpoints.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -2249,7 +2281,7 @@ If you use the <code>Authenticate</code> method to verify client identities, the
 </td>
 <td class="content">
 <div class="paragraph">
-<p>The name should match the value of the <code>spec.security.endpointEncryption.clientCertSecretName</code> field.</p>
+<p>The name must match the value of the <code>spec.security.endpointEncryption.clientCertSecretName</code> field.</p>
 </div>
 </td>
 </tr>
@@ -2266,14 +2298,12 @@ If you use the <code>Authenticate</code> method to verify client identities, the
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">apiVersion: v1
 kind: Secret
 metadata:
-  name: my-truststore-secret
+  name: example-infinispan-client-cert-secret
 type: Opaque
 stringData:
     truststore-password: changme
 data:
-    trust.ca: "&lt;base64_encoded_CA_certificate&gt;"
-    trust.cert.client1: "&lt;base64_encoded_client_certificate&gt;"
-    trust.cert.client2: "&lt;base64_encoded_client_certificate&gt;"</code></pre>
+    truststore.p12:  "&lt;base64_encoded_PKCS12_trust_store&gt;"</code></pre>
 </div>
 </div>
 </li>
@@ -2284,7 +2314,7 @@ data:
 </div>
 </div>
 <div class="sect2">
-<h3 id="providing-client-certificates_client-certificates">5.3. Providing client certificates</h3>
+<h3 id="providing-client-certificates_client-certificates">5.4. Providing client certificates</h3>
 <div class="paragraph _abstract">
 <p>Infinispan Operator can generate a trust store from certificates in PEM format.</p>
 </div>
@@ -2301,7 +2331,7 @@ data:
 </td>
 <td class="content">
 <div class="paragraph">
-<p>The name should match the value of the <code>spec.security.endpointEncryption.clientCertSecretName</code> field.</p>
+<p>The name must match the value of the <code>spec.security.endpointEncryption.clientCertSecretName</code> field.</p>
 </div>
 </td>
 </tr>
@@ -2312,7 +2342,7 @@ data:
 <p>Specify the signing certificate, or CA certificate bundle, as the value of the <code>data.trust.ca</code> field.</p>
 </li>
 <li>
-<p>If you use the <code>Authenticate</code> method to verify client identities, add the certificate for each client that can connect to Infinispan endpoints with the <code>data.trust.cert.&lt;name&gt;</code> field.</p>
+<p>If you use the <code>Authenticate</code> strategy to verify client identities, add the certificate for each client that can connect to Infinispan endpoints with the <code>data.trust.cert.&lt;name&gt;</code> field.</p>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -2338,7 +2368,7 @@ data:
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">apiVersion: v1
 kind: Secret
 metadata:
-  name: my-truststore-secret
+  name: example-infinispan-client-cert-secret
 type: Opaque
 stringData:
     truststore-password: changme
@@ -2353,51 +2383,6 @@ data:
 <p>Apply the changes.</p>
 </li>
 </ol>
-</div>
-</div>
-<div class="sect2">
-<h3 id="configuring-clients-present-certificates_client-certificates">5.4. Configuring clients to present certificates</h3>
-<div class="paragraph _abstract">
-<p>If you enable client certificate authentication, Hot Rod and REST clients must present valid certificates so they can connect to Infinispan endpoints.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Enabling client certificate authentication means you do not need to specify Infinispan user credentials in client configuration.
-You need to provide clients with keystores that contain the appropriate certificates that they can present to Infinispan when negotiating a connection.</p>
-</div>
-<div class="paragraph">
-<p>If you enable security authorization, you should assign the Common Name (<code>CN</code>) from the client certificate a role with the appropriate permissions.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>Hot Rod clients must use the <code>EXTERNAL</code> authentication mechanism and specify the keystore that contains the client certificate as follows:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code class="language-java" data-lang="java">import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
-...
-
-ConfigurationBuilder builder = new ConfigurationBuilder();
-      builder.security()
-             .authentication()
-               .saslMechanism("EXTERNAL")
-             .ssl()
-               .keyStoreFileName("/path/to/keystore")
-               .keyStorePassword("keystorepassword".toCharArray())
-               .keyStoreType("PCKS12");</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>REST clients must include the client certificate for each request as appropriate.</p>
 </div>
 </div>
 </div>
@@ -2760,8 +2745,8 @@ Complete the following procedure to enable authorization and use role-based acce
 </tr>
 </tbody>
 </table>
+<h4 id="_infinispan_operator_credentials" class="discrete">Infinispan Operator credentials</h4>
 <div class="paragraph">
-<div class="title">Infinispan Operator credentials</div>
 <p>Infinispan Operator generates credentials that it uses to authenticate with Infinispan clusters to perform internal operations.
 By default Infinispan Operator credentials are automatically assigned the <code>admin</code> role when you enable security authorization.</p>
 </div>
@@ -2780,16 +2765,17 @@ By default Infinispan Operator credentials are automatically assigned the <code>
 <p>Assign users with roles that control whether users are authorized to access Infinispan cluster resources.
 Roles can have different permission levels, from read-only to unrestricted access.</p>
 </div>
-<div class="admonitionblock important">
+<div class="admonitionblock note">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-important" title="Important"></i>
+<i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>A user named "admin" is assigned the <code>admin</code> role automatically.
-A user named "deployer" is assigned the <code>deployer</code> role automatically, and so on.</p>
+<p>Users gain authorization implicitly.
+For example, "admin" gets <code>admin</code> permissions automatically.
+A user named "deployer" has the <code>deployer</code> role automatically, and so on.</p>
 </div>
 </td>
 </tr>
@@ -2817,16 +2803,19 @@ A user named "deployer" is assigned the <code>deployer</code> role automatically
 </div>
 </li>
 <li>
-<p>Delete your existing authentication secret, if necessary, and then create one from <code>identities.yaml</code>.</p>
+<p>Create an authentication secret from <code>identities.yaml</code>.</p>
+<div class="paragraph">
+<p>If necessary, delete the existing secret first.</p>
+</div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>$ kubectl create delete secret connect-secret --ignore-not-found
+<pre class="highlight nowrap"><code>$ kubectl delete secret connect-secret --ignore-not-found
 $ kubectl create secret generic --from-file=identities.yaml connect-secret</code></pre>
 </div>
 </div>
 </li>
 <li>
-<p>If you have not already done so, specify the authentication secret with <code>spec.security.endpointSecretName</code> in your <code>Infinispan</code> CR and then apply the changes.</p>
+<p>Specify the authentication secret with <code>spec.security.endpointSecretName</code> in your <code>Infinispan</code> CR and then apply the changes.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>spec:
@@ -3822,6 +3811,25 @@ eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9...</code></pre>
 <p>Specify the name of the local site with <code>spec.service.sites.local.name</code>.</p>
 </li>
 <li>
+<p>Set the value of the <code>service.sites.local.expose.type</code> field to either <code>NodePort</code> or <code>LoadBalancer</code>.</p>
+<div class="paragraph">
+<p>If you use a <code>NodePort</code> service for cross-site replication, you can configure a static port within the default range of <code>30000</code> to <code>32767</code> as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>spec:
+  service:
+    type: DataGrid
+    sites:
+      local:
+        name: LON
+        expose:
+          type: NodePort
+          nodePort: 30000</code></pre>
+</div>
+</div>
+</li>
+<li>
 <p>Provide the name, URL, and secret for each Infinispan cluster that acts as a backup location with <code>spec.service.sites.locations</code>.</p>
 </li>
 <li>
@@ -3992,7 +4000,8 @@ locations to caches.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>service.sites.local.expose.type</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Specifies the externally exposed service type. Use <code>NodePort</code> for local clusters on the same network. Use <code>LoadBalancer</code> for independent OpenShift clusters.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Specifies the network service for cross-site replication. Infinispan clusters use this service to communicate and perform backup operations. You can set the value to <code>NodePort</code> or <code>LoadBalancer</code>.</p>
+<p class="tableblock">If you use <code>NodePort</code> you can also configure the port with the <code>service.site.local.expose.nodePort</code> field.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>service.sites.locations</code></p></td>
@@ -4061,6 +4070,25 @@ You must use the <code>&lt;cluster-name&gt;-site</code> service to form a cross-
 </li>
 <li>
 <p>Specify the name of the local site with <code>spec.service.sites.local.name</code>.</p>
+</li>
+<li>
+<p>Set the value of the <code>service.sites.local.expose.type</code> field to either <code>NodePort</code> or <code>LoadBalancer</code>.</p>
+<div class="paragraph">
+<p>If you use a <code>NodePort</code> service for cross-site replication, you can configure a static port within the default range of <code>30000</code> to <code>32767</code> as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>spec:
+  service:
+    type: DataGrid
+    sites:
+      local:
+        name: LON
+        expose:
+          type: NodePort
+          nodePort: 30000</code></pre>
+</div>
+</div>
 </li>
 <li>
 <p>Provide the name and static URL for each Infinispan cluster that acts as a backup location with <code>spec.service.sites.locations</code>, for example:</p>
@@ -4217,7 +4245,8 @@ locations to caches.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>service.sites.local.expose.type</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Specifies the externally exposed service type. Use <code>NodePort</code> for local clusters on the same network. Use <code>LoadBalancer</code> for independent OpenShift clusters.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Specifies the network service for cross-site replication. Infinispan clusters use this service to communicate and perform backup operations. You can set the value to <code>NodePort</code> or <code>LoadBalancer</code>.</p>
+<p class="tableblock">If you use <code>NodePort</code> you can also configure the port with the <code>service.site.local.expose.nodePort</code> field.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>service.sites.locations</code></p></td>
@@ -5590,10 +5619,14 @@ When the operation is complete, the pod leaves the cluster and logs the followin
 <div class="paragraph _abstract">
 <p>Add custom code, such as scripts and event listeners, to your Infinispan clusters.</p>
 </div>
+<div class="paragraph">
+<p>Before you can deploy custom code to Infinispan clusters, you need to make it available.
+To do this you can copy artifacts from a persistent volume (PV), download artifacts from an HTTP or FTP server, or use both methods.</p>
+</div>
 <div class="sect2">
-<h3 id="copying-code_custom-code">16.1. Copying code artifacts</h3>
+<h3 id="copying-code_custom-code">16.1. Copying code artifacts to Infinispan clusters</h3>
 <div class="paragraph _abstract">
-<p>Before you can deploy custom code to Infinispan clusters, you need to add it to a persistent volume (PV).</p>
+<p>Adding your artifacts to a persistent volume (PV) and then copy them to Infinispan nodes.</p>
 </div>
 <div class="paragraph">
 <p>This procedure explains how to use a temporary pod that mounts a persistent volume claim (PVC) that:</p>
@@ -5721,8 +5754,39 @@ $ kubectl wait --for=condition=ready --timeout=2m pod/datagrid-libs-pod</code></
 <pre class="highlight nowrap"><code>$ kubectl delete pod datagrid-libs-pod</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>Specify the persistent volume with <code>spec.dependencies.volumeClaimName</code> in your <code>Infinispan</code> CR and then apply the changes.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">apiVersion: infinispan.org/v1
+kind: Infinispan
+metadata:
+  name: example-infinispan
+spec:
+  replicas: 2
+  dependencies:
+    volumeClaimName: datagrid-libs
+  service:
+    type: DataGrid</code></pre>
+</div>
+</div>
 </li>
 </ol>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>If you update your custom code on the persistent volume, you must restart the Infinispan cluster so it can load the changes.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
@@ -5740,39 +5804,13 @@ $ kubectl wait --for=condition=ready --timeout=2m pod/datagrid-libs-pod</code></
 </div>
 </div>
 <div class="sect2">
-<h3 id="deploying-code_custom-code">16.2. Deploying custom code</h3>
+<h3 id="downloading-code_custom-code">16.2. Downloading code artifacts</h3>
 <div class="paragraph _abstract">
-<p>Make your custom code available to Infinispan clusters.</p>
+<p>Add your artifacts to an HTTP or FTP server so that Infinispan Operator downloads them to the <code>/opt/infinispan/server/lib</code> directory on each Infinispan node.</p>
 </div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Create a persistent volume claim (PVC) and copy your code artifacts to it.</p>
-</li>
-</ul>
-</div>
-<div class="ulist">
-<div class="title">Procedure</div>
-<ul>
-<li>
-<p>Specify the persistent volume with <code>spec.dependencies.VolumeClaimName</code> in your <code>Infinispan</code> CR and then apply the changes.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">apiVersion: infinispan.org/v1
-kind: Infinispan
-metadata:
-  name: example-infinispan
-spec:
-  replicas: 2
-  dependencies:
-    volumeClaimName: datagrid-libs
-  service:
-    type: DataGrid</code></pre>
-</div>
-</div>
-</li>
-</ul>
+<div class="paragraph">
+<p>When downloading files, Infinispan Operator can automatically detect the file type.
+Infinispan Operator also extracts archived files, such as <code>zip</code> or <code>tgz</code>, to the filesystem after the download completes.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -5782,11 +5820,78 @@ spec:
 </td>
 <td class="content">
 <div class="paragraph">
-<p>If you update your custom code on the persistent volume, you must restart the Infinispan cluster so it can load the changes.</p>
+<p>Each time Infinispan Operator creates a Infinispan node it downloads the artifacts to the node.
+The download also occurs when Infinispan Operator recreates nodes after terminating them.</p>
 </div>
 </td>
 </tr>
 </table>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Host your code artifacts on an HTTP or FTP server.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Add the <code>spec.dependencies.artifacts</code> field to your <code>Infinispan</code> CR.</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Specify the location of the file to download via <code>HTTP</code> or <code>FTP</code> as the value of the <code>spec.dependencies.artifacts.url</code> field.</p>
+</li>
+<li>
+<p>Optionally specify a checksum value to verify the integrity of the download.</p>
+</li>
+<li>
+<p>Set the file type, if necessary, with the <code>spec.dependencies.artifacts.type</code> field.</p>
+<div class="paragraph">
+<p>You should explicitly set the file type if it is not included in the URL or if the file type is actually different to the extension in the URL.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>If you set <code>type: file</code>, Infinispan Operator downloads the file as-is without extracting it to the filesystem.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">apiVersion: infinispan.org/v1
+kind: Infinispan
+metadata:
+  name: example-infinispan
+spec:
+  replicas: 2
+  dependencies:
+    artifacts:
+      - url: http://example.com:8080/path
+        hash: d5db29cd03a2ed055086cef9c31c252b4587d6d0
+        type: zip
+  service:
+    type: DataGrid</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>Apply the changes.</p>
+</li>
+</ol>
 </div>
 </div>
 </div>
@@ -6276,7 +6381,55 @@ infinispan.client.hotrod.trust_store_type=PCKS12</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="creating-caches-hotrod_clients">18.5.3. Creating caches from Hot Rod clients</h4>
+<h4 id="configuring-clients-present-certificates_clients">18.5.3. Configuring Hot Rod clients for certificate authentication</h4>
+<div class="paragraph _abstract">
+<p>If you enable client certificate authentication, clients must present valid certificates when negotiating connections with Infinispan.</p>
+</div>
+<div class="paragraph">
+<div class="title">Validate strategy</div>
+<p>If you use the <code>Validate</code> strategy, you must configure clients with a keystore so they can present signed certificates.
+You must also configure clients with Infinispan credentials and any suitable authentication mechanism.</p>
+</div>
+<div class="paragraph">
+<div class="title">Authenticate strategy</div>
+<p>If you use the <code>Authenticate</code> strategy, you must configure clients with a keystore that contains signed certificates and valid Infinispan credentials as part of the distinguished name (DN).
+Hot Rod clients must also use the <code>EXTERNAL</code> authentication mechanism.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>If you enable security authorization, you should assign the Common Name (CN) from the client certificate a role with the appropriate permissions.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The following example shows a Hot Rod client configuration for client certificate authentication with the <code>Authenticate</code> strategy:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-java" data-lang="java">import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
+...
+
+ConfigurationBuilder builder = new ConfigurationBuilder();
+      builder.security()
+             .authentication()
+               .saslMechanism("EXTERNAL")
+             .ssl()
+               .keyStoreFileName("/path/to/keystore")
+               .keyStorePassword("keystorepassword".toCharArray())
+               .keyStoreType("PCKS12");</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="creating-caches-hotrod_clients">18.5.4. Creating caches from Hot Rod clients</h4>
 <div class="paragraph _abstract">
 <p>You can remotely create caches on Infinispan clusters running on Kubernetes with Hot Rod clients.
 However, Infinispan recommends that you create caches using Infinispan Console, the CLI, or with <code>Cache</code> CRs instead of with Hot Rod clients.</p>
@@ -6472,7 +6625,7 @@ should create Data Grid Service nodes instead of Cache Service nodes.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-06-28 11:39:20 -0400
+Last updated 2021-07-14 08:07:52 -0400
 </div>
 </div>
 <script>
