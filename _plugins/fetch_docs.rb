@@ -115,6 +115,7 @@ else
   Dir.mkdir("docs/") unless File.exists?("docs/")
   coreDocIndex = Array.new
   operatorDocIndex = Array.new
+  helmChartDocIndex = Array.new
 
   cfg["docs"].each do |type, tcfg|
     puts "Processing #{type}"
@@ -254,6 +255,25 @@ else
     operatorDocIndex.push "#{version}"
   end
 
+  # Helm chart docs
+  cfg["helm_chart"].each do |version, sub|
+    puts "#{version} wget"
+    zipUrl = sub["zip-url"]
+    puts "#{version} wget #{zipUrl}"
+    %x( wget #{zipUrl} -O _charttmp.zip)
+    %x( unzip _charttmp.zip "*documentation/*" -d _charttmp)
+    Dir.glob("_charttmp/**/*.asciidoc").each do |f|
+      %x( asciidoctor #{f} )
+    end
+    Dir.glob("_charttmp/**/*.html").each do |f|
+      %x( cp -r #{f} _charttmp )
+    end
+    %x( mkdir -p docs/helm-chart/#{version}/ )
+    %x( mv _charttmp/*.html _charttmp/**/documentation/asciidoc/css _charttmp/**/documentation/asciidoc/js "docs/helm-chart/#{version}/" )
+    %x( rm -rf _charttmp* )
+    helmChartDocIndex.push "#{version}"
+  end
+
   # now for the spring boot starter docs
   cfg["sb_starter"].each do |version, sub|
     puts "#{version} wget"
@@ -273,6 +293,7 @@ else
   end
 
   gen_versions_xml_file("docs/infinispan-operator/versions.xml", operatorDocIndex)
+  gen_versions_xml_file("docs/helm-chart/versions.xml", helmChartDocIndex)
   gen_versions_xml_file("docs/versions.xml", coreDocIndex)
 end
 
