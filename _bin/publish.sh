@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Fail fast on errors
+set -e
+
 rm -rf _site
 mkdir _site
 # Put bundles in a known path
