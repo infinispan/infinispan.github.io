@@ -531,7 +531,18 @@ $(addBlockSwitches);
 <ul class="sectlevel3">
 <li><a href="#search">1.1.1. Search</a></li>
 <li><a href="#rest">1.1.2. REST</a></li>
-<li><a href="#xml_configured_file_store_implementation_has_changed_to_be_softindexfilestore">1.1.3. XML Configured File Store implementation has changed to be SoftIndexFileStore</a></li>
+<li><a href="#file_based_cache_store_file_store_configuration_defaults_to_softindexfilestore">1.1.3. File-Based Cache Store (<code>file-store</code>) Configuration Defaults to SoftIndexFileStore</a>
+<ul class="sectlevel4">
+<li><a href="#schema_changes">Schema changes</a></li>
+<li><a href="#migrating_soft_index_file_stores">Migrating Soft-Index File Stores</a>
+<ul class="sectlevel5">
+<li><a href="#declarative">Declarative</a></li>
+<li><a href="#programmatic">Programmatic</a></li>
+</ul>
+</li>
+<li><a href="#migrating_single_file_stores">Migrating Single File Stores</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#upgrading_from_11_x_or_12_0_to_12_1">1.2. Upgrading from 11.x or 12.0 to 12.1</a>
@@ -841,7 +852,7 @@ $(addBlockSwitches);
 <ul class="sectlevel2">
 <li><a href="#upgrade_target">2.1. Setting Up Target Clusters</a>
 <ul class="sectlevel3">
-<li><a href="#upgrade_remote_store">2.1.1. Remote Cache Stores for Rolling Upgrades</a></li>
+<li><a href="#upgrade_connect_source">2.1.1. Connecting source clusters</a></li>
 </ul>
 </li>
 <li><a href="#sync_data">2.2. Synchronizing Data to Target Clusters</a></li>
@@ -899,11 +910,122 @@ Use <code><code>reindex</code></code> instead:</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="xml_configured_file_store_implementation_has_changed_to_be_softindexfilestore"><a class="anchor" href="#xml_configured_file_store_implementation_has_changed_to_be_softindexfilestore"></a>1.1.3. XML Configured File Store implementation has changed to be SoftIndexFileStore</h4>
+<h4 id="file_based_cache_store_file_store_configuration_defaults_to_softindexfilestore"><a class="anchor" href="#file_based_cache_store_file_store_configuration_defaults_to_softindexfilestore"></a>1.1.3. File-Based Cache Store (<code>file-store</code>) Configuration Defaults to SoftIndexFileStore</h4>
 <div class="paragraph">
-<p>The <code>file-store</code> element will now install a SoftIndexFileStore instead of the prior SingleFileStore
-implementation. Any configuration with a schema of 12 or older will automatically migrate the old
-data storage to the new automatically.</p>
+<p>Including <code>file-store</code> persistence in cache configuration now creates a soft index file-based cache store, <code>SoftIndexFileStore</code>, instead of a single-file cache store, <code>SingleFileStore</code>.
+In previous versions <code>SingleFileStore</code> was the default for file-based cache stores.</p>
+</div>
+<div class="paragraph">
+<p>Any <code>file-store</code> configuration with a schema version of 13 is automatically migrated to a <code>SoftIndexFileStore</code> after upgrading to Infinispan 13.</p>
+</div>
+<div class="sect4">
+<h5 id="schema_changes"><a class="anchor" href="#schema_changes"></a>Schema changes</h5>
+<div class="paragraph">
+<p>The following changes apply to the Infinispan 13 configuration schemas:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <code>urn:infinispan:config:store:soft-index</code> namespace is no longer available.</p>
+</li>
+<li>
+<p>The <code>file-store</code> element in the <code>urn:infinispan:config</code> namespace now defaults to soft-index file stores.</p>
+</li>
+<li>
+<p>The <code>single-file-store</code> element has been added to the <code>urn:infinispan:config</code> namespace if you want to configure a single file store, which is deprecated.</p>
+</li>
+<li>
+<p>The <code>endpoints</code> element in the <code>urn:infinispan:server</code> namespace is no longer a repeating element, but a wrapper for 0 or more <code>endpoint</code> elements.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="migrating_soft_index_file_stores"><a class="anchor" href="#migrating_soft_index_file_stores"></a>Migrating Soft-Index File Stores</h5>
+<div class="sect5">
+<h6 id="declarative"><a class="anchor" href="#declarative"></a>Declarative</h6>
+<div class="paragraph">
+<p>If you are upgrading to Infinispan 13 from a previous version, and your caches include any configuration with the <code>soft-index-file-store</code> element, you should convert that configuration to use the <code>file-store</code> element instead.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Infinispan 12.1 and earlier</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence&gt;</span>
+  <span class="tag">&lt;soft-index-file-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:soft-index:12.1</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;index</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">testCache/index</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+    <span class="tag">&lt;data</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">testCache/data</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+  <span class="tag">&lt;/soft-index-file-store&gt;</span>
+<span class="tag">&lt;/persistence&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Infinispan 13 and later</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence&gt;</span>
+  <span class="tag">&lt;file-store&gt;</span>
+    <span class="tag">&lt;index</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">testCache/index</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+    <span class="tag">&lt;data</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">testCache/data</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+  <span class="tag">&lt;/file-store&gt;</span>
+<span class="tag">&lt;/persistence&gt;</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="programmatic"><a class="anchor" href="#programmatic"></a>Programmatic</h6>
+<div class="listingblock primary">
+<div class="title">Infinispan 12.1 and earlier</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml">ConfigurationBuilder b = new ConfigurationBuilder();
+b.persistence()
+    .addStore(SoftIndexFileStoreConfigurationBuilder.class)
+        .indexLocation(&quot;testCache/index&quot;);
+        .dataLocation(&quot;testCache/data&quot;)</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Infinispan 13 and later</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml">ConfigurationBuilder b = new ConfigurationBuilder();
+b.persistence()
+    .addSoftIndexFileStore()
+        .indexLocation(&quot;testCache/index&quot;)
+        .dataLocation(&quot;testCache/data&quot;);</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="migrating_single_file_stores"><a class="anchor" href="#migrating_single_file_stores"></a>Migrating Single File Stores</h5>
+<div class="paragraph">
+<p>To use <code>SingleFileStore</code> as a file-based cache store with Infinispan 13 or later, do one of the following:</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Declarative</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence</span> <span class="attribute-name">passivation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;single-file-store</span> <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span>
+                     <span class="attribute-name">preload</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+                     <span class="attribute-name">fetch-state</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+                     <span class="attribute-name">read-only</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/persistence&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Programmatic</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="java">ConfigurationBuilder b = <span class="keyword">new</span> ConfigurationBuilder();
+b.persistence()
+    .addSingleFileStore()
+    .maxEntries(<span class="integer">5000</span>);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>However, Infinispan does not recommend using <code>SingleFileStore</code>.
+Instead you should use <code>SoftIndexFileStore</code> for file-based cache stores because it offers better scalability.</p>
+</div>
+<div class="paragraph">
+<p>Find out more details about configuring file-based cache stores in the <em>Configuration Guide</em>.</p>
+</div>
 </div>
 </div>
 </div>
@@ -3189,8 +3311,7 @@ Infinispan servers and your data to the target version over Hot Rod.</p>
 <div class="sect2">
 <h3 id="upgrade_target"><a class="anchor" href="#upgrade_target"></a>2.1. Setting Up Target Clusters</h3>
 <div class="paragraph">
-<p>Create a cluster that runs the target Infinispan version and uses a remote
-cache store to load data from the source cluster.</p>
+<p>Create a cluster that runs the target Infinispan version.</p>
 </div>
 <div class="ulist">
 <div class="title">Prerequisites</div>
@@ -3222,17 +3343,11 @@ offsets to keep the target and source clusters separate.</p>
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Add a <code>RemoteCacheStore</code> on the target cluster for each cache you want
+<p>Connect the target cluster to the source cluster for each cache you want
 to migrate from the source cluster.</p>
-<div class="paragraph">
-<p>Remote cache stores use the Hot Rod protocol to retrieve data from remote
-Infinispan clusters. When you add the remote cache store to the target
-cluster, it can lazily load data from the source cluster to handle client
-requests.</p>
-</div>
 </li>
 <li>
-<p>Switch clients over to the target cluster so it starts handling all requests.</p>
+<p>Switch clients over to the target cluster, so it starts handling all requests.</p>
 <div class="olist loweralpha">
 <ol class="loweralpha" type="a">
 <li>
@@ -3247,35 +3362,35 @@ requests.</p>
 </ol>
 </div>
 <div class="sect3">
-<h4 id="upgrade_remote_store"><a class="anchor" href="#upgrade_remote_store"></a>2.1.1. Remote Cache Stores for Rolling Upgrades</h4>
+<h4 id="upgrade_connect_source"><a class="anchor" href="#upgrade_connect_source"></a>2.1.1. Connecting source clusters</h4>
 <div class="paragraph">
-<p>You must use specific remote cache store configuration to perform rolling
-upgrades, as follows:</p>
+<div class="title">Procedure</div>
+<p>Use the Infinispan REST API to invoke POST requests with the <code>?action=connect-source</code> parameter.
+For example, to connect a target cluster to the source for the cache named "myCache", do the following:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="comment">&lt;!-- Remote cache stores for rolling upgrades must disable passivation. --&gt;</span>
-<span class="tag">&lt;persistence</span> <span class="attribute-name">passivation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   <span class="comment">&lt;!-- The value of the cache attribute matches the name of a cache in the source cluster. Target clusters load data from this cache using the remote cache store. --&gt;</span>
-   <span class="comment">&lt;!-- The &quot;protocol-version&quot; attribute matches the Hot Rod protocol version of the source cluster. 2.5 is the minimum version and is suitable for any upgrade path. --&gt;</span>
-   <span class="comment">&lt;!-- You should enable segmentation for remote cache stores only if the number of segments in the target cluster matches the number of segments for the cache in the source cluster. --&gt;</span>
-   <span class="tag">&lt;remote-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:remote:13.0</span><span class="delimiter">&quot;</span></span>
-                 <span class="attribute-name">cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">myDistCache</span><span class="delimiter">&quot;</span></span>
-                 <span class="attribute-name">protocol-version</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2.5</span><span class="delimiter">&quot;</span></span>
-                 <span class="attribute-name">raw-values</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-                 <span class="attribute-name">segmented</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="comment">&lt;!-- Configures authentication and encryption according to the security realm of the source cluster. --&gt;</span>
-      <span class="tag">&lt;security&gt;</span>
-        <span class="tag">&lt;authentication</span> <span class="attribute-name">server-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">infinispan</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-          <span class="tag">&lt;digest</span> <span class="attribute-name">username</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">admin</span><span class="delimiter">&quot;</span></span>
-                  <span class="attribute-name">password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>
-                  <span class="attribute-name">realm</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;/authentication&gt;</span>
-      <span class="tag">&lt;/security&gt;</span>
-      <span class="comment">&lt;!-- Points to the location of the source cluster. --&gt;</span>
-      <span class="tag">&lt;remote-server</span> <span class="attribute-name">host</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">127.0.0.1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">port</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">11222</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-   <span class="tag">&lt;/remote-store&gt;</span>
-<span class="tag">&lt;/persistence&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code>POST /v2/caches/myCache?action=connect-source</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The POST body must contain JSON document with a <code>remote-store</code> configuration, for example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">remote-store</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">cache</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">myCache</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">shared</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">raw-values</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">remote-server</span><span class="delimiter">&quot;</span></span>: [
+      {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">host</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">127.0.0.2</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">port</span><span class="delimiter">&quot;</span></span>: <span class="integer">12222</span>
+      }
+    ]
+  }
+}</code></pre>
 </div>
 </div>
 <div class="ulist">
@@ -3283,12 +3398,6 @@ upgrades, as follows:</p>
 <ul>
 <li>
 <p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/infinispan-cachestore-remote-config-13.0.html">Remote cache store configuration schema</a></p>
-</li>
-<li>
-<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/persistence/remote/RemoteStore.html">RemoteStore</a></p>
-</li>
-<li>
-<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/persistence/remote/configuration/RemoteStoreConfigurationBuilder.html">RemoteStoreConfigurationBuilder</a></p>
 </li>
 </ul>
 </div>
@@ -3314,8 +3423,8 @@ for each cache in your Infinispan configuration.</p>
 <p>Start the synchronization operation for each cache in your Infinispan
 configuration that you want to migrate to the target cluster.</p>
 <div class="paragraph">
-<p>Use the Infinispan REST API and invoke <code>POST</code> requests with the <code>?action=sync-
-data</code> parameter. For example, to synchronize data in a cache named "myCache"
+<p>Use the Infinispan REST API and invoke <code>POST</code> requests with the
+<code>?action=sync-data</code> parameter. For example, to synchronize data in a cache named "myCache"
 from a source cluster to a target cluster, do the following:</p>
 </div>
 <div class="listingblock">
@@ -4277,7 +4386,7 @@ repository, run the following command:</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-07-19 13:54:36 -0400
+Last updated 2021-08-30 06:20:16 -0400
 </div>
 </div>
 <style>
