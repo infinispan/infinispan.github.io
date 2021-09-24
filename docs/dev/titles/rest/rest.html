@@ -600,6 +600,8 @@ $(addBlockSwitches);
 <li><a href="#rest_v2_rolling_upgrades">2.1.32. Rolling Upgrades</a>
 <ul class="sectlevel4">
 <li><a href="#rest_v2_sync_data">Connecting Source Clusters</a></li>
+<li><a href="#obtaining_source_cluster_connection_details">Obtaining Source Cluster connection details</a></li>
+<li><a href="#checking_if_a_cache_is_connected">Checking if a Cache is connected</a></li>
 <li><a href="#synchronizing_data">Synchronizing Data</a></li>
 <li><a href="#rest_v2_disconnect_source">Disconnecting Source Clusters</a></li>
 </ul>
@@ -639,7 +641,7 @@ $(addBlockSwitches);
 <li><a href="#rest_v2_cache_manager_config">2.4.5. Obtaining Global Configuration for Cache Managers</a></li>
 <li><a href="#rest_v2_cache_manager_caches_config">2.4.6. Obtaining Configuration for All Caches</a></li>
 <li><a href="#rest_v2_cache_manager_cache_templates">2.4.7. Listing Available Cache Templates</a></li>
-<li><a href="#rest_v2_cache_manager_cache_list">2.4.8. (Experimental) Obtaining Cache Status and Information</a></li>
+<li><a href="#rest_v2_cache_manager_cache_list">2.4.8. Obtaining Cache Status and Information</a></li>
 <li><a href="#rest_v2_cache_manager_stats">2.4.9. Getting Cache Manager Statistics</a></li>
 <li><a href="#rest_v2_cache_manager_enable_rebalancing">2.4.10. Enabling rebalancing for all caches</a></li>
 <li><a href="#rest_v2_cache_manager_disable_rebalancing">2.4.11. Disabling rebalancing for all caches</a></li>
@@ -1420,6 +1422,7 @@ configuration.</p>
     }
   },
   <span class="key"><span class="delimiter">&quot;</span><span class="content">rehash_in_progress</span><span class="delimiter">&quot;</span></span>: <span class="value">false</span>,
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">rebalancing_enabled</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
   <span class="key"><span class="delimiter">&quot;</span><span class="content">bounded</span><span class="delimiter">&quot;</span></span>: <span class="value">false</span>,
   <span class="key"><span class="delimiter">&quot;</span><span class="content">indexed</span><span class="delimiter">&quot;</span></span>: <span class="value">false</span>,
   <span class="key"><span class="delimiter">&quot;</span><span class="content">persistent</span><span class="delimiter">&quot;</span></span>: <span class="value">false</span>,
@@ -1447,6 +1450,9 @@ configuration.</p>
 </li>
 <li>
 <p><code>indexing_in_progress</code> true when indexing is in progress.</p>
+</li>
+<li>
+<p><code>rebalancing_enabled</code> is true if rebalancing is enabled. Fetching this property might fail on the server. In that case the property won&#8217;t be present in the payload.</p>
 </li>
 <li>
 <p><code>bounded</code> when expiration is enabled.</p>
@@ -2809,7 +2815,7 @@ local cache with the <code>?action=cancel-receive-state</code> parameter.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code>POST /v2/caches/{cacheName}?action=connect-source</code></pre>
+<pre class="CodeRay highlight nowrap"><code>POST /v2/caches/{cacheName}/rolling-upgrade/source-connection</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2878,7 +2884,50 @@ host/ip of the single port in the source cluster. For details about the <code>re
 consult the <a href="https://infinispan.org/schemas/infinispan-cachestore-remote-config-12.0.xsd">XSD Schema</a>.</p>
 </div>
 <div class="paragraph">
-<p>If the operation successfully completes, the service returns 204 (No Content).</p>
+<p>If the operation successfully completes, the service returns 204 (No Content). If the target cluster is already connected to the source cluster, it returns status 304 (Not Modified).</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="obtaining_source_cluster_connection_details"><a class="anchor" href="#obtaining_source_cluster_connection_details"></a>Obtaining Source Cluster connection details</h5>
+<div class="paragraph">
+<p>To obtain the <code>remote-store</code> definition of a cache, use a <code>GET</code> request:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>GET /v2/caches/{cacheName}/rolling-upgrade/source-connection</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If the cache was previously connected, it returns the configuration of the associated <code>remote-store</code> in JSON format and status 200 (OK),
+otherwise a 404 (Not Found) status.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This is not a cluster wide operation, and it only returns the remote-store of the cache in the node where the REST invocation is handled.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="checking_if_a_cache_is_connected"><a class="anchor" href="#checking_if_a_cache_is_connected"></a>Checking if a Cache is connected</h5>
+<div class="paragraph">
+<p>To check if a cache have been connected to a remote cluster, use a <code>HEAD</code> request:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>HEAD /v2/caches/{cacheName}/rolling-upgrade/source-connection</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Returns status 200 (OK) if for all nodes of the cluster, <code>cacheName</code> has a single remote store configured, and 404 (NOT_FOUND) otherwise.</p>
 </div>
 </div>
 <div class="sect4">
@@ -2901,15 +2950,16 @@ entries copied to the target cluster.</p>
 <h5 id="rest_v2_disconnect_source"><a class="anchor" href="#rest_v2_disconnect_source"></a>Disconnecting Source Clusters</h5>
 <div class="paragraph">
 <p>After you synchronize data to target clusters, disconnect from the source
-cluster with <code>POST</code> requests and the <code>?action=disconnect-source</code> parameter:</p>
+cluster with <code>DELETE</code> requests:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code>POST /v2/caches/{cacheName}?action=disconnect-source</code></pre>
+<pre class="CodeRay highlight nowrap"><code>DELETE /v2/caches/{cacheName}/rolling-upgrade/source-connection</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
+<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.
+It no source was connected, it returns code 304 (Not Modified).</p>
 </div>
 </div>
 </div>
@@ -3382,7 +3432,8 @@ example:</p>
     <span class="key"><span class="delimiter">&quot;</span><span class="content">sites_view</span><span class="delimiter">&quot;</span></span>: [
         <span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>,
         <span class="string"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span>
-    ]
+    ],
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">rebalancing_enabled</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>
 }</code></pre>
 </div>
 </div>
@@ -3444,6 +3495,9 @@ If cross-site replication is not configured, Infinispan returns "local".</p>
 <li>
 <p><code>sites_view</code> The list of sites that participate in cross-site replication.<br>
 If cross-site replication is not configured, Infinispan returns an empty list.</p>
+</li>
+<li>
+<p><code>rebalancing_enabled</code> is true if rebalancing is enabled. Fetching this property might fail on the server. In that case the property won&#8217;t be present in the payload.</p>
 </li>
 </ul>
 </div>
@@ -3703,7 +3757,7 @@ configuration, as in the following example:</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_v2_cache_manager_cache_list"><a class="anchor" href="#rest_v2_cache_manager_cache_list"></a>2.4.8. (Experimental) Obtaining Cache Status and Information</h4>
+<h4 id="rest_v2_cache_manager_cache_list"><a class="anchor" href="#rest_v2_cache_manager_cache_list"></a>2.4.8. Obtaining Cache Status and Information</h4>
 <div class="paragraph">
 <p>Retrieve a list of all available caches for a Cache Manager, along with cache statuses and details, with <code>GET</code> requests.</p>
 </div>
@@ -3729,7 +3783,8 @@ cache, as in the following example:</p>
   <span class="key"><span class="delimiter">&quot;</span><span class="content">secured</span><span class="delimiter">&quot;</span></span>: <span class="value">false</span>,
   <span class="key"><span class="delimiter">&quot;</span><span class="content">indexed</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
   <span class="key"><span class="delimiter">&quot;</span><span class="content">has_remote_backup</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
-  <span class="key"><span class="delimiter">&quot;</span><span class="content">health</span><span class="delimiter">&quot;</span></span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">HEALTHY</span><span class="delimiter">&quot;</span></span>
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">health</span><span class="delimiter">&quot;</span></span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">HEALTHY</span><span class="delimiter">&quot;</span></span>,
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">rebalancing_enabled</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>
 }, {
   <span class="key"><span class="delimiter">&quot;</span><span class="content">status</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">RUNNING</span><span class="delimiter">&quot;</span></span>,
   <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">cache2</span><span class="delimiter">&quot;</span></span>,
@@ -3741,7 +3796,8 @@ cache, as in the following example:</p>
   <span class="key"><span class="delimiter">&quot;</span><span class="content">secured</span><span class="delimiter">&quot;</span></span>: <span class="value">false</span>,
   <span class="key"><span class="delimiter">&quot;</span><span class="content">indexed</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
   <span class="key"><span class="delimiter">&quot;</span><span class="content">has_remote_backup</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
-  <span class="key"><span class="delimiter">&quot;</span><span class="content">health</span><span class="delimiter">&quot;</span></span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">HEALTHY</span><span class="delimiter">&quot;</span></span>
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">health</span><span class="delimiter">&quot;</span></span>:<span class="string"><span class="delimiter">&quot;</span><span class="content">HEALTHY</span><span class="delimiter">&quot;</span></span>,
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">rebalancing_enabled</span><span class="delimiter">&quot;</span></span>: <span class="value">false</span>
 }]</code></pre>
 </div>
 </div>

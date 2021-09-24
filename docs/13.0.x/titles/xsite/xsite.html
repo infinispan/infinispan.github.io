@@ -533,13 +533,7 @@ $(addBlockSwitches);
 </ul>
 </li>
 <li><a href="#xsite_backups-xsite">1.2. Adding Backups to Caches</a></li>
-<li><a href="#xsite_backup_strategies-xsite">1.3. Backup Strategies</a>
-<ul class="sectlevel3">
-<li><a href="#xsite_sync_backups-xsite">1.3.1. Synchronous Backups</a></li>
-<li><a href="#xsite_async_backups-xsite">1.3.2. Asynchronous Backups</a></li>
-<li><a href="#xsite_compare_backups-xsite">1.3.3. Synchronous vs Asynchronous Backups</a></li>
-</ul>
-</li>
+<li><a href="#backup-strategies_xsite">1.3. Backup strategies</a></li>
 <li><a href="#xsite_auto_offline-xsite">1.4. Automatically Taking Backups Offline</a></li>
 <li><a href="#xsite_state_transfer-xsite">1.5. State Transfer</a>
 <ul class="sectlevel3">
@@ -751,28 +745,40 @@ communicates with each site master in the remote cluster.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="xsite_backup_strategies-xsite"><a class="anchor" href="#xsite_backup_strategies-xsite"></a>1.3. Backup Strategies</h3>
+<h3 id="backup-strategies_xsite"><a class="anchor" href="#backup-strategies_xsite"></a>1.3. Backup strategies</h3>
 <div class="paragraph">
-<p>Infinispan clusters can use different strategies for backing up data to remote sites.</p>
+<p>Infinispan replicates data between clusters at the same time that writes to caches occur.
+For example, if a client writes "k1" to <strong>LON</strong>, Infinispan backs up "k1" to <strong>NYC</strong> at the same time.</p>
 </div>
 <div class="paragraph">
-<p>Infinispan replicates across sites at the same time that writes to local caches occur. For example, if a client writes "k1" to <strong>LON</strong>, Infinispan backs up "k1" to <strong>NYC</strong> at the same time.</p>
+<p>To back up data to a different cluster, Infinispan can use either a synchronous or asynchronous strategy.</p>
 </div>
-<div class="sect3">
-<h4 id="xsite_sync_backups-xsite"><a class="anchor" href="#xsite_sync_backups-xsite"></a>1.3.1. Synchronous Backups</h4>
+<h4 id="synchronous_strategy" class="discrete">Synchronous strategy</h4>
 <div class="paragraph">
-<p>When Infinispan replicates data to backup locations, it waits until the
-operation completes before writing to the local cache.</p>
-</div>
-<div class="paragraph">
-<p>You can control how Infinispan handles writes to the local cache if backup
-operations fail. For example, you can configure Infinispan to attempt to abort
-local writes and throw exceptions if backups to remote sites fail.</p>
+<p>When Infinispan replicates data to backup locations, it writes to the cache on the local cluster and the cache on the remote cluster concurrently.
+With the synchronous strategy, Infinispan waits for both write operations to complete before returning.</p>
 </div>
 <div class="paragraph">
-<p>Synchronous backups also support two-phase commits with caches that participate
-in optimistic transactions. The first phase of the backup acquires a lock. The
-second phase commits the modification.</p>
+<p>You can control how Infinispan handles writes to the cache on the local cluster if backup operations fail.
+Infinispan can do the following:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Ignore the failed backup and silently continue the write to the local cluster.</p>
+</li>
+<li>
+<p>Log a warning message or throw an exception and continue the write to the local cluster.</p>
+</li>
+<li>
+<p>Handle failed backup operations with custom logic.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Synchronous backups also support two-phase commits with caches that participate in optimistic transactions.
+The first phase of the backup acquires a lock.
+The second phase commits the modification.</p>
 </div>
 <div class="admonitionblock important">
 <table>
@@ -782,43 +788,33 @@ second phase commits the modification.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Two-phase commit with cross-site replication has a significant performance
-impact because it requires two round-trips across the network.</p>
+<p>Two-phase commit with cross-site replication has a significant performance impact because it requires two round-trips across the network.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
-</div>
-<div class="sect3">
-<h4 id="xsite_async_backups-xsite"><a class="anchor" href="#xsite_async_backups-xsite"></a>1.3.2. Asynchronous Backups</h4>
+<h4 id="asynchronous_strategy" class="discrete">Asynchronous strategy</h4>
 <div class="paragraph">
-<p>When Infinispan replicates data to backup locations, it does not wait until the
-operation completes before writing to the local cache.</p>
+<p>When Infinispan replicates data to backup locations, it does not wait until the operation completes before writing to the local cache.</p>
 </div>
 <div class="paragraph">
-<p>Asynchronous backup operations and writes to the local cache are independent of
-each other. If backup operations fail, write operations to the local cache
-continue and no exceptions occur.</p>
+<p>Asynchronous backup operations and writes to the local cache are independent of each other.
+If backup operations fail, write operations to the local cache continue and no exceptions occur.
+When this happens Infinispan also retries the write operation until the remote cluster disconnects from the cross-site view.</p>
 </div>
-</div>
-<div class="sect3">
-<h4 id="xsite_compare_backups-xsite"><a class="anchor" href="#xsite_compare_backups-xsite"></a>1.3.3. Synchronous vs Asynchronous Backups</h4>
+<h4 id="synchronous_vs_asynchronous_backups" class="discrete">Synchronous vs asynchronous backups</h4>
 <div class="paragraph">
-<p>Synchronous backups offer the strongest guarantee of data consistency across
-sites. If <code>strategy=sync</code>, when <code>cache.put()</code> calls return you know the value
-is up to date in the local cache and in the backup locations.</p>
+<p>Synchronous backups offer the strongest guarantee of data consistency across sites.
+If <code>strategy=sync</code>, when <code>cache.put()</code> calls return you know the value is up to date in the local cache and in the backup locations.</p>
 </div>
 <div class="paragraph">
-<p>The trade-off for this consistency is performance. Synchronous backups have
-much greater latency in comparison to asynchronous backups.</p>
+<p>The trade-off for this consistency is performance.
+Synchronous backups have much greater latency in comparison to asynchronous backups.</p>
 </div>
 <div class="paragraph">
-<p>Asynchronous backups, on the other hand, do not add latency to client requests
-so they have no performance impact. However, if <code>strategy=async</code>, when
-<code>cache.put()</code> calls return you cannot be sure of the value in the backup
-locations is the same as in the local cache.</p>
-</div>
+<p>Asynchronous backups, on the other hand, do not add latency to client requests so they have no performance impact.
+However, if <code>strategy=async</code>, when <code>cache.put()</code> calls return you cannot be sure of that the value in the backup location is the same as in the local cache.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1015,8 +1011,8 @@ The status of a backup location must be offline and it must not be included in t
 <p>Clients can write to Infinispan clusters in either an Active/Passive or
 Active/Active configuration.</p>
 </div>
+<h4 id="activepassive" class="discrete">Active/Passive</h4>
 <div class="paragraph">
-<div class="title">Active/Passive</div>
 <p>The following diagram illustrates Active/Passive where Infinispan handles
 client requests from one site only:</p>
 </div>
@@ -1047,8 +1043,8 @@ cluster at <strong>LON</strong> goes offline for any reason, clients can start s
 requests to <strong>NYC</strong>. When you bring <strong>LON</strong> back online you can synchronize
 data with <strong>NYC</strong> and then switch clients back to <strong>LON</strong>.</p>
 </div>
+<h4 id="activeactive" class="discrete">Active/Active</h4>
 <div class="paragraph">
-<div class="title">Active/Active</div>
 <p>The following diagram illustrates Active/Active where Infinispan handles
 client requests at two sites:</p>
 </div>
@@ -1085,6 +1081,25 @@ while handling client requests. If either <strong>NYC</strong> or <strong>LON</s
 clients can start sending requests to the online site. You can then bring
 offline sites back online, push state to synchronize data, and switch clients
 as required.</p>
+</div>
+<h4 id="backup_strategies" class="discrete">Backup strategies</h4>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>With an Active/Active configuration, you should always use an asynchronous backup strategy (<code>strategy=async</code>).</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>If multiple clients attempt to write to the same entry concurrently, and the backup strategy is synchronous (<code>strategy=sync</code>), then deadlocks occur.
+However you can use the synchronous backup strategy with an Active/Passive configuration if both sites access different data sets, in which case there is no risk of deadlocks from concurrent writes.</p>
 </div>
 <div class="sect3">
 <h4 id="conflict-resolution_xsite"><a class="anchor" href="#conflict-resolution_xsite"></a>1.6.1. Concurrent Writes and Conflicting Entries</h4>
@@ -1156,6 +1171,21 @@ value.</p>
 <div class="paragraph">
 <p>Prepend site names with numbers as a simple way to represent the order of
 priority for resolving conflicting entries; for example, <strong>1LON</strong> and <strong>2NYC</strong>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan performs conflict resolution with the asynchronous backup strategy (<code>strategy=async</code>) only.
+However, you should not use the synchronous backup strategy with an Active/Active configuration because concurrent writes result in deadlocks.</p>
 </div>
 </td>
 </tr>
