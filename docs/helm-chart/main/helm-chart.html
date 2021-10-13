@@ -456,6 +456,15 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#installing-openshift-command-line_install">1.2. Installing the Helm chart on the command line</a></li>
 </ul>
 </li>
+<li><a href="#configuring-authentication">2. Configuring authentication</a>
+<ul class="sectlevel2">
+<li><a href="#credentials_configuring-authentication">2.1. Infinispan credentials</a></li>
+<li><a href="#adding-credentials_configuring-authentication">2.2. Adding custom user credentials</a></li>
+<li><a href="#adding-multiple-credentials_configuring-authentication">2.3. Adding multiple credentials with authentication secrets</a></li>
+<li><a href="#retrieving-credentials_configuring-authentication">2.4. Retrieving credentials</a></li>
+<li><a href="#disabling-authentication_configuring-authentication">2.5. Disabling authentication</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
@@ -637,10 +646,213 @@ EOF</code></pre>
 </div>
 </div>
 </div>
+<div class="sect1">
+<h2 id="configuring-authentication">2. Configuring authentication</h2>
+<div class="sectionbody">
+<div class="paragraph _abstract">
+<p>You need credentials to access Infinispan clusters and manipulate data.
+You can use default credentials or add your own.</p>
+</div>
+<div class="sect2">
+<h3 id="credentials_configuring-authentication">2.1. Infinispan credentials</h3>
+<div class="paragraph">
+<p>The Infinispan Helm chart uses the Command Line Interface (CLI) to add credentials and assign roles to users.
+The CLI lets you create batches of Infinispan credentials so you can add multiple users at at time.
+You can also add credentials individually with the <code class="command">user create</code> command.</p>
+</div>
+<h4 id="_default_credentials" class="discrete">Default credentials</h4>
+<div class="paragraph">
+<p>By default, Infinispan creates the following default credentials in the <code>infinispan-generated-secret</code> secret:</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Username</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>developer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User that has the <code>admin</code> role with full access to Infinispan resources.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>monitor</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User that has the <code>monitor</code> role with access to Infinispan metrics only.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://infinispan.org/docs/stable/titles/security/security.html">Infinispan Security Guide</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="adding-credentials_configuring-authentication">2.2. Adding custom user credentials</h3>
+<div class="paragraph _abstract">
+<p>Add custom credentials to Infinispan clusters.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Specify a <code>user create</code> command for your credentials as the value of the <code>deploy.security.batch</code> field in your Infinispan Helm chart.</p>
+<div class="paragraph">
+<p>The following example creates a user named "user1" that has the <code>deployer</code> role:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">deploy:
+  security:
+    authentication: true
+    batch: 'user create user1 -p changeme -g deployer'</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="adding-multiple-credentials_configuring-authentication">2.3. Adding multiple credentials with authentication secrets</h3>
+<div class="paragraph _abstract">
+<p>Add multiple credentials to Infinispan clusters with authentication secrets.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create an <code>identities-batch</code> file that contains the commands to add your credentials.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">apiVersion: v1
+kind: Secret
+metadata:
+  name: connect-secret
+type: Opaque
+stringData:
+  # The "monitor" user authenticates with the Prometheus ServiceMonitor.
+  username: monitor
+  # The password for the "monitor" user.
+  password: password
+  # The key must be 'identities-batch'.
+  # The content is "user create" commands for the Infinispan CLI.
+  identities-batch: |-
+    user create user1 -p changeme -g admin
+    user create user2 -p changeme -g deployer
+    user create monitor -p password --users-file metrics-users.properties --groups-file metrics-groups.properties</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Create an authentication secret from your <code>identities-batch</code> file.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ oc create secret generic --from-file=identities-batch.yaml connect-secret</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Specify the name of the authentication secret as the value of the <code>deploy.security.SecretName</code> field in your Infinispan Helm chart.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>deploy:
+  security:
+    authentication: true
+    secretName: 'connect-secret'</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="retrieving-credentials_configuring-authentication">2.4. Retrieving credentials</h3>
+<div class="paragraph _abstract">
+<p>Get Infinispan credentials from authentication secrets.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Install the Infinispan Helm chart.</p>
+</li>
+<li>
+<p>Have an <code>oc</code> client.</p>
+</li>
+</ul>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Retrieve default credentials from the <code>infinispan-generated-secret</code> or custom credentials from another secret with the following command:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ oc get secret infinispan-generated-secret \
+-o jsonpath="{.data.identities-batch}" | base64 --decode</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="disabling-authentication_configuring-authentication">2.5. Disabling authentication</h3>
+<div class="paragraph _abstract">
+<p>Allow users to access Infinispan clusters and manipulate data without providing credentials.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Do not disable authentication if endpoints are accessible from outside the OpenShift cluster.
+You should disable authentication for development environments only.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<div class="title">Procedure</div>
+<p>Apply the following changes to your Infinispan Helm chart:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Remove any <code>securityRealm</code> fields from <code>deploy.infinispan.server.endpoints</code>.</p>
+</li>
+<li>
+<p>Remove any <code>authentication</code> fields from <code>deploy.infinispan.server.endpoints.connectors</code>.</p>
+</li>
+</ol>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://infinispan.org/docs/stable/titles/server/server.html">Infinispan Server Guide</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-09-22 09:26:42 -0400
+Last updated 2021-10-13 03:58:01 -0400
 </div>
 </div>
 <script>

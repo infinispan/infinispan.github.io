@@ -529,17 +529,11 @@ $(addBlockSwitches);
 <ul class="sectlevel2">
 <li><a href="#xsite_replication-xsite">1.1. Cross-Site Replication</a>
 <ul class="sectlevel3">
-<li><a href="#xsite_masters-xsite">1.1.1. Site Masters</a></li>
+<li><a href="#xsite_relay_nodes-xsite">1.1.1. Relay Nodes</a></li>
 </ul>
 </li>
 <li><a href="#xsite_backups-xsite">1.2. Adding Backups to Caches</a></li>
-<li><a href="#xsite_backup_strategies-xsite">1.3. Backup Strategies</a>
-<ul class="sectlevel3">
-<li><a href="#xsite_sync_backups-xsite">1.3.1. Synchronous Backups</a></li>
-<li><a href="#xsite_async_backups-xsite">1.3.2. Asynchronous Backups</a></li>
-<li><a href="#xsite_compare_backups-xsite">1.3.3. Synchronous vs Asynchronous Backups</a></li>
-</ul>
-</li>
+<li><a href="#backup-strategies_xsite">1.3. Backup strategies</a></li>
 <li><a href="#xsite_auto_offline-xsite">1.4. Automatically Taking Backups Offline</a></li>
 <li><a href="#xsite_state_transfer-xsite">1.5. State Transfer</a>
 <ul class="sectlevel3">
@@ -554,7 +548,7 @@ $(addBlockSwitches);
 <li><a href="#xsite_expiration-xsite">1.7. Expiration with Cross-Site Replication</a></li>
 </ul>
 </li>
-<li><a href="#xsite_configure">2. Configuring Infinispan for Cross-Site Replication</a>
+<li><a href="#xsite_configure">2. Configuring Infinispan Cross-Site Replication</a>
 <ul class="sectlevel2">
 <li><a href="#configure_relay-xsite">2.1. Configuring Cluster Transport for Cross-Site Replication</a>
 <ul class="sectlevel3">
@@ -602,7 +596,7 @@ $(addBlockSwitches);
 </li>
 <li><a href="#xsite_operations_jmx">3.3. Performing Cross-Site Operations with JMX</a>
 <ul class="sectlevel3">
-<li><a href="#enabling-jmx_jmx-ops">3.3.1. Configuring Infinispan to Register JMX MBeans</a></li>
+<li><a href="#enabling-jmx_jmx-ops">3.3.1. Registering JMX MBeans</a></li>
 <li><a href="#performing_jmx_operations-jmx-ops">3.3.2. Performing Cross-Site Operations</a></li>
 </ul>
 </li>
@@ -610,20 +604,10 @@ $(addBlockSwitches);
 </li>
 <li><a href="#xsite_monitoring">4. Monitoring and Troubleshooting Global Infinispan Clusters</a>
 <ul class="sectlevel2">
-<li><a href="#enabling-statistics_xsite">4.1. Enabling Infinispan Statistics</a></li>
-<li><a href="#configuring-metrics_xsite">4.2. Configuring Infinispan Metrics</a>
+<li><a href="#jmx_xsite-xsite">4.1. JMX MBeans for Cross-Site Replication</a></li>
+<li><a href="#xsite_tshoot-xsite">4.2. Collecting Logs and Troubleshooting Cross-Site Replication</a>
 <ul class="sectlevel3">
-<li><a href="#collect_metrics">4.2.1. Collecting Infinispan Metrics</a></li>
-</ul>
-</li>
-<li><a href="#enabling-jmx_xsite">4.3. Configuring Infinispan to Register JMX MBeans</a>
-<ul class="sectlevel3">
-<li><a href="#jmx_xsite-xsite">4.3.1. JMX MBeans for Cross-Site Replication</a></li>
-</ul>
-</li>
-<li><a href="#xsite_tshoot-xsite">4.4. Collecting Logs and Troubleshooting Cross-Site Replication</a>
-<ul class="sectlevel3">
-<li><a href="#xsite_logs-xsite">4.4.1. Cross-Site Log Messages</a></li>
+<li><a href="#xsite_logs-xsite">4.2.1. Cross-Site Log Messages</a></li>
 </ul>
 </li>
 </ul>
@@ -689,20 +673,17 @@ in the following diagram:</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="xsite_masters-xsite"><a class="anchor" href="#xsite_masters-xsite"></a>1.1.1. Site Masters</h4>
+<h4 id="xsite_relay_nodes-xsite"><a class="anchor" href="#xsite_relay_nodes-xsite"></a>1.1.1. Relay Nodes</h4>
 <div class="paragraph">
-<p>Site masters are the nodes in Infinispan clusters that are responsible for
-sending and receiving requests from backup locations.</p>
+<p>Relay nodes are the nodes in Infinispan clusters that are responsible for sending and receiving requests from backup locations.</p>
 </div>
 <div class="paragraph">
-<p>If a node is not a site master, it must forward backup requests to a local site
-master. Only site masters can send requests to backup locations.</p>
+<p>If a node is not a relay node, it must forward backup requests to a local relay node.
+Only relay nodes can send requests to backup locations.</p>
 </div>
 <div class="paragraph">
-<p>For optimal performance, you should configure all nodes as site masters. This
-increases the speed of backup requests because each node in the cluster can
-backup to remote sites directly without having to forward backup requests to
-site masters.</p>
+<p>For optimal performance, you should configure all nodes as relay nodes.
+This increases the speed of backup requests because each node in the cluster can backup to remote sites directly without having to forward backup requests to local relay nodes.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -712,10 +693,23 @@ site masters.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Diagrams in this document illustrate Infinispan clusters with one site master
-because this is the default for the JGroups RELAY2 protocol. Likewise, a single
-site master is easier to illustrate because each site master in a cluster
-communicates with each site master in the remote cluster.</p>
+<p>Diagrams in this document illustrate Infinispan clusters with one relay node because this is the default for the JGroups RELAY2 protocol.
+Likewise, a single relay node is easier to illustrate because each relay node in a cluster communicates with each relay node in the remote cluster.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>JGroups configuration refers to relay nodes as "site master" nodes.
+Infinispan uses relay node instead because it is more descriptive and presents a more intuitive choice for our users.</p>
 </div>
 </td>
 </tr>
@@ -751,28 +745,40 @@ communicates with each site master in the remote cluster.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="xsite_backup_strategies-xsite"><a class="anchor" href="#xsite_backup_strategies-xsite"></a>1.3. Backup Strategies</h3>
+<h3 id="backup-strategies_xsite"><a class="anchor" href="#backup-strategies_xsite"></a>1.3. Backup strategies</h3>
 <div class="paragraph">
-<p>Infinispan clusters can use different strategies for backing up data to remote sites.</p>
+<p>Infinispan replicates data between clusters at the same time that writes to caches occur.
+For example, if a client writes "k1" to <strong>LON</strong>, Infinispan backs up "k1" to <strong>NYC</strong> at the same time.</p>
 </div>
 <div class="paragraph">
-<p>Infinispan replicates across sites at the same time that writes to local caches occur. For example, if a client writes "k1" to <strong>LON</strong>, Infinispan backs up "k1" to <strong>NYC</strong> at the same time.</p>
+<p>To back up data to a different cluster, Infinispan can use either a synchronous or asynchronous strategy.</p>
 </div>
-<div class="sect3">
-<h4 id="xsite_sync_backups-xsite"><a class="anchor" href="#xsite_sync_backups-xsite"></a>1.3.1. Synchronous Backups</h4>
+<h4 id="synchronous_strategy" class="discrete">Synchronous strategy</h4>
 <div class="paragraph">
-<p>When Infinispan replicates data to backup locations, it waits until the
-operation completes before writing to the local cache.</p>
-</div>
-<div class="paragraph">
-<p>You can control how Infinispan handles writes to the local cache if backup
-operations fail. For example, you can configure Infinispan to attempt to abort
-local writes and throw exceptions if backups to remote sites fail.</p>
+<p>When Infinispan replicates data to backup locations, it writes to the cache on the local cluster and the cache on the remote cluster concurrently.
+With the synchronous strategy, Infinispan waits for both write operations to complete before returning.</p>
 </div>
 <div class="paragraph">
-<p>Synchronous backups also support two-phase commits with caches that participate
-in optimistic transactions. The first phase of the backup acquires a lock. The
-second phase commits the modification.</p>
+<p>You can control how Infinispan handles writes to the cache on the local cluster if backup operations fail.
+Infinispan can do the following:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Ignore the failed backup and silently continue the write to the local cluster.</p>
+</li>
+<li>
+<p>Log a warning message or throw an exception and continue the write to the local cluster.</p>
+</li>
+<li>
+<p>Handle failed backup operations with custom logic.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Synchronous backups also support two-phase commits with caches that participate in optimistic transactions.
+The first phase of the backup acquires a lock.
+The second phase commits the modification.</p>
 </div>
 <div class="admonitionblock important">
 <table>
@@ -782,43 +788,33 @@ second phase commits the modification.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Two-phase commit with cross-site replication has a significant performance
-impact because it requires two round-trips across the network.</p>
+<p>Two-phase commit with cross-site replication has a significant performance impact because it requires two round-trips across the network.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
-</div>
-<div class="sect3">
-<h4 id="xsite_async_backups-xsite"><a class="anchor" href="#xsite_async_backups-xsite"></a>1.3.2. Asynchronous Backups</h4>
+<h4 id="asynchronous_strategy" class="discrete">Asynchronous strategy</h4>
 <div class="paragraph">
-<p>When Infinispan replicates data to backup locations, it does not wait until the
-operation completes before writing to the local cache.</p>
+<p>When Infinispan replicates data to backup locations, it does not wait until the operation completes before writing to the local cache.</p>
 </div>
 <div class="paragraph">
-<p>Asynchronous backup operations and writes to the local cache are independent of
-each other. If backup operations fail, write operations to the local cache
-continue and no exceptions occur.</p>
+<p>Asynchronous backup operations and writes to the local cache are independent of each other.
+If backup operations fail, write operations to the local cache continue and no exceptions occur.
+When this happens Infinispan also retries the write operation until the remote cluster disconnects from the cross-site view.</p>
 </div>
-</div>
-<div class="sect3">
-<h4 id="xsite_compare_backups-xsite"><a class="anchor" href="#xsite_compare_backups-xsite"></a>1.3.3. Synchronous vs Asynchronous Backups</h4>
+<h4 id="synchronous_vs_asynchronous_backups" class="discrete">Synchronous vs asynchronous backups</h4>
 <div class="paragraph">
-<p>Synchronous backups offer the strongest guarantee of data consistency across
-sites. If <code>strategy=sync</code>, when <code>cache.put()</code> calls return you know the value
-is up to date in the local cache and in the backup locations.</p>
+<p>Synchronous backups offer the strongest guarantee of data consistency across sites.
+If <code>strategy=sync</code>, when <code>cache.put()</code> calls return you know the value is up to date in the local cache and in the backup locations.</p>
 </div>
 <div class="paragraph">
-<p>The trade-off for this consistency is performance. Synchronous backups have
-much greater latency in comparison to asynchronous backups.</p>
+<p>The trade-off for this consistency is performance.
+Synchronous backups have much greater latency in comparison to asynchronous backups.</p>
 </div>
 <div class="paragraph">
-<p>Asynchronous backups, on the other hand, do not add latency to client requests
-so they have no performance impact. However, if <code>strategy=async</code>, when
-<code>cache.put()</code> calls return you cannot be sure of the value in the backup
-locations is the same as in the local cache.</p>
-</div>
+<p>Asynchronous backups, on the other hand, do not add latency to client requests so they have no performance impact.
+However, if <code>strategy=async</code>, when <code>cache.put()</code> calls return you cannot be sure of that the value in the backup location is the same as in the local cache.</p>
 </div>
 </div>
 <div class="sect2">
@@ -994,7 +990,7 @@ The status of a backup location must be offline and it must not be included in t
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html#clear()">org.infinispan.Cache.clear()</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/Cache.html#clear()">org.infinispan.Cache.clear()</a></p>
 </li>
 <li>
 <p><a href="../cli/cli.html#deleting_cache_entries">Clearing Caches with the CLI</a></p>
@@ -1015,8 +1011,8 @@ The status of a backup location must be offline and it must not be included in t
 <p>Clients can write to Infinispan clusters in either an Active/Passive or
 Active/Active configuration.</p>
 </div>
+<h4 id="activepassive" class="discrete">Active/Passive</h4>
 <div class="paragraph">
-<div class="title">Active/Passive</div>
 <p>The following diagram illustrates Active/Passive where Infinispan handles
 client requests from one site only:</p>
 </div>
@@ -1037,7 +1033,7 @@ client requests from one site only:</p>
 <p>Client writes "k1" to the cache.</p>
 </li>
 <li>
-<p>The site master at <strong>LON</strong>, "n1", sends the request to replicate "k1" to the site master at <strong>NYC</strong>, "nA".</p>
+<p>The relay node at <strong>LON</strong>, "n1", sends the request to replicate "k1" to the relay node at <strong>NYC</strong>, "nA".</p>
 </li>
 </ol>
 </div>
@@ -1047,8 +1043,8 @@ cluster at <strong>LON</strong> goes offline for any reason, clients can start s
 requests to <strong>NYC</strong>. When you bring <strong>LON</strong> back online you can synchronize
 data with <strong>NYC</strong> and then switch clients back to <strong>LON</strong>.</p>
 </div>
+<h4 id="activeactive" class="discrete">Active/Active</h4>
 <div class="paragraph">
-<div class="title">Active/Active</div>
 <p>The following diagram illustrates Active/Active where Infinispan handles
 client requests at two sites:</p>
 </div>
@@ -1075,7 +1071,7 @@ client requests at two sites:</p>
 <p>Client B writes "k2" to the cache.</p>
 </li>
 <li>
-<p>Site masters at <strong>LON</strong> and <strong>NYC</strong> send requests so that "k1" is replicated to <strong>NYC</strong> and "k2" is replicated to <strong>LON</strong>.</p>
+<p>Relay nodes at <strong>LON</strong> and <strong>NYC</strong> send requests so that "k1" is replicated to <strong>NYC</strong> and "k2" is replicated to <strong>LON</strong>.</p>
 </li>
 </ol>
 </div>
@@ -1085,6 +1081,25 @@ while handling client requests. If either <strong>NYC</strong> or <strong>LON</s
 clients can start sending requests to the online site. You can then bring
 offline sites back online, push state to synchronize data, and switch clients
 as required.</p>
+</div>
+<h4 id="backup_strategies" class="discrete">Backup strategies</h4>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>With an Active/Active configuration, you should always use an asynchronous backup strategy (<code>strategy=async</code>).</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>If multiple clients attempt to write to the same entry concurrently, and the backup strategy is synchronous (<code>strategy=sync</code>), then deadlocks occur.
+However you can use the synchronous backup strategy with an Active/Passive configuration if both sites access different data sets, in which case there is no risk of deadlocks from concurrent writes.</p>
 </div>
 <div class="sect3">
 <h4 id="conflict-resolution_xsite"><a class="anchor" href="#conflict-resolution_xsite"></a>1.6.1. Concurrent Writes and Conflicting Entries</h4>
@@ -1161,6 +1176,21 @@ priority for resolving conflicting entries; for example, <strong>1LON</strong> a
 </tr>
 </table>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan performs conflict resolution with the asynchronous backup strategy (<code>strategy=async</code>) only.
+However, you should not use the synchronous backup strategy with an Active/Active configuration because concurrent writes result in deadlocks.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <h5 id="conflict_resolution_algorithms" class="discrete">Conflict resolution algorithms</h5>
 <div class="paragraph">
 <p>Infinispan provides different algorithms for resolving conflicts in addition to an <code>XSiteEntryMergePolicy</code> SPI that lets you implement custom conflict resolution strategies.</p>
@@ -1191,10 +1221,10 @@ priority for resolving conflicting entries; for example, <strong>1LON</strong> a
 <p><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html#compareTo-java.lang.String-">java.lang.String#compareTo()</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">org.infinispan.xsite.spi.XSiteMergePolicy</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">org.infinispan.xsite.spi.XSiteMergePolicy</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">org.infinispan.xsite.spi.XSiteEntryMergePolicy</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">org.infinispan.xsite.spi.XSiteEntryMergePolicy</a></p>
 </li>
 <li>
 <p><a href="#customizing-conflict-resolution_xsite">Customizing the Conflict Resolution Strategy</a></p>
@@ -1241,10 +1271,11 @@ When you set a <code>max-idle</code> with cross-site replication, Infinispan clu
 </div>
 </div>
 <div class="sect1">
-<h2 id="xsite_configure"><a class="anchor" href="#xsite_configure"></a>2. Configuring Infinispan for Cross-Site Replication</h2>
+<h2 id="xsite_configure"><a class="anchor" href="#xsite_configure"></a>2. Configuring Infinispan Cross-Site Replication</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Configuring Infinispan to replicate data across sites, you first set up cluster transport so Infinispan clusters can discover each other and site masters can communicate. You then add backup locations to cache definitions in your Infinispan configuration.</p>
+<p>Set up cluster transport so Infinispan clusters can discover each other and relay nodes can send messages for cross-site replication.
+You can then add backup locations to Infinispan caches.</p>
 </div>
 <div class="sect2">
 <h3 id="configure_relay-xsite"><a class="anchor" href="#configure_relay-xsite"></a>2.1. Configuring Cluster Transport for Cross-Site Replication</h3>
@@ -1268,10 +1299,12 @@ When you set a <code>max-idle</code> with cross-site replication, Infinispan clu
   <span class="tag">&lt;jgroups&gt;</span>
     <span class="comment">&lt;!-- Extends the default UDP stack. --&gt;</span>
     <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">xsite</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">udp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="comment">&lt;!-- Adds RELAY2 for cross-site replication. --&gt;</span>
+      <span class="comment">&lt;!-- Adds the RELAY2 protocol for cross-site replication. --&gt;</span>
       <span class="comment">&lt;!-- Names the local site as LON. --&gt;</span>
-      <span class="comment">&lt;!-- Specifies 1000 nodes as the maximum number of site masters. --&gt;</span>
-      <span class="tag">&lt;relay.RELAY2</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">max_site_masters</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="comment">&lt;!-- Specifies a maximum of 1000 nodes that can send cross-site replication requests. --&gt;</span>
+      <span class="tag">&lt;relay.RELAY2</span> <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>
+                    <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups</span><span class="delimiter">&quot;</span></span>
+                    <span class="attribute-name">max_site_masters</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="comment">&lt;!-- Uses the default TCP stack for inter-cluster communication. --&gt;</span>
       <span class="comment">&lt;!-- Names all sites that act as backup locations. --&gt;</span>
       <span class="tag">&lt;remote-sites</span> <span class="attribute-name">default-stack</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">tcp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
@@ -1300,7 +1333,7 @@ When you set a <code>max-idle</code> with cross-site replication, Infinispan clu
 <p><a href="#ref_relay-xsite">JGroups RELAY2 Stacks</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/">Infinispan Configuration Schema</a></p>
 </li>
 </ul>
 </div>
@@ -1314,9 +1347,9 @@ When you set a <code>max-idle</code> with cross-site replication, Infinispan clu
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;jgroups&gt;</span>
    <span class="comment">&lt;!-- Uses the default JGroups UDP stack for intra-cluster traffic. --&gt;</span>
    <span class="tag">&lt;stack</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">xsite</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">extends</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">udp</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="comment">&lt;!-- Adds RELAY2 to the stack for inter-cluster transport. --&gt;</span>
-      <span class="comment">&lt;!-- Names the local site. Data in caches from the local site is replicated to backup locations. --&gt;</span>
-      <span class="comment">&lt;!-- Configures a maximum of 1000 site masters for the local cluster. --&gt;</span>
+      <span class="comment">&lt;!-- Adds the RELAY2 protocol for cross-site replication. --&gt;</span>
+      <span class="comment">&lt;!-- Names the local site as LON. --&gt;</span>
+      <span class="comment">&lt;!-- Specifies a maximum of 1000 nodes that can send cross-site replication requests. --&gt;</span>
       <span class="tag">&lt;relay.RELAY2</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:org:jgroups</span><span class="delimiter">&quot;</span></span>
                     <span class="attribute-name">site</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>
                     <span class="attribute-name">max_site_masters</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
@@ -1329,20 +1362,6 @@ When you set a <code>max-idle</code> with cross-site replication, Infinispan clu
    <span class="tag">&lt;/stack&gt;</span>
 <span class="tag">&lt;/jgroups&gt;</span></code></pre>
 </div>
-</div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-tip" title="Tip"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Set <code>max_site_masters</code> &gt;= the number of nodes in the Infinispan cluster for optimal performance with backup requests.</p>
-</div>
-</td>
-</tr>
-</table>
 </div>
 </div>
 <div class="sect3">
@@ -1496,7 +1515,7 @@ strategies. Infinispan replicates data based on cache names.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/">Infinispan Configuration Schema</a></p>
 </li>
 </ul>
 </div>
@@ -1625,16 +1644,16 @@ different name on the local site.</p>
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">org.infinispan.xsite.spi.XSiteEntryMergePolicy</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/xsite/spi/XSiteEntryMergePolicy.html">org.infinispan.xsite.spi.XSiteEntryMergePolicy</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">org.infinispan.xsite.spi.XSiteMergePolicy</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/xsite/spi/XSiteMergePolicy.html">org.infinispan.xsite.spi.XSiteMergePolicy</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/xsite/spi/SiteEntry.html">org.infinispan.xsite.spi.SiteEntry</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/xsite/spi/SiteEntry.html">org.infinispan.xsite.spi.SiteEntry</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/configdocs/">Infinispan Configuration Schema</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/">Infinispan Configuration Schema</a></p>
 </li>
 </ul>
 </div>
@@ -1717,13 +1736,13 @@ to a cluster at a different site:</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/client/hotrod/configuration/package-summary.html#package.description">org.infinispan.client.hotrod.configuration package description</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/client/hotrod/configuration/package-summary.html#package.description">org.infinispan.client.hotrod.configuration package description</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/client/hotrod/configuration/ConfigurationBuilder.html">org.infinispan.client.hotrod.configuration.ConfigurationBuilder</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/client/hotrod/configuration/ConfigurationBuilder.html">org.infinispan.client.hotrod.configuration.ConfigurationBuilder</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/client/hotrod/RemoteCacheManager.html#RemoteCacheManager-java.net.URL-">org.infinispan.client.hotrod.RemoteCacheManager</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/client/hotrod/RemoteCacheManager.html#RemoteCacheManager-java.net.URL-">org.infinispan.client.hotrod.RemoteCacheManager</a></p>
 </li>
 </ul>
 </div>
@@ -1922,8 +1941,18 @@ in the following example:</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="json">{
-  <span class="key"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">online</span><span class="delimiter">&quot;</span></span>,
-  <span class="key"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">offline</span><span class="delimiter">&quot;</span></span>
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">NYC</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">status</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">online</span><span class="delimiter">&quot;</span></span>
+  },
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">LON</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">status</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">mixed</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">online</span><span class="delimiter">&quot;</span></span>: [
+      <span class="string"><span class="delimiter">&quot;</span><span class="content">NodeA</span><span class="delimiter">&quot;</span></span>
+    ],
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">offline</span><span class="delimiter">&quot;</span></span>: [
+      <span class="string"><span class="delimiter">&quot;</span><span class="content">NodeB</span><span class="delimiter">&quot;</span></span>
+    ]
+  }
 }</code></pre>
 </div>
 </div>
@@ -2205,6 +2234,9 @@ requests.</p>
       ],
       <span class="key"><span class="delimiter">&quot;</span><span class="content">offline</span><span class="delimiter">&quot;</span></span>:[
          <span class="string"><span class="delimiter">&quot;</span><span class="content">CACHE_2</span><span class="delimiter">&quot;</span></span>
+      ],
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">mixed</span><span class="delimiter">&quot;</span></span>: [
+         <span class="string"><span class="delimiter">&quot;</span><span class="content">CACHE_3</span><span class="delimiter">&quot;</span></span>
       ]
    }
 }</code></pre>
@@ -2312,40 +2344,66 @@ requests.</p>
 pushing state transfer and bringing sites online.</p>
 </div>
 <div class="sect3">
-<h4 id="enabling-jmx_jmx-ops"><a class="anchor" href="#enabling-jmx_jmx-ops"></a>3.3.1. Configuring Infinispan to Register JMX MBeans</h4>
+<h4 id="enabling-jmx_jmx-ops"><a class="anchor" href="#enabling-jmx_jmx-ops"></a>3.3.1. Registering JMX MBeans</h4>
 <div class="paragraph">
 <p>Infinispan can register JMX MBeans that you can use to collect statistics and
 perform administrative operations.
-You must enable statistics separately to JMX otherwise Infinispan provides <code>0</code> values for all statistic attributes.</p>
+You must also enable statistics otherwise Infinispan provides <code>0</code> values for all statistic attributes in JMX MBeans.</p>
 </div>
-<div class="paragraph">
+<div class="olist arabic">
 <div class="title">Procedure</div>
-<p>Modify your cache container configuration to enable JMX in one of the following ways:</p>
-</div>
-<div class="ulist">
-<ul>
+<ol class="arabic">
 <li>
-<p>Declarative: Add the <code>&lt;jmx enabled="true" /&gt;</code> element to the cache container.</p>
+<p>Open your Infinispan configuration for editing.</p>
 </li>
 <li>
-<p>Programmatic: Call the <code>.jmx().enable()</code> method.</p>
+<p>Add the <code>jmx</code> element or object to the cache container and specify <code>true</code> as the value for the <code>enabled</code> attribute or field.</p>
 </li>
-</ul>
+<li>
+<p>Add the <code>domain</code> attribute or field and specify the domain where JMX MBeans are exposed, if required.</p>
+</li>
+<li>
+<p>Save and close your client configuration.</p>
+</li>
+</ol>
 </div>
+<h5 id="jmx_configuration" class="discrete">JMX configuration</h5>
 <div class="listingblock primary">
-<div class="title">Declarative</div>
+<div class="title">XML</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container&gt;</span>
-  <span class="tag">&lt;jmx</span> <span class="attribute-name">enabled</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
-<span class="tag">&lt;/cache-container&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+  <span class="tag">&lt;cache-container</span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;jmx</span> <span class="attribute-name">enabled</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+         <span class="attribute-name">domain</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">example.com</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;/cache-container&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
-<div class="title">Programmatic</div>
+<div class="title">JSON</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="java">GlobalConfiguration globalConfig = <span class="keyword">new</span> GlobalConfigurationBuilder()
-  .jmx().enable()
-  .build();</code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">infinispan</span><span class="delimiter">&quot;</span></span> : {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">cache-container</span><span class="delimiter">&quot;</span></span> : {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">statistics</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">jmx</span><span class="delimiter">&quot;</span></span> : {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">enabled</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">domain</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">example.com</span><span class="delimiter">&quot;</span></span>
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="yaml"><span class="key">infinispan</span>:
+  <span class="key">cacheContainer</span>:
+    <span class="key">statistics</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+    <span class="key">jmx</span>:
+      <span class="key">enabled</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+      <span class="key">domain</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">example.com</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 </div>
@@ -2394,10 +2452,10 @@ cross-site operations.</p>
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/jmxComponents.html#XSiteAdmin">XSiteAdmin MBean</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/jmxComponents.html#XSiteAdmin">XSiteAdmin MBean</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/jmxComponents.html#XSiteAdmin">GlobalXSiteAdminOperations MBean</a></p>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/jmxComponents.html#XSiteAdmin">GlobalXSiteAdminOperations MBean</a></p>
 </li>
 </ul>
 </div>
@@ -2409,13 +2467,7 @@ cross-site operations.</p>
 <h2 id="xsite_monitoring"><a class="anchor" href="#xsite_monitoring"></a>4. Monitoring and Troubleshooting Global Infinispan Clusters</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan provides statistics for cross-site replication operations via JMX
-or the <code>/metrics</code> endpoint for Infinispan server.</p>
-</div>
-<div class="paragraph">
-<p>Cross-site replication statistics are available at cache level so you must
-explicitly enable statistics for your caches. Likewise, if you want to collect
-statistics via JMX you must configure Infinispan to register MBeans.</p>
+<p>Infinispan provides cache-level statistics for cross-site replication operations via JMX or the <code>/metrics</code> endpoint for Infinispan Server.</p>
 </div>
 <div class="paragraph">
 <p>Infinispan also includes an <code>org.infinispan.XSITE</code> logging category so you can
@@ -2423,184 +2475,7 @@ monitor and troubleshoot common issues with networking and state transfer
 operations.</p>
 </div>
 <div class="sect2">
-<h3 id="enabling-statistics_xsite"><a class="anchor" href="#enabling-statistics_xsite"></a>4.1. Enabling Infinispan Statistics</h3>
-<div class="paragraph">
-<p>Configure Infinispan to export statistics for Cache Managers and caches.</p>
-</div>
-<div class="paragraph">
-<div class="title">Procedure</div>
-<p>Modify your configuration to enable Infinispan statistics in one of the following ways:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Declarative: Add the <code>statistics="true"</code> attribute.</p>
-</li>
-<li>
-<p>Programmatic: Call the <code>.statistics()</code> method.</p>
-</li>
-</ul>
-</div>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="comment">&lt;!-- Enables statistics for the Cache Manager. --&gt;</span>
-<span class="tag">&lt;cache-container</span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-  <span class="comment">&lt;!-- Enables statistics for the named cache. --&gt;</span>
-  <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">mycache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-<span class="tag">&lt;/cache-container&gt;</span></code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">Programmatic</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="java">GlobalConfiguration globalConfig = <span class="keyword">new</span> GlobalConfigurationBuilder()
-  <span class="comment">//Enables statistics for the Cache Manager.</span>
-  .cacheContainer().statistics(<span class="predefined-constant">true</span>)
-  .build();
-
-<span class="predefined-type">Configuration</span> config = <span class="keyword">new</span> ConfigurationBuilder()
-<span class="error"> </span> <span class="comment">//Enables statistics for the named cache.</span>
-  .statistics().enable()
-  .build();</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="configuring-metrics_xsite"><a class="anchor" href="#configuring-metrics_xsite"></a>4.2. Configuring Infinispan Metrics</h3>
-<div class="paragraph">
-<p>Configure Infinispan to export gauges and histograms via the <code>metrics</code> endpoint.</p>
-</div>
-<div class="ulist">
-<div class="title">Procedure</div>
-<ul>
-<li>
-<p>Turn gauges and histograms on or off in the <code>metrics</code> configuration as appropriate.</p>
-</li>
-</ul>
-</div>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="comment">&lt;!-- Computes and collects statistics for the Cache Manager. --&gt;</span>
-<span class="tag">&lt;cache-container</span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-  <span class="comment">&lt;!-- Exports collected statistics as gauge and histogram metrics. --&gt;</span>
-  <span class="tag">&lt;metrics</span> <span class="attribute-name">gauges</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">histograms</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
-<span class="tag">&lt;/cache-container&gt;</span></code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">Programmatic</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="java">GlobalConfiguration globalConfig = <span class="keyword">new</span> GlobalConfigurationBuilder()
-  <span class="comment">//Computes and collects statistics for the Cache Manager.</span>
-  .statistics().enable()
-  <span class="comment">//Exports collected statistics as gauge and histogram metrics.</span>
-  .metrics().gauges(<span class="predefined-constant">true</span>).histograms(<span class="predefined-constant">true</span>)
-  .build();</code></pre>
-</div>
-</div>
-<div class="sect3">
-<h4 id="collect_metrics"><a class="anchor" href="#collect_metrics"></a>4.2.1. Collecting Infinispan Metrics</h4>
-<div class="paragraph">
-<p>Collect Infinispan metrics with monitoring tools such as Prometheus.</p>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Enable statistics. If you do not enable statistics, Infinispan provides <code>0</code>
-and <code>-1</code> values for metrics.</p>
-</li>
-<li>
-<p>Optionally enable histograms. By default Infinispan generates gauges but not histograms.</p>
-</li>
-</ul>
-</div>
-<div class="ulist">
-<div class="title">Procedure</div>
-<ul>
-<li>
-<p>Get metrics in Prometheus (OpenMetrics) format:</p>
-<div class="listingblock">
-<div class="content">
-<pre>$ curl -v http://localhost:11222/metrics</pre>
-</div>
-</div>
-</li>
-<li>
-<p>Get metrics in MicroProfile JSON format:</p>
-<div class="listingblock">
-<div class="content">
-<pre>$ curl --header "Accept: application/json" http://localhost:11222/metrics</pre>
-</div>
-</div>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<div class="title">Next steps</div>
-<p>Configure monitoring applications to collect Infinispan metrics. For example,
-add the following to <code>prometheus.yml</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>static_configs:
-    - targets: ['localhost:11222']</pre>
-</div>
-</div>
-<div class="ulist">
-<div class="title">Reference</div>
-<ul>
-<li>
-<p><a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/">Prometheus Configuration</a></p>
-</li>
-<li>
-<p><a href="#enable_statistics">Enabling Infinispan Statistics</a></p>
-</li>
-</ul>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="enabling-jmx_xsite"><a class="anchor" href="#enabling-jmx_xsite"></a>4.3. Configuring Infinispan to Register JMX MBeans</h3>
-<div class="paragraph">
-<p>Infinispan can register JMX MBeans that you can use to collect statistics and
-perform administrative operations.
-You must enable statistics separately to JMX otherwise Infinispan provides <code>0</code> values for all statistic attributes.</p>
-</div>
-<div class="paragraph">
-<div class="title">Procedure</div>
-<p>Modify your cache container configuration to enable JMX in one of the following ways:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Declarative: Add the <code>&lt;jmx enabled="true" /&gt;</code> element to the cache container.</p>
-</li>
-<li>
-<p>Programmatic: Call the <code>.jmx().enable()</code> method.</p>
-</li>
-</ul>
-</div>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container&gt;</span>
-  <span class="tag">&lt;jmx</span> <span class="attribute-name">enabled</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
-<span class="tag">&lt;/cache-container&gt;</span></code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">Programmatic</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="java">GlobalConfiguration globalConfig = <span class="keyword">new</span> GlobalConfigurationBuilder()
-  .jmx().enable()
-  .build();</code></pre>
-</div>
-</div>
-<div class="sect3">
-<h4 id="jmx_xsite-xsite"><a class="anchor" href="#jmx_xsite-xsite"></a>4.3.1. JMX MBeans for Cross-Site Replication</h4>
+<h3 id="jmx_xsite-xsite"><a class="anchor" href="#jmx_xsite-xsite"></a>4.1. JMX MBeans for Cross-Site Replication</h3>
 <div class="paragraph">
 <p>Infinispan provides JMX MBeans for cross-site replication that let you gather
 statistics and perform remote operations.</p>
@@ -2617,7 +2492,10 @@ statistics and perform remote operations.</p>
 <p><code>StateTransferManager</code> provides statistics for state transfer operations.</p>
 </li>
 <li>
-<p><code>InboundInvocationHandler</code> provides statistics and operations for asynchronous and synchronous cross-site requests.</p>
+<p><code>RpcManager</code> provides statistics about network requests for cross-site replication.</p>
+</li>
+<li>
+<p><code>AsyncXSiteStatistics</code> provides statistics for asynchronous cross-site replication, including queue size and number of conflicts.</p>
 </li>
 </ul>
 </div>
@@ -2637,12 +2515,11 @@ and statistics, see the <em>Infinispan JMX Components</em> documentation.</p>
 </div>
 <div class="paragraph">
 <div class="title">Reference</div>
-<p><a href="https://docs.jboss.org/infinispan/12.1/apidocs/jmxComponents.html">Infinispan JMX Components</a></p>
-</div>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/jmxComponents.html">Infinispan JMX Components</a></p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="xsite_tshoot-xsite"><a class="anchor" href="#xsite_tshoot-xsite"></a>4.4. Collecting Logs and Troubleshooting Cross-Site Replication</h3>
+<h3 id="xsite_tshoot-xsite"><a class="anchor" href="#xsite_tshoot-xsite"></a>4.2. Collecting Logs and Troubleshooting Cross-Site Replication</h3>
 <div class="paragraph">
 <p>Diagnose and resolve issues related to Infinispan cross-site replication. Use
 the Infinispan Command Line Interface (CLI) to adjust log levels at run-time
@@ -2718,7 +2595,7 @@ transfer to the receiving site to return it to a normal operational state.</p>
 </ul>
 </div>
 <div class="sect3">
-<h4 id="xsite_logs-xsite"><a class="anchor" href="#xsite_logs-xsite"></a>4.4.1. Cross-Site Log Messages</h4>
+<h4 id="xsite_logs-xsite"><a class="anchor" href="#xsite_logs-xsite"></a>4.2.1. Cross-Site Log Messages</h4>
 <div class="paragraph">
 <p>Find user actions for log messages related to cross-site replication.</p>
 </div>
@@ -2820,7 +2697,7 @@ If you did not take the site offline manually, this message could indicate a fai
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-07-14 08:30:09 -0400
+Last updated 2021-10-12 16:36:44 -0400
 </div>
 </div>
 <style>
