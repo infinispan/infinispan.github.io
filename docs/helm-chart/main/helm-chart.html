@@ -452,17 +452,35 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel1">
 <li><a href="#install">1. Installing the Infinispan Helm chart</a>
 <ul class="sectlevel2">
-<li><a href="#installing-openshift-console_install">1.1. Installing the Helm chart through the OpenShift console</a></li>
-<li><a href="#installing-helm-chart-command-line_install">1.2. Installing the Helm chart on the command line</a></li>
+<li><a href="#installing-openshift-console_install">1.1. Installing the Infinispan chart through the OpenShift console</a></li>
+<li><a href="#installing-helm-chart-command-line_install">1.2. Installing the Infinispan chart on the command line</a></li>
+<li><a href="#uninstalling-helm-chart_install">1.3. Uninstalling the Helm chart</a></li>
 </ul>
 </li>
 <li><a href="#configuring-authentication">2. Configuring authentication</a>
 <ul class="sectlevel2">
 <li><a href="#credentials_configuring-authentication">2.1. Infinispan credentials</a></li>
-<li><a href="#adding-credentials_configuring-authentication">2.2. Adding custom user credentials</a></li>
-<li><a href="#adding-multiple-credentials_configuring-authentication">2.3. Adding multiple credentials with authentication secrets</a></li>
-<li><a href="#retrieving-credentials_configuring-authentication">2.4. Retrieving credentials</a></li>
-<li><a href="#disabling-authentication_configuring-authentication">2.5. Disabling authentication</a></li>
+<li><a href="#user-roles-permissions_configuring-authentication">2.2. User roles and permissions</a></li>
+<li><a href="#adding-credentials_configuring-authentication">2.3. Adding custom user credentials</a></li>
+<li><a href="#adding-multiple-credentials_configuring-authentication">2.4. Adding multiple credentials with authentication secrets</a></li>
+<li><a href="#retrieving-credentials_configuring-authentication">2.5. Retrieving credentials</a></li>
+<li><a href="#disabling-authentication_configuring-authentication">2.6. Disabling authentication</a></li>
+</ul>
+</li>
+<li><a href="#network-access">3. Configuring network access</a>
+<ul class="sectlevel2">
+<li><a href="#exposing-clusters-network_network-access">3.1. Exposing Infinispan clusters on the network</a></li>
+<li><a href="#retrieving-network-services_network-access">3.2. Retrieving network service details</a></li>
+<li><a href="#network-services_network-access">3.3. Network services</a></li>
+</ul>
+</li>
+<li><a href="#connecting-clusters">4. Connecting to Infinispan clusters</a>
+<ul class="sectlevel2">
+<li><a href="#connecting-console_connecting-clusters">4.1. Accessing Infinispan Console</a></li>
+<li><a href="#connecting-cli_connecting-clusters">4.2. Connecting with the command line interface (CLI)</a></li>
+<li><a href="#connecting-clients-internal_connecting-clusters">4.3. Connecting Hot Rod clients running on Kubernetes</a></li>
+<li><a href="#connecting-clients-external_connecting-clusters">4.4. Connecting Hot Rod clients running outside Kubernetes</a></li>
+<li><a href="#connecting-rest_connecting-clusters">4.5. Accessing the REST API</a></li>
 </ul>
 </li>
 </ul>
@@ -483,7 +501,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <p>Install the Helm chart to build and deploy Infinispan clusters.</p>
 </div>
 <div class="sect2">
-<h3 id="installing-openshift-console_install">1.1. Installing the Helm chart through the OpenShift console</h3>
+<h3 id="installing-openshift-console_install">1.1. Installing the Infinispan chart through the OpenShift console</h3>
 <div class="paragraph _abstract">
 <p>Use the OpenShift Web Console to install the Infinispan chart from the Red Hat developer catalog.</p>
 </div>
@@ -558,21 +576,24 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </div>
 </div>
 <div class="sect2">
-<h3 id="installing-helm-chart-command-line_install">1.2. Installing the Helm chart on the command line</h3>
+<h3 id="installing-helm-chart-command-line_install">1.2. Installing the Infinispan chart on the command line</h3>
 <div class="paragraph _abstract">
-<p>Use the <code>helm</code> and <code>oc</code> clients to create scripts that deploy Infinispan clusters on OpenShift or a Kubernetes cluster.</p>
+<p>Use the command line to deploy Infinispan clusters on OpenShift.</p>
 </div>
 <div class="ulist">
 <div class="title">Prerequisites</div>
 <ul>
 <li>
-<p>Have access to an OpenShift or Kubernetes cluster and an <code>oc</code> or <code>kubectl</code> client.</p>
-</li>
-<li>
 <p>Install the <code>helm</code> client.</p>
 </li>
 <li>
 <p>Add the <a href="https://github.com/openshift-helm-charts/charts/blob/main/README.md">OpenShift Helm Charts repository</a>.</p>
+</li>
+<li>
+<p>Have access to an OpenShift or Kubernetes cluster.</p>
+</li>
+<li>
+<p>Have a <code>kubectl</code> or <code>oc</code> client.</p>
 </li>
 </ul>
 </div>
@@ -580,13 +601,13 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Create a values file for your Infinispan cluster that you can pass to the Helm chart.</p>
+<p>Create a values file for your Infinispan cluster.</p>
 <div class="paragraph">
 <p>For example, the following values file creates a cluster with two nodes:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>$ cat &gt; infinispan-values.yaml&lt;&lt;EOF
+<pre class="highlight nowrap"><code>$ cat &gt; cluster-configuration.yaml&lt;&lt;EOF
 #Build configuration
 images:
   server: quay.io/infinispan/server:13.0
@@ -605,7 +626,7 @@ EOF</code></pre>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>To find descriptions for each of the Infinispan values, refer to the <a href="https://github.com/infinispan/infinispan-helm-charts/blob/main/README.md">Infinispan chart README</a>.</p>
+<p>You can find descriptions and values for each field in the <a href="https://github.com/infinispan/infinispan-helm-charts/blob/main/README.md">Infinispan chart README</a>.</p>
 </div>
 </td>
 </tr>
@@ -616,7 +637,7 @@ EOF</code></pre>
 <p>Install the Infinispan chart and specify the values file for your cluster.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>$ helm install infinispan openshift-helm-charts/infinispan-infinispan -f infinispan-values.yaml</code></pre>
+<pre class="highlight nowrap"><code>$ helm install infinispan openshift-helm-charts/infinispan-infinispan -f cluster-configuration.yaml</code></pre>
 </div>
 </div>
 </li>
@@ -630,6 +651,62 @@ EOF</code></pre>
 <div class="content">
 <pre class="highlight nowrap"><code>$ oc get pods -w</code></pre>
 </div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="uninstalling-helm-chart_install">1.3. Uninstalling the Helm chart</h3>
+<div class="paragraph _abstract">
+<p>Uninstall the Infinispan chart to remove pods and other deployment artifacts.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This procedure shows you how to uninstall the Infinispan chart and generated authentication secret with the <code>helm</code> and <code>kubectl</code> clients.
+You can also uninstall the Helm chart through the OpenShift Web Console.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Deploy the Infinispan chart.</p>
+</li>
+<li>
+<p>Have a <code>helm</code> client.</p>
+</li>
+<li>
+<p>Have a <code>kubectl</code> or <code>oc</code> client.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Use the <code>helm</code> client to remove the Infinispan chart, for example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">$ helm uninstall &lt;cluster_name&gt;</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Use the <code>kubectl</code> client to remove the generated secret.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">$ kubectl delete secret infinispan-generated-secret</code></pre>
+</div>
+</div>
+</li>
+</ol>
 </div>
 </div>
 </div>
@@ -684,15 +761,74 @@ You can also add credentials individually with the <code class="command">user cr
 </div>
 </div>
 <div class="sect2">
-<h3 id="adding-credentials_configuring-authentication">2.2. Adding custom user credentials</h3>
+<h3 id="user-roles-permissions_configuring-authentication">2.2. User roles and permissions</h3>
+<div class="paragraph _abstract">
+<p>Infinispan uses role-based access control to authorize users for access to cluster resources and data.
+For additional security, you should grant Infinispan users with appropriate roles when you add credentials.</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Role</th>
+<th class="tableblock halign-left valign-top">Permissions</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>admin</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Superuser with all permissions including control of the Cache Manager lifecycle.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>deployer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL_READ, ALL_WRITE, LISTEN, EXEC, MONITOR, CREATE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Can create and delete Infinispan resources in addition to <code>application</code> permissions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>application</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL_READ, ALL_WRITE, LISTEN, EXEC, MONITOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Has read and write access to Infinispan resources in addition to <code>observer</code> permissions. Can also listen to events and execute server tasks and scripts.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>observer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ALL_READ, MONITOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Has read access to Infinispan resources in addition to <code>monitor</code> permissions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>monitor</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MONITOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Can view statistics for Infinispan clusters.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://infinispan.org/docs/stable/titles/security/security.html">Infinispan Security Guide</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="adding-credentials_configuring-authentication">2.3. Adding custom user credentials</h3>
 <div class="paragraph _abstract">
 <p>Add custom credentials to Infinispan clusters.</p>
 </div>
-<div class="ulist">
+<div class="olist arabic">
 <div class="title">Procedure</div>
-<ul>
+<ol class="arabic">
 <li>
-<p>Specify a <code>user create</code> command for your credentials as the value of the <code>deploy.security.batch</code> field in your Infinispan Helm chart.</p>
+<p>Open the values file for your Infinispan cluster.</p>
+</li>
+<li>
+<p>Specify a <code>user create</code> command for your credentials as the value of the <code>deploy.security.batch</code> field.</p>
 <div class="paragraph">
 <p>The following example creates a user named "user1" that has the <code>deployer</code> role:</p>
 </div>
@@ -705,13 +841,27 @@ You can also add credentials individually with the <code class="command">user cr
 </div>
 </div>
 </li>
-</ul>
+<li>
+<p>Save and close your values file.</p>
+</li>
+<li>
+<p>Install the Helm chart to deploy your Infinispan cluster.</p>
+</li>
+</ol>
 </div>
 </div>
 <div class="sect2">
-<h3 id="adding-multiple-credentials_configuring-authentication">2.3. Adding multiple credentials with authentication secrets</h3>
+<h3 id="adding-multiple-credentials_configuring-authentication">2.4. Adding multiple credentials with authentication secrets</h3>
 <div class="paragraph _abstract">
 <p>Add multiple credentials to Infinispan clusters with authentication secrets.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Have a <code>kubectl</code> or <code>oc</code> client.</p>
+</li>
+</ul>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -743,12 +893,15 @@ stringData:
 <p>Create an authentication secret from your <code>identities-batch</code> file.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>$ oc apply -f identities-batch.yaml</code></pre>
+<pre class="highlight nowrap"><code>$ kubectl apply -f identities-batch.yaml</code></pre>
 </div>
 </div>
 </li>
 <li>
-<p>Specify the name of the authentication secret as the value of the <code>deploy.security.SecretName</code> field in your Infinispan Helm chart.</p>
+<p>Open the values file for your Infinispan cluster.</p>
+</li>
+<li>
+<p>Specify the name of the authentication secret as the value of the <code>deploy.security.SecretName</code> field.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>deploy:
@@ -758,11 +911,17 @@ stringData:
 </div>
 </div>
 </li>
+<li>
+<p>Save and close your values file.</p>
+</li>
+<li>
+<p>Install the Helm chart to deploy your Infinispan cluster.</p>
+</li>
 </ol>
 </div>
 </div>
 <div class="sect2">
-<h3 id="retrieving-credentials_configuring-authentication">2.4. Retrieving credentials</h3>
+<h3 id="retrieving-credentials_configuring-authentication">2.5. Retrieving credentials</h3>
 <div class="paragraph _abstract">
 <p>Get Infinispan credentials from authentication secrets.</p>
 </div>
@@ -773,7 +932,7 @@ stringData:
 <p>Install the Infinispan Helm chart.</p>
 </li>
 <li>
-<p>Have an <code>oc</code> client.</p>
+<p>Have a <code>kubectl</code> or <code>oc</code> client.</p>
 </li>
 </ul>
 </div>
@@ -784,7 +943,7 @@ stringData:
 <p>Retrieve default credentials from the <code>infinispan-generated-secret</code> or custom credentials from another secret with the following command:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>$ oc get secret infinispan-generated-secret \
+<pre class="highlight nowrap"><code>$ kubectl get secret infinispan-generated-secret \
 -o jsonpath="{.data.identities-batch}" | base64 --decode</code></pre>
 </div>
 </div>
@@ -793,7 +952,7 @@ stringData:
 </div>
 </div>
 <div class="sect2">
-<h3 id="disabling-authentication_configuring-authentication">2.5. Disabling authentication</h3>
+<h3 id="disabling-authentication_configuring-authentication">2.6. Disabling authentication</h3>
 <div class="paragraph _abstract">
 <p>Allow users to access Infinispan clusters and manipulate data without providing credentials.</p>
 </div>
@@ -805,24 +964,30 @@ stringData:
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Do not disable authentication if endpoints are accessible from outside the OpenShift cluster.
+<p>Do not disable authentication if endpoints are accessible from outside the Kubernetes cluster.
 You should disable authentication for development environments only.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
-<div class="paragraph">
-<div class="title">Procedure</div>
-<p>Apply the following changes to your Infinispan Helm chart:</p>
-</div>
 <div class="olist arabic">
+<div class="title">Procedure</div>
 <ol class="arabic">
+<li>
+<p>Open the values file for your Infinispan cluster.</p>
+</li>
 <li>
 <p>Remove any <code>securityRealm</code> fields from <code>deploy.infinispan.server.endpoints</code>.</p>
 </li>
 <li>
 <p>Remove any <code>authentication</code> fields from <code>deploy.infinispan.server.endpoints.connectors</code>.</p>
+</li>
+<li>
+<p>Save and close your values file.</p>
+</li>
+<li>
+<p>Install the Helm chart to deploy your Infinispan cluster.</p>
 </li>
 </ol>
 </div>
@@ -837,10 +1002,466 @@ You should disable authentication for development environments only.</p>
 </div>
 </div>
 </div>
+<div class="sect1">
+<h2 id="network-access">3. Configuring network access</h2>
+<div class="sectionbody">
+<div class="paragraph _abstract">
+<p>Configure network access for your Infinispan deployment and find out about internal network services.</p>
+</div>
+<div class="sect2">
+<h3 id="exposing-clusters-network_network-access">3.1. Exposing Infinispan clusters on the network</h3>
+<div class="paragraph _abstract">
+<p>Make Infinispan clusters available on the network so you can access Infinispan Console as well as REST and Hot Rod endpoints.
+By default, the Infinispan chart exposes deployments through a Route but you can configure it to expose clusters via Load Balancer or Node Port.
+You can also configure the Infinispan chart so that deployments are not exposed on the network and only available internally to the Kubernetes cluster.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Open the values file for your Infinispan cluster.</p>
+</li>
+<li>
+<p>Specify one of the following for the <code>deploy.expose.type</code> field:</p>
+<table class="tableblock frame-all grid-all stripes-even stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Option</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Route</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exposes Infinispan through an ingress. This is the default value.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LoadBalancer</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exposes Infinispan through a load balancer service.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NodePort</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Exposes Infinispan through a node port service.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>""</code> (empty value)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Disables exposing Infinispan on the network.</p></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p>Optionally specify a hostname with the <code>deploy.expose.host</code> field if you expose Infinispan through an ingress.</p>
+</li>
+<li>
+<p>Optionally specify a port with the <code>deploy.expose.nodePort</code> field if you expose Infinispan through a node port service.</p>
+</li>
+<li>
+<p>Save and close your values file.</p>
+</li>
+<li>
+<p>Install the Helm chart to deploy your Infinispan cluster.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="retrieving-network-services_network-access">3.2. Retrieving network service details</h3>
+<div class="paragraph _abstract">
+<p>Get network service details so you can connect to Infinispan clusters.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Expose your Infinispan cluster on the network.</p>
+</li>
+<li>
+<p>Have a <code>kubectl</code> or <code>oc</code> client.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<div class="title">Procedure</div>
+<p>Use one of the following commands to retrieve network service details:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>If you expose Infinispan through an ingress:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ kubectl get ingress</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>If you expose Infinispan through a load balancer or node port service:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ kubectl get services</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="network-services_network-access">3.3. Network services</h3>
+<div class="paragraph _abstract">
+<p>The Infinispan chart creates default network services for internal access.</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Service</th>
+<th class="tableblock halign-left valign-top">Port</th>
+<th class="tableblock halign-left valign-top">Protocol</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>&lt;cluster_name&gt;</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>11222</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Provides internal access to Infinispan endpoints with an additional port offset by 1 for each node in the cluster.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>&lt;cluster_name&gt;-ping</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>8888</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Allows Infinispan pods to discover each other and form clusters.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>You can retrieve details about internal network services as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>$ kubectl get services
+
+NAME              TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)
+infinispan        ClusterIP   192.0.2.0        &lt;none&gt;        11222/TCP,11223/TCP
+infinispan-ping   ClusterIP   None             &lt;none&gt;        8888/TCP</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="connecting-clusters">4. Connecting to Infinispan clusters</h2>
+<div class="sectionbody">
+<div class="paragraph _abstract">
+<p>After you configure and deploy Infinispan clusters you can establish remote connections through the Infinispan Console, command line interface (CLI), Hot Rod client, or REST API.</p>
+</div>
+<div class="sect2">
+<h3 id="connecting-console_connecting-clusters">4.1. Accessing Infinispan Console</h3>
+<div class="paragraph _abstract">
+<p>Access the console to create caches, perform adminstrative operations, and monitor your Infinispan clusters.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Expose your Infinispan cluster on the network.</p>
+</li>
+<li>
+<p>Retrieve network service details.</p>
+</li>
+</ul>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Access Infinispan Console from any browser at <code>$SERVICE_HOSTNAME:$PORT</code>.</p>
+<div class="paragraph">
+<p>Replace <code>$SERVICE_HOSTNAME:$PORT</code> with the hostname and port where Infinispan is available on the network.</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="connecting-cli_connecting-clusters">4.2. Connecting with the command line interface (CLI)</h3>
+<div class="paragraph _abstract">
+<p>Use the Infinispan CLI to connect to clusters and create caches, manipulate data, and perform administrative operations.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Expose your Infinispan cluster on the network.</p>
+</li>
+<li>
+<p>Retrieve network service details.</p>
+</li>
+<li>
+<p>Download the native Infinispan CLI distribution from <a href="https://github.com/infinispan/infinispan-quarkus/releases/">infinispan-quarkus releases</a>.</p>
+</li>
+<li>
+<p>Extract the <code>.zip</code> archive for the native Infinispan CLI distribution to your host filesystem.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Start the Infinispan CLI with the network service as the value for the <code>-c</code> argument, for example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">$ infinispan-cli -c http://cluster-name-myroute.hostname.net/</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Enter your Infinispan credentials when prompted.</p>
+</li>
+<li>
+<p>Perform CLI operations as required.</p>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Press the tab key or use the <code class="command">--help</code> argument to view available options and help text.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>Use the <code class="command">quit</code> command to exit the CLI.</p>
+</li>
+</ol>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://infinispan.org/docs/stable/titles/cli/cli.html">Using the Infinispan Command Line Interface</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="connecting-clients-internal_connecting-clusters">4.3. Connecting Hot Rod clients running on Kubernetes</h3>
+<div class="paragraph _abstract">
+<p>Access remote caches with Hot Rod clients running on the same Kubernetes cluster as your Infinispan cluster.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Retrieve network service details.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Specify the internal network service detail for your Infinispan cluster in the client configuration.</p>
+<div class="paragraph">
+<p>In the following configuration examples, <code>$SERVICE_HOSTNAME:$PORT</code> denotes the hostname and port that allows access to your Infinispan cluster.</p>
+</div>
+</li>
+<li>
+<p>Specify your credentials so the client can authenticate with Infinispan.</p>
+</li>
+<li>
+<p>Configure client intelligence, if required.</p>
+<div class="paragraph">
+<p>Hot Rod clients running on Kubernetes can use any client intelligence because they can access internal IP addresses for Infinispan pods.<br>
+The default intelligence, <code>HASH_DISTRIBUTION_AWARE</code>, is recommended because it allows clients to route requests to primary owners, which improves performance.</p>
+</div>
+</li>
+</ol>
+</div>
+<h4 id="_programmatic_configuration" class="discrete">Programmatic configuration</h4>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-java" data-lang="java">import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
+import org.infinispan.client.hotrod.configuration.SaslQop;
+import org.infinispan.client.hotrod.impl.ConfigurationProperties;
+...
+
+ConfigurationBuilder builder = new ConfigurationBuilder();
+      builder.addServer()
+               .host("$SERVICE_HOSTNAME")
+               .port(ConfigurationProperties.DEFAULT_HOTROD_PORT)
+             .security().authentication()
+               .username("username")
+               .password("changeme")
+               .realm("default")
+               .saslQop(SaslQop.AUTH)
+               .saslMechanism("SCRAM-SHA-512");</code></pre>
+</div>
+</div>
+<h4 id="_hot_rod_client_properties" class="discrete">Hot Rod client properties</h4>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code># Connection
+infinispan.client.hotrod.server_list=$SERVICE_HOSTNAME:$PORT
+
+# Authentication
+infinispan.client.hotrod.use_auth=true
+infinispan.client.hotrod.auth_username=developer
+infinispan.client.hotrod.auth_password=$PASSWORD
+infinispan.client.hotrod.auth_server_name=$CLUSTER_NAME
+infinispan.client.hotrod.sasl_properties.javax.security.sasl.qop=auth
+infinispan.client.hotrod.sasl_mechanism=SCRAM-SHA-512</code></pre>
+</div>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://infinispan.org/docs/stable/titles/hotrod_java/hotrod_java.html">Hot Rod Java Client Guide</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="connecting-clients-external_connecting-clusters">4.4. Connecting Hot Rod clients running outside Kubernetes</h3>
+<div class="paragraph _abstract">
+<p>Access remote caches with Hot Rod clients running externally to the Kubernetes cluster where you deploy your Infinispan cluster.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Expose your Infinispan cluster on the network.</p>
+</li>
+<li>
+<p>Retrieve network service details.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Specify the internal network service detail for your Infinispan cluster in the client configuration.</p>
+<div class="paragraph">
+<p>In the following configuration examples, <code>$SERVICE_HOSTNAME:$PORT</code> denotes the hostname and port that allows access to your Infinispan cluster.</p>
+</div>
+</li>
+<li>
+<p>Specify your credentials so the client can authenticate with Infinispan.</p>
+</li>
+<li>
+<p>Configure clients to use <code>BASIC</code> intelligence.</p>
+</li>
+</ol>
+</div>
+<h4 id="_programmatic_configuration_2" class="discrete">Programmatic configuration</h4>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-java" data-lang="java">import org.infinispan.client.hotrod.configuration.ClientIntelligence;
+import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
+import org.infinispan.client.hotrod.configuration.SaslQop;
+...
+
+ConfigurationBuilder builder = new ConfigurationBuilder();
+      builder.addServer()
+               .host("$SERVICE_HOSTNAME")
+               .port("$PORT")
+             .security().authentication()
+               .username("username")
+               .password("changeme")
+               .realm("default")
+               .saslQop(SaslQop.AUTH)
+               .saslMechanism("SCRAM-SHA-512");
+      builder.clientIntelligence(ClientIntelligence.BASIC);</code></pre>
+</div>
+</div>
+<h4 id="_hot_rod_client_properties_2" class="discrete">Hot Rod client properties</h4>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code># Connection
+infinispan.client.hotrod.server_list=$SERVICE_HOSTNAME:$PORT
+
+# Client intelligence
+infinispan.client.hotrod.client_intelligence=BASIC
+
+# Authentication
+infinispan.client.hotrod.use_auth=true
+infinispan.client.hotrod.auth_username=developer
+infinispan.client.hotrod.auth_password=$PASSWORD
+infinispan.client.hotrod.auth_server_name=$CLUSTER_NAME
+infinispan.client.hotrod.sasl_properties.javax.security.sasl.qop=auth
+infinispan.client.hotrod.sasl_mechanism=SCRAM-SHA-512</code></pre>
+</div>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://infinispan.org/docs/stable/titles/hotrod_java/hotrod_java.html">Hot Rod Java Client Guide</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="connecting-rest_connecting-clusters">4.5. Accessing the REST API</h3>
+<div class="paragraph _abstract">
+<p>Infinispan provides a RESTful interface that you can interact with using HTTP clients.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Expose your Infinispan cluster on the network.</p>
+</li>
+<li>
+<p>Retrieve network service details.</p>
+</li>
+</ul>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Access the REST API with any HTTP client at <code>$SERVICE_HOSTNAME:$PORT/rest/v2</code>.</p>
+<div class="paragraph">
+<p>Replace <code>$SERVICE_HOSTNAME:$PORT</code> with the hostname and port where Infinispan is available on the network.</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://infinispan.org/docs/stable/titles/rest/rest.html">Infinispan REST API</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-11-08 10:57:09 -0500
+Last updated 2021-11-18 03:25:09 -0500
 </div>
 </div>
 <script>
