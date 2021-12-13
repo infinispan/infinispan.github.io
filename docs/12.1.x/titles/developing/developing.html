@@ -537,7 +537,7 @@ $(addBlockSwitches);
 <li><a href="#member_information">2.3. Member Information</a></li>
 </ul>
 </li>
-<li><a href="#cache_api">3. Infinispan Cache Interface</a>
+<li><a href="#cache_api">3. Cache Interface</a>
 <ul class="sectlevel2">
 <li><a href="#cache_api_2">3.1. Cache API</a>
 <ul class="sectlevel3">
@@ -665,37 +665,31 @@ $(addBlockSwitches);
 <li><a href="#clustered_counters_notify_events">6.4. Notifications and Events</a></li>
 </ul>
 </li>
-<li><a href="#locking_concurrency">7. Locking and Concurrency</a>
+<li><a href="#cdi_support">7. Using the CDI Extension</a>
 <ul class="sectlevel2">
-<li><a href="#locking_implementation_details">7.1. Locking implementation details</a>
+<li><a href="#cdi_dependencies">7.1. CDI Dependencies</a></li>
+<li><a href="#cdi_inject_embed">7.2. Injecting Embedded Caches</a></li>
+<li><a href="#cdi_inject_remote">7.3. Injecting Remote Caches</a></li>
+<li><a href="#jcache_annotations">7.4. JCache Caching Annotations</a></li>
+<li><a href="#cache_events">7.5. Receiving Cache and Cache Manager Events</a></li>
+</ul>
+</li>
+<li><a href="#locking_concurrency">8. Locking and Concurrency</a>
+<ul class="sectlevel2">
+<li><a href="#locking_implementation_details">8.1. Locking implementation details</a>
 <ul class="sectlevel3">
-<li><a href="#how_does_it_work_in_clustered_caches">7.1.1. How does it work in clustered caches?</a>
-<ul class="sectlevel4">
-<li><a href="#non_transactional_caches">Non Transactional caches</a></li>
+<li><a href="#clustered_caches_and_locks">8.1.1. Clustered caches and locks</a></li>
+<li><a href="#the_lockmanager">8.1.2. The LockManager</a></li>
+<li><a href="#lock_striping">8.1.3. Lock striping</a></li>
+<li><a href="#concurrency_levels">8.1.4. Concurrency levels</a></li>
+<li><a href="#lock_timeout">8.1.5. Lock timeout</a></li>
+<li><a href="#consistency">8.1.6. Consistency</a></li>
 </ul>
 </li>
-<li><a href="#transactional_caches">7.1.2. Transactional caches</a></li>
-<li><a href="#isolation_levels">7.1.3. Isolation levels</a></li>
-<li><a href="#the_lockmanager">7.1.4. The LockManager</a></li>
-<li><a href="#lock_striping">7.1.5. Lock striping</a></li>
-<li><a href="#concurrency_levels">7.1.6. Concurrency levels</a></li>
-<li><a href="#lock_timeout">7.1.7. Lock timeout</a></li>
-<li><a href="#consistency">7.1.8. Consistency</a></li>
+<li><a href="#data_versioning">8.2. Data Versioning</a></li>
 </ul>
 </li>
-<li><a href="#data_versioning">7.2. Data Versioning</a></li>
-</ul>
-</li>
-<li><a href="#cdi_support">8. Using the Infinispan CDI Extension</a>
-<ul class="sectlevel2">
-<li><a href="#cdi_dependencies">8.1. CDI Dependencies</a></li>
-<li><a href="#cdi_inject_embed">8.2. Injecting Embedded Caches</a></li>
-<li><a href="#cdi_inject_remote">8.3. Injecting Remote Caches</a></li>
-<li><a href="#jcache_annotations">8.4. JCache Caching Annotations</a></li>
-<li><a href="#cache_events">8.5. Receiving Cache and Cache Manager Events</a></li>
-</ul>
-</li>
-<li><a href="#transaction_manager">9. Infinispan Transactions</a>
+<li><a href="#transaction_manager">9. Transactions</a>
 <ul class="sectlevel2">
 <li><a href="#tx_configuration">9.1. Configuring transactions</a></li>
 <li><a href="#tx_isolation_levels">9.2. Isolation levels</a></li>
@@ -735,7 +729,6 @@ $(addBlockSwitches);
 <li><a href="#force_commitrollback_based_on_xid">Force commit/rollback based on XID</a></li>
 </ul>
 </li>
-<li><a href="#want_to_know_more">9.8.7. Want to know more?</a></li>
 </ul>
 </li>
 </ul>
@@ -946,7 +939,7 @@ artifact you add as a dependency to your project.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;properties&gt;</span>
-  <span class="tag">&lt;version.infinispan&gt;</span>12.1.7.Final<span class="tag">&lt;/version.infinispan&gt;</span>
+  <span class="tag">&lt;version.infinispan&gt;</span>12.1.8.Final<span class="tag">&lt;/version.infinispan&gt;</span>
 <span class="tag">&lt;/properties&gt;</span>
 
 <span class="tag">&lt;dependencyManagement&gt;</span>
@@ -1099,7 +1092,7 @@ method directly to see if the local node is the coordinator as well.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="cache_api"><a class="anchor" href="#cache_api"></a>3. Infinispan Cache Interface</h2>
+<h2 id="cache_api"><a class="anchor" href="#cache_api"></a>3. Cache Interface</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan provides a <a href="https://docs.jboss.org/infinispan/12.1/apidocs/org/infinispan/Cache.html">Cache</a> interface that exposes simple methods for adding, retrieving and removing entries, including atomic mechanisms exposed by the JDK&#8217;s ConcurrentMap interface.  Based on the cache mode used, invoking these methods will trigger a number of things to happen, potentially even including replicating an entry to a remote node or looking up an entry from a remote node, or potentially a cache store.</p>
@@ -4331,251 +4324,7 @@ The weak counter <code>reset()</code> operation will trigger multiple notificati
 </div>
 </div>
 <div class="sect1">
-<h2 id="locking_concurrency"><a class="anchor" href="#locking_concurrency"></a>7. Locking and Concurrency</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Infinispan makes use of multi-versioned concurrency control (<a href="http://en.wikipedia.org/wiki/Multiversion_concurrency_control">MVCC</a>) - a concurrency scheme popular with relational databases and other data stores.
-MVCC offers many advantages over coarse-grained Java synchronization and even JDK Locks for access to shared data, including:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>allowing concurrent readers and writers</p>
-</li>
-<li>
-<p>readers and writers do not block one another</p>
-</li>
-<li>
-<p>write skews can be detected and handled</p>
-</li>
-<li>
-<p>internal locks can be striped</p>
-</li>
-</ul>
-</div>
-<div class="sect2">
-<h3 id="locking_implementation_details"><a class="anchor" href="#locking_implementation_details"></a>7.1. Locking implementation details</h3>
-<div class="paragraph">
-<p>Infinispan&#8217;s MVCC implementation makes use of minimal locks and synchronizations, leaning heavily towards lock-free techniques such as <a href="http://en.wikipedia.org/wiki/Compare-and-swap">compare-and-swap</a> and lock-free data structures wherever possible, which helps optimize for multi-CPU and multi-core environments.</p>
-</div>
-<div class="paragraph">
-<p>In particular, Infinispan&#8217;s MVCC implementation is heavily optimized for readers.
-Reader threads do not acquire explicit locks for entries, and instead directly read the entry in question.</p>
-</div>
-<div class="paragraph">
-<p>Writers, on the other hand, need to acquire a write lock.
-This ensures only one concurrent writer per entry, causing concurrent writers to queue up to change an entry.</p>
-</div>
-<div class="paragraph">
-<p>To allow concurrent reads, writers make a copy of the entry they intend to modify, by wrapping the entry in an <code>MVCCEntry</code>.
-This copy isolates concurrent readers from seeing partially modified state.
-Once a write has completed, <code>MVCCEntry.commit()</code> will flush changes to the data container and subsequent readers will see the changes written.</p>
-</div>
-<div class="sect3">
-<h4 id="how_does_it_work_in_clustered_caches"><a class="anchor" href="#how_does_it_work_in_clustered_caches"></a>7.1.1. How does it work in clustered caches?</h4>
-<div class="paragraph">
-<p>In clustered caches, each key has a node responsible to lock the key. This node is called primary owner.</p>
-</div>
-<div class="sect4">
-<h5 id="non_transactional_caches"><a class="anchor" href="#non_transactional_caches"></a>Non Transactional caches</h5>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>The write operation is sent to the primary owner of the key.</p>
-</li>
-<li>
-<p>The primary owner tries to lock the key.</p>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>If it succeeds, it forwards the operation to the other owners;</p>
-</li>
-<li>
-<p>Otherwise, an exception is thrown.</p>
-</li>
-</ol>
-</div>
-</li>
-</ol>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-If the operation is conditional and it fails on the primary owner, it is not forwarded to the other owners.
-</td>
-</tr>
-</table>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-If the operation is executed locally in the primary owner, the first step is skipped.
-</td>
-</tr>
-</table>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="transactional_caches"><a class="anchor" href="#transactional_caches"></a>7.1.2. Transactional caches</h4>
-<div class="paragraph">
-<p>The transactional cache supports optimistic and pessimistic locking mode.
-Refer to Transaction Locking for more information.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="isolation_levels"><a class="anchor" href="#isolation_levels"></a>7.1.3. Isolation levels</h4>
-<div class="paragraph">
-<p>Isolation level affects what transactions can read when running concurrently with other transaction.
-Refer to Isolation Levels for more information.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="the_lockmanager"><a class="anchor" href="#the_lockmanager"></a>7.1.4. The LockManager</h4>
-<div class="paragraph">
-<p>The <code>LockManager</code> is a component that is responsible for locking an entry for writing.
-The <code>LockManager</code> makes use of a <code>LockContainer</code> to locate/hold/create locks.
-<code>LockContainers</code> come in two broad flavours, with support for lock striping and with support for one lock per entry.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="lock_striping"><a class="anchor" href="#lock_striping"></a>7.1.5. Lock striping</h4>
-<div class="paragraph">
-<p>Lock striping entails the use of a fixed-size, shared collection of locks for the entire cache, with locks being allocated to entries based on the entry&#8217;s key&#8217;s hash code.
-Similar to the way the JDK&#8217;s <code>ConcurrentHashMap</code> allocates locks, this allows for a highly scalable, fixed-overhead locking mechanism in exchange for potentially unrelated entries being blocked by the same lock.</p>
-</div>
-<div class="paragraph">
-<p>The alternative is to disable lock striping - which would mean a <em>new</em> lock is created per entry.
-This approach <em>may</em> give you greater concurrent throughput, but it will be at the cost of additional memory usage, garbage collection churn, etc.</p>
-</div>
-<div class="admonitionblock important">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-important" title="Important"></i>
-</td>
-<td class="content">
-<div class="title">Default lock striping settings</div>
-lock striping is disabled by default, due to potential deadlocks that can happen if locks for different keys end up in the same lock stripe.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>The size of the shared lock collection used by lock striping can be tuned using the <code>concurrencyLevel</code> attribute of the <code>&lt;locking /&gt;</code> configuration element.</p>
-</div>
-<div class="paragraph">
-<p><strong>Configuration example:</strong></p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;locking</span> <span class="attribute-name">striping</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false|true</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Or</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">new</span> ConfigurationBuilder().locking().useLockStriping(<span class="predefined-constant">false</span>|<span class="predefined-constant">true</span>);</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="concurrency_levels"><a class="anchor" href="#concurrency_levels"></a>7.1.6. Concurrency levels</h4>
-<div class="paragraph">
-<p>In addition to determining the size of the striped lock container, this concurrency level is also used to tune any JDK <code>ConcurrentHashMap</code> based collections where related, such as internal to <code>DataContainer</code>s.
-Please refer to the JDK <code>ConcurrentHashMap</code> Javadocs for a detailed discussion of concurrency levels, as this parameter is used in exactly the same way in Infinispan.</p>
-</div>
-<div class="paragraph">
-<p><strong>Configuration example:</strong></p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;locking</span> <span class="attribute-name">concurrency-level</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">32</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Or</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">new</span> ConfigurationBuilder().locking().concurrencyLevel(<span class="integer">32</span>);</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="lock_timeout"><a class="anchor" href="#lock_timeout"></a>7.1.7. Lock timeout</h4>
-<div class="paragraph">
-<p>The lock timeout specifies the amount of time, in milliseconds, to wait for a contented lock.</p>
-</div>
-<div class="paragraph">
-<p><strong>Configuration example:</strong></p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;locking</span> <span class="attribute-name">acquire-timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Or</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">new</span> ConfigurationBuilder().locking().lockAcquisitionTimeout(<span class="integer">10000</span>);
-<span class="comment">//alternatively</span>
-<span class="keyword">new</span> ConfigurationBuilder().locking().lockAcquisitionTimeout(<span class="integer">10</span>, <span class="predefined-type">TimeUnit</span>.SECONDS);</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="consistency"><a class="anchor" href="#consistency"></a>7.1.8. Consistency</h4>
-<div class="paragraph">
-<p>The fact that a single owner is locked (as opposed to all owners being locked) does not break the following consistency guarantee:
-if key <code>K</code> is hashed to nodes <code>{A, B}</code> and transaction <code>TX1</code> acquires a lock for <code>K</code>, let&#8217;s say on <code>A</code>.
-If another transaction, <code>TX2</code>, is started on <code>B</code> (or any other node) and <code>TX2</code> tries to lock <code>K</code> then it will fail with a timeout as the lock is already held by <code>TX1</code>.
-The reason for this is the that the lock for a key <code>K</code> is always, deterministically, acquired on the same node of the cluster, regardless of where the transaction originates.</p>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="data_versioning"><a class="anchor" href="#data_versioning"></a>7.2. Data Versioning</h3>
-<div class="paragraph">
-<p>Infinispan supports two forms of data versioning: simple and external.
-The simple versioning is used in transactional caches for write skew check.</p>
-</div>
-<div class="paragraph">
-<p>The external versioning is used to encapsulate an external source of data versioning within Infinispan, such as when using Infinispan with Hibernate which in turn gets its data version information directly from a database.</p>
-</div>
-<div class="paragraph">
-<p>In this scheme, a mechanism to pass in the version becomes necessary, and overloaded versions of <code>put()</code> and <code>putForExternalRead()</code> will be provided in <code>AdvancedCache</code> to take in an external data version.
-This is then stored on the <code>InvocationContext</code> and applied to the entry at commit time.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Write skew checks cannot and will not be performed in the case of external data versioning.
-</td>
-</tr>
-</table>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="cdi_support"><a class="anchor" href="#cdi_support"></a>8. Using the Infinispan CDI Extension</h2>
+<h2 id="cdi_support"><a class="anchor" href="#cdi_support"></a>7. Using the CDI Extension</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan provides an extension that integrates with the CDI (Contexts and
@@ -4598,7 +4347,7 @@ Dependency Injection) programming model and allows you to:</p>
 </ul>
 </div>
 <div class="sect2">
-<h3 id="cdi_dependencies"><a class="anchor" href="#cdi_dependencies"></a>8.1. CDI Dependencies</h3>
+<h3 id="cdi_dependencies"><a class="anchor" href="#cdi_dependencies"></a>7.1. CDI Dependencies</h3>
 <div class="paragraph">
 <p>Update your <code>pom.xml</code> with one of the following dependencies to include the
 Infinispan CDI extension in your project:</p>
@@ -4623,7 +4372,7 @@ Infinispan CDI extension in your project:</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cdi_inject_embed"><a class="anchor" href="#cdi_inject_embed"></a>8.2. Injecting Embedded Caches</h3>
+<h3 id="cdi_inject_embed"><a class="anchor" href="#cdi_inject_embed"></a>7.2. Injecting Embedded Caches</h3>
 <div class="paragraph">
 <p>Set up CDI beans to inject embedded caches.</p>
 </div>
@@ -4772,7 +4521,7 @@ public class GreetingService {
 </div>
 </div>
 <div class="sect2">
-<h3 id="cdi_inject_remote"><a class="anchor" href="#cdi_inject_remote"></a>8.3. Injecting Remote Caches</h3>
+<h3 id="cdi_inject_remote"><a class="anchor" href="#cdi_inject_remote"></a>7.3. Injecting Remote Caches</h3>
 <div class="paragraph">
 <p>Set up CDI beans to inject remote caches.</p>
 </div>
@@ -4878,7 +4627,7 @@ import javax.enterprise.context.ApplicationScoped;
 </div>
 </div>
 <div class="sect2">
-<h3 id="jcache_annotations"><a class="anchor" href="#jcache_annotations"></a>8.4. JCache Caching Annotations</h3>
+<h3 id="jcache_annotations"><a class="anchor" href="#jcache_annotations"></a>7.4. JCache Caching Annotations</h3>
 <div class="paragraph">
 <p>You can use the following JCache caching annotations with CDI managed beans when JCache artifacts are on the classpath:</p>
 </div>
@@ -4989,7 +4738,7 @@ the cache name as in the following example:</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cache_events"><a class="anchor" href="#cache_events"></a>8.5. Receiving Cache and Cache Manager Events</h3>
+<h3 id="cache_events"><a class="anchor" href="#cache_events"></a>7.5. Receiving Cache and Cache Manager Events</h3>
 <div class="paragraph">
 <p>You can use CDI Events to receive Cache and cache manager level events.</p>
 </div>
@@ -5024,7 +4773,212 @@ the cache name as in the following example:</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="transaction_manager"><a class="anchor" href="#transaction_manager"></a>9. Infinispan Transactions</h2>
+<h2 id="locking_concurrency"><a class="anchor" href="#locking_concurrency"></a>8. Locking and Concurrency</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan makes use of multi-versioned concurrency control (<a href="http://en.wikipedia.org/wiki/Multiversion_concurrency_control">MVCC</a>) - a concurrency scheme popular with relational databases and other data stores.
+MVCC offers many advantages over coarse-grained Java synchronization and even JDK Locks for access to shared data, including:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>allowing concurrent readers and writers</p>
+</li>
+<li>
+<p>readers and writers do not block one another</p>
+</li>
+<li>
+<p>write skews can be detected and handled</p>
+</li>
+<li>
+<p>internal locks can be striped</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="locking_implementation_details"><a class="anchor" href="#locking_implementation_details"></a>8.1. Locking implementation details</h3>
+<div class="paragraph">
+<p>Infinispan&#8217;s MVCC implementation makes use of minimal locks and synchronizations, leaning heavily towards lock-free techniques such as <a href="http://en.wikipedia.org/wiki/Compare-and-swap">compare-and-swap</a> and lock-free data structures wherever possible, which helps optimize for multi-CPU and multi-core environments.</p>
+</div>
+<div class="paragraph">
+<p>In particular, Infinispan&#8217;s MVCC implementation is heavily optimized for readers.
+Reader threads do not acquire explicit locks for entries, and instead directly read the entry in question.</p>
+</div>
+<div class="paragraph">
+<p>Writers, on the other hand, need to acquire a write lock.
+This ensures only one concurrent writer per entry, causing concurrent writers to queue up to change an entry.</p>
+</div>
+<div class="paragraph">
+<p>To allow concurrent reads, writers make a copy of the entry they intend to modify, by wrapping the entry in an <code>MVCCEntry</code>.
+This copy isolates concurrent readers from seeing partially modified state.
+Once a write has completed, <code>MVCCEntry.commit()</code> will flush changes to the data container and subsequent readers will see the changes written.</p>
+</div>
+<div class="sect3">
+<h4 id="clustered_caches_and_locks"><a class="anchor" href="#clustered_caches_and_locks"></a>8.1.1. Clustered caches and locks</h4>
+<div class="paragraph">
+<p>In Infinispan clusters, primary owner nodes are responsible for locking keys.</p>
+</div>
+<div class="paragraph">
+<p>For non-transactional caches, Infinispan forwards the write operation to the primary owner of the key so it can attempt to lock it.
+Infinispan either then forwards the write operation to the other owners or throws an exception if it cannot lock the key.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>If the operation is conditional and fails on the primary owner, Infinispan does not forward it to the other owners.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>For transactional caches, primary owners can lock keys with optimistic and pessimistic locking modes.
+Infinispan also supports different isolation levels to control concurrent reads between transactions.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="the_lockmanager"><a class="anchor" href="#the_lockmanager"></a>8.1.2. The LockManager</h4>
+<div class="paragraph">
+<p>The <code>LockManager</code> is a component that is responsible for locking an entry for writing.
+The <code>LockManager</code> makes use of a <code>LockContainer</code> to locate/hold/create locks.
+<code>LockContainers</code> come in two broad flavours, with support for lock striping and with support for one lock per entry.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="lock_striping"><a class="anchor" href="#lock_striping"></a>8.1.3. Lock striping</h4>
+<div class="paragraph">
+<p>Lock striping entails the use of a fixed-size, shared collection of locks for the entire cache, with locks being allocated to entries based on the entry&#8217;s key&#8217;s hash code.
+Similar to the way the JDK&#8217;s <code>ConcurrentHashMap</code> allocates locks, this allows for a highly scalable, fixed-overhead locking mechanism in exchange for potentially unrelated entries being blocked by the same lock.</p>
+</div>
+<div class="paragraph">
+<p>The alternative is to disable lock striping - which would mean a <em>new</em> lock is created per entry.
+This approach <em>may</em> give you greater concurrent throughput, but it will be at the cost of additional memory usage, garbage collection churn, etc.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="title">Default lock striping settings</div>
+lock striping is disabled by default, due to potential deadlocks that can happen if locks for different keys end up in the same lock stripe.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The size of the shared lock collection used by lock striping can be tuned using the <code>concurrencyLevel</code> attribute of the <code>&lt;locking /&gt;</code> configuration element.</p>
+</div>
+<div class="paragraph">
+<p><strong>Configuration example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;locking</span> <span class="attribute-name">striping</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false|true</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">new</span> ConfigurationBuilder().locking().useLockStriping(<span class="predefined-constant">false</span>|<span class="predefined-constant">true</span>);</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="concurrency_levels"><a class="anchor" href="#concurrency_levels"></a>8.1.4. Concurrency levels</h4>
+<div class="paragraph">
+<p>In addition to determining the size of the striped lock container, this concurrency level is also used to tune any JDK <code>ConcurrentHashMap</code> based collections where related, such as internal to <code>DataContainer</code>s.
+Please refer to the JDK <code>ConcurrentHashMap</code> Javadocs for a detailed discussion of concurrency levels, as this parameter is used in exactly the same way in Infinispan.</p>
+</div>
+<div class="paragraph">
+<p><strong>Configuration example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;locking</span> <span class="attribute-name">concurrency-level</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">32</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">new</span> ConfigurationBuilder().locking().concurrencyLevel(<span class="integer">32</span>);</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="lock_timeout"><a class="anchor" href="#lock_timeout"></a>8.1.5. Lock timeout</h4>
+<div class="paragraph">
+<p>The lock timeout specifies the amount of time, in milliseconds, to wait for a contented lock.</p>
+</div>
+<div class="paragraph">
+<p><strong>Configuration example:</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;locking</span> <span class="attribute-name">acquire-timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="java"><span class="keyword">new</span> ConfigurationBuilder().locking().lockAcquisitionTimeout(<span class="integer">10000</span>);
+<span class="comment">//alternatively</span>
+<span class="keyword">new</span> ConfigurationBuilder().locking().lockAcquisitionTimeout(<span class="integer">10</span>, <span class="predefined-type">TimeUnit</span>.SECONDS);</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="consistency"><a class="anchor" href="#consistency"></a>8.1.6. Consistency</h4>
+<div class="paragraph">
+<p>The fact that a single owner is locked (as opposed to all owners being locked) does not break the following consistency guarantee:
+if key <code>K</code> is hashed to nodes <code>{A, B}</code> and transaction <code>TX1</code> acquires a lock for <code>K</code>, let&#8217;s say on <code>A</code>.
+If another transaction, <code>TX2</code>, is started on <code>B</code> (or any other node) and <code>TX2</code> tries to lock <code>K</code> then it will fail with a timeout as the lock is already held by <code>TX1</code>.
+The reason for this is the that the lock for a key <code>K</code> is always, deterministically, acquired on the same node of the cluster, regardless of where the transaction originates.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="data_versioning"><a class="anchor" href="#data_versioning"></a>8.2. Data Versioning</h3>
+<div class="paragraph">
+<p>Infinispan supports two forms of data versioning: simple and external.
+The simple versioning is used in transactional caches for write skew check.</p>
+</div>
+<div class="paragraph">
+<p>The external versioning is used to encapsulate an external source of data versioning within Infinispan, such as when using Infinispan with Hibernate which in turn gets its data version information directly from a database.</p>
+</div>
+<div class="paragraph">
+<p>In this scheme, a mechanism to pass in the version becomes necessary, and overloaded versions of <code>put()</code> and <code>putForExternalRead()</code> will be provided in <code>AdvancedCache</code> to take in an external data version.
+This is then stored on the <code>InvocationContext</code> and applied to the entry at commit time.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Write skew checks cannot and will not be performed in the case of external data versioning.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="transaction_manager"><a class="anchor" href="#transaction_manager"></a>9. Transactions</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan can be configured to use and to participate in JTA compliant transactions.</p>
@@ -5699,12 +5653,6 @@ All JMX operations described above can be executed on any node, regardless of wh
 These can be useful e.g. if one wants to set up an automatic completion job for certain in-doubt transactions.
 This process is plugged into transaction manager&#8217;s recovery and has access to the transaction manager&#8217;s XID objects.</p>
 </div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="want_to_know_more"><a class="anchor" href="#want_to_know_more"></a>9.8.7. Want to know more?</h4>
-<div class="paragraph">
-<p>The <a href="https://community.jboss.org/wiki/TransactionRecoveryDesign">recovery design document</a> describes in more detail the insides of transaction recovery implementation.</p>
 </div>
 </div>
 </div>
@@ -8855,7 +8803,7 @@ for a detail example on how to implement this.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-07-14 08:30:09 -0400
+Last updated 2021-12-13 03:40:25 -0500
 </div>
 </div>
 <style>

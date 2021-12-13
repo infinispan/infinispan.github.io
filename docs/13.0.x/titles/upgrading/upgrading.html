@@ -854,14 +854,10 @@ $(addBlockSwitches);
 </li>
 </ul>
 </li>
-<li><a href="#rolling_server_upgrades">2. Performing Rolling Upgrades for Infinispan Servers</a>
+<li><a href="#rolling-upgrades">2. Performing rolling upgrades for Infinispan Server clusters</a>
 <ul class="sectlevel2">
-<li><a href="#upgrade_target">2.1. Setting Up Target Clusters</a>
-<ul class="sectlevel3">
-<li><a href="#upgrade_connect_source">2.1.1. Connecting source clusters</a></li>
-</ul>
-</li>
-<li><a href="#sync_data">2.2. Synchronizing Data to Target Clusters</a></li>
+<li><a href="#setting-up-target-clusters_rolling-upgrades">2.1. Setting up target Infinispan clusters</a></li>
+<li><a href="#synchronizing-data-target-clusters_rolling-upgrades">2.2. Synchronizing data to target clusters</a></li>
 </ul>
 </li>
 <li><a href="#patching">3. Patching Infinispan Server Installations</a>
@@ -3354,23 +3350,22 @@ RemoteCache cache = cacheContainer.getCache();</code></pre>
 </div>
 </div>
 <div class="sect1">
-<h2 id="rolling_server_upgrades"><a class="anchor" href="#rolling_server_upgrades"></a>2. Performing Rolling Upgrades for Infinispan Servers</h2>
+<h2 id="rolling-upgrades"><a class="anchor" href="#rolling-upgrades"></a>2. Performing rolling upgrades for Infinispan Server clusters</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Perform rolling upgrades of your Infinispan clusters to change between
-versions without downtime or data loss. Rolling upgrades migrate both your
-Infinispan servers and your data to the target version over Hot Rod.</p>
+versions without downtime or data loss and migrate data over the Hot Rod protocol.</p>
 </div>
 <div class="sect2">
-<h3 id="upgrade_target"><a class="anchor" href="#upgrade_target"></a>2.1. Setting Up Target Clusters</h3>
+<h3 id="setting-up-target-clusters_rolling-upgrades"><a class="anchor" href="#setting-up-target-clusters_rolling-upgrades"></a>2.1. Setting up target Infinispan clusters</h3>
 <div class="paragraph">
-<p>Create a cluster that runs the target Infinispan version.</p>
+<p>Create a cluster that uses the Infinispan version to which you plan to upgrade and then connect the source cluster to the target cluster using a remote cache store.</p>
 </div>
 <div class="ulist">
 <div class="title">Prerequisites</div>
 <ul>
 <li>
-<p>Install a Infinispan cluster with the target upgrade version.</p>
+<p>Install Infinispan Server nodes with the desired version for your target cluster.</p>
 </li>
 </ul>
 </div>
@@ -3383,10 +3378,9 @@ Infinispan servers and your data to the target version over Hot Rod.</p>
 <td class="content">
 <div class="paragraph">
 <p>Ensure the network properties for the target cluster do not overlap with those
-for the source cluster. You should specify unique names for the target and
-source clusters in the JGroups transport configuration. Depending on your
-environment you can also use different network interfaces and specify port
-offsets to keep the target and source clusters separate.</p>
+for the source cluster.
+You should specify unique names for the target and source clusters in the JGroups transport configuration.
+Depending on your environment you can also use different network interfaces and port offsets to separate the target and source clusters.</p>
 </div>
 </td>
 </tr>
@@ -3396,8 +3390,62 @@ offsets to keep the target and source clusters separate.</p>
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Connect the target cluster to the source cluster for each cache you want
-to migrate from the source cluster.</p>
+<p>Create a remote cache store configuration, in JSON format, that allows the target cluster to connect to the source cluster.</p>
+<div class="paragraph">
+<p>Remote cache stores on the target cluster use the Hot Rod protocol to retrieve data from the source cluster.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">remote-store</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">cache</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">myCache</span><span class="delimiter">&quot;</span></span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">shared</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">raw-values</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">security</span><span class="delimiter">&quot;</span></span>: {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">authentication</span><span class="delimiter">&quot;</span></span>: {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">digest</span><span class="delimiter">&quot;</span></span>: {
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">username</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">username</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">password</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">realm</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">default</span><span class="delimiter">&quot;</span></span>
+        }
+      }
+    },
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">remote-server</span><span class="delimiter">&quot;</span></span>: [
+      {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">host</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">127.0.0.1</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">port</span><span class="delimiter">&quot;</span></span>: <span class="integer">12222</span>
+      }
+    ]
+  }
+}</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Use the Infinispan Command Line Interface (CLI) or REST API to add the remote cache store configuration to the target cluster so it can connect to the source cluster.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>CLI: Use the <code class="command">migrate cluster connect</code> command on the target cluster.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">[//containers/default]&gt; migrate cluster connect -c myCache --file=remote-store.json</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>REST API: Invoke a POST request that includes the remote store configuration in the payload with the <code>rolling-upgrade/source-connection</code> method.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>POST /v2/caches/myCache/rolling-upgrade/source-connection</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Repeat the preceding step for each cache that you want to migrate.</p>
 </li>
 <li>
 <p>Switch clients over to the target cluster, so it starts handling all requests.</p>
@@ -3414,40 +3462,8 @@ to migrate from the source cluster.</p>
 </li>
 </ol>
 </div>
-<div class="sect3">
-<h4 id="upgrade_connect_source"><a class="anchor" href="#upgrade_connect_source"></a>2.1.1. Connecting source clusters</h4>
-<div class="paragraph">
-<div class="title">Procedure</div>
-<p>Use the Infinispan REST API to invoke POST requests with the <code>?action=connect-source</code> parameter.
-For example, to connect a target cluster to the source for the cache named "myCache", do the following:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code>POST /v2/caches/myCache?action=connect-source</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The POST body must contain JSON document with a <code>remote-store</code> configuration, for example:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="json">{
-  <span class="key"><span class="delimiter">&quot;</span><span class="content">remote-store</span><span class="delimiter">&quot;</span></span>: {
-    <span class="key"><span class="delimiter">&quot;</span><span class="content">cache</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">myCache</span><span class="delimiter">&quot;</span></span>,
-    <span class="key"><span class="delimiter">&quot;</span><span class="content">shared</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
-    <span class="key"><span class="delimiter">&quot;</span><span class="content">raw-values</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
-    <span class="key"><span class="delimiter">&quot;</span><span class="content">remote-server</span><span class="delimiter">&quot;</span></span>: [
-      {
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">host</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">127.0.0.2</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">port</span><span class="delimiter">&quot;</span></span>: <span class="integer">12222</span>
-      }
-    ]
-  }
-}</code></pre>
-</div>
-</div>
-<div class="ulist">
-<div class="title">Reference</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
 <ul>
 <li>
 <p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/infinispan-cachestore-remote-config-13.0.html">Remote cache store configuration schema</a></p>
@@ -3455,31 +3471,40 @@ For example, to connect a target cluster to the source for the cache named "myCa
 </ul>
 </div>
 </div>
-</div>
 <div class="sect2">
-<h3 id="sync_data"><a class="anchor" href="#sync_data"></a>2.2. Synchronizing Data to Target Clusters</h3>
+<h3 id="synchronizing-data-target-clusters_rolling-upgrades"><a class="anchor" href="#synchronizing-data-target-clusters_rolling-upgrades"></a>2.2. Synchronizing data to target clusters</h3>
 <div class="paragraph">
-<p>When your target cluster is running and handling client requests using a remote
-cache store to load data on demand, you can synchronize data from the source
-cluster to the target cluster.</p>
+<p>When you set up a target Infinispan cluster and connect it to a source cluster, the target cluster can handle client requests using a remote cache store and load data on demand.
+To completely migrate data to the target cluster, so you can decommission the source cluster, you can synchronize data.
+This operation reads data from the source cluster and writes it to the target cluster.
+Data migrates to all nodes in the target cluster in parallel, with each node receiving a subset of the data.
+You must perform the synchronization for each cache that you want to migrate to the target cluster.</p>
 </div>
-<div class="paragraph">
-<p>This operation reads data from the source cluster and writes it to the target
-cluster. Data migrates to all nodes in the target cluster in parallel, with
-each node receiving a subset of the data. You must perform the synchronization
-for each cache in your Infinispan configuration.</p>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Set up a target cluster with the appropriate Infinispan version.</p>
+</li>
+</ul>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Start the synchronization operation for each cache in your Infinispan
-configuration that you want to migrate to the target cluster.</p>
-<div class="paragraph">
-<p>Use the Infinispan REST API and invoke <code>POST</code> requests with the
-<code>?action=sync-data</code> parameter. For example, to synchronize data in a cache named "myCache"
-from a source cluster to a target cluster, do the following:</p>
+<p>Start synchronizing each cache that you want to migrate to the target cluster with the Infinispan Command Line Interface (CLI) or REST API.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>CLI: Use the <code class="command">migrate cluster synchronize</code> command.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">[//containers/default]&gt; migrate cluster synchronize -c myCache</code></pre>
 </div>
+</div>
+</li>
+<li>
+<p>REST API: Use the <code>?action=sync-data</code> parameter with a POST request.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code>POST /v2/caches/myCache?action=sync-data</code></pre>
@@ -3489,23 +3514,31 @@ from a source cluster to a target cluster, do the following:</p>
 <p>When the operation completes, Infinispan responds with the total number of
 entries copied to the target cluster.</p>
 </div>
-<div class="paragraph">
-<p>Alternatively, you can use JMX by invoking
-<code>synchronizeData(migratorName=hotrod)</code> on the <code>RollingUpgradeManager</code> MBean.</p>
+</li>
+</ul>
 </div>
 </li>
 <li>
 <p>Disconnect each node in the target cluster from the source cluster.</p>
-<div class="paragraph">
-<p>For example, to disconnect the "myCache" cache from the source cluster, invoke the following <code>DELETE</code> request:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>CLI: Use the <code class="command">migrate cluster disconnect</code> command.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">[//containers/default]&gt; migrate cluster disconnect -c myCache</code></pre>
 </div>
+</div>
+</li>
+<li>
+<p>REST API: Invoke a DELETE request.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code>DELETE /v2/caches/myCache/rolling-upgrade/source-connection</code></pre>
 </div>
 </div>
-<div class="paragraph">
-<p>To use JMX, invoke <code>disconnectSource(migratorName=hotrod)</code> on the <code>RollingUpgradeManager</code> MBean.</p>
+</li>
+</ul>
 </div>
 </li>
 </ol>
@@ -3513,7 +3546,8 @@ entries copied to the target cluster.</p>
 <div class="paragraph">
 <div class="title">Next steps</div>
 <p>After you synchronize all data from the source cluster, the rolling upgrade
-process is complete. You can now decommission the source cluster.</p>
+process is complete.
+You can now decommission the source cluster.</p>
 </div>
 </div>
 </div>
@@ -4418,7 +4452,7 @@ repository, run the following command:</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-10-28 04:41:00 -0400
+Last updated 2021-12-13 03:40:25 -0500
 </div>
 </div>
 <style>

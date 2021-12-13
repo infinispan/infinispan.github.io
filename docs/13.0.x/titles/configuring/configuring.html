@@ -1119,8 +1119,7 @@ In particular, if <code>numOwners</code> nodes leave in quick succession, some e
 </div>
 <div class="paragraph">
 <p>The number of copies represents a trade-off between performance and durability of data.
-The more copies you maintain, the lower performance will be, but also the lower the risk of losing data due to server or network failures.
-Regardless of how many copies are maintained, distribution still scales linearly, and this is key to Infinispan scalability.</p>
+The more copies you maintain, the lower performance will be, but also the lower the risk of losing data due to server or network failures.</p>
 </div>
 <div class="paragraph">
 <p>Infinispan splits the owners of a key into one <strong>primary owner</strong>, which coordinates writes to the key, and zero or more <strong>backup owners</strong>.</p>
@@ -1852,7 +1851,7 @@ That results in faster writes but possibly slower reads, and therefore this mode
 <div class="paragraph">
 <p>Storing multiple backup copies also results in slightly higher memory consumption.
 In order to remove out-of-date backup copies, invalidation messages are broadcast in the cluster, which generates some overhead.
-This makes scattered caches less performant in very big clusters.</p>
+This lowers the performance of scattered caches in clusters with a large number of nodes.</p>
 </div>
 <div class="paragraph">
 <p>When a node crashes, the primary copy may be lost.
@@ -1862,8 +1861,19 @@ This process results in more network traffic during state transfer.</p>
 <div class="paragraph">
 <p>Since the writer of data is also a backup, even if we specify machine/rack/site IDs on the transport level the cluster cannot be resilient to more than one failure on the same machine/rack/site.</p>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
 <div class="paragraph">
-<p>Currently it is not possible to use scattered caches with transactions. Asynchronous replication is not supported either; use asynchronous Cache API instead.</p>
+<p>You cannot use scattered caches with transactions or asynchronous replication.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>The cache is configured in a similar way as the other cache modes, here is an example of declarative configuration:</p>
@@ -2522,14 +2532,13 @@ A cache that inherits from another template merges the values from that template
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
   <span class="tag">&lt;cache-container&gt;</span>
     <span class="tag">&lt;distributed-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">base-template</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;expiration</span> <span class="attribute-name">interval</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span>
-                  <span class="attribute-name">lifespan</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span>
-                  <span class="attribute-name">max-idle</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;encoding</span> <span class="attribute-name">media-type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;expiration</span> <span class="attribute-name">lifespan</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">5000</span><span class="delimiter">&quot;</span></span>
+                  <span class="attribute-name">max-idle</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
     <span class="tag">&lt;/distributed-cache-configuration&gt;</span>
     <span class="tag">&lt;distributed-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">extended-template</span><span class="delimiter">&quot;</span></span>
-                               <span class="attribute-name">configuration</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">base-template</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;expiration</span> <span class="attribute-name">lifespan</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">20</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;memory</span> <span class="attribute-name">max-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">2GB</span><span class="delimiter">&quot;</span></span> <span class="tag">/&gt;</span>
+                                     <span class="attribute-name">configuration</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">base-template</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;expiration</span> <span class="attribute-name">lifespan</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
     <span class="tag">&lt;/distributed-cache-configuration&gt;</span>
   <span class="tag">&lt;/cache-container&gt;</span>
 <span class="tag">&lt;/infinispan&gt;</span></code></pre>
@@ -2543,27 +2552,18 @@ A cache that inherits from another template merges the values from that template
     <span class="key"><span class="delimiter">&quot;</span><span class="content">cache-container</span><span class="delimiter">&quot;</span></span> : {
       <span class="key"><span class="delimiter">&quot;</span><span class="content">distributed-cache-configuration</span><span class="delimiter">&quot;</span></span> : {
         <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">base-template</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">mode</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">statistics</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>,
         <span class="key"><span class="delimiter">&quot;</span><span class="content">encoding</span><span class="delimiter">&quot;</span></span>: {
           <span class="key"><span class="delimiter">&quot;</span><span class="content">media-type</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span>
         },
         <span class="key"><span class="delimiter">&quot;</span><span class="content">expiration</span><span class="delimiter">&quot;</span></span> : {
           <span class="key"><span class="delimiter">&quot;</span><span class="content">lifespan</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">5000</span><span class="delimiter">&quot;</span></span>,
           <span class="key"><span class="delimiter">&quot;</span><span class="content">max-idle</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span>
-        },
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">memory</span><span class="delimiter">&quot;</span></span>: {
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">max-count</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1000000</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">when-full</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">REMOVE</span><span class="delimiter">&quot;</span></span>
         }
       },
       <span class="key"><span class="delimiter">&quot;</span><span class="content">distributed-cache-configuration</span><span class="delimiter">&quot;</span></span> : {
         <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">extended-template</span><span class="delimiter">&quot;</span></span>,
         <span class="key"><span class="delimiter">&quot;</span><span class="content">expiration</span><span class="delimiter">&quot;</span></span> : {
           <span class="key"><span class="delimiter">&quot;</span><span class="content">lifespan</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span>
-        },
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">memory</span><span class="delimiter">&quot;</span></span>: {
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">max-size</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1.5GB</span><span class="delimiter">&quot;</span></span>
         }
       }
     }
@@ -2578,22 +2578,15 @@ A cache that inherits from another template merges the values from that template
   <span class="key">cacheContainer</span>:
     - <span class="string"><span class="content">distributedCacheConfiguration:</span></span>
       <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">base-template</span><span class="delimiter">&quot;</span></span>
-      <span class="key">mode</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SYNC</span><span class="delimiter">&quot;</span></span>
-      <span class="key">statistics</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
       <span class="key">encoding</span>:
         <span class="key">mediaType</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">application/x-protostream</span><span class="delimiter">&quot;</span></span>
       <span class="key">expiration</span>:
         <span class="key">lifespan</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">5000</span><span class="delimiter">&quot;</span></span>
         <span class="key">maxIdle</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span>
-      <span class="key">memory</span>:
-        <span class="key">maxCount</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1000000</span><span class="delimiter">&quot;</span></span>
-        <span class="key">whenFull</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">REMOVE</span><span class="delimiter">&quot;</span></span>
     - <span class="string"><span class="content">distributedCacheConfiguration:</span></span>
       <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">extended-template</span><span class="delimiter">&quot;</span></span>
       <span class="key">expiration</span>:
-        <span class="key">lifespan</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span>
-        <span class="key">memory</span>:
-          <span class="key">maxSize</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1.5GB</span><span class="delimiter">&quot;</span></span></code></pre>
+        <span class="key">lifespan</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span></code></pre>
 </div>
 </div>
 </div>
@@ -2812,21 +2805,6 @@ Starting Infinispan Server automatically instantiates the cache manager so you c
 </li>
 <li>
 <p>Have a Infinispan cache configuration.</p>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>If you are getting started, you can use an <code>org.infinispan</code> template configuration.
-These templates provide example caches and are intended for demonstration purposes only.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
 </li>
 </ul>
 </div>
@@ -4208,8 +4186,7 @@ reaper.</p>
 <div class="paragraph">
 <p>For example, <code>k1</code> reaches the maximum idle time and a client makes a
 <code>Cache.get(k1)</code> request. In this case, Infinispan detects that the entry is
-expired and removes it from the data container. The <code>Cache.get()</code> returns
-<code>null</code>.</p>
+expired and removes it from the data container. The <code>Cache.get(k1)</code> request returns <code>null</code>.</p>
 </div>
 <div class="paragraph">
 <p>Infinispan also expires entries from cache stores, but only with lifespan
@@ -4457,27 +4434,14 @@ cache.put(<span class="string"><span class="delimiter">&quot;</span><span class=
 <h3 id="off-heap-memory_configuring-memory-usage"><a class="anchor" href="#off-heap-memory_configuring-memory-usage"></a>5.5. JVM heap and off-heap memory</h3>
 <div class="paragraph">
 <p>Infinispan stores cache entries in JVM heap memory by default.
-You can configure Infinispan to use off-heap storage, which means your data occupies native memory outside the managed JVM memory space with the following benefits:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Uses less memory than JVM heap memory for the same amount of data.</p>
-</li>
-<li>
-<p>Can improve overall JVM performance by avoiding Garbage Collector (GC) runs.</p>
-</li>
-</ul>
+You can configure Infinispan to use off-heap storage, which means that your data occupies native memory outside the managed JVM memory space.</p>
 </div>
 <div class="paragraph">
-<p>However, there are some trade-offs with off-heap storage; for example, JVM heap dumps do not show entries stored in off-heap memory.</p>
-</div>
-<div class="paragraph">
-<p>The following diagram illustrates the memory space for a JVM process where Infinispan is running:</p>
+<p>The following diagram is a simplified illustration of the memory space for a JVM process where Infinispan is running:</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="../../topics/images/jvm_memory_space.png" alt="Illustration of JVM memory space">
+<img src="../../topics/images/jvm_memory_space.png" alt="This diagram depicts the JVM memory space divided into heap and off-heap memory.">
 </div>
 <div class="title">Figure 6. JVM memory space</div>
 </div>
@@ -4496,6 +4460,22 @@ Because GC is an intensive process, longer and more frequent runs can degrade ap
 The <em>JVM memory space</em> diagram shows the <code>Metaspace</code> memory pool that holds class metadata and is allocated from native memory.
 The diagram also represents a section of native memory that holds Infinispan cache entries.</p>
 </div>
+<div class="paragraph">
+<p>Off-heap memory:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Uses less memory per entry.</p>
+</li>
+<li>
+<p>Improves overall JVM performance by avoiding Garbage Collector (GC) runs.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>One disadvantage, however, is that JVM heap dumps do not show entries stored in off-heap memory.</p>
+</div>
 <div class="sect3">
 <h4 id="off-heap-storage_configuring-memory-usage"><a class="anchor" href="#off-heap-storage_configuring-memory-usage"></a>5.5.1. Off-heap data storage</h4>
 <div class="paragraph">
@@ -4505,25 +4485,11 @@ The diagram also represents a section of native memory that holds Infinispan cac
 <p>Infinispan hashes the serialized <code>byte[]</code> for each key into buckets that are similar to a standard Java <code>HashMap</code>.
 Buckets include address pointers that Infinispan uses to locate entries that you store in off-heap memory.</p>
 </div>
-<div class="admonitionblock note">
+<div class="admonitionblock important">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Infinispan determines equality of Java objects in off-heap storage using the serialized byte[] representation of each object instead of the object instance.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
+<i class="fa icon-important" title="Important"></i>
 </td>
 <td class="content">
 <div class="paragraph">
@@ -4535,16 +4501,12 @@ Likewise, state transfer operations hold subsets of objects in heap memory while
 </tr>
 </table>
 </div>
-<h5 id="memory_overhead" class="discrete">Memory overhead</h5>
 <div class="paragraph">
-<p>Memory overhead is the additional memory that Infinispan uses to store entries.
-For off-heap storage, Infinispan uses 25 bytes for each entry in the cache.</p>
+<div class="title">Object equality</div>
+<p>Infinispan determines equality of Java objects in off-heap storage using the serialized byte[] representation of each object instead of the object instance.</p>
 </div>
 <div class="paragraph">
-<p>When you use eviction to create a bounded off-heap data container, memory overhead increases to a total of 61 bytes because Infinispan creates an additional linked list to track entries in the cache and perform eviction.</p>
-</div>
-<h5 id="data_consistency" class="discrete">Data consistency</h5>
-<div class="paragraph">
+<div class="title">Data consistency</div>
 <p>Infinispan uses an array of locks to protect off-heap address spaces.
 The number of locks is twice the number of cores and then rounded to the nearest power of two.
 This ensures that there is an even distribution of <code>ReadWriteLock</code> instances to prevent write operations from blocking read operations.</p>
@@ -5363,19 +5325,15 @@ The in-memory index uses Java soft references to ensure it can be rebuilt if rem
 GC removes indexes before they consume too much memory while still falling back to disk.</p>
 </div>
 <div class="paragraph">
-<p>You can configure any number of B+ trees.
+<p>You can configure any number of B+ trees with the <code>segments</code> attribute on the <code>index</code> element declaratively or with the <code>indexSegments()</code> method programmatically.
 By default Infinispan creates up to 16 B+ trees, which means there can be up to 16 indexes.
-Having multiple indexes prevents bottlenecks from concurrent writes to an index.
-It also minimizes the number of entries that can be read at the same time because Infinispan reads all entries at the same time when it iterates over a soft-index file store.</p>
+Having multiple indexes prevents bottlenecks from concurrent writes to an index and reduces the number of entries that Infinispan needs to keep in memory.
+As it iterates over a soft-index file store, Infinispan reads all entries in an index at the same time.</p>
 </div>
 <div class="paragraph">
 <p>Each entry in the B+ tree is a node.
 By default, the size of each node is limited to 4096 bytes.
 <code>SoftIndexFileStore</code> throws an exception if keys are longer after serialization occurs.</p>
-</div>
-<div class="paragraph">
-<div class="title">Expired entries</div>
-<p><code>SoftIndexFileStore</code> cannot detect expired entries, which can lead to excessive usage of space on the file system.</p>
 </div>
 <div class="paragraph">
 <div class="title">Segmentation</div>
@@ -6316,45 +6274,53 @@ message books_value {
 <colgroup>
 <col>
 <col>
-<col>
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">SQL type</th>
 <th class="tableblock halign-left valign-top">Protobuf type</th>
-<th class="tableblock halign-left valign-top"><code>int4</code></th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int4</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>int32</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>int8</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>int64</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>float4</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>float</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>float8</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>float8</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>double</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>numeric</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>double</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>bool</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>bool</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>char</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>char</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>string</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>varchar</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>string</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>text</code>, <code>tinytext</code>, <code>mediumtext</code>, <code>longtext</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>string</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>bytea</code>, <code>tinyblob</code>, <code>blob</code>, <code>mediumblob</code>, <code>longblob</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bytes</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -7479,7 +7445,7 @@ cache content.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache&gt;</span>
   <span class="tag">&lt;persistence&gt;</span>
-    <span class="tag">&lt;cluster-loader</span> <span class="attribute-name">preload</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">remote-timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>\
+    <span class="tag">&lt;cluster-loader</span> <span class="attribute-name">preload</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">remote-timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">500</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
   <span class="tag">&lt;/persistence&gt;</span>
 <span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
 </div>
@@ -8760,7 +8726,7 @@ interface:</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-10-28 04:41:00 -0400
+Last updated 2021-12-13 06:21:19 -0500
 </div>
 </div>
 <style>

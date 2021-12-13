@@ -529,7 +529,7 @@ $(addBlockSwitches);
 <li><a href="#authorization">2. Configuring User Authorization</a>
 <ul class="sectlevel2">
 <li><a href="#enabling-authz-authz">2.1. Enabling Authorization in Cache Configuration</a></li>
-<li><a href="#user-roles-permissions_authz">2.2. User Roles and Permissions</a></li>
+<li><a href="#user-roles-permissions_authz">2.2. User roles and permissions</a></li>
 <li><a href="#con_authz-authz">2.3. How Security Authorization Works</a>
 <ul class="sectlevel3">
 <li><a href="#user-permissions_authz">2.3.1. Permissions</a>
@@ -556,21 +556,22 @@ $(addBlockSwitches);
 <li><a href="#executing_secure_caches-authz">2.9. Code Execution with Secure Caches</a></li>
 </ul>
 </li>
-<li><a href="#jgroups_encrypt">3. Encrypting Cluster Transport</a>
+<li><a href="#secure-cluster-transport">3. Encrypting cluster transport</a>
 <ul class="sectlevel2">
-<li><a href="#jgroups_encryption-cluster_transport">3.1. Infinispan Cluster Security</a></li>
-<li><a href="#configuring_jgroups_asym_encrypt-cluster_transport">3.2. Configuring Cluster Transport with Asymmetric Encryption</a></li>
-<li><a href="#configuring_jgroups_sym_encrypt-cluster_transport">3.3. Configuring Cluster Transport with Symmetric Encryption</a></li>
+<li><a href="#securing-cluster-transport-tls-identities_secure-cluster-transport">3.1. Securing cluster transport with TLS identities</a></li>
+<li><a href="#jgroups-encryption-protocols_secure-cluster-transport">3.2. JGroups encryption protocols</a></li>
+<li><a href="#configuring-jgroups-asym-encrypt_secure-cluster-transport">3.3. Securing cluster transport with asymmetric encryption</a></li>
+<li><a href="#configuring-jgroups-sym-encrypt_secure-cluster-transport">3.4. Securing cluster transport with symmetric encryption</a></li>
 </ul>
 </li>
 <li><a href="#ports_protocols">4. Infinispan Ports and Protocols</a>
 <ul class="sectlevel2">
-<li><a href="#server_ports-network">4.1. Infinispan Server Ports and Protocols</a>
+<li><a href="#server-ports-protocols_network">4.1. Infinispan Server ports and protocols</a>
 <ul class="sectlevel3">
-<li><a href="#configuring_firewalls-network">4.1.1. Configuring Network Firewalls for Remote Connections</a></li>
+<li><a href="#configuring-firewalls_network">4.1.1. Configuring network firewalls for Infinispan traffic</a></li>
 </ul>
 </li>
-<li><a href="#jgroups_ports-network">4.2. TCP and UDP Ports for Cluster Traffic</a></li>
+<li><a href="#jgroups-ports_network">4.2. TCP and UDP ports for cluster traffic</a></li>
 </ul>
 </li>
 </ul>
@@ -662,7 +663,7 @@ Before they can read or write cache entries, or create and delete caches, users 
 </div>
 </div>
 <div class="sect2">
-<h3 id="user-roles-permissions_authz"><a class="anchor" href="#user-roles-permissions_authz"></a>2.2. User Roles and Permissions</h3>
+<h3 id="user-roles-permissions_authz"><a class="anchor" href="#user-roles-permissions_authz"></a>2.2. User roles and permissions</h3>
 <div class="paragraph">
 <p>Infinispan includes a default set of roles that grant users with permissions to access data and interact with Infinispan resources.</p>
 </div>
@@ -1300,16 +1301,117 @@ Infinispan context or from the AccessControlContext:</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="jgroups_encrypt"><a class="anchor" href="#jgroups_encrypt"></a>3. Encrypting Cluster Transport</h2>
+<h2 id="secure-cluster-transport"><a class="anchor" href="#secure-cluster-transport"></a>3. Encrypting cluster transport</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Secure cluster transport so that nodes communicate with encrypted messages.
 You can also configure Infinispan clusters to perform certificate authentication so that only nodes with valid identities can join.</p>
 </div>
 <div class="sect2">
-<h3 id="jgroups_encryption-cluster_transport"><a class="anchor" href="#jgroups_encryption-cluster_transport"></a>3.1. Infinispan Cluster Security</h3>
+<h3 id="securing-cluster-transport-tls-identities_secure-cluster-transport"><a class="anchor" href="#securing-cluster-transport-tls-identities_secure-cluster-transport"></a>3.1. Securing cluster transport with TLS identities</h3>
 <div class="paragraph">
-<p>To secure cluster traffic, you configure Infinispan nodes to encrypt JGroups message payloads with secret keys.</p>
+<p>Add SSL/TLS identities to a Infinispan Server security realm and use them to secure cluster transport.
+Nodes in the Infinispan Server cluster then exchange SSL/TLS certificates to encrypt JGroups messages, including RELAY messages if you configure cross-site replication.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Install a Infinispan Server cluster.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a TLS keystore that contains a single certificate to identify Infinispan Server.</p>
+<div class="paragraph">
+<p>You can also use a PEM file if it contains a private key in PKCS#1 or PKCS#8 format, a certificate, and has an empty password: <code>password=""</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>If the certificate in the keystore is not signed by a public certificate authority (CA) then you must also create a trust store that contains either the signing certificate or the public key.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>Add the keystore to the <code>$ISPN_HOME/server/conf</code> directory.</p>
+</li>
+<li>
+<p>Add the keystore to a new security realm in your Infinispan Server configuration.</p>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>You should create dedicated keystores and security realms so that Infinispan Server endpoints do not use the same security realm as cluster transport.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;security</span> <span class="attribute-name">xmlns:xsi</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">http://www.w3.org/2001/XMLSchema-instance</span><span class="delimiter">&quot;</span></span>
+          <span class="attribute-name">xsi:schemaLocation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:server:13.0 https://infinispan.org/schemas/infinispan-server-13.0.xsd</span><span class="delimiter">&quot;</span></span>
+          <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:server:13.0</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;security-realms&gt;</span>
+    <span class="tag">&lt;security-realm</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">cluster-transport</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;server-identities&gt;</span>
+        <span class="tag">&lt;ssl&gt;</span>
+          <span class="comment">&lt;!-- Adds a keystore that contains a certificate that provides
+               SSL/TLS identity to encrypt cluster transport. --&gt;</span>
+          <span class="tag">&lt;keystore</span> <span class="attribute-name">path</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">server.pfx</span><span class="delimiter">&quot;</span></span>
+                    <span class="attribute-name">relative-to</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">infinispan.server.config.path</span><span class="delimiter">&quot;</span></span>
+                    <span class="attribute-name">password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">secret</span><span class="delimiter">&quot;</span></span>
+                    <span class="attribute-name">alias</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">server</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;/ssl&gt;</span>
+      <span class="tag">&lt;/server-identities&gt;</span>
+    <span class="tag">&lt;/security-realm&gt;</span>
+  <span class="tag">&lt;/security-realms&gt;</span>
+<span class="tag">&lt;/security&gt;</span></code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Configure cluster transport to use the security realm by specifying the name of the security realm with the <code>server:security-realm</code> attribute.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container&gt;</span>
+  <span class="tag">&lt;transport</span> <span class="attribute-name">server:security-realm</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">cluster-transport</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/cache-container&gt;</span></code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Verification</div>
+<p>When you start Infinispan Server, the following log message indicates that the cluster is using the security realm for cluster transport:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">[org.infinispan.SERVER] ISPN080060: SSL Transport using realm &lt;security_realm_name&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="jgroups-encryption-protocols_secure-cluster-transport"><a class="anchor" href="#jgroups-encryption-protocols_secure-cluster-transport"></a>3.2. JGroups encryption protocols</h3>
+<div class="paragraph">
+<p>To secure cluster traffic, you can configure Infinispan nodes to encrypt JGroups message payloads with secret keys.</p>
 </div>
 <div class="paragraph">
 <p>Infinispan nodes can obtain secret keys from either:</p>
@@ -1399,7 +1501,7 @@ Users are responsible for generating and distributing the secret keys that nodes
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring_jgroups_asym_encrypt-cluster_transport"><a class="anchor" href="#configuring_jgroups_asym_encrypt-cluster_transport"></a>3.2. Configuring Cluster Transport with Asymmetric Encryption</h3>
+<h3 id="configuring-jgroups-asym-encrypt_secure-cluster-transport"><a class="anchor" href="#configuring-jgroups-asym-encrypt_secure-cluster-transport"></a>3.3. Securing cluster transport with asymmetric encryption</h3>
 <div class="paragraph">
 <p>Configure Infinispan clusters to generate and distribute secret keys that encrypt JGroups messages.</p>
 </div>
@@ -1471,12 +1573,8 @@ Otherwise the following message is written to Infinispan logs:</p>
 <pre class="CodeRay highlight nowrap"><code data-lang="bash">[org.jgroups.protocols.ASYM_ENCRYPT] &lt;hostname&gt;: received message without encrypt header from &lt;hostname&gt;; dropping it</code></pre>
 </div>
 </div>
-<div class="paragraph">
-<div class="title">Reference</div>
-<p>The example <code>ASYM_ENCRYPT</code> configuration in this procedure shows commonly used parameters.
-Refer to JGroups documentation for the full set of available parameters.</p>
-</div>
-<div class="ulist">
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
 <ul>
 <li>
 <p><a href="http://www.jgroups.org/manual4/index.html">JGroups 4 Manual</a></p>
@@ -1488,7 +1586,7 @@ Refer to JGroups documentation for the full set of available parameters.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring_jgroups_sym_encrypt-cluster_transport"><a class="anchor" href="#configuring_jgroups_sym_encrypt-cluster_transport"></a>3.3. Configuring Cluster Transport with Symmetric Encryption</h3>
+<h3 id="configuring-jgroups-sym-encrypt_secure-cluster-transport"><a class="anchor" href="#configuring-jgroups-sym-encrypt_secure-cluster-transport"></a>3.4. Securing cluster transport with symmetric encryption</h3>
 <div class="paragraph">
 <p>Configure Infinispan clusters to encrypt JGroups messages with secret keys from keystores that you provide.</p>
 </div>
@@ -1553,12 +1651,8 @@ Otherwise the following message is written to Infinispan logs:</p>
 <pre>[org.jgroups.protocols.SYM_ENCRYPT] &lt;hostname&gt;: received message without encrypt header from &lt;hostname&gt;; dropping it</pre>
 </div>
 </div>
-<div class="paragraph">
-<div class="title">Reference</div>
-<p>The example <code>SYM_ENCRYPT</code> configuration in this procedure shows commonly used parameters.
-Refer to JGroups documentation for the full set of available parameters.</p>
-</div>
-<div class="ulist">
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
 <ul>
 <li>
 <p><a href="http://www.jgroups.org/manual4/index.html">JGroups 4 Manual</a></p>
@@ -1586,15 +1680,15 @@ Infinispan nodes use for cluster communication to prevent conflicts or network
 issues.</p>
 </div>
 <div class="sect2">
-<h3 id="server_ports-network"><a class="anchor" href="#server_ports-network"></a>4.1. Infinispan Server Ports and Protocols</h3>
+<h3 id="server-ports-protocols_network"><a class="anchor" href="#server-ports-protocols_network"></a>4.1. Infinispan Server ports and protocols</h3>
 <div class="paragraph">
-<p>Infinispan Server exposes endpoints on your network for remote client access.</p>
+<p>Infinispan Server provides network endpoints that allow client access with different protocols.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table class="tableblock frame-all grid-all stripes-even fit-content">
 <colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 33.3333%;">
-<col style="width: 33.3334%;">
+<col>
+<col>
+<col>
 </colgroup>
 <thead>
 <tr>
@@ -1607,20 +1701,57 @@ issues.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>11222</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TCP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hot Rod and REST endpoint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hot Rod and REST</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>11221</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TCP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Memcached endpoint, which is disabled by default.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memcached (disabled by default)</p></td>
 </tr>
 </tbody>
 </table>
-<div class="sect3">
-<h4 id="configuring_firewalls-network"><a class="anchor" href="#configuring_firewalls-network"></a>4.1.1. Configuring Network Firewalls for Remote Connections</h4>
+<h4 id="single_port" class="discrete">Single port</h4>
 <div class="paragraph">
-<p>Adjust any firewall rules to allow traffic between the server and external
-clients.</p>
+<p>Infinispan Server exposes multiple protocols through a single TCP port, <code>11222</code>.
+Handling multiple protocols with a single port simplifies configuration and reduces management complexity when deploying Infinispan clusters.
+Using a single port also enhances security by minimizing the attack surface on the network.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan Server handles HTTP/1.1, HTTP/2, and Hot Rod protocol requests from clients via the single port in different ways.</p>
+</div>
+<div class="paragraph">
+<div class="title">HTTP/1.1 upgrade headers</div>
+<p>Client requests can include the <code>HTTP/1.1 upgrade</code> header field to initiate
+HTTP/1.1 connections with Infinispan Server.
+Client applications can then send the <code>Upgrade: protocol</code> header field, where <code>protocol</code> is a server endpoint.</p>
+</div>
+<div class="paragraph">
+<div class="title">Application-Layer Protocol Negotiation (ALPN)/Transport Layer Security (TLS)</div>
+<p>Client requests include Server Name Indication (SNI) mappings for Infinispan Server endpoints to negotiate protocols over a TLS connection.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Applications must use a TLS library that supports the ALPN extension.
+Infinispan uses WildFly OpenSSL bindings for Java.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<div class="title">Automatic Hot Rod detection</div>
+<p>Client requests that include Hot Rod headers automatically route to Hot Rod endpoints.</p>
+</div>
+<div class="sect3">
+<h4 id="configuring-firewalls_network"><a class="anchor" href="#configuring-firewalls_network"></a>4.1.1. Configuring network firewalls for Infinispan traffic</h4>
+<div class="paragraph">
+<p>Adjust firewall rules to allow traffic between Infinispan Server and client applications.</p>
 </div>
 <div class="paragraph">
 <div class="title">Procedure</div>
@@ -1642,7 +1773,7 @@ nftables utility.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="jgroups_ports-network"><a class="anchor" href="#jgroups_ports-network"></a>4.2. TCP and UDP Ports for Cluster Traffic</h3>
+<h3 id="jgroups-ports_network"><a class="anchor" href="#jgroups-ports_network"></a>4.2. TCP and UDP ports for cluster traffic</h3>
 <div class="paragraph">
 <p>Infinispan uses the following ports for cluster transport messages:</p>
 </div>
@@ -1672,7 +1803,7 @@ nftables utility.</p>
 </tr>
 </tbody>
 </table>
-<h4 id="cross_site_replication" class="discrete">Cross-Site Replication</h4>
+<h4 id="cross_site_replication" class="discrete">Cross-site replication</h4>
 <div class="paragraph">
 <p>Infinispan uses the following ports for the JGroups RELAY2 protocol:</p>
 </div>
@@ -1698,7 +1829,7 @@ nftables utility.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-10-28 04:41:00 -0400
+Last updated 2021-12-13 03:40:25 -0500
 </div>
 </div>
 <style>
