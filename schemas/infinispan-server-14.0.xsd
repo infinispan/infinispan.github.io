@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" version="1.0"
-           targetNamespace="urn:infinispan:server:11.0"
-           xmlns:tns="urn:infinispan:server:11.0"
+           targetNamespace="urn:infinispan:server:14.0"
+           xmlns:tns="urn:infinispan:server:14.0"
            xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
    <xs:element name="server" type="tns:server"/>
@@ -16,6 +16,7 @@
          <xs:field xpath="@name"/>
       </xs:unique>
    </xs:element>
+   <xs:element name="endpoint" type="tns:endpoint"/>
 
    <xs:complexType name="server">
       <xs:sequence>
@@ -31,9 +32,9 @@
                <xs:field xpath="@name"/>
             </xs:unique>
          </xs:element>
-         <xs:element type="tns:security" name="security"/>
+         <xs:element type="tns:security" name="security" minOccurs="0"/>
          <xs:element type="tns:data-sources" name="data-sources" minOccurs="0"/>
-         <xs:element type="tns:endpoints" name="endpoints" maxOccurs="unbounded"/>
+         <xs:element type="tns:endpoints" name="endpoints"/>
       </xs:sequence>
    </xs:complexType>
 
@@ -125,6 +126,7 @@
 
    <xs:complexType name="data-source-connection-factory">
       <xs:all>
+         <xs:element type="tns:credential-reference" name="credential-reference" minOccurs="0"/>
          <xs:element type="tns:property" name="connection-property" minOccurs="0">
             <xs:annotation>
                <xs:documentation>Properties for the JDBC driver</xs:documentation>
@@ -207,7 +209,15 @@
       <xs:attribute name="background-validation" type="xs:nonNegativeInteger">
          <xs:annotation>
             <xs:documentation>
-               Time in milliseconds between background validation runs
+               Time in milliseconds between background validation runs. A duration of 0 means that this feature is disabled.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="validate-on-acquisition" type="xs:nonNegativeInteger">
+         <xs:annotation>
+            <xs:documentation>
+               Connections idle for longer than this time, specified in milliseconds, are validated before being
+               acquired (foreground validation). A duration of 0 means that this feature is disabled.
             </xs:documentation>
          </xs:annotation>
       </xs:attribute>
@@ -229,8 +239,14 @@
 
    <xs:complexType name="security">
       <xs:sequence>
+         <xs:element type="tns:credential-stores" name="credential-stores" minOccurs="0">
+            <xs:unique name="security-credential-unique">
+               <xs:selector xpath="./tns:credential-store"/>
+               <xs:field xpath="@name"/>
+            </xs:unique>
+         </xs:element>
          <xs:element type="tns:security-realms" name="security-realms">
-            <xs:unique name="security-real-unique">
+            <xs:unique name="security-realm-unique">
                <xs:selector xpath="./tns:security-realm"/>
                <xs:field xpath="@name"/>
             </xs:unique>
@@ -294,14 +310,31 @@
    </xs:complexType>
 
    <xs:complexType name="endpoints">
+      <xs:sequence>
+         <xs:element name="endpoint" type="tns:endpoint" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="socket-binding" type="xs:string">
+         <xs:annotation>
+            <xs:documentation>Specifies the socket the endpoint connector binds to.</xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="security-realm" type="xs:string">
+         <xs:annotation>
+            <xs:documentation>Names the security realm to use for authentication, cache authorization, and encryption.</xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+   </xs:complexType>
+
+   <xs:complexType name="endpoint">
       <xs:complexContent>
          <xs:extension base="tns:protocol-connector">
             <xs:sequence>
+               <xs:element name="ip-filter" type="tns:ip-filter" minOccurs="0"/>
                <xs:element type="tns:hotrod-connector" name="hotrod-connector" minOccurs="0" maxOccurs="unbounded"/>
-               <xs:element type="tns:rest-connector" name="rest-connector" maxOccurs="unbounded"/>
+               <xs:element type="tns:rest-connector" name="rest-connector" minOccurs="0" maxOccurs="unbounded"/>
                <xs:element type="tns:memcached-connector" name="memcached-connector" minOccurs="0" maxOccurs="unbounded"/>
             </xs:sequence>
-            <xs:attribute name="socket-binding" type="xs:string">
+            <xs:attribute name="socket-binding" type="xs:string" use="required">
                <xs:annotation>
                   <xs:documentation>Specifies the socket the endpoint connector binds to.</xs:documentation>
                </xs:annotation>
@@ -311,9 +344,14 @@
                   <xs:documentation>Names the security realm to use for authentication, cache authorization, and encryption. </xs:documentation>
                </xs:annotation>
             </xs:attribute>
-            <xs:attribute name="metrics" type="xs:boolean" default="true">
+            <xs:attribute name="admin" type="xs:boolean" default="true">
                <xs:annotation>
-                  <xs:documentation>Enable/disable metrics authentication on this endpoint. Defaults to true.</xs:documentation>
+                  <xs:documentation>Enable administrative features on this endpoint. Defaults to true.</xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="metrics-auth" type="xs:boolean" default="true">
+               <xs:annotation>
+                  <xs:documentation>Enable metrics authentication on this endpoint. Defaults to true.</xs:documentation>
                </xs:annotation>
             </xs:attribute>
          </xs:extension>
@@ -323,6 +361,9 @@
    <xs:complexType name="named-protocol-connector" abstract="true">
       <xs:complexContent>
          <xs:extension base="tns:protocol-connector">
+            <xs:all>
+               <xs:element name="ip-filter" type="tns:ip-filter" minOccurs="0"/>
+            </xs:all>
             <xs:attribute name="name" type="xs:string">
                <xs:annotation>
                   <xs:documentation>Logically names this connector. Use this attribute to separate multiple connector declarations for the same endpoint.</xs:documentation>
@@ -331,6 +372,17 @@
 
          </xs:extension>
       </xs:complexContent>
+   </xs:complexType>
+
+   <xs:complexType name="ip-filter">
+      <xs:choice maxOccurs="unbounded">
+         <xs:element name="accept" type="tns:ip-rule"/>
+         <xs:element name="reject" type="tns:ip-rule"/>
+      </xs:choice>
+   </xs:complexType>
+
+   <xs:complexType name="ip-rule">
+      <xs:attribute name="from" type="xs:string"/>
    </xs:complexType>
 
    <xs:complexType name="hotrod-connector">
@@ -349,6 +401,19 @@
             <xs:attribute name="external-port" type="xs:int" use="optional">
                <xs:annotation>
                   <xs:documentation>Sets an external port for this node. Defaults to the server socket binding port.</xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="security-realm" type="xs:string">
+               <xs:annotation>
+                  <xs:documentation>Names the security realm to use for authentication, cache authorization, and encryption. </xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="network-prefix-override" type="xs:boolean" default="true">
+               <xs:annotation>
+                  <xs:documentation>
+                     Configures whether to use the netmask that the host system provides for interfaces or override with netmasks that follow IANA private address conventions.
+                     Defaults to overriding host netmasks and using IANA conventions.
+                  </xs:documentation>
                </xs:annotation>
             </xs:attribute>
          </xs:extension>
@@ -410,6 +475,11 @@
                   </xs:documentation>
                </xs:annotation>
             </xs:attribute>
+            <xs:attribute name="security-realm" type="xs:string">
+               <xs:annotation>
+                  <xs:documentation>Names the security realm to use for authentication, cache authorization, and encryption. </xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
          </xs:extension>
       </xs:complexContent>
    </xs:complexType>
@@ -434,7 +504,7 @@
          </xs:annotation>
       </xs:attribute>
       <xs:attribute name="await-initial-retrieval" type="xs:boolean" use="optional"
-                    default="true">
+                    default="${TopologyCache.awaitInitialRetrieval}">
          <xs:annotation>
             <xs:documentation>Configures whether initial state retrieval should happen immediately at startup. Applies only when lazy-retrieval is false. Values are true (default) / false.
             </xs:documentation>
@@ -448,7 +518,7 @@
       </xs:all>
       <xs:attribute name="security-realm" type="xs:string">
          <xs:annotation>
-            <xs:documentation>Names the security realm to use for authentication and authorization.</xs:documentation>
+            <xs:documentation>Names the security realm to use for authentication and authorization. Deprecated since 12.1. Use the security-realm attribute on the connector instead.</xs:documentation>
          </xs:annotation>
       </xs:attribute>
    </xs:complexType>
@@ -459,16 +529,16 @@
             <![CDATA[
                 The configuration of the SASL authentication layer for this server.
 
-                The optional nested "include-mechanisms" element contains a whitelist of allowed SASL mechanism names.
+                The optional "include-mechanisms" attribute contains a list of allowed SASL mechanism names.
                 No mechanisms will be allowed which are not present in this list.
 
-                The optional nested "qop" element contains a list of quality-of-protection values, in decreasing order
+                The optional "qop" attribute contains a list of quality-of-protection values, in decreasing order
                 of preference.
 
-                The optional nested "strength" element contains a list of cipher strength values, in decreasing order
+                The optional "strength" attribute contains a list of cipher strength values, in decreasing order
                 of preference.
 
-                The optional nested "policy" boolean element specifies a policy to use to narrow down the available set
+                The optional "policy" attribute contains a list of policies to use to narrow down the available set
                 of mechanisms.
 
                 The optional nested "property" elements specify additional properties required by the specified mechanisms
@@ -476,7 +546,6 @@
          </xs:documentation>
       </xs:annotation>
       <xs:sequence>
-         <xs:element name="policy" type="tns:policy" minOccurs="0"/>
          <xs:element name="property" type="tns:property" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
       <xs:attribute name="server-principal" type="xs:string">
@@ -495,44 +564,44 @@
       <xs:attribute name="mechanisms" type="tns:name-list"/>
       <xs:attribute name="qop" type="tns:qop-list"/>
       <xs:attribute name="strength" type="tns:strength"/>
+      <xs:attribute name="policy" type="tns:policy-list"/>
    </xs:complexType>
 
-   <xs:complexType name="policy">
+   <xs:simpleType name="policy-list">
       <xs:annotation>
          <xs:documentation>
             <![CDATA[
                 Policy criteria items to use in order to choose a SASL mechanism.
 
-                The optional nested "forward-secrecy" element contains a boolean value which specifies whether mechanisms
+                "forward-secrecy" specifies whether mechanisms
                 that implement forward secrecy between sessions are required. Forward secrecy means that breaking into
                 one session will not automatically provide information for breaking into future sessions.
 
-                The optional nested "no-active" element contains a boolean value which specifies whether mechanisms
-                susceptible to active (non-dictionary) attacks are not permitted.  "false" to permit, "true" to deny.
+                "no-active" forbids mechanisms susceptible to active (non-dictionary) attacks.
 
-                The optional nested "no-anonymous" element contains a boolean value which specifies whether mechanisms
-                that accept anonymous login are permitted.  "false" to permit, "true" to deny.
+                "no-anonymous" forbids mechanisms that accept anonymous login.
 
-                The optional nested "no-dictionary" element contains a boolean value which specifies whether mechanisms
-                susceptible to passive dictionary attacks are permitted.  "false" to permit, "true" to deny.
+                "no-dictionary" forbids mechanisms susceptible to passive dictionary attacks.
 
-                The optional nested "no-plain-text" element contains a boolean value which specifies whether mechanisms
-                susceptible to simple plain passive attacks (e.g., "PLAIN") are not permitted.    "false" to permit, "true" to deny.
+                "no-plain-text" forbids mechanisms susceptible to simple plain passive attacks (e.g., "PLAIN") are not permitted.
 
-                The optional nested "pass-credentials" element contains a boolean value which specifies whether
-                mechanisms that pass client credentials are required.
+                "pass-credentials" allows mechanisms that pass client credentials.
             ]]>
          </xs:documentation>
       </xs:annotation>
-      <xs:all>
-         <xs:element name="forward-secrecy" type="tns:boolean-element" minOccurs="0"/>
-         <xs:element name="no-active" type="tns:boolean-element" minOccurs="0"/>
-         <xs:element name="no-anonymous" type="tns:boolean-element" minOccurs="0"/>
-         <xs:element name="no-dictionary" type="tns:boolean-element" minOccurs="0"/>
-         <xs:element name="no-plain-text" type="tns:boolean-element" minOccurs="0"/>
-         <xs:element name="pass-credentials" type="tns:boolean-element" minOccurs="0"/>
-      </xs:all>
-   </xs:complexType>
+      <xs:list>
+         <xs:simpleType>
+            <xs:restriction base="xs:token">
+               <xs:enumeration value="forward-secrecy"/>
+               <xs:enumeration value="no-active"/>
+               <xs:enumeration value="no-anonymous"/>
+               <xs:enumeration value="no-dictionary"/>
+               <xs:enumeration value="no-plain-text"/>
+               <xs:enumeration value="pass-credentials"/>
+            </xs:restriction>
+         </xs:simpleType>
+      </xs:list>
+   </xs:simpleType>
 
    <xs:complexType name="property">
       <xs:simpleContent>
@@ -634,7 +703,7 @@
       <xs:attribute name="security-realm" type="xs:string">
          <xs:annotation>
             <xs:documentation>The security realm to use for authentication/authorization purposes. Defaults to none (no
-               authentication).
+               authentication).  Deprecated since 12.1. Use the security-realm attribute on the connector instead.
             </xs:documentation>
          </xs:annotation>
       </xs:attribute>
@@ -660,7 +729,7 @@
          <xs:element name="sni" type="tns:sni" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
       <xs:attribute name="require-ssl-client-auth" type="xs:boolean" use="optional"
-                    default="false">
+                    default="${Encryption.requireSslClientAuth}">
          <xs:annotation>
             <xs:documentation>
               Requires clients to use certificates for authentication.
@@ -670,7 +739,7 @@
       <xs:attribute name="security-realm" type="xs:string" use="required">
          <xs:annotation>
             <xs:documentation>
-              Names the security realm that contains the SSL keystore.
+              Names the security realm that contains the SSL keystore. Deprecated since 12.1. Use the security-realm attribute on the connector instead.
             </xs:documentation>
          </xs:annotation>
       </xs:attribute>
@@ -750,44 +819,6 @@
            Defines a CORS rule for one or more origins.
          </xs:documentation>
       </xs:annotation>
-      <xs:all>
-         <xs:element name="allowed-origins" type="xs:string">
-            <xs:annotation>
-               <xs:documentation>
-                 Specifies a comma-separated list that sets the CORS
-                 'Access-Control-Allow-Origin' header that controls which
-                 origins can access resources.
-               </xs:documentation>
-            </xs:annotation>
-         </xs:element>
-         <xs:element name="allowed-methods" type="xs:string">
-            <xs:annotation>
-               <xs:documentation>
-                 Specifies a comma-separated list that sets the CORS
-                 'Access-Control-Allow-Methods' header in the preflight
-                 response. Controls the methods that origins can access.
-               </xs:documentation>
-            </xs:annotation>
-         </xs:element>
-         <xs:element name="allowed-headers" type="xs:string" minOccurs="0">
-            <xs:annotation>
-               <xs:documentation>
-                 Specifies a comma-separated list that sets the CORS
-                 'Access-Control-Allow-Headers' header in the preflight
-                 response. Controls the headers that origins can access.
-               </xs:documentation>
-            </xs:annotation>
-         </xs:element>
-         <xs:element name="expose-headers" type="xs:string" minOccurs="0">
-            <xs:annotation>
-               <xs:documentation>
-                 Specifies a comma-separated list that sets the CORS
-                 'Access-Control-Expose-Headers' header in the preflight
-                 response. Controls the headers that are exposed to origins.
-               </xs:documentation>
-            </xs:annotation>
-         </xs:element>
-      </xs:all>
       <xs:attribute name="name" type="xs:string">
          <xs:annotation>
             <xs:documentation>
@@ -811,6 +842,140 @@
             </xs:documentation>
          </xs:annotation>
       </xs:attribute>
+      <xs:attribute name="allowed-origins" type="xs:string">
+         <xs:annotation>
+            <xs:documentation>
+               Specifies the CORS 'Access-Control-Allow-Origin' header that controls which
+               origins can access resources.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="allowed-methods" type="tns:name-list">
+         <xs:annotation>
+            <xs:documentation>
+               Specifies the CORS 'Access-Control-Allow-Methods' header in the preflight response.
+               Controls the methods that origins can access.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="allowed-headers" type="tns:name-list">
+         <xs:annotation>
+            <xs:documentation>
+               Specifies the CORS 'Access-Control-Allow-Headers' header in the preflight response.
+               Controls the headers that origins can access.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="expose-headers" type="tns:name-list">
+         <xs:annotation>
+            <xs:documentation>
+               Specifies the CORS 'Access-Control-Expose-Headers' header in the preflight response.
+               Controls the headers that are exposed to origins.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+   </xs:complexType>
+
+   <xs:complexType name="credential-stores">
+      <xs:annotation>
+         <xs:documentation>
+            Complex type to contain the definitions of the credential stores.
+         </xs:documentation>
+      </xs:annotation>
+      <xs:sequence>
+         <xs:element name="credential-store" type="tns:credential-store" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+   </xs:complexType>
+
+   <xs:complexType name="credential-reference">
+      <xs:annotation>
+         <xs:documentation>
+            Credential reference to be used by the configuration.
+         </xs:documentation>
+      </xs:annotation>
+      <xs:attribute name="store" type="xs:string">
+         <xs:annotation>
+            <xs:documentation>
+               Credential store name used to fetch credential with given 'alias' from.
+               Credential store name has to be defined elsewhere.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="alias" type="xs:string">
+         <xs:annotation>
+            <xs:documentation>
+               Alias of credential in the credential store.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+   </xs:complexType>
+
+   <xs:complexType name="clear-text-credential">
+      <xs:annotation>
+         <xs:documentation>
+            A clear-text credential.
+         </xs:documentation>
+      </xs:annotation>
+      <xs:attribute name="clear-text" type="xs:string" use="required">
+         <xs:annotation>
+            <xs:documentation>
+               The clear-text password.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+   </xs:complexType>
+
+   <xs:complexType name="credential-store">
+      <xs:annotation>
+         <xs:documentation>
+            An individual credential store definition.
+         </xs:documentation>
+      </xs:annotation>
+      <xs:choice>
+         <xs:element name="clear-text-credential" type="tns:clear-text-credential">
+            <xs:annotation>
+               <xs:documentation>
+                  Credential to be used by as protection parameter for the Credential Store.
+               </xs:documentation>
+            </xs:annotation>
+         </xs:element>
+         <xs:element name="credential-reference" type="tns:credential-reference">
+            <xs:annotation>
+               <xs:documentation>
+                  Credential to be used by as protection parameter for the Credential Store.
+               </xs:documentation>
+            </xs:annotation>
+         </xs:element>
+      </xs:choice>
+      <xs:attribute name="name" type="xs:string" use="required">
+         <xs:annotation>
+            <xs:documentation>
+               The name of this credential store.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="relative-to" type="xs:string">
+         <xs:annotation>
+            <xs:documentation>
+               A property name whose value will be used to resolve relative paths.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="path" type="xs:string" use="required">
+         <xs:annotation>
+            <xs:documentation>
+               File name of credential store storage. If the path is relative, the full path will be resolved using
+               the 'relative-to' attribute.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="type" type="xs:string" default="pkcs12">
+         <xs:annotation>
+            <xs:documentation>
+               The type of the credential store file. Can be either pkcs12 or jceks. Defaults to pkcs12.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
    </xs:complexType>
 
    <xs:complexType name="security-realms">
@@ -827,9 +992,31 @@
          <xs:element type="tns:security-realm-local" name="local-realm" minOccurs="0"/>
          <xs:element type="tns:security-realm-properties" name="properties-realm" minOccurs="0"/>
          <xs:element type="tns:security-realm-token" name="token-realm" minOccurs="0"/>
-         <xs:element type="tns:security-realm-truststore" name="truststore-realm" minOccurs="0"/>
+         <xs:element type="tns:security-realm-trust" name="truststore-realm" minOccurs="0"/>
+         <xs:element type="tns:security-realm-distributed" name="distributed-realm" minOccurs="0"/>
       </xs:sequence>
       <xs:attribute name="name" type="xs:string" use="required"/>
+      <xs:attribute name="default-realm" type="xs:string">
+         <xs:annotation>
+            <xs:documentation>
+               Specifies which of the underlying realms will be used by default. It defaults to the first realm.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="cache-max-size" type="xs:int" default="256">
+         <xs:annotation>
+            <xs:documentation>
+               The maximum size for the identity cache for this realm. If the size is less than 1, the cache will be disabled. Defaults to 256.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="cache-lifespan" type="xs:long" default="-1">
+         <xs:annotation>
+            <xs:documentation>
+               The lifespan of entries in the identity cache after which they expire and are reloaded from the realm provider. Defaults to -1 (never expires).
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
    </xs:complexType>
 
    <xs:complexType name="security-realm-authentication">
@@ -867,17 +1054,128 @@
    </xs:complexType>
    <xs:complexType name="security-realm-ssl">
       <xs:sequence>
-         <xs:element type="tns:security-realm-keystore" name="keystore"/>
+         <xs:element type="tns:security-realm-keystore" name="keystore" minOccurs="0"/>
+         <xs:element type="tns:security-realm-truststore" name="truststore" minOccurs="0"/>
          <xs:element type="tns:security-realm-ssl-engine" name="engine" minOccurs="0"/>
       </xs:sequence>
    </xs:complexType>
    <xs:complexType name="security-realm-keystore">
-      <xs:attribute type="xs:string" name="path" use="required"/>
-      <xs:attribute type="xs:string" name="relative-to"/>
-      <xs:attribute type="xs:string" name="keystore-password" use="required"/>
-      <xs:attribute type="xs:string" name="alias"/>
-      <xs:attribute type="xs:string" name="key-password"/>
-      <xs:attribute type="xs:string" name="generate-self-signed-certificate-host"/>
+      <xs:sequence>
+         <xs:element type="tns:credential-reference" name="credential-reference" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute type="xs:string" name="path" use="required">
+         <xs:annotation>
+            <xs:documentation>
+               Specifies the location of the keystore on the host file system. You can set a relative or absolute value.
+               If you set a relative value, configure a value for the 'relative-to' attribute.
+               The type of the keystore will be auto-detected among JKS, JCEKS, PKCS12 or PEM.
+               BKS, BCFKS and UBER are also supported if the `bouncycastle` libary is present.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="relative-to" default="infinispan.server.config.path">
+         <xs:annotation>
+            <xs:documentation>
+               Specifies a property name that resolves to a directory on the host file system.
+               Any files that you specify with the 'path' attribute, unless absolute, must be relative to this directory.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="keystore-password">
+         <xs:annotation>
+            <xs:documentation>
+               Deprecated: use the 'password' attribute instead.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="password">
+         <xs:annotation>
+            <xs:documentation>
+               The password required to open the keystore. If the keystore is a PEM file, this should be specified as an
+               empty string.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="alias">
+         <xs:annotation>
+            <xs:documentation>
+               The alias of the entry in the keystore to use as the server identity.
+               Only required if there are multiple entries in the keystore.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="key-password">
+         <xs:annotation>
+            <xs:documentation>
+               A password required to access a specific entry within the keystore. Only needed if the keystore type
+               supports it and the entries have been protected by an additional password.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="generate-self-signed-certificate-host">
+         <xs:annotation>
+            <xs:documentation>
+               If this attribute is set and if the file that backs the KeyStore does not exist, then
+               a self-signed certificate will be generated on first use and it will be persisted to
+               the file that backs the KeyStore. The value of this attribute will be used for the
+               Common Name value in the self-signed certificate.
+
+               The use of this attribute is intended for testing purposes only. This attribute is not
+               intended for production use.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="provider">
+         <xs:annotation>
+            <xs:documentation>
+               The name of the provider to use to instantiate the KeyManagerFactory. If the provider is not
+               specified, and OpenSSL is available and supported on the platform and architecture, the
+               'openssl' provider will be used. Otherwise the first provider found that can create an instance of the
+               specified 'type' will be used.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+   </xs:complexType>
+   <xs:complexType name="security-realm-truststore">
+      <xs:sequence>
+         <xs:element type="tns:credential-reference" name="credential-reference" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute type="xs:string" name="path" use="required">
+         <xs:annotation>
+            <xs:documentation>
+               Specifies the location of the truststore on the host file system. You can set a relative or absolute value.
+               If you set a relative value, configure a value for the 'relative-to' attribute.
+               The type of the keystore will be auto-detected among JKS, JCEKS, PKCS12 or PEM.
+               BKS, BCFKS and UBER are also supported if the `bouncycastle` libary is present.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="relative-to" default="infinispan.server.config.path">
+      <xs:annotation>
+         <xs:documentation>
+            Specifies a property name that resolves to a directory on the host file system.
+            Any files that you specify with the 'path' attribute, unless absolute, must be relative to this directory.
+         </xs:documentation>
+      </xs:annotation>
+   </xs:attribute>
+      <xs:attribute type="xs:string" name="password">
+         <xs:annotation>
+            <xs:documentation>
+               The password required to open the truststore. If the truststore is a PEM file, this should be specified as an
+               empty string.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="provider">
+         <xs:annotation>
+            <xs:documentation>
+               The name of the provider to use to instantiate the KeyManagerFactory. If the provider is not
+               specified, and OpenSSL is available and supported on the platform and architecture, the
+               'openssl' provider will be used. Otherwise the first provider found that can create an instance of the
+               specified 'type' will be used.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
    </xs:complexType>
    <xs:complexType name="security-realm-ssl-engine">
       <xs:attribute type="tns:name-list" name="enabled-protocols"/>
@@ -889,6 +1187,13 @@
          <xs:element type="tns:security-realm-user-properties" name="user-properties"/>
          <xs:element type="tns:security-realm-group-properties" name="group-properties"/>
       </xs:sequence>
+      <xs:attribute type="xs:string" name="name">
+         <xs:annotation>
+            <xs:documentation>
+               Names the security realm to logically separate multiple realms of the same type.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
       <xs:attribute type="xs:string" name="groups-attribute"/>
    </xs:complexType>
 
@@ -911,6 +1216,7 @@
          </xs:documentation>
       </xs:annotation>
       <xs:sequence>
+         <xs:element type="tns:credential-reference" name="credential-reference" minOccurs="0"/>
          <xs:element type="tns:ldap-name-rewriter" name="name-rewriter" minOccurs="0"/>
          <xs:element type="tns:ldap-identity-mapping" name="identity-mapping" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
@@ -956,27 +1262,6 @@
             </xs:documentation>
          </xs:annotation>
       </xs:attribute>
-      <xs:attribute type="xs:string" name="search-dn">
-         <xs:annotation>
-            <xs:documentation>
-              Names the context for query execution. This option provides a
-              useful method to authenticate users based on names that do not
-              use X.500 format, such as "plainUser". In this case, you must
-              also specify the rdn-identifier. If names to authenticate users
-              are based on the X.500 format, you can suppress this
-              configuration. You should also note that this option lets realms
-              authenticate users based on simple, or X.500, names.
-            </xs:documentation>
-         </xs:annotation>
-      </xs:attribute>
-      <xs:attribute type="xs:string" name="rdn-identifier">
-         <xs:annotation>
-            <xs:documentation>
-               Specifies an LDAP attribute that contains the user name and
-               appears in the path of new entries.
-            </xs:documentation>
-         </xs:annotation>
-      </xs:attribute>
       <xs:attribute type="xs:boolean" name="enable-connection-pooling" default="false">
          <xs:annotation>
             <xs:documentation>
@@ -1009,6 +1294,13 @@
             </xs:documentation>
          </xs:annotation>
       </xs:attribute>
+      <xs:attribute type="xs:string" name="client-ssl-context">
+         <xs:annotation>
+            <xs:documentation>
+               The name of a realm which provides a trust store with which to validate SSL client connections.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
    </xs:complexType>
 
    <xs:complexType name="ldap-name-rewriter">
@@ -1029,12 +1321,10 @@
             Specifies the base type for all PrincipalTransformer definitions.
          </xs:documentation>
       </xs:annotation>
-      <xs:attribute name="name" type="xs:string" use="required">
+      <xs:attribute name="name" type="xs:string">
          <xs:annotation>
             <xs:documentation>
-               Specifies the unique name for the PrincipalTransformer.
-               PrincipalTransformer names must be unique across the entire
-               context.
+               Deprecated. Will be ignored.
             </xs:documentation>
          </xs:annotation>
       </xs:attribute>
@@ -1084,18 +1374,46 @@
          <xs:element type="tns:ldap-attribute-mapping" name="attribute-mapping" minOccurs="0"/>
          <xs:element type="tns:ldap-user-password-mapper" name="user-password-mapper" minOccurs="0"/>
       </xs:sequence>
-      <xs:attribute type="xs:string" name="rdn-identifier">
-         <xs:annotation>
-            <xs:documentation>
-               Specifies the RDN for the principal DN to retrieve the principal
-               name from an LDAP entry.
-            </xs:documentation>
-         </xs:annotation>
-      </xs:attribute>
       <xs:attribute type="xs:string" name="search-dn">
          <xs:annotation>
             <xs:documentation>
-               Sets the base DN for query execution.
+               Names the context for query execution. This option provides a
+               useful method to authenticate users based on names that do not
+               use X.500 format, such as "plainUser". In this case, you must
+               also specify the rdn-identifier. If names to authenticate users
+               are based on the X.500 format, you can suppress this
+               configuration. You should also note that this option lets realms
+               authenticate users based on simple, or X.500, names.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="rdn-identifier">
+         <xs:annotation>
+            <xs:documentation>
+               Specifies an LDAP attribute that contains the user name and
+               appears in the path of new entries.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="search-recursive" type="xs:boolean" default="false">
+         <xs:annotation>
+            <xs:documentation>
+               Performs recursive queries.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="search-time-limit" type="xs:int" default="10000">
+         <xs:annotation>
+            <xs:documentation>
+               The time limit of LDAP search in milliseconds. Defaults to 10000 ms.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="filter-name" type="xs:string" default="(rdn_identifier={0})">
+         <xs:annotation>
+            <xs:documentation>
+               Specifies the LDAP filter that retrieves an identity by name.
+               In the default value, "{0}" is replaced with the searched identity name and "rdn_identifier" is replaced with the value of the "rdn-identifier" attribute.
             </xs:documentation>
          </xs:annotation>
       </xs:attribute>
@@ -1221,13 +1539,6 @@
             </xs:documentation>
          </xs:annotation>
       </xs:attribute>
-      <xs:attribute type="xs:boolean" name="writable">
-         <xs:annotation>
-            <xs:documentation>
-               If the password credential is writable.
-            </xs:documentation>
-         </xs:annotation>
-      </xs:attribute>
    </xs:complexType>
 
    <xs:simpleType name="referral-list">
@@ -1254,19 +1565,133 @@
    </xs:complexType>
 
    <xs:complexType name="jwt">
-      <xs:attribute type="tns:name-list" name="issuer"/>
-      <xs:attribute type="tns:name-list" name="audience"/>
-      <xs:attribute type="xs:string" name="public-key"/>
-      <xs:attribute type="xs:long" name="jku-timeout"/>
-      <xs:attribute type="xs:string" name="client-ssl-context"/>
+      <xs:attribute type="tns:name-list" name="issuer">
+         <xs:annotation>
+            <xs:documentation>
+               Defines one or more string values representing an unique identifier for the entities that are allowed as
+               issuers of a given JWT. During validation JWT tokens must have a iss claim that contains one of the values defined here.
+               If not provided, the validator will not perform validations based on the issuer claim.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="tns:name-list" name="audience">
+         <xs:annotation>
+            <xs:documentation>
+               Defines one or more string values representing the audiences supported by this configuration.
+               During validation JWT tokens must have an aud claim that contains one of the values defined here.
+               If not provided, the validator will not perform validations based on the audience claim.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="public-key">
+         <xs:annotation>
+            <xs:documentation>
+               A default public key in its PEM format used to validate the signature of tokens without kid header parameter.
+               If not provided, the validator will not validate signatures.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:long" name="jku-timeout" default="120000">
+         <xs:annotation>
+            <xs:documentation>
+               A timeout, in milliseconds for cached jwks when using jku claim.
+               After this timeout, the keys of need to be re-cached before use. Default value is 2 minutes.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:integer" name="connection-timeout" default="2000">
+         <xs:annotation>
+            <xs:documentation>
+               Sets the timeout, in milliseconds, for connections to the JKU server.
+               The default value is 2 seconds.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:integer" name="read-timeout" default="2000">
+         <xs:annotation>
+            <xs:documentation>
+               Sets the read timeout, in milliseconds, for the JKU server.
+               operations. The default value is 2 seconds.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="client-ssl-context">
+         <xs:annotation>
+            <xs:documentation>
+               The name of a realm which provides a trust store with which to validate SSL client connections.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="host-name-verification-policy">
+         <xs:annotation>
+            <xs:documentation>
+               A HostnameVerifier that will be used to validate the hostname when using SSL/TLS.
+               This configuration is mandatory if using jku claims. Can be ANY or DEFAULT.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
    </xs:complexType>
 
    <xs:complexType name="oauth2-introspection">
-      <xs:attribute type="xs:string" name="client-id"/>
-      <xs:attribute type="xs:string" name="client-secret"/>
-      <xs:attribute type="xs:string" name="introspection-url"/>
-      <xs:attribute type="xs:string" name="client-ssl-context"/>
-      <xs:attribute type="xs:string" name="host-name-verification-policy"/>
+      <xs:sequence>
+         <xs:element type="tns:credential-reference" name="credential-reference" minOccurs="0"/>
+      </xs:sequence>
+      <xs:attribute type="xs:string" name="client-id" use="required">
+         <xs:annotation>
+            <xs:documentation>
+               The identifier of a client registered within the OAuth2 Authorization Server that will be used to
+               authenticate this server in order to validate bearer tokens arriving to this server.
+               Please note that the client will be usually a confidential client with both an identifier and secret
+               configured in order to authenticate against the token introspection endpoint. In this case, the endpoint
+               must support HTTP BASIC authentication using the client credentials (both id and secret).
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="client-secret">
+         <xs:annotation>
+            <xs:documentation>
+               The secret of the client identified by the given clientId.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="introspection-url" use="required">
+         <xs:annotation>
+            <xs:documentation>
+               An URL pointing to a RFC-7662 OAuth2 Token Introspection compatible endpoint.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:integer" name="connection-timeout" default="2000">
+         <xs:annotation>
+            <xs:documentation>
+               Sets the timeout, in milliseconds, for connections to the OAuth2 server.
+               The default value is 2 seconds.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:integer" name="read-timeout" default="2000">
+         <xs:annotation>
+            <xs:documentation>
+               Sets the read timeout, in milliseconds, for the OAuth2 server.
+               operations. The default value is 2 seconds.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="client-ssl-context">
+         <xs:annotation>
+            <xs:documentation>
+               The name of a realm which provides a trust store with which to validate SSL client connections.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+      <xs:attribute type="xs:string" name="host-name-verification-policy">
+         <xs:annotation>
+            <xs:documentation>
+               A HostnameVerifier that will be used to validate the hostname when using SSL/TLS.
+               This configuration is mandatory if the given token introspection url is using SSL/TLS. Can be ANY or DEFAULT.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
    </xs:complexType>
 
    <xs:complexType name="security-realm-filesystem">
@@ -1390,10 +1815,33 @@
       </xs:attribute>
    </xs:complexType>
 
-   <xs:complexType name="security-realm-truststore">
-      <xs:attribute type="xs:string" name="path" use="required"/>
-      <xs:attribute type="xs:string" name="provider"/>
-      <xs:attribute type="xs:string" name="keystore-password" use="required"/>
-      <xs:attribute type="xs:string" name="relative-to" default="infinispan.server.data.path"/>
+   <xs:complexType name="security-realm-trust">
+      <xs:attribute type="xs:string" name="name"/>
    </xs:complexType>
+
+   <xs:complexType name="security-realm-distributed">
+      <xs:annotation>
+         <xs:documentation>
+            A realm definition for authentication and authorization of identities distributed between multiple realms.
+         </xs:documentation>
+      </xs:annotation>
+      <xs:attribute type="xs:string" name="name"/>
+      <xs:attribute name="realms" type="tns:name-list">
+         <xs:annotation>
+            <xs:documentation>
+               A list of security realms that should be used for authentication until one succeeds.
+               If no realms are specified, all of the available realms will be used.
+            </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+   </xs:complexType>
+
+   <xs:attribute name="security-realm" type="xs:string">
+      <xs:annotation>
+         <xs:documentation>
+            Defines a security-realm which will be used to secure the resource.
+            It may be used on the cache-container transport element.
+         </xs:documentation>
+      </xs:annotation>
+   </xs:attribute>
 </xs:schema>
