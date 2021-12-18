@@ -671,23 +671,26 @@ $(addBlockSwitches);
 </li>
 <li><a href="#jdbc-connection-factories_persistence">6.9. JDBC connection factories</a>
 <ul class="sectlevel3">
-<li><a href="#configuring-jdbc-agroal-properties_persistence">6.9.1. Configuring JDBC connection pools with Agroal properties</a></li>
-</ul>
-</li>
-<li><a href="#jdbc-cache-store_persistence">6.10. JDBC string-based cache stores</a>
-<ul class="sectlevel3">
-<li><a href="#configuring-jdbc-cache-stores_persistence">6.10.1. Configuring JDBC string-based cache stores</a></li>
-</ul>
-</li>
-<li><a href="#sql-cache-store_persistence">6.11. SQL cache stores</a>
-<ul class="sectlevel3">
-<li><a href="#sql-store-protobuf-schema_persistence">6.11.1. Protobuf schema for SQL store</a></li>
-<li><a href="#configuring-sql-cache-stores-table_persistence">6.11.2. Configuring SQL table stores</a></li>
-<li><a href="#configuring-sql-cache-stores-query_persistence">6.11.3. Configuring SQL query stores</a>
+<li><a href="#configuring-server-datasources_persistence">6.9.1. Configuring Infinispan Server with managed datasources</a>
 <ul class="sectlevel4">
-<li><a href="#sql-cache-stores-query-parameters_persistence">Parameters and statements for SQL query stores</a></li>
+<li><a href="#server-datasources_persistence">Managed datasources for JDBC connections</a></li>
 </ul>
 </li>
+<li><a href="#configuring-jdbc-agroal-properties_persistence">6.9.2. Configuring JDBC connection pools with Agroal properties</a></li>
+</ul>
+</li>
+<li><a href="#sql-cache-store_persistence">6.10. SQL cache stores</a>
+<ul class="sectlevel3">
+<li><a href="#configuring-sql-cache-stores-table_persistence">6.10.1. Loading Infinispan caches from database tables</a></li>
+<li><a href="#configuring-sql-cache-stores-query_persistence">6.10.2. Using SQL queries to load data and manipulate persistent storage</a></li>
+<li><a href="#sql-store-protobuf-schema_persistence">6.10.3. Protobuf schema for SQL cache stores</a></li>
+<li><a href="#sql-cache-stores-configuration-examples_persistence">6.10.4. SQL cache store configuration examples</a></li>
+<li><a href="#sql-cache-store-troubleshooting_persistence">6.10.5. SQL cache store troubleshooting</a></li>
+</ul>
+</li>
+<li><a href="#jdbc-cache-store_persistence">6.11. JDBC string-based cache stores</a>
+<ul class="sectlevel3">
+<li><a href="#configuring-jdbc-cache-stores_persistence">6.11.1. Configuring JDBC string-based cache stores</a></li>
 </ul>
 </li>
 <li><a href="#rocksdb-cache-store_persistence">6.12. RocksDB cache stores</a></li>
@@ -5020,19 +5023,43 @@ segmented cache store, Infinispan cannot read data from that cache store.</p>
 <div class="sect2">
 <h3 id="shared-cache-stores_persistence"><a class="anchor" href="#shared-cache-stores_persistence"></a>6.5. Shared cache stores</h3>
 <div class="paragraph">
-<p>Infinispan cache stores can be local to a given node or shared across all nodes in the cluster.</p>
+<p>Infinispan cache stores can be local to a given node or shared across all nodes in the cluster.
+By default, cache stores are local (<code>shared="false"</code>).</p>
 </div>
+<div class="ulist">
+<ul>
+<li>
+<p>Local cache stores are unique to each node; for example, a file-based cache store that persists data to the host filesystem.</p>
 <div class="paragraph">
-<p>You should enable the <code>fetch-state</code> and <code>purge</code> parameters only if <code>shared="false"</code>.
-If the cache store is not shared then <code>fetch-state</code> and <code>purge</code> prevent nodes from loading stale data from persistent storage.</p>
+<p>Local cache stores can fetch state and purge on startup to avoid loading stale entries from persistent storage.</p>
 </div>
+</li>
+<li>
+<p>Shared cache stores allow multiple nodes to use the same persistent storage; for example, a JDBC cache store that allows multiple nodes to access the same database.</p>
 <div class="paragraph">
-<p>Never configure a shared cache to fetch state or purge on start up.
-Infinispan throws an exception if you attempt to configure shared stores to purge.
-Fetching state with shared stores causes performance issues and leads to much longer cluster start times.</p>
+<p>Shared cache stores ensure that only the primary owner write to persistent storage, instead of backup nodes performing write operations for every modification.</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Never configure shared cache stores to fetch state and purge on startup.
+Fetching state with shared cache stores results in performance issues and longer cluster start times.
+Purging deletes data, which is not typically the desired behavior for persistent storage.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="listingblock primary">
-<div class="title">Unique to each node</div>
+<div class="title">Local cache store</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence&gt;</span>
   <span class="tag">&lt;store</span> <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">false</span><span class="delimiter">&quot;</span></span>
@@ -5042,7 +5069,7 @@ Fetching state with shared stores causes performance issues and leads to much lo
 </div>
 </div>
 <div class="listingblock secondary">
-<div class="title">Shared between the cluster</div>
+<div class="title">Shared cache store</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;persistence&gt;</span>
   <span class="tag">&lt;store</span> <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
@@ -5781,7 +5808,300 @@ builder.persistence()
 </ul>
 </div>
 <div class="sect3">
-<h4 id="configuring-jdbc-agroal-properties_persistence"><a class="anchor" href="#configuring-jdbc-agroal-properties_persistence"></a>6.9.1. Configuring JDBC connection pools with Agroal properties</h4>
+<h4 id="configuring-server-datasources_persistence"><a class="anchor" href="#configuring-server-datasources_persistence"></a>6.9.1. Configuring Infinispan Server with managed datasources</h4>
+<div class="paragraph">
+<p>Create managed datasources as part of your Infinispan Server configuration to optimize connection pooling and performance for JDBC database connections.
+You can then use these datasources as part of your JDBC cache store
+configuration.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Copy database drivers to the <code>server/lib</code> directory in your Infinispan Server installation.</p>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Use the <code class="command">install</code> command with the Infinispan Command Line Interface (CLI) to download the required drivers to the <code>server/lib</code> directory, for example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">install org.postgresql:postgresql:42.1.3</code></pre>
+</div>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Open your Infinispan Server configuration for editing.</p>
+</li>
+<li>
+<p>Add a new <code>data-source</code> to the <code>data-sources</code> section.</p>
+</li>
+<li>
+<p>Uniquely identify the datasource with the <code>name</code> attribute or field.</p>
+</li>
+<li>
+<p>Specify a JNDI name for the datasource with the <code>jndi-name</code> attribute or field.</p>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>You use the JNDI name to specify the datasource in your JDBC cache store
+configuration.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>Set <code>true</code> as the value of the <code>statistics</code> attribute or field to enable statistics for the datasource through the <code>/metrics</code> endpoint.</p>
+</li>
+<li>
+<p>Provide JDBC driver details that define how to connect to the datasource in the <code>connection-factory</code> section.</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Specify the name of the database driver with the <code>driver</code> attribute or field.</p>
+</li>
+<li>
+<p>Specify the JDBC connection url with the <code>url</code> attribute or field.</p>
+</li>
+<li>
+<p>Specify credentials with the <code>username</code> and <code>password</code> attributes or fields.</p>
+</li>
+<li>
+<p>Provide any other configuration as appropriate.</p>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>Define how Infinispan Server nodes pool and reuse connections with connection pool tuning properties in the <code>connection-pool</code> section.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Verification</div>
+<p>Use the Infinispan Command Line Interface (CLI) to test the datasource connection, as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Start a CLI session.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>$ bin/cli.sh</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>List all datasources and confirm the one you created is available.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; server datasource ls</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Test a datasource connection.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; server datasource test my-datasource</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Next steps</div>
+<p>Now that you have created a managed datasource in your Infinispan Server configuration, you can reference the JNDI name in cache store configuration as in the following example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">persistent-cache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">xmlns:jdbc</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:jdbc:13.0</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;persistence&gt;</span>
+        <span class="tag">&lt;jdbc:string-keyed-jdbc-store&gt;</span>
+            <span class="comment">&lt;!-- Specifies the JNDI name for the datasource connection
+                 in Infinispan Server configuration. --&gt;</span>
+            <span class="tag">&lt;jdbc:data-source</span> <span class="attribute-name">jndi-url</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc/postgres</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+            <span class="tag">&lt;jdbc:string-keyed-table</span> <span class="attribute-name">drop-on-exit</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+                          <span class="attribute-name">create-on-start</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+                          <span class="attribute-name">prefix</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">TBL</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;jdbc:id-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ID</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">VARCHAR(255)</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                <span class="tag">&lt;jdbc:data-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">DATA</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">BYTEA</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                <span class="tag">&lt;jdbc:timestamp-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">TS</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">BIGINT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                <span class="tag">&lt;jdbc:segment-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">S</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">INT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+            <span class="tag">&lt;/jdbc:string-keyed-table&gt;</span>
+        <span class="tag">&lt;/jdbc:string-keyed-jdbc-store&gt;</span>
+    <span class="tag">&lt;/persistence&gt;</span>
+<span class="tag">&lt;/distributed-cache-configuration&gt;</span></code></pre>
+</div>
+</div>
+<div class="sect4">
+<h5 id="server-datasources_persistence"><a class="anchor" href="#server-datasources_persistence"></a>Managed datasources for JDBC connections</h5>
+<div class="paragraph">
+<p>Managed datasources centralize JDBC connection configuration for your Infinispan cluster and share connection pools for Infinispan Server nodes.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;data-sources&gt;</span>
+   <span class="comment">&lt;!-- Defines a unique name for the datasource and JNDI name that you
+        reference in JDBC cache store configuration.
+        Enables statistics for the datasource, if required. --&gt;</span>
+   <span class="tag">&lt;data-source</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ds</span><span class="delimiter">&quot;</span></span>
+                <span class="attribute-name">jndi-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc/postgres</span><span class="delimiter">&quot;</span></span>
+                <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="comment">&lt;!-- Specifies the JDBC driver that creates connections. --&gt;</span>
+      <span class="tag">&lt;connection-factory</span> <span class="attribute-name">driver</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.postgresql.Driver</span><span class="delimiter">&quot;</span></span>
+                          <span class="attribute-name">url</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:postgresql://localhost:5432/postgres</span><span class="delimiter">&quot;</span></span>
+                          <span class="attribute-name">username</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">postgres</span><span class="delimiter">&quot;</span></span>
+                          <span class="attribute-name">password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+         <span class="comment">&lt;!-- Sets optional JDBC driver-specific connection properties. --&gt;</span>
+         <span class="tag">&lt;connection-property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>value<span class="tag">&lt;/connection-property&gt;</span>
+      <span class="tag">&lt;/connection-factory&gt;</span>
+      <span class="comment">&lt;!-- Defines connection pool tuning properties. --&gt;</span>
+      <span class="tag">&lt;connection-pool</span> <span class="attribute-name">initial-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1</span><span class="delimiter">&quot;</span></span>
+                       <span class="attribute-name">max-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span>
+                       <span class="attribute-name">min-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span>
+                       <span class="attribute-name">background-validation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span>
+                       <span class="attribute-name">idle-removal</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1</span><span class="delimiter">&quot;</span></span>
+                       <span class="attribute-name">blocking-timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span>
+                       <span class="attribute-name">leak-detection</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10000</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+   <span class="tag">&lt;/data-source&gt;</span>
+<span class="tag">&lt;/data-sources&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">data-sources</span><span class="delimiter">&quot;</span></span>: [
+    {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ds</span><span class="delimiter">&quot;</span></span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">jndi-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc/postgres</span><span class="delimiter">&quot;</span></span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">statistics</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">connection-factory</span><span class="delimiter">&quot;</span></span>: {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">driver</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">org.postgresql.Driver</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">url</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:postgresql://localhost:5432/postgres</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">username</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">postgres</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">password</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">connection-properties</span><span class="delimiter">&quot;</span></span>: {
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">value</span><span class="delimiter">&quot;</span></span>
+        }
+      },
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">connection-pool</span><span class="delimiter">&quot;</span></span>: {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">initial-size</span><span class="delimiter">&quot;</span></span>: <span class="integer">1</span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">max-size</span><span class="delimiter">&quot;</span></span>: <span class="integer">10</span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">min-size</span><span class="delimiter">&quot;</span></span>: <span class="integer">3</span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">background-validation</span><span class="delimiter">&quot;</span></span>: <span class="integer">1000</span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">idle-removal</span><span class="delimiter">&quot;</span></span>: <span class="integer">1</span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">blocking-timeout</span><span class="delimiter">&quot;</span></span>: <span class="integer">1000</span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">leak-detection</span><span class="delimiter">&quot;</span></span>: <span class="integer">10000</span>
+      }
+    }
+  ]
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="yaml"><span class="key">data-sources</span>:
+  - <span class="string"><span class="content">name: ds</span></span>
+    <span class="key">jndi-name</span>: <span class="string"><span class="content">'jdbc/postgres'</span></span>
+    <span class="key">statistics</span>: <span class="string"><span class="content">true</span></span>
+    <span class="key">connection-factory</span>:
+      <span class="key">driver</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">org.postgresql.Driver</span><span class="delimiter">&quot;</span></span>
+      <span class="key">url</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:postgresql://localhost:5432/postgres</span><span class="delimiter">&quot;</span></span>
+      <span class="key">username</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">postgres</span><span class="delimiter">&quot;</span></span>
+      <span class="key">password</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>
+      <span class="key">connection-properties</span>:
+        <span class="key">name</span>: <span class="string"><span class="content">value</span></span>
+    <span class="key">connection-pool</span>:
+      <span class="key">initial-size</span>: <span class="string"><span class="content">1</span></span>
+      <span class="key">max-size</span>: <span class="string"><span class="content">10</span></span>
+      <span class="key">min-size</span>: <span class="string"><span class="content">3</span></span>
+      <span class="key">background-validation</span>: <span class="string"><span class="content">1000</span></span>
+      <span class="key">idle-removal</span>: <span class="string"><span class="content">1</span></span>
+      <span class="key">blocking-timeout</span>: <span class="string"><span class="content">1000</span></span>
+      <span class="key">leak-detection</span>: <span class="string"><span class="content">10000</span></span></code></pre>
+</div>
+</div>
+<h6 id="connection_pool_tuning_properties" class="discrete">Connection pool tuning properties</h6>
+<div class="paragraph">
+<p>You can tune connection pools with the following parameters:</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>initial-size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Initial number of connections the pool should hold.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>max-size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of connections in the pool.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>min-size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Minimum number of connections the pool should hold.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>blocking-timeout</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum time in milliseconds to block while waiting for a connection before throwing an exception.
+This will never throw an exception if creating a new connection takes an inordinately long period of time.
+Default is <code>0</code> meaning that a call will wait indefinitely.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>background-validation</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Time in milliseconds between background validation runs. A duration of <code>0</code> means that this feature is disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>validate-on-acquisition</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Connections idle for longer than this time, specified in milliseconds, are validated before being acquired (foreground validation). A duration of <code>0</code> means that this feature is disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>idle-removal</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Time in minutes a connection has to be idle before it can be removed.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>leak-detection</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Time in milliseconds a connection has to be held before a leak warning.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="configuring-jdbc-agroal-properties_persistence"><a class="anchor" href="#configuring-jdbc-agroal-properties_persistence"></a>6.9.2. Configuring JDBC connection pools with Agroal properties</h4>
 <div class="paragraph">
 <p>You can use a properties file to configure pooled connection factories for JDBC string-based cache stores.</p>
 </div>
@@ -5858,7 +6178,754 @@ org.infinispan.agroal.credential=sa</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="jdbc-cache-store_persistence"><a class="anchor" href="#jdbc-cache-store_persistence"></a>6.10. JDBC string-based cache stores</h3>
+<h3 id="sql-cache-store_persistence"><a class="anchor" href="#sql-cache-store_persistence"></a>6.10. SQL cache stores</h3>
+<div class="paragraph">
+<p>SQL cache stores let you load Infinispan caches from existing database tables.
+Infinispan offers two types of SQL cache store:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Table</dt>
+<dd>
+<p>Infinispan loads entries from a single database table.</p>
+</dd>
+<dt class="hdlist1">Query</dt>
+<dd>
+<p>Infinispan uses SQL queries to load entries from single or multiple database tables, including from sub-columns within those tables, and perform insert, update, and delete operations.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>Both SQL table and query stores:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Allow read and write operations to persistent storage.</p>
+</li>
+<li>
+<p>Can be read-only and act as a cache loader.</p>
+</li>
+<li>
+<p>Support keys and values that correspond to a single database column or a composite of multiple database columns.</p>
+<div class="paragraph">
+<p>For composite keys and values, you must provide Infinispan with Protobuf schema (<code>.proto</code> files) that describe the keys and values.
+With Infinispan Server you can add schema through the Infinispan Console or Command Line Interface (CLI) with the <code class="command">schema</code> command.</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>SQL cache stores do not support expiration or segmentation.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/persistence/jdbc/common/DatabaseType.html">DatabaseType Enum lists supported database dialects</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/infinispan-cachestore-sql-config-13.0.html">Infinispan SQL store configuration reference</a></p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="configuring-sql-cache-stores-table_persistence"><a class="anchor" href="#configuring-sql-cache-stores-table_persistence"></a>6.10.1. Loading Infinispan caches from database tables</h4>
+<div class="paragraph">
+<p>Add a SQL table cache store to your configuration if you want Infinispan to load data from a database table.
+When it connects to the database, Infinispan uses metadata from the table to detect column names and data types.
+Infinispan also automatically determines which columns in the database are part of the primary key.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Have JDBC connection details.<br>
+You can add JDBC connection factories directly to your cache configuration.<br>
+For remote caches in production environments, you should add managed datasources to Infinispan Server configuration and specify the JNDI name in the cache configuration.</p>
+</li>
+<li>
+<p>Remote caches: Copy database drivers to the <code>server/lib</code> directory in your Infinispan Server installation.</p>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Use the <code class="command">install</code> command with the Infinispan Command Line Interface (CLI) to download the required drivers to the <code>server/lib</code> directory, for example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">install org.postgresql:postgresql:42.1.3</code></pre>
+</div>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>Embedded caches: Add the <code>infinispan-cachestore-sql</code> dependency to your <code>pom</code> file.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;dependency&gt;</span>
+  <span class="tag">&lt;groupId&gt;</span>org.infinispan<span class="tag">&lt;/groupId&gt;</span>
+  <span class="tag">&lt;artifactId&gt;</span>infinispan-cachestore-sql<span class="tag">&lt;/artifactId&gt;</span>
+<span class="tag">&lt;/dependency&gt;</span></code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a cache store configuration that loads from a single database table.</p>
+<div class="listingblock primary">
+<div class="title">Declarative</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml">table-jdbc-store xmlns=&quot;urn:infinispan:config:store:sql:13.0&quot;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Programmatic</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml">persistence().addStore(TableJdbcStoreConfigurationBuilder.class)</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Specify the database dialect with either <code>dialect=""</code> or <code>dialect()</code>, for example <code>dialect="H2"</code> or <code>dialect="postgres"</code>.</p>
+</li>
+<li>
+<p>Configure the SQL cache store with the properties you require, for example:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>To use the same cache store across your cluster, set <code>shared="true"</code> or <code>shared(true)</code>.</p>
+</li>
+<li>
+<p>To create a read only cache store, set <code>read-only="true"</code> or <code>.ignoreModifications(true)</code>.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Name the database table that loads the cache with <code>table-name="&lt;database_table_name&gt;"</code> or <code>table.name("&lt;database_table_name&gt;")</code>.</p>
+</li>
+<li>
+<p>Add the <code>schema</code> element or the <code>.schemaJdbcConfigurationBuilder()</code> method and provide your Protobuf schema details if your database tables contain composite keys or values.</p>
+</li>
+</ol>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="../configuring/configuring.html#jdbc-connection-factories_persistence">JDBC connection factories</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/persistence/jdbc/common/DatabaseType.html">DatabaseType Enum lists supported database dialects</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/infinispan-cachestore-sql-config-13.0.html">Infinispan SQL store configuration reference</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="configuring-sql-cache-stores-query_persistence"><a class="anchor" href="#configuring-sql-cache-stores-query_persistence"></a>6.10.2. Using SQL queries to load data and manipulate persistent storage</h4>
+<div class="paragraph">
+<p>SQL query cache stores let you load caches from multiple database tables, including from sub-columns in database tables, and perform insert, update, and delete operations.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Have JDBC connection details.<br>
+You can add JDBC connection factories directly to your cache configuration.<br>
+For remote caches in production environments, you should add managed datasources to Infinispan Server configuration and specify the JNDI name in the cache configuration.</p>
+</li>
+<li>
+<p>Remote caches: Copy database drivers to the <code>server/lib</code> directory in your Infinispan Server installation.</p>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Use the <code class="command">install</code> command with the Infinispan Command Line Interface (CLI) to download the required drivers to the <code>server/lib</code> directory, for example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">install org.postgresql:postgresql:42.1.3</code></pre>
+</div>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>Embedded caches: Add the <code>infinispan-cachestore-sql</code> dependency to your <code>pom</code> file and make sure database drivers are on your application classpath.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;dependency&gt;</span>
+  <span class="tag">&lt;groupId&gt;</span>org.infinispan<span class="tag">&lt;/groupId&gt;</span>
+  <span class="tag">&lt;artifactId&gt;</span>infinispan-cachestore-sql<span class="tag">&lt;/artifactId&gt;</span>
+<span class="tag">&lt;/dependency&gt;</span></code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a cache store configuration that uses SQL queries.</p>
+<div class="listingblock primary">
+<div class="title">Declarative</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml">query-jdbc-store xmlns=&quot;urn:infinispan:config:store:jdbc:13.0&quot;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Programmatic</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml">persistence().addStore(QueriesJdbcStoreConfigurationBuilder.class)</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Specify the database dialect with either <code>dialect=""</code> or <code>dialect()</code>, for example <code>dialect="H2"</code> or <code>dialect="postgres"</code>.</p>
+</li>
+<li>
+<p>Configure the SQL cache store with the properties you require, for example:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>To use the same cache store across your cluster, set <code>shared="true"</code> or <code>shared(true)</code>.</p>
+</li>
+<li>
+<p>To create a read only cache store, set <code>read-only="true"</code> or <code>.ignoreModifications(true)</code>.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Define SQL query statements that load caches with data and modify database tables with the <code>queries</code> element or the <code>queries()</code> method.</p>
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Query statement</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SELECT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Loads a single entry into caches.
+You can use wildcards but must specify parameters for keys.
+You can use labelled expressions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SELECT ALL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Loads multiple entries into caches.
+You can use the <code>*</code> wildcard if the number of columns returned match the key and value columns.
+You can use labelled expressions.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIZE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Counts the number of entries in the cache.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DELETE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Deletes a single entry from the cache.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DELETE ALL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Deletes all entries from the cache.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>UPSERT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Modifies entries in the cache.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code>DELETE</code>, <code>DELETE ALL</code>, and <code>UPSERT</code> statements do not apply to read only cache stores but are required if cache stores allow modifications.</p>
+</div>
+<div class="paragraph">
+<p>Parameters in <code>DELETE</code> statements must match parameters in <code>SELECT</code> statements exactly.</p>
+</div>
+<div class="paragraph">
+<p>Variables in <code>UPSERT</code> statements must have the same number of uniquely named variables that <code>SELECT</code> and <code>SELECT ALL</code> statements return.
+For example, if <code>SELECT</code> returns <code>foo</code> and <code>bar</code> this statement must take only <code>:foo</code> and <code>:bar</code> as variables.
+However you can apply the same named variable more than once in a statement.</p>
+</div>
+<div class="paragraph">
+<p>SQL queries can include <code>JOIN</code>, <code>ON</code>, and any other clauses that the database supports.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>Add the <code>schema</code> element or the <code>.schemaJdbcConfigurationBuilder()</code> method and provide your Protobuf schema details if your database tables contain composite keys or values.</p>
+</li>
+</ol>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="../configuring/configuring.html#jdbc-connection-factories_persistence">JDBC connection factories</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/persistence/jdbc/common/DatabaseType.html">DatabaseType Enum lists supported database dialects</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/infinispan-cachestore-sql-config-13.0.html">Infinispan SQL store configuration reference</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sql-store-protobuf-schema_persistence"><a class="anchor" href="#sql-store-protobuf-schema_persistence"></a>6.10.3. Protobuf schema for SQL cache stores</h4>
+<div class="paragraph">
+<p>Infinispan loads keys and values from columns in database tables via SQL cache stores.
+If the tables in your database have composite primary keys or composite values, you need to provide Infinispan with Protobuf schema (<code>.proto</code> files) that provide a structured representation of your data.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>To create Protobuf schema, Infinispan recommends annotating your Java classes and creating serialization context initializers.</p>
+</div>
+<div class="paragraph">
+<p>For more information about creating serialization context initializers for remote and embedded caches, see the <em>Cache encoding and marshalling</em> documentation.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<div class="title">Keys and values with single column</div>
+<p>The following <code>CREATE</code> statement adds a table named "books" that has two columns, <code>isbn</code> and <code>title</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sql"><span class="class">CREATE</span> <span class="type">TABLE</span> books (
+    isbn NUMBER(<span class="integer">13</span>),
+    title <span class="predefined-type">varchar</span>(<span class="integer">120</span>)
+    <span class="directive">PRIMARY</span> <span class="type">KEY</span>(isbn)
+);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When you use this table with a SQL cache store, Infinispan adds an entry to the cache using the <code>isbn</code> column as the key and the <code>title</code> column as the value.</p>
+</div>
+<div class="paragraph">
+<div class="title">Composite values</div>
+<p>Database tables can have composite values, such as the following example where the value is composed of the <code>title</code> and <code>author</code> columns:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sql"><span class="class">CREATE</span> <span class="type">TABLE</span> books (
+    isbn NUMBER(<span class="integer">13</span>),
+    title <span class="predefined-type">varchar</span>(<span class="integer">120</span>),
+    author <span class="predefined-type">varchar</span>(<span class="integer">80</span>)
+    <span class="directive">PRIMARY</span> <span class="type">KEY</span>(isbn)
+);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When you use this table with a SQL cache store, Infinispan adds an entry to the cache using the <code>isbn</code> column as the key.
+For the value of the entry, Infinispan requires a Protobuf schema that maps   and the <code>title</code> column and the <code>author</code> column such as the following:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="protobuf">package library;
+
+message books_value {
+    optional string title = 1;
+    optional string author = 2;
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<div class="title">Composite keys and values</div>
+<p>Database tables can have composite keys and values, such as the following example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="sql"><span class="class">CREATE</span> <span class="type">TABLE</span> books (
+    isbn NUMBER(<span class="integer">13</span>),
+    reprint <span class="predefined-type">INT</span>,
+    title <span class="predefined-type">varchar</span>(<span class="integer">120</span>),
+    author <span class="predefined-type">varchar</span>(<span class="integer">80</span>)
+    <span class="directive">PRIMARY</span> <span class="type">KEY</span>(isbn, reprint)
+);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To use this table with a SQL cache store, you must provide Infinispan with a Protobuf schema that maps the columns to keys and values such as the following:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="protobuf">package library;
+
+message books_key {
+    required string isbn = 1;
+    required int32 reprint = 2;
+}
+
+message books_value {
+    optional string title = 1;
+    optional string author = 2;
+}</code></pre>
+</div>
+</div>
+<h5 id="sql_types_to_protobuf_types" class="discrete">SQL types to Protobuf types</h5>
+<div class="paragraph">
+<p>The following table contains default mappings of SQL data types to Protobuf data types:</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">SQL type</th>
+<th class="tableblock halign-left valign-top">Protobuf type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int4</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int32</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int8</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int64</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>float4</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>float</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>float8</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>double</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>numeric</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>double</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bool</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bool</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>char</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>string</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>varchar</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>string</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>text</code>, <code>tinytext</code>, <code>mediumtext</code>, <code>longtext</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>string</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bytea</code>, <code>tinyblob</code>, <code>blob</code>, <code>mediumblob</code>, <code>longblob</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bytes</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="../encoding/encoding.html">Cache encoding and marshalling</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/infinispan-cachestore-sql-config-13.0.html">Infinispan SQL store configuration reference</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sql-cache-stores-configuration-examples_persistence"><a class="anchor" href="#sql-cache-stores-configuration-examples_persistence"></a>6.10.4. SQL cache store configuration examples</h4>
+<div class="paragraph">
+<p>Declarative and programmatic examples of SQL cache store configuration.</p>
+</div>
+<h5 id="sql_table_store_configuration" class="discrete">SQL table store configuration</h5>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache&gt;</span>
+  <span class="tag">&lt;persistence&gt;</span>
+    <span class="tag">&lt;table-jdbc-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:sql:13.0</span><span class="delimiter">&quot;</span></span>
+                      <span class="attribute-name">dialect</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">H2</span><span class="delimiter">&quot;</span></span>
+                      <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+                      <span class="attribute-name">table-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">authors</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;schema</span> <span class="attribute-name">message-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Author</span><span class="delimiter">&quot;</span></span>
+              <span class="attribute-name">package</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>
+              <span class="attribute-name">embedded-key</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/table-jdbc-store&gt;</span>
+  <span class="tag">&lt;/persistence&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">distributed-cache</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">persistence</span><span class="delimiter">&quot;</span></span>: {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">table-jdbc-store</span><span class="delimiter">&quot;</span></span>: {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">dialect</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">H2</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">shared</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">table-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">authors</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">schema</span><span class="delimiter">&quot;</span></span>: {
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">message-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Author</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">package</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">embedded-key</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="yaml"><span class="key">distributed-cache</span>:
+  <span class="key">persistence</span>:
+    <span class="key">table-jdbc-store</span>:
+      <span class="key">dialect</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">H2</span><span class="delimiter">&quot;</span></span>
+      <span class="key">shared</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+      <span class="key">table-name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">authors</span><span class="delimiter">&quot;</span></span>
+      <span class="key">schema</span>:
+        <span class="key">message-name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Author</span><span class="delimiter">&quot;</span></span>
+        <span class="key">package</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>
+        <span class="key">embedded-key</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">ConfigurationBuilder</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="java">ConfigurationBuilder builder = <span class="keyword">new</span> ConfigurationBuilder();
+builder.persistence().addStore(TableJdbcStoreConfigurationBuilder.class)
+      .dialect(DatabaseType.H2)
+      .shared(<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>)
+      .tableName(<span class="string"><span class="delimiter">&quot;</span><span class="content">authors</span><span class="delimiter">&quot;</span></span>)
+      .schemaJdbcConfigurationBuilder()
+         .messageName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Author</span><span class="delimiter">&quot;</span></span>)
+         .packageName(<span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>)
+         .embeddedKey(<span class="predefined-constant">true</span>);</code></pre>
+</div>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/infinispan-cachestore-sql-config-13.0.html">Infinispan SQL store configuration reference</a></p>
+</li>
+</ul>
+</div>
+<h5 id="sql_query_store_configuration" class="discrete">SQL query store configuration</h5>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache&gt;</span>
+  <span class="tag">&lt;persistence&gt;</span>
+    <span class="tag">&lt;query-jdbc-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:jdbc:13.0</span><span class="delimiter">&quot;</span></span>
+                      <span class="attribute-name">dialect</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">POSTGRES</span><span class="delimiter">&quot;</span></span>
+                      <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;queries</span> <span class="attribute-name">key-columns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">isbn</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+        <span class="tag">&lt;select-single&gt;</span>SELECT t1.name, t1.picture, t1.sex, t1.birthdate, t1.accepted_tos, t2.street, t2.city, t2.zip FROM Person t1 JOIN Address t2 ON t1.name = t2.name WHERE t1.name = :name<span class="tag">&lt;/select-single&gt;</span>
+        <span class="tag">&lt;select-all&gt;</span>SELECT t1.name, t1.picture, t1.sex, t1.birthdate, t1.accepted_tos, t2.street, t2.city, t2.zip FROM Person t1 JOIN Address t2 ON t1.name = t2.name<span class="tag">&lt;/select-all&gt;</span>
+        <span class="tag">&lt;delete-single&gt;</span>DELETE FROM Person t1 WHERE t1.name = :name; DELETE FROM Address t2 where t2.name = :name<span class="tag">&lt;/delete-single&gt;</span>
+        <span class="tag">&lt;delete-all&gt;</span>DELETE FROM Person; DELETE FROM Address<span class="tag">&lt;/delete-all&gt;</span>
+        <span class="tag">&lt;upsert&gt;</span>INSERT INTO Person (name,  picture, sex, birthdate, accepted_tos) VALUES (:name, :picture, :sex, :birthdate, :accepted_tos); INSERT INTO Address(name, street, city, zip) VALUES (:name, :street, :city, :zip)<span class="tag">&lt;/upsert&gt;</span>
+        <span class="tag">&lt;size&gt;</span>SELECT COUNT(*) FROM Person<span class="tag">&lt;/size&gt;</span>
+      <span class="tag">&lt;/queries&gt;</span>
+      <span class="tag">&lt;schema</span> <span class="attribute-name">message-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Person</span><span class="delimiter">&quot;</span></span>
+              <span class="attribute-name">key-message-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">PersonID</span><span class="delimiter">&quot;</span></span>
+              <span class="attribute-name">package</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">com.example</span><span class="delimiter">&quot;</span></span>
+              <span class="attribute-name">embedded-key</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/query-jdbc-store&gt;</span>
+  <span class="tag">&lt;/persistence&gt;</span>
+<span class="tag">&lt;distributed-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">distributed-cache</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">persistence</span><span class="delimiter">&quot;</span></span>: {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">query-jdbc-store</span><span class="delimiter">&quot;</span></span>: {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">dialect</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">POSTGRES</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">shared</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">key-columns</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">queries</span><span class="delimiter">&quot;</span></span>: {
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">select-single</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT t1.name, t1.picture, t1.sex, t1.birthdate, t1.accepted_tos, t2.street, t2.city, t2.zip FROM Person t1 JOIN Address t2 ON t1.name = t2.name WHERE t1.name = :name</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">select-all</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT t1.name, t1.picture, t1.sex, t1.birthdate, t1.accepted_tos, t2.street, t2.city, t2.zip FROM Person t1 JOIN Address t2 ON t1.name = t2.name</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">delete-single</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM Person t1 WHERE t1.name = :name; DELETE FROM Address t2 where t2.name = :name</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">delete-all</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM Person; DELETE FROM Address</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">upsert</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT INTO Person (name,  picture, sex, birthdate, accepted_tos) VALUES (:name, :picture, :sex, :birthdate, :accepted_tos); INSERT INTO Address(name, street, city, zip) VALUES (:name, :street, :city, :zip)</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">size</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT COUNT(*) FROM Person</span><span class="delimiter">&quot;</span></span>
+        },
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">schema</span><span class="delimiter">&quot;</span></span>: {
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">message-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Books</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">key-message-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">BooksID</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">package</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">embedded-key</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="yaml"><span class="key">distributed-cache</span>:
+  <span class="key">persistence</span>:
+    <span class="key">query-jdbc-store</span>:
+      <span class="key">dialect</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">POSTGRES</span><span class="delimiter">&quot;</span></span>
+      <span class="key">shared</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+      <span class="key">key-columns</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn</span><span class="delimiter">&quot;</span></span>
+      <span class="key">queries</span>:
+        <span class="key">select-single</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT t1.name, t1.picture, t1.sex, t1.birthdate, t1.accepted_tos, t2.street, t2.city, t2.zip FROM Person t1 JOIN Address t2 ON t1.name = t2.name WHERE t1.name = :name</span><span class="delimiter">&quot;</span></span>
+        <span class="key">select-all</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT t1.name, t1.picture, t1.sex, t1.birthdate, t1.accepted_tos, t2.street, t2.city, t2.zip FROM Person t1 JOIN Address t2 ON t1.name = t2.name</span><span class="delimiter">&quot;</span></span>
+        <span class="key">delete-single</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM Person t1 WHERE t1.name = :name; DELETE FROM Address t2 where t2.name = :name</span><span class="delimiter">&quot;</span></span>
+        <span class="key">delete-all</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM Person; DELETE FROM Address</span><span class="delimiter">&quot;</span></span>
+        <span class="key">upsert</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT INTO Person (name,  picture, sex, birthdate, accepted_tos) VALUES (:name, :picture, :sex, :birthdate, :accepted_tos); INSERT INTO Address(name, street, city, zip) VALUES (:name, :street, :city, :zip)</span><span class="delimiter">&quot;</span></span>
+        <span class="key">size</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT COUNT(*) FROM Person</span><span class="delimiter">&quot;</span></span>
+      <span class="key">schema</span>:
+        <span class="key">message-name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">Books</span><span class="delimiter">&quot;</span></span>
+        <span class="key">key-message-name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">BooksID</span><span class="delimiter">&quot;</span></span>
+        <span class="key">package</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>
+        <span class="key">embedded-key</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">ConfigurationBuilder</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="java">ConfigurationBuilder builder = <span class="keyword">new</span> ConfigurationBuilder();
+builder.persistence().addStore(QueriesJdbcStoreConfigurationBuilder.class)
+      .dialect(DatabaseType.POSTGRES)
+      .shared(<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>)
+      .keyColumns(<span class="string"><span class="delimiter">&quot;</span><span class="content">isbn</span><span class="delimiter">&quot;</span></span>)
+      .queriesJdbcConfigurationBuilder()
+         .select(<span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT t1.name, t1.picture, t1.sex, t1.birthdate, t1.accepted_tos, t2.street, t2.city, t2.zip FROM Person t1 JOIN Address t2 ON t1.name = t2.name WHERE t1.name = :name</span><span class="delimiter">&quot;</span></span>)
+         .selectAll(<span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT t1.name, t1.picture, t1.sex, t1.birthdate, t1.accepted_tos, t2.street, t2.city, t2.zip FROM Person t1 JOIN Address t2 ON t1.name = t2.name</span><span class="delimiter">&quot;</span></span>)
+         .delete(<span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM Person t1 WHERE t1.name = :name; DELETE FROM Address t2 where t2.name = :name</span><span class="delimiter">&quot;</span></span>)
+         .deleteAll(<span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM Person; DELETE FROM Address</span><span class="delimiter">&quot;</span></span>)
+         .upsert(<span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT INTO Person (name,  picture, sex, birthdate, accepted_tos) VALUES (:name, :picture, :sex, :birthdate, :accepted_tos); INSERT INTO Address(name, street, city, zip) VALUES (:name, :street, :city, :zip)</span><span class="delimiter">&quot;</span></span>)
+         .size(<span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT COUNT(*) FROM Person</span><span class="delimiter">&quot;</span></span>)
+      .schemaJdbcConfigurationBuilder()
+         .messageName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Books</span><span class="delimiter">&quot;</span></span>)
+         .keyMessageName(<span class="string"><span class="delimiter">&quot;</span><span class="content">BooksID</span><span class="delimiter">&quot;</span></span>)
+         .packageName(<span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>)
+         .embeddedKey(<span class="predefined-constant">true</span>);</code></pre>
+</div>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/infinispan-cachestore-sql-config-13.0.html">Infinispan SQL store configuration reference</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sql-cache-store-troubleshooting_persistence"><a class="anchor" href="#sql-cache-store-troubleshooting_persistence"></a>6.10.5. SQL cache store troubleshooting</h4>
+<div class="paragraph">
+<p>Find out about common issues and errors with SQL cache stores and how to troubleshoot them.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>ISPN008064: No primary keys found for table &lt;table_name&gt;, check case sensitivity</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan logs this message in the following cases:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The database table does not exist.</p>
+</li>
+<li>
+<p>The database table name is case sensitive and needs to be either all lower case or all upper case, depending on the database provider.</p>
+</li>
+<li>
+<p>The database table does not have any primary keys defined.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>To resolve this issue you should:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Check your SQL cache store configuration and ensure that you specify the name of an existing table.</p>
+</li>
+<li>
+<p>Ensure that the database table name conforms to an case sensitivity requirements.</p>
+</li>
+<li>
+<p>Ensure that your database tables have primary keys that uniquely identify the appropriate rows.</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="jdbc-cache-store_persistence"><a class="anchor" href="#jdbc-cache-store_persistence"></a>6.11. JDBC string-based cache stores</h3>
 <div class="paragraph">
 <p>JDBC String-Based cache stores, <code>JdbcStringBasedStore</code>, use JDBC drivers to load and store values in the underlying database.</p>
 </div>
@@ -5910,7 +6977,7 @@ shared.</p>
 </ul>
 </div>
 <div class="sect3">
-<h4 id="configuring-jdbc-cache-stores_persistence"><a class="anchor" href="#configuring-jdbc-cache-stores_persistence"></a>6.10.1. Configuring JDBC string-based cache stores</h4>
+<h4 id="configuring-jdbc-cache-stores_persistence"><a class="anchor" href="#configuring-jdbc-cache-stores_persistence"></a>6.11.1. Configuring JDBC string-based cache stores</h4>
 <div class="paragraph">
 <p>Configure Infinispan caches with JDBC string-based cache stores that can connect to databases.</p>
 </div>
@@ -6105,717 +7172,6 @@ builder.persistence().addStore(JdbcStringBasedStoreConfigurationBuilder.class)
 </div>
 </div>
 <div class="sect2">
-<h3 id="sql-cache-store_persistence"><a class="anchor" href="#sql-cache-store_persistence"></a>6.11. SQL cache stores</h3>
-<div class="paragraph">
-<p>SQL cache stores pre-load Infinispan caches from databases, with a supported dialect, through JDBC connections.</p>
-</div>
-<div class="paragraph">
-<p>You can create two types of SQL cache store:</p>
-</div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1">Table</dt>
-<dd>
-<p>Infinispan loads entries from a single database table.</p>
-</dd>
-<dt class="hdlist1">Query</dt>
-<dd>
-<p>Infinispan uses SQL queries to load entries as well as perform insert, update, and delete operations.</p>
-</dd>
-</dl>
-</div>
-<div class="paragraph">
-<p>Both SQL table and query stores:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Allow read and write operations to persistent storage.</p>
-</li>
-<li>
-<p>Can be read-only and act as a Cache Loader.</p>
-</li>
-<li>
-<p>Support keys and values that correspond to a single database column or a composite of multiple database columns.</p>
-<div class="paragraph">
-<p>For composite keys and values, you must provide Infinispan with Protobuf schema (<code>.proto</code> files) that describe the keys and values.
-With Infinispan Server you can add schema through the Infinispan Console or Command Line Interface (CLI) with the <code class="command">schema</code> command.</p>
-</div>
-</li>
-</ul>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>SQL cache stores do not support expiration or segmentation.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/persistence/jdbc/common/DatabaseType.html">DatabaseType Enum lists supported database dialects</a></p>
-</li>
-</ul>
-</div>
-<div class="sect3">
-<h4 id="sql-store-protobuf-schema_persistence"><a class="anchor" href="#sql-store-protobuf-schema_persistence"></a>6.11.1. Protobuf schema for SQL store</h4>
-<div class="paragraph">
-<p>Infinispan loads keys and values from columns in database tables via SQL cache stores.
-If the tables in your database have composite primary keys or composite values, you need to provide Infinispan with Protobuf schema (<code>.proto</code> files) that provide a structured representation of your data.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>To create Protobuf schema, Infinispan recommends annotating your Java classes and creating serialization context initializers.</p>
-</div>
-<div class="paragraph">
-<p>For more information about creating serialization context initializers for remote and embedded caches, see the <em>Cache encoding and marshalling</em> documentation.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<div class="title">Keys and values with single column</div>
-<p>The following <code>CREATE</code> statement adds a table named "books" that has two columns, <code>isbn</code> and <code>title</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="sql"><span class="class">CREATE</span> <span class="type">TABLE</span> books (
-    isbn NUMBER(<span class="integer">13</span>),
-    title <span class="predefined-type">varchar</span>(<span class="integer">120</span>)
-    <span class="directive">PRIMARY</span> <span class="type">KEY</span>(isbn)
-);</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>When you use this table with a SQL cache store, Infinispan adds an entry to the cache using the <code>isbn</code> column as the key and the <code>title</code> column as the value.</p>
-</div>
-<div class="paragraph">
-<div class="title">Composite values</div>
-<p>Database tables can have composite values, such as the following example where the value is composed of the <code>title</code> and <code>author</code> columns:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="sql"><span class="class">CREATE</span> <span class="type">TABLE</span> books (
-    isbn NUMBER(<span class="integer">13</span>),
-    title <span class="predefined-type">varchar</span>(<span class="integer">120</span>),
-    author <span class="predefined-type">varchar</span>(<span class="integer">80</span>)
-    <span class="directive">PRIMARY</span> <span class="type">KEY</span>(isbn)
-);</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>When you use this table with a SQL cache store, Infinispan adds an entry to the cache using the <code>isbn</code> column as the key.
-For the value of the entry, Infinispan requires a Protobuf schema that maps   and the <code>title</code> column and the <code>author</code> column such as the following:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="protobuf">package library;
-
-message books_value {
-    optional string title = 1;
-    optional string author = 2;
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<div class="title">Composite keys and values</div>
-<p>Database tables can have composite keys and values, such as the following example:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="sql"><span class="class">CREATE</span> <span class="type">TABLE</span> books (
-    isbn NUMBER(<span class="integer">13</span>),
-    reprint <span class="predefined-type">INT</span>,
-    title <span class="predefined-type">varchar</span>(<span class="integer">120</span>),
-    author <span class="predefined-type">varchar</span>(<span class="integer">80</span>)
-    <span class="directive">PRIMARY</span> <span class="type">KEY</span>(isbn, reprint)
-);</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>To use this table with a SQL cache store, you must provide Infinispan with a Protobuf schema that maps the columns to keys and values such as the following:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="protobuf">package library;
-
-message books_key {
-    required string isbn = 1;
-    required int32 reprint = 2;
-}
-
-message books_value {
-    optional string title = 1;
-    optional string author = 2;
-}</code></pre>
-</div>
-</div>
-<h5 id="sql_types_to_protobuf_types" class="discrete">SQL types to Protobuf types</h5>
-<div class="paragraph">
-<p>The following table contains default mappings of SQL data types to Protobuf data types:</p>
-</div>
-<table class="tableblock frame-all grid-all stripes-even fit-content">
-<colgroup>
-<col>
-<col>
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">SQL type</th>
-<th class="tableblock halign-left valign-top">Protobuf type</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int4</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int32</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int8</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int64</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>float4</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>float</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>float8</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>double</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>numeric</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>double</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bool</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bool</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>char</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>string</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>varchar</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>string</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>text</code>, <code>tinytext</code>, <code>mediumtext</code>, <code>longtext</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>string</code></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bytea</code>, <code>tinyblob</code>, <code>blob</code>, <code>mediumblob</code>, <code>longblob</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bytes</code></p></td>
-</tr>
-</tbody>
-</table>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p><a href="../encoding/encoding.html">Cache encoding and marshalling</a></p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect3">
-<h4 id="configuring-sql-cache-stores-table_persistence"><a class="anchor" href="#configuring-sql-cache-stores-table_persistence"></a>6.11.2. Configuring SQL table stores</h4>
-<div class="paragraph">
-<p>Add SQL table cache stores so Infinispan can preload your caches from database tables.
-When it connects to the database, Infinispan uses metadata from the table to detect column names and data types.
-Infinispan also automatically determines which columns in the database are part of the primary key.</p>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Provide Infinispan with Protobuf schema that describe any composite keys and values in your database tables.</p>
-<div class="paragraph">
-<p>Infinispan recommends annotating your Java classes and creating serialization context initializers.</p>
-</div>
-</li>
-<li>
-<p>Remote caches: Copy database drivers to the <code>server/lib</code> directory in your Infinispan Server installation.</p>
-</li>
-<li>
-<p>Embedded caches: Add the <code>infinispan-cachestore-sql</code> dependency to your <code>pom</code> file.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;dependency&gt;</span>
-  <span class="tag">&lt;groupId&gt;</span>org.infinispan<span class="tag">&lt;/groupId&gt;</span>
-  <span class="tag">&lt;artifactId&gt;</span>infinispan-cachestore-sql<span class="tag">&lt;/artifactId&gt;</span>
-<span class="tag">&lt;/dependency&gt;</span></code></pre>
-</div>
-</div>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Create a SQL cache store configuration in one of the following ways:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Declaratively, add the <code>persistence</code> element or field then add <code>table-jdbc-store</code> with the following schema namespace:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml">xmlns=&quot;urn:infinispan:config:store:sql:13.0&quot;</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Programmatically, add the following methods to your <code>ConfigurationBuilder</code>:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml">persistence().addStore(TableJdbcStoreConfigurationBuilder.class)</code></pre>
-</div>
-</div>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Specify the dialect of the database with either the <code>dialect</code> attribute or the <code>dialect()</code> method.</p>
-</li>
-<li>
-<p>Configure any properties for the SQL cache store as appropriate.</p>
-<div class="paragraph">
-<p>For example, specify if the cache store is shared between multiple cache instances with either the <code>shared</code> attribute or the <code>shared()</code> method.</p>
-</div>
-</li>
-<li>
-<p>Specify the name of the database table with either the <code>table-name="&lt;name&gt;"</code> attribute or the <code>table.name("&lt;name&gt;")</code> method.</p>
-</li>
-<li>
-<p>Add a JDBC connection factory so that Infinispan can connect to the database.</p>
-</li>
-<li>
-<p>Configure a Protobuf schema if database tables contain composite keys or values.</p>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>Add the <code>schema</code> element or the <code>.schemaJdbcConfigurationBuilder()</code> method and specify parameters for your Protobuf schema.</p>
-</li>
-<li>
-<p>Set the <code>embedded-key="true"</code> attribute or <code>.embeddedKey(true)</code> method if values also contain keys.</p>
-</li>
-</ol>
-</div>
-</li>
-</ol>
-</div>
-<h5 id="sql_table_store_configuration" class="discrete">SQL table store configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache&gt;</span>
-  <span class="tag">&lt;persistence&gt;</span>
-    <span class="tag">&lt;table-jdbc-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:sql:13.0</span><span class="delimiter">&quot;</span></span>
-                      <span class="attribute-name">dialect</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">H2</span><span class="delimiter">&quot;</span></span>
-                      <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-                      <span class="attribute-name">table-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;connection-pool</span> <span class="attribute-name">connection-url</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:mem:infinispan</span><span class="delimiter">&quot;</span></span>
-                       <span class="attribute-name">username</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">sa</span><span class="delimiter">&quot;</span></span>
-                       <span class="attribute-name">password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>
-                       <span class="attribute-name">driver</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.h2.Driver</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;schema</span> <span class="attribute-name">message-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books_value</span><span class="delimiter">&quot;</span></span>
-              <span class="attribute-name">key-message-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books_key</span><span class="delimiter">&quot;</span></span>
-              <span class="attribute-name">package</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>
-              <span class="attribute-name">embedded-key</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-    <span class="tag">&lt;/table-jdbc-store&gt;</span>
-  <span class="tag">&lt;/persistence&gt;</span>
-<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="json">{
-  <span class="key"><span class="delimiter">&quot;</span><span class="content">distributed-cache</span><span class="delimiter">&quot;</span></span>: {
-    <span class="key"><span class="delimiter">&quot;</span><span class="content">persistence</span><span class="delimiter">&quot;</span></span>: {
-      <span class="key"><span class="delimiter">&quot;</span><span class="content">table-jdbc-store</span><span class="delimiter">&quot;</span></span>: {
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">dialect</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">H2</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">shared</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">table-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">schema</span><span class="delimiter">&quot;</span></span>: {
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">message-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">books_value</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">key-message-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">books_key</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">package</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">embedded-key</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-        },
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">connection-pool</span><span class="delimiter">&quot;</span></span>: {
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">connection-url</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:mem:infinispan</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">driver</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">org.h2.Driver</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">username</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">sa</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">password</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>
-        }
-      }
-    }
-  }
-}</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="yaml"><span class="key">distributed-cache</span>:
-  <span class="key">persistence</span>:
-    <span class="key">table-jdbc-store</span>:
-      <span class="key">dialect</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">H2</span><span class="delimiter">&quot;</span></span>
-      <span class="key">shared</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-      <span class="key">table-name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span>
-      <span class="key">schema</span>:
-        <span class="key">message-name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">books_value</span><span class="delimiter">&quot;</span></span>
-        <span class="key">key-message-name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">books_key</span><span class="delimiter">&quot;</span></span>
-        <span class="key">package</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>
-        <span class="key">embedded-key</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-      <span class="key">connection-pool</span>:
-        <span class="key">connection-url</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:mem:infinispan</span><span class="delimiter">&quot;</span></span>
-        <span class="key">driver</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">org.h2.Driver</span><span class="delimiter">&quot;</span></span>
-        <span class="key">username</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">sa</span><span class="delimiter">&quot;</span></span>
-        <span class="key">password</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span></code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="java">ConfigurationBuilder builder = <span class="keyword">new</span> ConfigurationBuilder();
-builder.persistence().addStore(TableJdbcStoreConfigurationBuilder.class)
-      .dialect(DatabaseType.H2)
-      .shared(<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>)
-      .tableName(tableToSearch(<span class="string"><span class="delimiter">&quot;</span><span class="content">books</span><span class="delimiter">&quot;</span></span>))
-      .connectionPool()
-         .connectionUrl(<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:mem:infinispan</span><span class="delimiter">&quot;</span></span>)
-         .username(<span class="string"><span class="delimiter">&quot;</span><span class="content">sa</span><span class="delimiter">&quot;</span></span>)
-         .password(<span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>)
-         .driverClass(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.h2.Driver</span><span class="delimiter">&quot;</span></span>)
-      .schemaJdbcConfigurationBuilder()
-         .messageName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Books</span><span class="delimiter">&quot;</span></span>)
-         .keyMessageName(<span class="string"><span class="delimiter">&quot;</span><span class="content">BooksID</span><span class="delimiter">&quot;</span></span>)
-         .packageName(<span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>)
-         .embeddedKey(<span class="predefined-constant">true</span>);</code></pre>
-</div>
-</div>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p><a href="../configuring/configuring.html#jdbc-connection-factories_persistence">JDBC connection factories</a></p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect3">
-<h4 id="configuring-sql-cache-stores-query_persistence"><a class="anchor" href="#configuring-sql-cache-stores-query_persistence"></a>6.11.3. Configuring SQL query stores</h4>
-<div class="paragraph">
-<p>Add SQL query cache stores so Infinispan can preload your caches from database tables.</p>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Provide Infinispan with Protobuf schema that describe any composite keys and values in your database tables.</p>
-<div class="paragraph">
-<p>Infinispan recommends annotating your Java classes and creating serialization context initializers.</p>
-</div>
-</li>
-<li>
-<p>Remote caches: Copy database drivers to the <code>server/lib</code> directory in your Infinispan Server installation.</p>
-</li>
-<li>
-<p>Embedded caches: Add the <code>infinispan-cachestore-sql</code> dependency to your <code>pom</code> file and make sure database drivers are on your application classpath.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;dependency&gt;</span>
-  <span class="tag">&lt;groupId&gt;</span>org.infinispan<span class="tag">&lt;/groupId&gt;</span>
-  <span class="tag">&lt;artifactId&gt;</span>infinispan-cachestore-sql<span class="tag">&lt;/artifactId&gt;</span>
-<span class="tag">&lt;/dependency&gt;</span></code></pre>
-</div>
-</div>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Create a SQL cache store configuration in one of the following ways:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Declaratively, add the <code>persistence</code> element or field then add <code>query-jdbc-store</code> with the following schema namespace:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml">xmlns=&quot;urn:infinispan:config:store:sql:13.0&quot;</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Programmatically, add the following methods to your <code>ConfigurationBuilder</code>:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml">persistence().addStore(QueriesJdbcStoreConfigurationBuilder.class)</code></pre>
-</div>
-</div>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Specify the dialect of the database with either the <code>dialect</code> attribute or the <code>dialect()</code> method.</p>
-</li>
-<li>
-<p>Configure any properties for the SQL cache store as appropriate.</p>
-<div class="paragraph">
-<p>For example, specify if the cache store is shared between multiple cache instances with either the <code>shared</code> attribute or the <code>shared()</code> method.</p>
-</div>
-<div class="paragraph">
-<p>If you want your SQL queries to update and delete entries, add the <code>read-only="false"</code> attribute or the <code>.ignoreModifications(false)</code> method to allow modifications to persistent storage.</p>
-</div>
-</li>
-<li>
-<p>Add a JDBC connection factory so that Infinispan can connect to the database.</p>
-</li>
-<li>
-<p>Specify the SQL query for loading data with either the <code>queries</code> element or the <code>queries()</code> method.</p>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>Add <code>SELECT</code>, <code>SELECT ALL</code>, and <code>SIZE</code> clauses to your query.</p>
-</li>
-<li>
-<p>Add <code>DELETE</code>, <code>DELETE ALL</code>, and <code>UPSERT</code> clauses if the cache store allows modifications.</p>
-<div class="ulist">
-<ul>
-<li>
-<p><code>SELECT</code>, <code>SELECT ALL</code> must return the same columns.</p>
-</li>
-<li>
-<p><code>DELETE</code> must take the same parameters as <code>SELECT</code>.</p>
-</li>
-<li>
-<p><code>UPSERT</code> must take the same named parameters as those returned by <code>SELECT</code> and <code>SELECT ALL</code>.</p>
-</li>
-</ul>
-</div>
-</li>
-</ol>
-</div>
-</li>
-<li>
-<p>Configure a Protobuf schema if database tables contain composite keys or values.</p>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>Add the <code>schema</code> element or the <code>.schemaJdbcConfigurationBuilder()</code> method and specify parameters for your Protobuf schema.</p>
-</li>
-<li>
-<p>Set the <code>embedded-key="true"</code> attribute or <code>.embeddedKey(true)</code> method if values also contain keys.</p>
-</li>
-</ol>
-</div>
-</li>
-</ol>
-</div>
-<h5 id="sql_query_store_configuration" class="discrete">SQL query store configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache&gt;</span>
-  <span class="tag">&lt;persistence&gt;</span>
-    <span class="tag">&lt;query-jdbc-store</span> <span class="attribute-name">xmlns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:jdbc:13.0</span><span class="delimiter">&quot;</span></span>
-                      <span class="attribute-name">dialect</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">POSTGRES</span><span class="delimiter">&quot;</span></span>
-                      <span class="attribute-name">shared</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;connection-pool</span> <span class="attribute-name">connection-url</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:postgresql://localhost:5432/postgres</span><span class="delimiter">&quot;</span></span>
-                       <span class="attribute-name">username</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">postgres</span><span class="delimiter">&quot;</span></span>
-                       <span class="attribute-name">password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>
-                       <span class="attribute-name">driver</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.postgresql.Driver</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;queries</span> <span class="attribute-name">key-columns</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">isbn</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-        <span class="tag">&lt;select-single&gt;</span>SELECT isbn, title FROM books WHERE isbn = :isbn<span class="tag">&lt;/select-single&gt;</span>
-        <span class="tag">&lt;select-all&gt;</span>SELECT isbn, title FROM books<span class="tag">&lt;/select-all&gt;</span>
-        <span class="tag">&lt;delete&gt;</span>DELETE FROM books WHERE isbn = :key<span class="tag">&lt;/delete&gt;</span>
-        <span class="tag">&lt;delete-all&gt;</span>DELETE FROM books<span class="tag">&lt;/delete-all&gt;</span>
-        <span class="tag">&lt;upsert&gt;</span>INSERT INTO books (isbn, title) VALUES (:key, :value) ON CONFLICT (ispn) DO UPDATE SET title = :value<span class="tag">&lt;/upsert&gt;</span>
-        <span class="tag">&lt;size&gt;</span>SELECT COUNT(*) FROM books<span class="tag">&lt;/size&gt;</span>
-      <span class="tag">&lt;/queries&gt;</span>
-      <span class="tag">&lt;schema</span> <span class="attribute-name">message-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books_value</span><span class="delimiter">&quot;</span></span>
-              <span class="attribute-name">key-message-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">books_key</span><span class="delimiter">&quot;</span></span>
-              <span class="attribute-name">package</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>
-              <span class="attribute-name">embedded-key</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-    <span class="tag">&lt;/query-jdbc-store&gt;</span>
-  <span class="tag">&lt;/persistence&gt;</span>
-<span class="tag">&lt;distributed-cache&gt;</span></code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="json">{
-  <span class="key"><span class="delimiter">&quot;</span><span class="content">distributed-cache</span><span class="delimiter">&quot;</span></span>: {
-    <span class="key"><span class="delimiter">&quot;</span><span class="content">persistence</span><span class="delimiter">&quot;</span></span>: {
-      <span class="key"><span class="delimiter">&quot;</span><span class="content">query-jdbc-store</span><span class="delimiter">&quot;</span></span>: {
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">dialect</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">POSTGRES</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">shared</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">key-columns</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">queries</span><span class="delimiter">&quot;</span></span>: {
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">select-single</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT isbn, title FROM books WHERE isbn = :isbn</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">select-all</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT isbn, title FROM books</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">delete-single</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM books WHERE isbn = :key</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">delete-all</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM books</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">upsert</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT INTO books (isbn, title) VALUES (:key, :value) ON CONFLICT (ispn) DO UPDATE SET title = :value</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">size</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT COUNT(*) FROM books</span><span class="delimiter">&quot;</span></span>
-        },
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">schema</span><span class="delimiter">&quot;</span></span>: {
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">message-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">books_value</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">key-message-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">books_key</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">package</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">embedded-key</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-        },
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">connection-pool</span><span class="delimiter">&quot;</span></span>: {
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">connection-url</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:postgresql://localhost:5432/postgres</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">driver</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">org.postgresql.Driver</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">username</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">postgres</span><span class="delimiter">&quot;</span></span>,
-          <span class="key"><span class="delimiter">&quot;</span><span class="content">password</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>
-        }
-      }
-    }
-  }
-}</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="yaml"><span class="key">distributed-cache</span>:
-  <span class="key">persistence</span>:
-    <span class="key">query-jdbc-store</span>:
-      <span class="key">dialect</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">POSTGRES</span><span class="delimiter">&quot;</span></span>
-      <span class="key">shared</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-      <span class="key">key-columns</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">isbn</span><span class="delimiter">&quot;</span></span>
-      <span class="key">queries</span>:
-        <span class="key">select-single</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT isbn, title FROM books WHERE isbn = :isbn</span><span class="delimiter">&quot;</span></span>
-        <span class="key">select-all</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT isbn, title FROM books</span><span class="delimiter">&quot;</span></span>
-        <span class="key">delete-single</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM books WHERE isbn = :key</span><span class="delimiter">&quot;</span></span>
-        <span class="key">delete-all</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM books</span><span class="delimiter">&quot;</span></span>
-        <span class="key">upsert</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT INTO books (isbn, title) VALUES (:key, :value) ON CONFLICT (ispn) DO UPDATE SET title = :value</span><span class="delimiter">&quot;</span></span>
-        <span class="key">size</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT COUNT(*) FROM public.books</span><span class="delimiter">&quot;</span></span>
-      <span class="key">schema</span>:
-        <span class="key">message-name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">books_value</span><span class="delimiter">&quot;</span></span>
-        <span class="key">key-message-name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">books_key</span><span class="delimiter">&quot;</span></span>
-        <span class="key">package</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>
-        <span class="key">embedded-key</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-      <span class="key">connection-pool</span>:
-        <span class="key">connection-url</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:postgresql://localhost:5432/postgres</span><span class="delimiter">&quot;</span></span>
-        <span class="key">driver</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">org.postgresql.Driver</span><span class="delimiter">&quot;</span></span>
-        <span class="key">username</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">postgres</span><span class="delimiter">&quot;</span></span>
-        <span class="key">password</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span></code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="java">ConfigurationBuilder builder = <span class="keyword">new</span> ConfigurationBuilder();
-builder.persistence().addStore(QueriesJdbcStoreConfigurationBuilder.class)
-      .dialect(DatabaseType.H2)
-      .shared(<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>)
-      .ignoreModifications(<span class="predefined-constant">false</span>)
-      .connectionPool()
-         .connectionUrl(<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:h2:mem:infinispan</span><span class="delimiter">&quot;</span></span>)
-         .username(<span class="string"><span class="delimiter">&quot;</span><span class="content">sa</span><span class="delimiter">&quot;</span></span>)
-         .password(<span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>)
-         .driverClass(<span class="string"><span class="delimiter">&quot;</span><span class="content">org.h2.Driver</span><span class="delimiter">&quot;</span></span>)
-      .keyColumns(<span class="string"><span class="delimiter">&quot;</span><span class="content">isbn</span><span class="delimiter">&quot;</span></span>)
-      .queriesJdbcConfigurationBuilder()
-         .selectAll(<span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT isbn, title FROM books</span><span class="delimiter">&quot;</span></span>)
-         .select(<span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT isbn, title FROM books WHERE isbn = :key</span><span class="delimiter">&quot;</span></span>)
-         .delete(<span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM books WHERE isbn = :key</span><span class="delimiter">&quot;</span></span>)
-         .deleteAll(<span class="string"><span class="delimiter">&quot;</span><span class="content">DELETE FROM books</span><span class="delimiter">&quot;</span></span>)
-         .upsert(<span class="string"><span class="delimiter">&quot;</span><span class="content">INSERT INTO books (isbn, title) VALUES (:key, :value) ON CONFLICT (ispn) DO UPDATE SET title = :value</span><span class="delimiter">&quot;</span></span>)
-         .size(<span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT COUNT(*) FROM books</span><span class="delimiter">&quot;</span></span>)
-      .schemaJdbcConfigurationBuilder()
-         .messageName(<span class="string"><span class="delimiter">&quot;</span><span class="content">Books</span><span class="delimiter">&quot;</span></span>)
-         .keyMessageName(<span class="string"><span class="delimiter">&quot;</span><span class="content">BooksID</span><span class="delimiter">&quot;</span></span>)
-         .packageName(<span class="string"><span class="delimiter">&quot;</span><span class="content">library</span><span class="delimiter">&quot;</span></span>)
-         .embeddedKey(<span class="predefined-constant">true</span>);</code></pre>
-</div>
-</div>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p><a href="../configuring/configuring.html#jdbc-connection-factories_persistence">JDBC connection factories</a></p>
-</li>
-</ul>
-</div>
-<div class="sect4">
-<h5 id="sql-cache-stores-query-parameters_persistence"><a class="anchor" href="#sql-cache-stores-query-parameters_persistence"></a>Parameters and statements for SQL query stores</h5>
-<div class="paragraph">
-<p>SQL query cache stores use the <code>:key</code> or <code>:value</code> parameters for both simple and composite keys or values, respectively.</p>
-</div>
-<table class="tableblock frame-all grid-all stripes-even fit-content">
-<caption class="title">Table 1. Statements</caption>
-<colgroup>
-<col>
-<col>
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Query statement</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SELECT</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Loads a single entry into caches.
-You can use wildcards but must specify parameters for keys.
-You can use labelled expressions.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SELECT ALL</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Loads multiple entries into caches.
-You can use the <code>*</code> wildcard if the number of columns returned match the key and value columns.
-You can use labelled expressions.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIZE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Counts the number of entries in the cache.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DELETE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Deletes a single entry from the cache.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DELETE ALL</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Deletes all entries from the cache.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>UPSERT</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Modifies entries in the cache.</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-<div class="sect2">
 <h3 id="rocksdb-cache-store_persistence"><a class="anchor" href="#rocksdb-cache-store_persistence"></a>6.12. RocksDB cache stores</h3>
 <div class="paragraph">
 <p>RocksDB provides key-value filesystem-based storage with high performance and
@@ -6827,7 +7183,7 @@ a primary cache store for data in memory; the other database holds entries that
 Infinispan expires from memory.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. Configuration parameters</caption>
+<caption class="title">Table 1. Configuration parameters</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -7820,9 +8176,10 @@ file.</p>
 <p>Prepend all configuration properties with <code>source.</code> as in the following example:</p>
 <div class="listingblock">
 <div class="content">
-<pre>source.type=SOFT_INDEX_FILE_STORE
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">source.type=SOFT_INDEX_FILE_STORE
 source.cache_name=myCache
-source.location=/path/to/source/sifs</pre>
+source.location=/path/to/source/sifs
+source.version=12</code></pre>
 </div>
 </div>
 </li>
@@ -7837,9 +8194,9 @@ source.location=/path/to/source/sifs</pre>
 <p>Prepend all configuration properties with <code>target.</code> as in the following example:</p>
 <div class="listingblock">
 <div class="content">
-<pre>target.type=SINGLE_FILE_STORE
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">target.type=SINGLE_FILE_STORE
 target.cache_name=myCache
-target.location=/path/to/target/sfs.dat</pre>
+target.location=/path/to/target/sfs.dat</code></pre>
 </div>
 </div>
 </li>
@@ -7854,7 +8211,7 @@ target.location=/path/to/target/sfs.dat</pre>
 <p>Configure source and target cache stores in a <code>StoreMigrator</code> properties.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Cache Store Type Property</caption>
+<caption class="title">Table 2. Cache Store Type Property</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7884,7 +8241,7 @@ target.location=/path/to/target/sfs.dat</pre>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. Common Properties</caption>
+<caption class="title">Table 3. Common Properties</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -7921,7 +8278,7 @@ same, Infinispan cannot read data from the cache store.</p></td>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. JDBC Properties</caption>
+<caption class="title">Table 4. JDBC Properties</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7942,12 +8299,10 @@ same, Infinispan cannot read data from the cache store.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>version</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Specifies the marshaller version for source cache stores. Set one of the following values:</p>
-<p class="tableblock">* <code>8</code> for Infinispan 8.x</p>
-<p class="tableblock">* <code>9</code> for Infinispan 9.x</p>
-<p class="tableblock">* <code>10</code> Infinispan 10.x</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Specifies the marshaller version for source cache stores.<br>
+Set the value that matches the Infinispan major version of the source cluster. For example; set a value of <code>12</code> for Infinispan 12.x.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Required for source stores only.</p>
-<p class="tableblock">For example: <code>source.version=9</code></p></td>
+<p class="tableblock">For example: <code>source.version=12</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>marshaller.class</code></p></td>
@@ -8076,7 +8431,7 @@ target.key_to_string_mapper=org.infinispan.persistence.keymappers. DefaultTwoWay
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. RocksDB Properties</caption>
+<caption class="title">Table 5. RocksDB Properties</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -8112,7 +8467,7 @@ source.compression=SNAPPY</pre>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. SingleFileStore Properties</caption>
+<caption class="title">Table 6. SingleFileStore Properties</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -8142,7 +8497,7 @@ target.location=/path/to/sfs.dat</pre>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. SoftIndexFileStore Properties</caption>
+<caption class="title">Table 7. SoftIndexFileStore Properties</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -8726,7 +9081,7 @@ interface:</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-12-13 06:21:19 -0500
+Last updated 2021-12-17 14:46:55 UTC
 </div>
 </div>
 <style>
