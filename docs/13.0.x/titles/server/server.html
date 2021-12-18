@@ -721,11 +721,10 @@ $(addBlockSwitches);
 <li><a href="#jgroups-ports_cluster-transport">11.9. TCP and UDP ports for cluster traffic</a></li>
 </ul>
 </li>
-<li><a href="#datasources">12. Configuring Infinispan Server Datasources</a>
+<li><a href="#datasources">12. Configuring Infinispan Server with managed datasources</a>
 <ul class="sectlevel2">
-<li><a href="#datasource_config">12.1. Datasource Configuration for JDBC Cache Stores</a></li>
-<li><a href="#using_datasources">12.2. Using Datasources in JDBC Cache Stores</a></li>
-<li><a href="#testing-datasources">12.3. Testing Data Sources</a></li>
+<li><a href="#configuring-server-datasources_server">12.1. Configuring Infinispan Server with managed datasources</a></li>
+<li><a href="#server-datasources_server">12.2. Managed datasources for JDBC connections</a></li>
 </ul>
 </li>
 <li><a href="#remote_server_execution">13. Remotely Executing Server-Side Tasks</a>
@@ -920,7 +919,7 @@ Hot Rod Java clients.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ unzip infinispan-server-13.0.3.Final.zip</code></pre>
+<pre class="CodeRay highlight nowrap"><code>$ unzip infinispan-server-13.0.4.Final.zip</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -5492,7 +5491,7 @@ The transport layer also enables Infinispan nodes to replicate or distribute dat
 <div class="sect2">
 <h3 id="default-jgroups-stacks_cluster-transport"><a class="anchor" href="#default-jgroups-stacks_cluster-transport"></a>11.1. Default JGroups stacks</h3>
 <div class="paragraph">
-<p>Infinispan provides default JGroups stack files, <code>default-jgroups-*.xml</code>, in the <code>default-configs</code> directory inside the <code>infinispan-core-13.0.3.Final.jar</code> file.</p>
+<p>Infinispan provides default JGroups stack files, <code>default-jgroups-*.xml</code>, in the <code>default-configs</code> directory inside the <code>infinispan-core-13.0.4.Final.jar</code> file.</p>
 </div>
 <div class="paragraph">
 <p>You can find this JAR file in the <code>$ISPN_HOME/lib</code> directory.</p>
@@ -6797,54 +6796,184 @@ Otherwise the following message is written to Infinispan logs:</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="datasources"><a class="anchor" href="#datasources"></a>12. Configuring Infinispan Server Datasources</h2>
+<h2 id="datasources"><a class="anchor" href="#datasources"></a>12. Configuring Infinispan Server with managed datasources</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create managed datasources to optimize connection pooling and performance for
-database connections.</p>
-</div>
-<div class="paragraph">
-<p>You can specify database connection properties as part of a JDBC cache store
-configuration. However, you must do this for each cache definition, which
-duplicates configuration and wastes resources by creating multiple distinct
-connection pools.</p>
-</div>
-<div class="paragraph">
-<p>By using shared, managed datasources, you centralize connection configuration
-and pooling for more efficient usage.</p>
+<p>Add managed datasources to Infinispan Server configuration and optimize connection pooling and performance for JDBC database connections.</p>
 </div>
 <div class="sect2">
-<h3 id="datasource_config"><a class="anchor" href="#datasource_config"></a>12.1. Datasource Configuration for JDBC Cache Stores</h3>
+<h3 id="configuring-server-datasources_server"><a class="anchor" href="#configuring-server-datasources_server"></a>12.1. Configuring Infinispan Server with managed datasources</h3>
 <div class="paragraph">
-<p>Infinispan server configuration for datasources is composed of two sections:</p>
+<p>Create managed datasources as part of your Infinispan Server configuration to optimize connection pooling and performance for JDBC database connections.
+You can then use these datasources as part of your JDBC cache store
+configuration.</p>
 </div>
 <div class="ulist">
+<div class="title">Prerequisites</div>
 <ul>
 <li>
-<p>A <code>connection factory</code> that defines how to connect to the database.</p>
-</li>
-<li>
-<p>A <code>connection pool</code> that defines how to pool and reuse connections.</p>
+<p>Copy database drivers to the <code>server/lib</code> directory in your Infinispan Server installation.</p>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Use the <code class="command">install</code> command with the Infinispan Command Line Interface (CLI) to download the required drivers to the <code>server/lib</code> directory, for example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="bash">install org.postgresql:postgresql:42.1.3</code></pre>
+</div>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </li>
 </ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Open your Infinispan Server configuration for editing.</p>
+</li>
+<li>
+<p>Add a new <code>data-source</code> to the <code>data-sources</code> section.</p>
+</li>
+<li>
+<p>Uniquely identify the datasource with the <code>name</code> attribute or field.</p>
+</li>
+<li>
+<p>Specify a JNDI name for the datasource with the <code>jndi-name</code> attribute or field.</p>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>You use the JNDI name to specify the datasource in your JDBC cache store
+configuration.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>Set <code>true</code> as the value of the <code>statistics</code> attribute or field to enable statistics for the datasource through the <code>/metrics</code> endpoint.</p>
+</li>
+<li>
+<p>Provide JDBC driver details that define how to connect to the datasource in the <code>connection-factory</code> section.</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Specify the name of the database driver with the <code>driver</code> attribute or field.</p>
+</li>
+<li>
+<p>Specify the JDBC connection url with the <code>url</code> attribute or field.</p>
+</li>
+<li>
+<p>Specify credentials with the <code>username</code> and <code>password</code> attributes or fields.</p>
+</li>
+<li>
+<p>Provide any other configuration as appropriate.</p>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>Define how Infinispan Server nodes pool and reuse connections with connection pool tuning properties in the <code>connection-pool</code> section.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Verification</div>
+<p>Use the Infinispan Command Line Interface (CLI) to test the datasource connection, as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Start a CLI session.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>$ bin/cli.sh</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>List all datasources and confirm the one you created is available.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; server datasource ls</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Test a datasource connection.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; server datasource test my-datasource</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Next steps</div>
+<p>Now that you have created a managed datasource in your Infinispan Server configuration, you can reference the JNDI name in cache store configuration as in the following example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">persistent-cache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">xmlns:jdbc</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:jdbc:13.0</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;persistence&gt;</span>
+        <span class="tag">&lt;jdbc:string-keyed-jdbc-store&gt;</span>
+            <span class="comment">&lt;!-- Specifies the JNDI name for the datasource connection
+                 in Infinispan Server configuration. --&gt;</span>
+            <span class="tag">&lt;jdbc:data-source</span> <span class="attribute-name">jndi-url</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc/postgres</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+            <span class="tag">&lt;jdbc:string-keyed-table</span> <span class="attribute-name">drop-on-exit</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+                          <span class="attribute-name">create-on-start</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
+                          <span class="attribute-name">prefix</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">TBL</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+                <span class="tag">&lt;jdbc:id-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ID</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">VARCHAR(255)</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                <span class="tag">&lt;jdbc:data-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">DATA</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">BYTEA</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                <span class="tag">&lt;jdbc:timestamp-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">TS</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">BIGINT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+                <span class="tag">&lt;jdbc:segment-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">S</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">INT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+            <span class="tag">&lt;/jdbc:string-keyed-table&gt;</span>
+        <span class="tag">&lt;/jdbc:string-keyed-jdbc-store&gt;</span>
+    <span class="tag">&lt;/persistence&gt;</span>
+<span class="tag">&lt;/distributed-cache-configuration&gt;</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="server-datasources_server"><a class="anchor" href="#server-datasources_server"></a>12.2. Managed datasources for JDBC connections</h3>
+<div class="paragraph">
+<p>Managed datasources centralize JDBC connection configuration for your Infinispan cluster and share connection pools for Infinispan Server nodes.</p>
 </div>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;data-sources&gt;</span>
-   <span class="comment">&lt;!-- Defines a unique name for the datasource, JNDI name, and enables statistics. --&gt;</span>
-   <span class="tag">&lt;data-source</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ds</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">jndi-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc/datasource</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+   <span class="comment">&lt;!-- Defines a unique name for the datasource and JNDI name that you
+        reference in JDBC cache store configuration.
+        Enables statistics for the datasource, if required. --&gt;</span>
+   <span class="tag">&lt;data-source</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ds</span><span class="delimiter">&quot;</span></span>
+                <span class="attribute-name">jndi-name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc/postgres</span><span class="delimiter">&quot;</span></span>
+                <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
       <span class="comment">&lt;!-- Specifies the JDBC driver that creates connections. --&gt;</span>
-      <span class="tag">&lt;connection-factory</span> <span class="attribute-name">driver</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.database.Driver</span><span class="delimiter">&quot;</span></span>
-                          <span class="attribute-name">username</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">db_user</span><span class="delimiter">&quot;</span></span>
-                          <span class="attribute-name">password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">secret</span><span class="delimiter">&quot;</span></span>
-                          <span class="attribute-name">url</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:db://database-host:10000/dbname</span><span class="delimiter">&quot;</span></span>
-                          <span class="attribute-name">new-connection-sql</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT 1</span><span class="delimiter">&quot;</span></span>
-                          <span class="attribute-name">transaction-isolation</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">READ_COMMITTED</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;connection-factory</span> <span class="attribute-name">driver</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">org.postgresql.Driver</span><span class="delimiter">&quot;</span></span>
+                          <span class="attribute-name">url</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:postgresql://localhost:5432/postgres</span><span class="delimiter">&quot;</span></span>
+                          <span class="attribute-name">username</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">postgres</span><span class="delimiter">&quot;</span></span>
+                          <span class="attribute-name">password</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
          <span class="comment">&lt;!-- Sets optional JDBC driver-specific connection properties. --&gt;</span>
          <span class="tag">&lt;connection-property</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>value<span class="tag">&lt;/connection-property&gt;</span>
       <span class="tag">&lt;/connection-factory&gt;</span>
-      <span class="comment">&lt;!-- Defines connection pool properties. --&gt;</span>
+      <span class="comment">&lt;!-- Defines connection pool tuning properties. --&gt;</span>
       <span class="tag">&lt;connection-pool</span> <span class="attribute-name">initial-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1</span><span class="delimiter">&quot;</span></span>
                        <span class="attribute-name">max-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">10</span><span class="delimiter">&quot;</span></span>
                        <span class="attribute-name">min-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">3</span><span class="delimiter">&quot;</span></span>
@@ -6863,15 +6992,13 @@ and pooling for more efficient usage.</p>
   <span class="key"><span class="delimiter">&quot;</span><span class="content">data-sources</span><span class="delimiter">&quot;</span></span>: [
     {
       <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ds</span><span class="delimiter">&quot;</span></span>,
-      <span class="key"><span class="delimiter">&quot;</span><span class="content">jndi-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc/datasource</span><span class="delimiter">&quot;</span></span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">jndi-name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc/postgres</span><span class="delimiter">&quot;</span></span>,
       <span class="key"><span class="delimiter">&quot;</span><span class="content">statistics</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
       <span class="key"><span class="delimiter">&quot;</span><span class="content">connection-factory</span><span class="delimiter">&quot;</span></span>: {
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">driver</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">org.database.Driver</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">username</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">db_user</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">password</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">secret</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">url</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:db://database-host:10000/dbname</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">new-connection-sql</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT 1</span><span class="delimiter">&quot;</span></span>,
-        <span class="key"><span class="delimiter">&quot;</span><span class="content">transaction-isolation</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">READ_COMMITTED</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">driver</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">org.postgresql.Driver</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">url</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:postgresql://localhost:5432/postgres</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">username</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">postgres</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">password</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>,
         <span class="key"><span class="delimiter">&quot;</span><span class="content">connection-properties</span><span class="delimiter">&quot;</span></span>: {
           <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">value</span><span class="delimiter">&quot;</span></span>
         }
@@ -6895,15 +7022,13 @@ and pooling for more efficient usage.</p>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="yaml"><span class="key">data-sources</span>:
   - <span class="string"><span class="content">name: ds</span></span>
-    <span class="key">jndi-name</span>: <span class="string"><span class="content">'jdbc/datasource'</span></span>
+    <span class="key">jndi-name</span>: <span class="string"><span class="content">'jdbc/postgres'</span></span>
     <span class="key">statistics</span>: <span class="string"><span class="content">true</span></span>
     <span class="key">connection-factory</span>:
-      <span class="key">driver</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">org.database.Driver</span><span class="delimiter">&quot;</span></span>
-      <span class="key">username</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">db_user</span><span class="delimiter">&quot;</span></span>
-      <span class="key">password</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">secret</span><span class="delimiter">&quot;</span></span>
-      <span class="key">url</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:db://database-host:10000/dbname</span><span class="delimiter">&quot;</span></span>
-      <span class="key">new-connection-sql</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">SELECT 1</span><span class="delimiter">&quot;</span></span>
-      <span class="key">transaction-isolation</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">READ_COMMITTED</span><span class="delimiter">&quot;</span></span>
+      <span class="key">driver</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">org.postgresql.Driver</span><span class="delimiter">&quot;</span></span>
+      <span class="key">url</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc:postgresql://localhost:5432/postgres</span><span class="delimiter">&quot;</span></span>
+      <span class="key">username</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">postgres</span><span class="delimiter">&quot;</span></span>
+      <span class="key">password</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">changeme</span><span class="delimiter">&quot;</span></span>
       <span class="key">connection-properties</span>:
         <span class="key">name</span>: <span class="string"><span class="content">value</span></span>
     <span class="key">connection-pool</span>:
@@ -6916,117 +7041,58 @@ and pooling for more efficient usage.</p>
       <span class="key">leak-detection</span>: <span class="string"><span class="content">10000</span></span></code></pre>
 </div>
 </div>
+<h4 id="connection_pool_tuning_properties" class="discrete">Connection pool tuning properties</h4>
 <div class="paragraph">
-<p>Connection pools can be tuned using the following parameters:</p>
+<p>You can tune connection pools with the following parameters:</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>initial-size</code>: Initial number of connections the pool should hold.</p>
-</li>
-<li>
-<p><code>max-size</code>: Maximum number of connections in the pool.</p>
-</li>
-<li>
-<p><code>min-size</code>: Minimum number of connections the pool should hold.</p>
-</li>
-<li>
-<p><code>blocking-timeout</code>: Maximum time in milliseconds to block while waiting for a connection before throwing an exception.
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>initial-size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Initial number of connections the pool should hold.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>max-size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of connections in the pool.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>min-size</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Minimum number of connections the pool should hold.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>blocking-timeout</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum time in milliseconds to block while waiting for a connection before throwing an exception.
 This will never throw an exception if creating a new connection takes an inordinately long period of time.
-Default is 0 meaning that a call will wait indefinitely.</p>
-</li>
-<li>
-<p><code>background-validation</code>: Time in milliseconds between background validation runs. A duration of 0 means that this feature is disabled.</p>
-</li>
-<li>
-<p><code>validate-on-acquisition</code>: Connections idle for longer than this time, specified in milliseconds, are validated before being
-acquired (foreground validation). A duration of 0 means that this feature is disabled.</p>
-</li>
-<li>
-<p><code>idle-removal</code>: Time in minutes a connection has to be idle before it can be removed.</p>
-</li>
-<li>
-<p><code>leak-detection</code>: Time in milliseconds a connection has to be held before a leak warning.</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="using_datasources"><a class="anchor" href="#using_datasources"></a>12.2. Using Datasources in JDBC Cache Stores</h3>
-<div class="paragraph">
-<p>Use a shared, managed datasource in your JDBC cache store configuration instead
-of specifying individual connection properties for each cache definition.</p>
-</div>
-<div class="paragraph">
-<div class="title">Prerequisites</div>
-<p>Create a managed datasource for JDBC cache stores in your Infinispan server
-configuration.</p>
-</div>
-<div class="ulist">
-<div class="title">Procedure</div>
-<ul>
-<li>
-<p>Reference the JNDI name of the datasource in the JDBC cache store
-configuration of your cache configuration, as in the following example:</p>
-</li>
-</ul>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache-configuration</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">persistent-cache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">xmlns:jdbc</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">urn:infinispan:config:store:jdbc:13.0</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;persistence&gt;</span>
-        <span class="tag">&lt;jdbc:string-keyed-jdbc-store&gt;</span>
-            <span class="comment">&lt;!-- Specifies the JNDI name that you provided for the datasource connection in the server configuration. --&gt;</span>
-            <span class="tag">&lt;jdbc:data-source</span> <span class="attribute-name">jndi-url</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">jdbc/postgres</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-            <span class="tag">&lt;jdbc:string-keyed-table</span> <span class="attribute-name">drop-on-exit</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-                          <span class="attribute-name">create-on-start</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span>
-                          <span class="attribute-name">prefix</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">TBL</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-                <span class="tag">&lt;jdbc:id-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ID</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">VARCHAR(255)</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-                <span class="tag">&lt;jdbc:data-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">DATA</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">BYTEA</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-                <span class="tag">&lt;jdbc:timestamp-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">TS</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">BIGINT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-                <span class="tag">&lt;jdbc:segment-column</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">S</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">type</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">INT</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-            <span class="tag">&lt;/jdbc:string-keyed-table&gt;</span>
-        <span class="tag">&lt;/jdbc:string-keyed-jdbc-store&gt;</span>
-    <span class="tag">&lt;/persistence&gt;</span>
-<span class="tag">&lt;/distributed-cache-configuration&gt;</span></code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="testing-datasources"><a class="anchor" href="#testing-datasources"></a>12.3. Testing Data Sources</h3>
-<div class="paragraph">
-<p>Verify that connections to data sources are functioning correctly with the CLI.</p>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Start the CLI.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code>$ bin/cli.sh
-[disconnected]&gt;</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>List all data sources:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; server datasource ls</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Test a data source connection.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; server datasource test my-datasource</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
+Default is <code>0</code> meaning that a call will wait indefinitely.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>background-validation</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Time in milliseconds between background validation runs. A duration of <code>0</code> means that this feature is disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>validate-on-acquisition</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Connections idle for longer than this time, specified in milliseconds, are validated before being acquired (foreground validation). A duration of <code>0</code> means that this feature is disabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>idle-removal</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Time in minutes a connection has to be idle before it can be removed.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>leak-detection</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Time in milliseconds a connection has to be held before a leak warning.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -9396,7 +9462,7 @@ collects statistics (containers, caches) or with a path to such a resource:</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-12-13 06:21:19 -0500
+Last updated 2021-12-17 14:46:55 UTC
 </div>
 </div>
 <style>
