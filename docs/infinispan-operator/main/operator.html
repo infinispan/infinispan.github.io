@@ -502,26 +502,27 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#persistent-volume-claims_services">6.3.1. Persistent volume claims</a></li>
 </ul>
 </li>
-<li><a href="#container-resources_services">6.4. JVM, CPU, and memory</a></li>
-<li><a href="#configuring-logging_services">6.5. Adjusting log levels</a>
+<li><a href="#allocating-cpu-and-memory_services">6.4. Allocating CPU and memory</a></li>
+<li><a href="#setting-jvm-options_services">6.5. Setting JVM options</a></li>
+<li><a href="#configuring-logging_services">6.6. Adjusting log levels</a>
 <ul class="sectlevel3">
-<li><a href="#logging-levels_services">6.5.1. Logging reference</a></li>
+<li><a href="#logging-levels_services">6.6.1. Logging reference</a></li>
 </ul>
 </li>
-<li><a href="#specifying-server-image_services">6.6. Specifying Infinispan Server images</a></li>
-<li><a href="#creating-cache-service_services">6.7. Creating Cache Service pods</a>
+<li><a href="#specifying-server-image_services">6.7. Specifying Infinispan Server images</a></li>
+<li><a href="#creating-cache-service_services">6.8. Creating Cache Service pods</a>
 <ul class="sectlevel3">
-<li><a href="#cache-service-resources_services">6.7.1. Cache Service CR</a></li>
+<li><a href="#cache-service-resources_services">6.8.1. Cache Service CR</a></li>
 </ul>
 </li>
-<li><a href="#automatic-scaling_services">6.8. Automatic scaling</a>
+<li><a href="#automatic-scaling_services">6.9. Automatic scaling</a>
 <ul class="sectlevel3">
-<li><a href="#configuring-autoscaling_services">6.8.1. Configuring automatic scaling</a></li>
+<li><a href="#configuring-autoscaling_services">6.9.1. Configuring automatic scaling</a></li>
 </ul>
 </li>
-<li><a href="#adding-custom-labels_services">6.9. Adding labels to Infinispan resources</a>
+<li><a href="#adding-custom-labels_services">6.10. Adding labels to Infinispan resources</a>
 <ul class="sectlevel3">
-<li><a href="#label-environment-variables_services">6.9.1. Global labels for Infinispan Operator</a></li>
+<li><a href="#label-environment-variables_services">6.10.1. Global labels for Infinispan Operator</a></li>
 </ul>
 </li>
 </ul>
@@ -2042,64 +2043,84 @@ When you shutdown the cluster, you permanently lose the data.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="container-resources_services"><a class="anchor" href="#container-resources_services"></a>6.4. JVM, CPU, and memory</h3>
+<h3 id="allocating-cpu-and-memory_services"><a class="anchor" href="#allocating-cpu-and-memory_services"></a>6.4. Allocating CPU and memory</h3>
 <div class="paragraph _abstract">
-<p>You can set JVM options in <code>Infinispan</code> CR as well as CPU and memory allocation.</p>
+<p>Allocate CPU and memory resources to Infinispan pods with the <code>Infinispan</code> CR.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>By default, Infinispan Operator requests <strong>512Mi</strong> of <code>memory</code> and <strong>0.5</strong> <code>cpu</code> from the Kubernetes scheduler when creating Infinispan pods.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Allocate the number of CPU units with the <code>spec.container.cpu</code> field.</p>
+</li>
+<li>
+<p>Allocate the amount of memory, in bytes, with the <code>spec.container.memory</code> field.</p>
+<div class="paragraph">
+<p>The <code>cpu</code> and <code>memory</code> fields have values in the format of <code>&lt;limit&gt;:&lt;requests&gt;</code>.
+For example, <code>cpu: "2000m:1000m"</code> limits pods to a maximum of <code>2000m</code> of CPU and requests <code>1000m</code> of CPU for each pod at startup.
+Specifying a single value sets both the limit and request.</p>
+</div>
+</li>
+<li>
+<p>Apply your <code>Infinispan</code> CR.</p>
+<div class="paragraph">
+<p>If your cluster is running, Infinispan Operator restarts the Infinispan pods so changes take effect.</p>
+</div>
+</li>
+</ol>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>spec:
   container:
-    extraJvmOpts: "-XX:NativeMemoryTracking=summary"
-    cpu: "1000m"
-    memory: 1Gi</code></pre>
+    cpu: "2000m:1000m"
+    memory: "2Gi:1Gi"</code></pre>
 </div>
-</div>
-<table class="tableblock frame-all grid-all stripes-even stretch">
-<colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spec.container.extraJvmOpts</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Specifies JVM options.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spec.container.cpu</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Allocates host CPU resources to Infinispan pods, measured in CPU units.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spec.container.memory</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Allocates host memory to Infinispan pods, measured in bytes.</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>When Infinispan Operator creates Infinispan clusters, it uses <code>spec.container.cpu</code> and <code>spec.container.memory</code> to:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Ensure that Kubernetes has sufficient capacity to run the Infinispan node. By
-default Infinispan Operator requests <strong>512Mi</strong> of <code>memory</code> and <strong>0.5</strong> <code>cpu</code> from
-the Kubernetes scheduler.</p>
-</li>
-<li>
-<p>Constrain node resource usage. Infinispan Operator sets the values of <code>cpu</code> and
-<code>memory</code> as resource limits.</p>
-</li>
-</ul>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-logging_services"><a class="anchor" href="#configuring-logging_services"></a>6.5. Adjusting log levels</h3>
+<h3 id="setting-jvm-options_services"><a class="anchor" href="#setting-jvm-options_services"></a>6.5. Setting JVM options</h3>
+<div class="paragraph _abstract">
+<p>Pass additional JVM options to Infinispan pods at startup.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Specify JVM options with the <code>spec.container.extraJvmOpts</code> field.</p>
+</li>
+<li>
+<p>Apply your <code>Infinispan</code> CR.</p>
+<div class="paragraph">
+<p>If your cluster is running, Infinispan Operator restarts the Infinispan pods so changes take effect.</p>
+</div>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>spec:
+  container:
+    extraJvmOpts: "-XX:NativeMemoryTracking=summary"</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuring-logging_services"><a class="anchor" href="#configuring-logging_services"></a>6.6. Adjusting log levels</h3>
 <div class="paragraph _abstract">
 <p>Change levels for different Infinispan logging categories when you need to debug issues.
 You can also adjust log levels to reduce the number of messages for certain categories to minimize the use of container resources.</p>
@@ -2133,7 +2154,7 @@ You can also adjust log levels to reduce the number of messages for certain cate
 </ol>
 </div>
 <div class="sect3">
-<h4 id="logging-levels_services"><a class="anchor" href="#logging-levels_services"></a>6.5.1. Logging reference</h4>
+<h4 id="logging-levels_services"><a class="anchor" href="#logging-levels_services"></a>6.6.1. Logging reference</h4>
 <div class="paragraph _abstract">
 <p>Find information about log categories and levels.</p>
 </div>
@@ -2212,7 +2233,7 @@ You can direct GC messages to <code>stdout</code> with the following JVM options
 </div>
 </div>
 <div class="sect2">
-<h3 id="specifying-server-image_services"><a class="anchor" href="#specifying-server-image_services"></a>6.6. Specifying Infinispan Server images</h3>
+<h3 id="specifying-server-image_services"><a class="anchor" href="#specifying-server-image_services"></a>6.7. Specifying Infinispan Server images</h3>
 <div class="paragraph _abstract">
 <p>Specify which Infinispan Server image Infinispan Operator should use to create pods with the <code>spec.image</code> field.</p>
 </div>
@@ -2224,7 +2245,7 @@ You can direct GC messages to <code>stdout</code> with the following JVM options
 </div>
 </div>
 <div class="sect2">
-<h3 id="creating-cache-service_services"><a class="anchor" href="#creating-cache-service_services"></a>6.7. Creating Cache Service pods</h3>
+<h3 id="creating-cache-service_services"><a class="anchor" href="#creating-cache-service_services"></a>6.8. Creating Cache Service pods</h3>
 <div class="paragraph _abstract">
 <p>Create Infinispan clusters with Cache Service pods for a volatile, low-latency data store with minimal configuration.</p>
 </div>
@@ -2266,7 +2287,7 @@ spec:
 </ol>
 </div>
 <div class="sect3">
-<h4 id="cache-service-resources_services"><a class="anchor" href="#cache-service-resources_services"></a>6.7.1. Cache Service CR</h4>
+<h4 id="cache-service-resources_services"><a class="anchor" href="#cache-service-resources_services"></a>6.8.1. Cache Service CR</h4>
 <div class="paragraph _abstract">
 <p>This topic describes the <code>Infinispan</code> CR for Cache Service pods.</p>
 </div>
@@ -2387,7 +2408,7 @@ spec:
 </div>
 </div>
 <div class="sect2">
-<h3 id="automatic-scaling_services"><a class="anchor" href="#automatic-scaling_services"></a>6.8. Automatic scaling</h3>
+<h3 id="automatic-scaling_services"><a class="anchor" href="#automatic-scaling_services"></a>6.9. Automatic scaling</h3>
 <div class="paragraph _abstract">
 <p>Infinispan Operator can monitor the default cache on Cache Service pods to automatically scale clusters up or down, by creating or deleting pods based on memory usage.</p>
 </div>
@@ -2428,7 +2449,7 @@ If you plan to add other caches to your cluster, you should not include the <cod
 In this case you should use eviction to control the size of the data container on each node.</p>
 </div>
 <div class="sect3">
-<h4 id="configuring-autoscaling_services"><a class="anchor" href="#configuring-autoscaling_services"></a>6.8.1. Configuring automatic scaling</h4>
+<h4 id="configuring-autoscaling_services"><a class="anchor" href="#configuring-autoscaling_services"></a>6.9.1. Configuring automatic scaling</h4>
 <div class="paragraph _abstract">
 <p>If you create clusters with Cache Service pods, you can configure Infinispan Operator to automatically scale clusters.</p>
 </div>
@@ -2509,7 +2530,7 @@ In this case you should use eviction to control the size of the data container o
 </div>
 </div>
 <div class="sect2">
-<h3 id="adding-custom-labels_services"><a class="anchor" href="#adding-custom-labels_services"></a>6.9. Adding labels to Infinispan resources</h3>
+<h3 id="adding-custom-labels_services"><a class="anchor" href="#adding-custom-labels_services"></a>6.10. Adding labels to Infinispan resources</h3>
 <div class="paragraph _abstract">
 <p>Attach key/value labels to pods and services that Infinispan Operator creates and manages.
 These labels help you identify relationships between objects to better organize and monitor Infinispan resources.</p>
@@ -2574,7 +2595,7 @@ metadata:
 </ul>
 </div>
 <div class="sect3">
-<h4 id="label-environment-variables_services"><a class="anchor" href="#label-environment-variables_services"></a>6.9.1. Global labels for Infinispan Operator</h4>
+<h4 id="label-environment-variables_services"><a class="anchor" href="#label-environment-variables_services"></a>6.10.1. Global labels for Infinispan Operator</h4>
 <div class="paragraph _abstract">
 <p>Global labels are automatically propagated to all Infinispan pods and services.</p>
 </div>
@@ -7523,7 +7544,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-12-23 11:26:30 -0500
+Last updated 2022-01-24 04:24:29 -0500
 </div>
 </div>
 <script>
