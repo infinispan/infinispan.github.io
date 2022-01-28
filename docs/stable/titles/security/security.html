@@ -526,19 +526,18 @@ $(addBlockSwitches);
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
 <li><a href="#security">1. Infinispan Security</a></li>
-<li><a href="#authorization">2. Configuring User Authorization</a>
+<li><a href="#security-authorization">2. Configuring user roles and permissions</a>
 <ul class="sectlevel2">
-<li><a href="#enabling-authz-authz">2.1. Enabling Authorization in Cache Configuration</a></li>
-<li><a href="#user-roles-permissions_authz">2.2. User roles and permissions</a></li>
-<li><a href="#con_authz-authz">2.3. How Security Authorization Works</a>
+<li><a href="#security-authorization_security-authorization">2.1. Security authorization</a>
 <ul class="sectlevel3">
-<li><a href="#user-permissions_authz">2.3.1. Permissions</a>
+<li><a href="#user-roles-permissions_security-authorization">2.1.1. User roles and permissions</a></li>
+<li><a href="#user-permissions_security-authorization">2.1.2. Permissions</a>
 <ul class="sectlevel4">
 <li><a href="#cache_manager_permissions">Cache Manager permissions</a></li>
 <li><a href="#cache_permissions">Cache permissions</a></li>
 </ul>
 </li>
-<li><a href="#role-mappers_authz">2.3.2. Role Mappers</a>
+<li><a href="#role-mappers_security-authorization">2.1.3. Role mappers</a>
 <ul class="sectlevel4">
 <li><a href="#cluster_role_mappers">Cluster role mappers</a></li>
 <li><a href="#identity_role_mappers">Identity role mappers</a></li>
@@ -548,12 +547,12 @@ $(addBlockSwitches);
 </li>
 </ul>
 </li>
-<li><a href="#acl-cache_authz">2.4. Access Control List (ACL) Cache</a></li>
-<li><a href="#customizing-authorization_authz">2.5. Customizing Roles and Permissions</a></li>
-<li><a href="#disabling-authorization_authz">2.6. Disabling Security Authorization</a></li>
-<li><a href="#configuring-client-certificate-authorization_authz">2.7. Configuring Authorization with Client Certificates</a></li>
-<li><a href="#prog_authz_config-authz">2.8. Programmatically Configuring Authorization</a></li>
-<li><a href="#executing_secure_caches-authz">2.9. Code Execution with Secure Caches</a></li>
+<li><a href="#acl-cache_security-authorization">2.2. Access control list (ACL) cache</a></li>
+<li><a href="#customizing-authorization_security-authorization">2.3. Customizing roles and permissions</a></li>
+<li><a href="#configuring-cache-authorization_security-authorization">2.4. Configuring caches with security authorization</a></li>
+<li><a href="#disabling-authorization_security-authorization">2.5. Disabling security authorization</a></li>
+<li><a href="#configuring-authorization-programmatically_security-authorization">2.6. Programmatically configuring authorization</a></li>
+<li><a href="#code-execution-security-authorization_security-authorization">2.7. Code execution with securirty authorization</a></li>
 </ul>
 </li>
 <li><a href="#secure-cluster-transport">3. Encrypting cluster transport</a>
@@ -611,59 +610,48 @@ to readily integrate with enterprise-level security frameworks.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="authorization"><a class="anchor" href="#authorization"></a>2. Configuring User Authorization</h2>
+<h2 id="security-authorization"><a class="anchor" href="#security-authorization"></a>2. Configuring user roles and permissions</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Authorization is a security feature that requires users to have certain permissions before they can access caches or interact with Infinispan resources.
 You assign roles to users that provide different levels of permissions, from read-only access to full, super user privileges.</p>
 </div>
 <div class="sect2">
-<h3 id="enabling-authz-authz"><a class="anchor" href="#enabling-authz-authz"></a>2.1. Enabling Authorization in Cache Configuration</h3>
+<h3 id="security-authorization_security-authorization"><a class="anchor" href="#security-authorization_security-authorization"></a>2.1. Security authorization</h3>
 <div class="paragraph">
-<p>Use authorization in your cache configuration to restrict user access.
-Before they can read or write cache entries, or create and delete caches, users must have a role with a sufficient level of permission.</p>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Open your <code>infinispan.xml</code> configuration for editing.</p>
-</li>
-<li>
-<p>If it is not already declared, add the <code>&lt;authorization /&gt;</code> tag inside the <code>security</code> elements for the <code>cache-container</code>.</p>
-<div class="paragraph">
-<p>This enables authorization for the Cache Manager and provides a global set of roles and permissions that caches can inherit.</p>
-</div>
-</li>
-<li>
-<p>Add the <code>&lt;authorization /&gt;</code> tag to each cache for which Infinispan restricts access based on user roles.</p>
-</li>
-</ol>
+<p>Infinispan authorization secures your deployment by restricting user access.</p>
 </div>
 <div class="paragraph">
-<p>The following configuration example shows how to use implicit authorization configuration with default roles and permissions:</p>
+<p>User applications or clients must belong to a role that is assigned with sufficient permissions before they can perform operations on Cache Managers or caches.</p>
 </div>
-<div class="listingblock">
+<div class="paragraph">
+<p>For example, you configure authorization on a specific cache instance so that invoking <code>Cache.get()</code> requires an identity to be assigned a role with read permission while <code>Cache.put()</code> requires a role with write permission.</p>
+</div>
+<div class="paragraph">
+<p>In this scenario, if a user application or client with the <code>io</code> role attempts to write an entry, Infinispan denies the request and throws a security exception.
+If a user application or client with the <code>writer</code> role sends a write request, Infinispan validates authorization and issues a token for subsequent operations.</p>
+</div>
+<div class="paragraph">
+<div class="title">Identities</div>
+<p>Identities are security Principals of type <code>java.security.Principal</code>.
+Subjects, implemented with the <code>javax.security.auth.Subject</code> class, represent a group of security Principals.
+In other words, a Subject represents a user and all groups to which it belongs.</p>
+</div>
+<div class="paragraph">
+<div class="title">Identities to roles</div>
+<p>Infinispan uses role mappers so that security principals correspond to roles,
+which you assign one or more permissions.</p>
+</div>
+<div class="paragraph">
+<p>The following image illustrates how security principals correspond to roles:</p>
+</div>
+<div class="imageblock">
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-  <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">rbac-cache</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">restricted</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-    <span class="tag">&lt;security&gt;</span>
-      <span class="comment">&lt;!-- Enable authorization with the default roles and permissions. --&gt;</span>
-      <span class="tag">&lt;authorization</span> <span class="tag">/&gt;</span>
-    <span class="tag">&lt;/security&gt;</span>
-    <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">rbac-cache</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;security&gt;</span>
-        <span class="comment">&lt;!-- Inherit authorization settings from the cache-container. --&gt;</span>
-        <span class="tag">&lt;authorization</span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;/security&gt;</span>
-    <span class="tag">&lt;/local-cache&gt;</span>
-  <span class="tag">&lt;/cache-container&gt;</span>
-<span class="tag">&lt;/infinispan&gt;</span></code></pre>
+<img src="../../topics/images/SecurityRolesPermissions.svg" alt="Roles/Permissions mapping">
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="user-roles-permissions_authz"><a class="anchor" href="#user-roles-permissions_authz"></a>2.2. User roles and permissions</h3>
+<div class="sect3">
+<h4 id="user-roles-permissions_security-authorization"><a class="anchor" href="#user-roles-permissions_security-authorization"></a>2.1.1. User roles and permissions</h4>
 <div class="paragraph">
 <p>Infinispan includes a default set of roles that grant users with permissions to access data and interact with Infinispan resources.</p>
 </div>
@@ -738,42 +726,8 @@ A user named <code>admin</code> gets <code>admin</code> permissions automaticall
 </ul>
 </div>
 </div>
-<div class="sect2">
-<h3 id="con_authz-authz"><a class="anchor" href="#con_authz-authz"></a>2.3. How Security Authorization Works</h3>
-<div class="paragraph">
-<p>Infinispan authorization secures your installation by restricting user access.</p>
-</div>
-<div class="paragraph">
-<p>User applications or clients must belong to a role that is assigned with sufficient permissions before they can perform operations on Cache Managers or caches.</p>
-</div>
-<div class="paragraph">
-<p>For example, you configure authorization on a specific cache instance so that invoking <code>Cache.get()</code> requires an identity to be assigned a role with read permission while <code>Cache.put()</code> requires a role with write permission.</p>
-</div>
-<div class="paragraph">
-<p>In this scenario, if a user application or client with the <code>io</code> role attempts to write an entry, Infinispan denies the request and throws a security exception.
-If a user application or client with the <code>writer</code> role sends a write request, Infinispan validates authorization and issues a token for subsequent operations.</p>
-</div>
-<div class="paragraph">
-<div class="title">Identities</div>
-<p>Identities are security Principals of type <code>java.security.Principal</code>.
-Subjects, implemented with the <code>javax.security.auth.Subject</code> class, represent a group of security Principals.
-In other words, a Subject represents a user and all groups to which it belongs.</p>
-</div>
-<div class="paragraph">
-<div class="title">Identities to roles</div>
-<p>Infinispan uses role mappers so that security principals correspond to roles,
-which you assign one or more permissions.</p>
-</div>
-<div class="paragraph">
-<p>The following image illustrates how security principals correspond to roles:</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="../../topics/images/SecurityRolesPermissions.svg" alt="Roles/Permissions mapping">
-</div>
-</div>
 <div class="sect3">
-<h4 id="user-permissions_authz"><a class="anchor" href="#user-permissions_authz"></a>2.3.1. Permissions</h4>
+<h4 id="user-permissions_security-authorization"><a class="anchor" href="#user-permissions_security-authorization"></a>2.1.2. Permissions</h4>
 <div class="paragraph">
 <p>Authorization roles have different permissions with varying levels of access to Infinispan.
 Permissions let you restrict user access to both Cache Managers and caches.</p>
@@ -905,8 +859,8 @@ Permissions let you restrict user access to both Cache Managers and caches.</p>
 </tr>
 </tbody>
 </table>
-<div class="ulist">
-<div class="title">Reference</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
 <ul>
 <li>
 <p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/security/package-summary.html">Infinispan Security API</a></p>
@@ -916,7 +870,7 @@ Permissions let you restrict user access to both Cache Managers and caches.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="role-mappers_authz"><a class="anchor" href="#role-mappers_authz"></a>2.3.2. Role Mappers</h4>
+<h4 id="role-mappers_security-authorization"><a class="anchor" href="#role-mappers_security-authorization"></a>2.1.3. Role mappers</h4>
 <div class="paragraph">
 <p>Infinispan includes a <code>PrincipalRoleMapper</code> API that maps security Principals in a Subject to authorization roles that you can assign to users.</p>
 </div>
@@ -987,8 +941,8 @@ Principal name is a Distinguished Name (DN).</p>
 </li>
 </ul>
 </div>
-<div class="ulist">
-<div class="title">Reference</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
 <ul>
 <li>
 <p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/security/package-summary.html">Infinispan Security API</a></p>
@@ -1002,7 +956,7 @@ Principal name is a Distinguished Name (DN).</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="acl-cache_authz"><a class="anchor" href="#acl-cache_authz"></a>2.4. Access Control List (ACL) Cache</h3>
+<h3 id="acl-cache_security-authorization"><a class="anchor" href="#acl-cache_security-authorization"></a>2.2. Access control list (ACL) cache</h3>
 <div class="paragraph">
 <p>Infinispan caches roles that you grant to users internally for optimal performance.
 Whenever you grant or deny roles to users, Infinispan flushes the ACL cache to ensure user permissions are applied correctly.</p>
@@ -1010,15 +964,50 @@ Whenever you grant or deny roles to users, Infinispan flushes the ACL cache to e
 <div class="paragraph">
 <p>If necessary, you can disable the ACL cache or configure it with the <code>cache-size</code> and <code>cache-timeout</code> attributes.</p>
 </div>
-<div class="listingblock">
+<div class="listingblock primary">
+<div class="title">XML</div>
 <div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;security</span> <span class="attribute-name">cache-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">cache-timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">300000</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-  <span class="tag">&lt;authorization</span> <span class="tag">/&gt;</span>
-<span class="tag">&lt;/security&gt;</span></code></pre>
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
+  <span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">acl-cache-configuration</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+    <span class="tag">&lt;security</span> <span class="attribute-name">cache-size</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span>
+              <span class="attribute-name">cache-timeout</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">300000</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+      <span class="tag">&lt;authorization</span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/security&gt;</span>
+  <span class="tag">&lt;/cache-container&gt;</span>
+<span class="tag">&lt;/infinispan&gt;</span></code></pre>
 </div>
 </div>
-<div class="ulist">
-<div class="title">Reference</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">infinispan</span><span class="delimiter">&quot;</span></span> : {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">cache-container</span><span class="delimiter">&quot;</span></span> : {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">acl-cache-configuration</span><span class="delimiter">&quot;</span></span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">security</span><span class="delimiter">&quot;</span></span> : {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">cache-size</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">cache-timeout</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">300000</span><span class="delimiter">&quot;</span></span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">authorization</span><span class="delimiter">&quot;</span></span> : {}
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="yaml"><span class="key">infinispan</span>:
+  <span class="key">cacheContainer</span>:
+    <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">acl-cache-configuration</span><span class="delimiter">&quot;</span></span>
+    <span class="key">security</span>:
+      <span class="key">cache-size</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">1000</span><span class="delimiter">&quot;</span></span>
+      <span class="key">cache-timeout</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">300000</span><span class="delimiter">&quot;</span></span>
+      <span class="key">authorization</span>: <span class="string"><span class="content">~</span></span></code></pre>
+</div>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
 <ul>
 <li>
 <p><a href="https://docs.jboss.org/infinispan/13.0/configdocs/">Infinispan configuration schema reference</a></p>
@@ -1027,7 +1016,7 @@ Whenever you grant or deny roles to users, Infinispan flushes the ACL cache to e
 </div>
 </div>
 <div class="sect2">
-<h3 id="customizing-authorization_authz"><a class="anchor" href="#customizing-authorization_authz"></a>2.5. Customizing Roles and Permissions</h3>
+<h3 id="customizing-authorization_security-authorization"><a class="anchor" href="#customizing-authorization_security-authorization"></a>2.3. Customizing roles and permissions</h3>
 <div class="paragraph">
 <p>You can customize authorization settings in your Infinispan configuration to use role mappers with different combinations of roles and permissions.</p>
 </div>
@@ -1035,23 +1024,19 @@ Whenever you grant or deny roles to users, Infinispan flushes the ACL cache to e
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Open your <code>infinispan.xml</code> configuration for editing.</p>
-</li>
-<li>
-<p>Configure authorization for the <code>cache-container</code> by declaring a role mapper and a set of roles and permissions.</p>
+<p>Declare a role mapper and a set of custom roles and permissions in the Cache Manager configuration.</p>
 </li>
 <li>
 <p>Configure authorization for caches to restrict access based on user roles.</p>
 </li>
 </ol>
 </div>
-<div class="paragraph">
-<p>The following configuration example shows how to configure security authorization with roles and permissions:</p>
-</div>
-<div class="listingblock">
+<h4 id="custom_roles_and_permissions_configuration" class="discrete">Custom roles and permissions configuration</h4>
+<div class="listingblock primary">
+<div class="title">XML</div>
 <div class="content">
 <pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;infinispan&gt;</span>
-  <span class="tag">&lt;cache-container</span> <span class="attribute-name">default-cache</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">restricted</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">custom-authorization</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
+  <span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">custom-authorization</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
     <span class="tag">&lt;security&gt;</span>
       <span class="tag">&lt;authorization&gt;</span>
         <span class="comment">&lt;!-- Declare a role mapper that associates a security principal
@@ -1064,25 +1049,184 @@ Whenever you grant or deny roles to users, Infinispan flushes the ACL cache to e
         <span class="tag">&lt;role</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">supervisor</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">permissions</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">READ WRITE EXEC</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
       <span class="tag">&lt;/authorization&gt;</span>
     <span class="tag">&lt;/security&gt;</span>
-    <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">implicit-authorization</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;security&gt;</span>
-        <span class="comment">&lt;!-- Inherit roles and permissions from the cache-container. --&gt;</span>
-        <span class="tag">&lt;authorization</span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;/security&gt;</span>
-    <span class="tag">&lt;/local-cache&gt;</span>
-    <span class="tag">&lt;local-cache</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">restricted</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-      <span class="tag">&lt;security&gt;</span>
-        <span class="comment">&lt;!-- Explicitly define which roles can access the cache. --&gt;</span>
-        <span class="tag">&lt;authorization</span> <span class="attribute-name">roles</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">admin supervisor</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;/security&gt;</span>
-    <span class="tag">&lt;/local-cache&gt;</span>
   <span class="tag">&lt;/cache-container&gt;</span>
 <span class="tag">&lt;/infinispan&gt;</span></code></pre>
 </div>
 </div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">infinispan</span><span class="delimiter">&quot;</span></span> : {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">cache-container</span><span class="delimiter">&quot;</span></span> : {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">name</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">custom-authorization</span><span class="delimiter">&quot;</span></span>,
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">security</span><span class="delimiter">&quot;</span></span> : {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">authorization</span><span class="delimiter">&quot;</span></span> : {
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">identity-role-mapper</span><span class="delimiter">&quot;</span></span> : <span class="value">null</span>,
+          <span class="key"><span class="delimiter">&quot;</span><span class="content">roles</span><span class="delimiter">&quot;</span></span> : {
+            <span class="key"><span class="delimiter">&quot;</span><span class="content">reader</span><span class="delimiter">&quot;</span></span> : {
+              <span class="key"><span class="delimiter">&quot;</span><span class="content">role</span><span class="delimiter">&quot;</span></span> : {
+                <span class="key"><span class="delimiter">&quot;</span><span class="content">permissions</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">READ</span><span class="delimiter">&quot;</span></span>
+              }
+            },
+            <span class="key"><span class="delimiter">&quot;</span><span class="content">admin</span><span class="delimiter">&quot;</span></span> : {
+              <span class="key"><span class="delimiter">&quot;</span><span class="content">role</span><span class="delimiter">&quot;</span></span> : {
+                <span class="key"><span class="delimiter">&quot;</span><span class="content">permissions</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">ALL</span><span class="delimiter">&quot;</span></span>
+              }
+            },
+            <span class="key"><span class="delimiter">&quot;</span><span class="content">writer</span><span class="delimiter">&quot;</span></span> : {
+              <span class="key"><span class="delimiter">&quot;</span><span class="content">role</span><span class="delimiter">&quot;</span></span> : {
+                <span class="key"><span class="delimiter">&quot;</span><span class="content">permissions</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">WRITE</span><span class="delimiter">&quot;</span></span>
+              }
+            },
+            <span class="key"><span class="delimiter">&quot;</span><span class="content">supervisor</span><span class="delimiter">&quot;</span></span> : {
+              <span class="key"><span class="delimiter">&quot;</span><span class="content">role</span><span class="delimiter">&quot;</span></span> : {
+                <span class="key"><span class="delimiter">&quot;</span><span class="content">permissions</span><span class="delimiter">&quot;</span></span> : <span class="string"><span class="delimiter">&quot;</span><span class="content">READ WRITE EXEC</span><span class="delimiter">&quot;</span></span>
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="yaml"><span class="key">infinispan</span>:
+  <span class="key">cacheContainer</span>:
+    <span class="key">name</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">custom-authorization</span><span class="delimiter">&quot;</span></span>
+    <span class="key">security</span>:
+      <span class="key">authorization</span>:
+        <span class="key">identityRoleMapper</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">null</span><span class="delimiter">&quot;</span></span>
+        <span class="key">roles</span>:
+          <span class="key">reader</span>:
+            <span class="key">role</span>:
+              <span class="key">permissions</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">READ</span><span class="delimiter">&quot;</span></span>
+          <span class="key">admin</span>:
+            <span class="key">role</span>:
+              <span class="key">permissions</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">ALL</span><span class="delimiter">&quot;</span></span>
+          <span class="key">writer</span>:
+            <span class="key">role</span>:
+              <span class="key">permissions</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">WRITE</span><span class="delimiter">&quot;</span></span>
+          <span class="key">supervisor</span>:
+            <span class="key">role</span>:
+              <span class="key">permissions</span>: <span class="string"><span class="delimiter">&quot;</span><span class="content">READ WRITE EXEC</span><span class="delimiter">&quot;</span></span></code></pre>
+</div>
+</div>
 </div>
 <div class="sect2">
-<h3 id="disabling-authorization_authz"><a class="anchor" href="#disabling-authorization_authz"></a>2.6. Disabling Security Authorization</h3>
+<h3 id="configuring-cache-authorization_security-authorization"><a class="anchor" href="#configuring-cache-authorization_security-authorization"></a>2.4. Configuring caches with security authorization</h3>
+<div class="paragraph">
+<p>Use authorization in your cache configuration to restrict user access.
+Before they can read or write cache entries, or create and delete caches, users must have a role with a sufficient level of permission.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Ensure the <code>authorization</code> element is included in the <code>security</code> section of the <code>cache-container</code> configuration.</p>
+<div class="paragraph">
+<p>Infinispan enables security authorization in the Cache Manager by default and provides a global set of roles and permissions for caches.</p>
+</div>
+</li>
+<li>
+<p>If necessary, declare custom roles and permissions in the Cache Manager configuration.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Open your cache configuration for editing.</p>
+</li>
+<li>
+<p>Add the <code>authorization</code> element to caches to restrict user access based on their roles and permissions.</p>
+</li>
+<li>
+<p>Save the changes to your configuration.</p>
+</li>
+</ol>
+</div>
+<h4 id="authorization_configuration" class="discrete">Authorization configuration</h4>
+<div class="paragraph">
+<p>The following configuration shows how to use implicit authorization configuration with default roles and permissions:</p>
+</div>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache&gt;</span>
+  <span class="tag">&lt;security&gt;</span>
+    <span class="comment">&lt;!-- Inherit authorization settings from the cache-container. --&gt;</span> <span class="tag">&lt;authorization</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;/security&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">distributed-cache</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">security</span><span class="delimiter">&quot;</span></span>: {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">authorization</span><span class="delimiter">&quot;</span></span>: {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">enabled</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="yaml"><span class="key">distributedCache</span>:
+  <span class="key">security</span>:
+    <span class="key">authorization</span>:
+      <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span></code></pre>
+</div>
+</div>
+<h4 id="custom_roles_and_permissions" class="discrete">Custom roles and permissions</h4>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;distributed-cache&gt;</span>
+  <span class="tag">&lt;security&gt;</span>
+    <span class="tag">&lt;authorization</span> <span class="attribute-name">roles</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">admin supervisor</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;/security&gt;</span>
+<span class="tag">&lt;/distributed-cache&gt;</span></code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="json">{
+  <span class="key"><span class="delimiter">&quot;</span><span class="content">distributed-cache</span><span class="delimiter">&quot;</span></span>: {
+    <span class="key"><span class="delimiter">&quot;</span><span class="content">security</span><span class="delimiter">&quot;</span></span>: {
+      <span class="key"><span class="delimiter">&quot;</span><span class="content">authorization</span><span class="delimiter">&quot;</span></span>: {
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">enabled</span><span class="delimiter">&quot;</span></span>: <span class="value">true</span>,
+        <span class="key"><span class="delimiter">&quot;</span><span class="content">roles</span><span class="delimiter">&quot;</span></span>: [<span class="string"><span class="delimiter">&quot;</span><span class="content">admin</span><span class="delimiter">&quot;</span></span>,<span class="string"><span class="delimiter">&quot;</span><span class="content">supervisor</span><span class="delimiter">&quot;</span></span>]
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code data-lang="yaml"><span class="key">distributedCache</span>:
+  <span class="key">security</span>:
+    <span class="key">authorization</span>:
+      <span class="key">enabled</span>: <span class="string"><span class="content">true</span></span>
+      <span class="key">roles</span>: <span class="string"><span class="content">[&quot;admin&quot;,&quot;supervisor&quot;]</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="disabling-authorization_security-authorization"><a class="anchor" href="#disabling-authorization_security-authorization"></a>2.5. Disabling security authorization</h3>
 <div class="paragraph">
 <p>In local development environments you can disable authorization so that users do not need roles and permissions.
 Disabling security authorization means that any user can access data and interact with Infinispan resources.</p>
@@ -1091,64 +1235,24 @@ Disabling security authorization means that any user can access data and interac
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Open your <code>infinispan.xml</code> configuration for editing.</p>
+<p>Open your Infinispan configuration for editing.</p>
 </li>
 <li>
-<p>Remove any <code>authorization</code> elements from the <code>security</code> configuration for the <code>cache-container</code> and each cache configuration.</p>
+<p>Remove any <code>authorization</code> elements from the <code>security</code> configuration for the Cache Manager.</p>
+</li>
+<li>
+<p>Remove any <code>authorization</code> configuration from your caches.</p>
+</li>
+<li>
+<p>Save the changes to your configuration.</p>
 </li>
 </ol>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-client-certificate-authorization_authz"><a class="anchor" href="#configuring-client-certificate-authorization_authz"></a>2.7. Configuring Authorization with Client Certificates</h3>
+<h3 id="configuring-authorization-programmatically_security-authorization"><a class="anchor" href="#configuring-authorization-programmatically_security-authorization"></a>2.6. Programmatically configuring authorization</h3>
 <div class="paragraph">
-<p>Enabling client certificate authentication means you do not need to specify Infinispan user credentials in client configuration, which means you must associate roles with the Common Name (CN) field in the client certificate(s).</p>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Provide clients with a Java keystore that contains either their public certificates or part of the certificate chain, typically a public CA certificate.</p>
-</li>
-<li>
-<p>Configure Infinispan Server to perform client certificate authentication.</p>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Enable the <code>common-name-role-mapper</code> in the security authorization configuration.</p>
-</li>
-<li>
-<p>Assign the Common Name (<code>CN</code>) from the client certificate a role with the appropriate permissions.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="CodeRay highlight nowrap"><code data-lang="xml"><span class="tag">&lt;cache-container</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">certificate-authentication</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">statistics</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">true</span><span class="delimiter">&quot;</span></span><span class="tag">&gt;</span>
-   <span class="tag">&lt;security&gt;</span>
-     <span class="tag">&lt;authorization&gt;</span>
-       <span class="comment">&lt;!-- Declare a role mapper that associates the common name (CN) field
-            in client certificate trust stores with authorization roles. --&gt;</span>
-       <span class="tag">&lt;common-name-role-mapper</span><span class="tag">/&gt;</span>
-       <span class="comment">&lt;!-- In this example, if a client certificate contains `CN=Client1` then
-            clients with matching certificates get ALL permissions. --&gt;</span>
-       <span class="tag">&lt;role</span> <span class="attribute-name">name</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">Client1</span><span class="delimiter">&quot;</span></span> <span class="attribute-name">permissions</span>=<span class="string"><span class="delimiter">&quot;</span><span class="content">ALL</span><span class="delimiter">&quot;</span></span><span class="tag">/&gt;</span>
-     <span class="tag">&lt;/authorization&gt;</span>
-   <span class="tag">&lt;/security&gt;</span>
-<span class="tag">&lt;/cache-container&gt;</span></code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
-</div>
-<div class="sect2">
-<h3 id="prog_authz_config-authz"><a class="anchor" href="#prog_authz_config-authz"></a>2.8. Programmatically Configuring Authorization</h3>
-<div class="paragraph">
-<p>When using Infinispan as an embedded library, you can configure authorization
-with the <code>GlobalSecurityConfigurationBuilder</code> and <code>ConfigurationBuilder</code>
-classes.</p>
+<p>When using embedded caches, you can configure authorization with the <code>GlobalSecurityConfigurationBuilder</code> and <code>ConfigurationBuilder</code> classes.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -1238,8 +1342,8 @@ config
 </li>
 </ol>
 </div>
-<div class="ulist">
-<div class="title">Reference</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
 <ul>
 <li>
 <p><a href="https://docs.jboss.org/infinispan/13.0/apidocs/org/infinispan/configuration/global/GlobalSecurityConfigurationBuilder.html">org.infinispan.configuration.global.GlobalSecurityConfigurationBuilder</a></p>
@@ -1251,18 +1355,14 @@ config
 </div>
 </div>
 <div class="sect2">
-<h3 id="executing_secure_caches-authz"><a class="anchor" href="#executing_secure_caches-authz"></a>2.9. Code Execution with Secure Caches</h3>
+<h3 id="code-execution-security-authorization_security-authorization"><a class="anchor" href="#code-execution-security-authorization_security-authorization"></a>2.7. Code execution with securirty authorization</h3>
 <div class="paragraph">
-<p>When you configure Infinispan authorization and then construct a
-<code>DefaultCacheManager</code>, it returns a <code>SecureCache</code> that checks the security
-context before invoking any operations on the underlying caches. A
-<code>SecureCache</code> also ensures that applications cannot retrieve lower-level
-insecure objects such as <code>DataContainer</code>. For this reason, you must execute
-code with an identity that has the required authorization.</p>
+<p>When you configure security authorization for embedded caches and then construct a <code>DefaultCacheManager</code>, it returns a <code>SecureCache</code> that checks the security context before invoking any operations.
+A <code>SecureCache</code> also ensures that applications cannot retrieve lower-level insecure objects such as <code>DataContainer</code>.
+For this reason, you must execute code with an identity that has the required authorization.</p>
 </div>
 <div class="paragraph">
-<p>In Java, executing code with a specific identity usually means wrapping the
-code to be executed within a <code>PrivilegedAction</code> as follows:</p>
+<p>In Java, executing code with a specific identity usually means wrapping the code to be executed within a <code>PrivilegedAction</code> as follows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1284,13 +1384,11 @@ code to be executed within a <code>PrivilegedAction</code> as follows:</p>
 </div>
 </div>
 <div class="paragraph">
-<p>The preceding call uses the <code>Security.doAs()</code> method instead of
-<code>Subject.doAs()</code>. You can use either method with Infinispan, however
-<code>Security.doAs()</code> provides better performance.</p>
+<p>The preceding call uses the <code>Security.doAs()</code> method instead of <code>Subject.doAs()</code>.
+You can use either method with Infinispan, however <code>Security.doAs()</code> provides better performance.</p>
 </div>
 <div class="paragraph">
-<p>If you need the current Subject, use the following call to retrieve it from the
-Infinispan context or from the AccessControlContext:</p>
+<p>If you need the current Subject, use the following call to retrieve it from the Infinispan context or from the AccessControlContext:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1829,7 +1927,7 @@ nftables utility.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2021-12-19 12:32:56 -0500
+Last updated 2022-01-26 05:44:20 -0500
 </div>
 </div>
 <style>
