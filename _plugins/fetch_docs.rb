@@ -297,4 +297,7 @@ else
   gen_versions_xml_file("docs/versions.xml", coreDocIndex)
 end
 
+system('find . -regex "\./docs/[0-9].*html$" -exec sed -i -e "s|^<head>$|<head><meta name=\"robots\" content=\"noindex\">|" {} \;')
+system('find . -regex "\./docs/infinispan-operator/[0-9].*html$" -exec sed -i -e "s|^<head>$|<head><meta name=\"robots\" content=\"noindex\">|" {} \;')
+system('find . -regex "\./docs/infinispan-spring-boot/[0-9].*html$" -exec sed -i -e "s|^<head>$|<head><meta name=\"robots\" content=\"noindex\">|" {} \;')
 puts "Time elapsed #{Time.now - beginning} seconds"
