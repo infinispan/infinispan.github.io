@@ -1,6 +1,6 @@
 ---
 layout: documentation
-title: Documentation
-subtitle: Find help and knowledge straight from the source!
+title: Guides
+#subtitle: Get help and share knowledge with the Infinispan community
 permalink: /documentation/
 ---
