@@ -252,7 +252,10 @@ else
     #Use images only on main. Causes harmless "cannot stat" messages.
     %x( cp -r _optmp/infinispan-operator-main/documentation/asciidoc/topics/images/* "docs/infinispan-operator/topics/images/" )
     %x( rm -rf _optmp* )
-    operatorDocIndex.push "#{version}"
+    valias = sub["alias"]
+    vname = if valias != nil then "#{version} (#{valias})" else "#{version}"
+    end
+    operatorDocIndex.push "#{vname}!#{version}"
   end
 
   # Helm chart docs
