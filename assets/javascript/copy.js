@@ -2,8 +2,7 @@ window.onload = function() {
     var pre = document.getElementsByTagName('pre');
     for (var i = 0; i < pre.length; i++) {
         var b = document.createElement('button');
-        b.className = 'clipboard';
-        b.textContent = 'Copy';
+        b.className = 'clipboard fa fa-clipboard';
         if (pre[i].childNodes.length === 1 && pre[i].childNodes[0].nodeType === 3) {
             var div = document.createElement('div');
             div.textContent = pre[i].textContent;
@@ -25,9 +24,9 @@ window.onload = function() {
     });
     clipboard.on('success', function(e) {
         e.clearSelection();
-        e.trigger.textContent = 'Copied';
+        e.trigger.className = e.trigger.className.replace("fa-clipboard", "fa-check");
         setTimeout(function() {
-            e.trigger.textContent = 'Copy';
+            e.trigger.textContent = 'Copied';
         }, 2000);
     });
     clipboard.on('error', function(e) {
