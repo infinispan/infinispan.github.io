@@ -476,11 +476,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 <li><a href="#configuring-clusters">4. Configuring Infinispan clusters</a>
 <ul class="sectlevel2">
-<li><a href="#applying-custom-configuration_configuring-clusters">4.1. Applying custom configuration to Infinispan clusters</a>
-<ul class="sectlevel3">
-<li><a href="#infinispan-configuration_configuring-clusters">4.1.1. Infinispan configuration</a></li>
-</ul>
-</li>
+<li><a href="#applying-custom-configuration_configuring-clusters">4.1. Applying custom configuration to Infinispan clusters</a></li>
+<li><a href="#infinispan-configuration_configuring-clusters">4.2. Custom Infinispan configuration</a></li>
 </ul>
 </li>
 <li><a href="#upgrading-clusters">5. Upgrading Infinispan clusters</a>
@@ -627,7 +624,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#caches_creating-caches">15.1. Infinispan caches</a></li>
 <li><a href="#cache-cr_creating-caches">15.2. Cache CRs</a></li>
-<li><a href="#creating-caches-xml_creating-caches">15.3. Creating caches from XML</a></li>
+<li><a href="#creating-caches_creating-caches">15.3. Creating caches with the Cache CR</a></li>
 <li><a href="#creating-caches-templates_creating-caches">15.4. Creating caches from templates</a></li>
 <li><a href="#adding-cache-stores_creating-caches">15.5. Adding persistent cache stores</a></li>
 <li><a href="#creating-caches-cacheservice_creating-caches">15.6. Adding caches to Cache Service pods</a>
@@ -1388,7 +1385,7 @@ Infinispan Operator can then apply the custom configuration to your Infinispan c
 <p>Infinispan Operator applies default configuration on top of your custom configuration to ensure it can continue to manage your Infinispan clusters.</p>
 </div>
 <div class="paragraph">
-<p>Be careful when applying custom configuration outside of the <code>cache-container</code> element or field.
+<p>Be careful when applying custom configuration outside the <code>cache-container</code> element or field.
 You can apply custom configuration to underlying Infinispan Server mechanisms such as endpoints, security realms, and cluster transport.
 Changing this configuration can result in error and result in service downtime for your Infinispan deployment.</p>
 </div>
@@ -1404,7 +1401,7 @@ Changing this configuration can result in error and result in service downtime f
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Use the the Infinispan Helm chart to deploy clusters of fully configurable Infinispan Server instances on OpenShift.</p>
+<p>Use the Infinispan Helm chart to deploy clusters of fully configurable Infinispan Server instances on OpenShift.</p>
 </div>
 </td>
 </tr>
@@ -1422,7 +1419,7 @@ Changing this configuration can result in error and result in service downtime f
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Add your Infinispan configuration to the <code>data</code> field of a <code>ConfigMap</code> as <code>infinispan-config.[xml|yaml|json]</code>, as in the following example:</p>
+<p>Add your Infinispan configuration to the <code>data</code> field of a <code>ConfigMap</code> as <code>infinispan-config.[xml|yaml|json]</code>.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>apiVersion: v1
@@ -1470,24 +1467,24 @@ Each time you modify the Infinispan configuration in the <code>ConfigMap</code>,
 </li>
 </ul>
 </div>
-<div class="sect3">
-<h4 id="infinispan-configuration_configuring-clusters"><a class="anchor" href="#infinispan-configuration_configuring-clusters"></a>4.1.1. Infinispan configuration</h4>
+</div>
+<div class="sect2">
+<h3 id="infinispan-configuration_configuring-clusters"><a class="anchor" href="#infinispan-configuration_configuring-clusters"></a>4.2. Custom Infinispan configuration</h3>
 <div class="paragraph">
 <p>You can add Infinispan configuration to a <code>ConfigMap</code> in XML, YAML, or JSON format.</p>
 </div>
+<h4 id="_cache_template" class="discrete">Cache template</h4>
 <div class="listingblock">
 <div class="title">XML</div>
 <div class="content">
 <pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;infinispan
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="urn:infinispan:config:13.0 https://infinispan.org/schemas/infinispan-config-13.0.xsd
-                            urn:infinispan:server:13.0 https://infinispan.org/schemas/infinispan-server-13.0.xsd"
+                          urn:infinispan:server:13.0 https://infinispan.org/schemas/infinispan-server-13.0.xsd"
       xmlns="urn:infinispan:config:13.0"
       xmlns:server="urn:infinispan:server:13.0"&gt;
-
    &lt;cache-container name="default"
                     statistics="true"&gt;
-      &lt;transport stack="tcp"/&gt;
       &lt;distributed-cache-configuration name="my-dist-template"
                                        mode="SYNC"
                                        statistics="true"&gt;
@@ -1505,11 +1502,9 @@ Each time you modify the Infinispan configuration in the <code>ConfigMap</code>,
 <div class="title">YAML</div>
 <div class="content">
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">infinispan:
-  cache-container:
+  cacheContainer:
     name: "default"
     statistics: "true"
-    transport:
-      stack: "tcp"
     distributedCacheConfiguration:
       name: "my-dist-template"
       mode: "SYNC"
@@ -1532,9 +1527,6 @@ Each time you modify the Infinispan configuration in the <code>ConfigMap</code>,
     "cache-container" : {
       "name" : "default",
       "statistics" : "true",
-      "transport" : {
-        "stack" : "tcp"
-      },
       "distributed-cache-configuration" : {
         "name" : "my-dist-template",
         "mode": "SYNC",
@@ -1555,6 +1547,168 @@ Each time you modify the Infinispan configuration in the <code>ConfigMap</code>,
   }
 }</code></pre>
 </div>
+</div>
+<h4 id="_multiple_caches" class="discrete">Multiple caches</h4>
+<div class="listingblock">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;infinispan
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="urn:infinispan:config:13.0 https://infinispan.org/schemas/infinispan-config-13.0.xsd
+                          urn:infinispan:server:13.0 https://infinispan.org/schemas/infinispan-server-13.0.xsd"
+      xmlns="urn:infinispan:config:13.0"
+      xmlns:server="urn:infinispan:server:13.0"&gt;
+  &lt;cache-container name="default"
+                   statistics="true"&gt;
+    &lt;distributed-cache name="mycacheone"
+                       mode="ASYNC"
+                       statistics="true"&gt;
+      &lt;encoding media-type="application/x-protostream"/&gt;
+      &lt;expiration lifespan="300000"/&gt;
+      &lt;memory max-size="400MB"
+              when-full="REMOVE"/&gt;
+    &lt;/distributed-cache&gt;
+    &lt;distributed-cache name="mycachetwo"
+                       mode="SYNC"
+                       statistics="true"&gt;
+      &lt;encoding media-type="application/x-protostream"/&gt;
+      &lt;expiration lifespan="300000"/&gt;
+      &lt;memory max-size="400MB"
+              when-full="REMOVE"/&gt;
+    &lt;/distributed-cache&gt;
+  &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">infinispan:
+  cacheContainer:
+    name: "default"
+    statistics: "true"
+    caches:
+      mycacheone:
+       distributedCache:
+          mode: "ASYNC"
+          statistics: "true"
+          encoding:
+            mediaType: "application/x-protostream"
+          expiration:
+            lifespan: "300000"
+          memory:
+            maxSize: "400MB"
+            whenFull: "REMOVE"
+      mycachetwo:
+        distributedCache:
+          mode: "SYNC"
+          statistics: "true"
+          encoding:
+            mediaType: "application/x-protostream"
+          expiration:
+            lifespan: "300000"
+          memory:
+            maxSize: "400MB"
+            whenFull: "REMOVE"</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "infinispan" : {
+    "cache-container" : {
+      "name" : "default",
+      "statistics" : "true",
+      "caches" : {
+        "mycacheone" : {
+          "distributed-cache" : {
+            "mode": "ASYNC",
+            "statistics": "true",
+            "encoding": {
+              "media-type": "application/x-protostream"
+            },
+            "expiration" : {
+              "lifespan" : "300000"
+            },
+            "memory": {
+              "max-size": "400MB",
+              "when-full": "REMOVE"
+            }
+          }
+        },
+        "mycachetwo" : {
+          "distributed-cache" : {
+            "mode": "SYNC",
+            "statistics": "true",
+            "encoding": {
+              "media-type": "application/x-protostream"
+            },
+            "expiration" : {
+              "lifespan" : "300000"
+            },
+            "memory": {
+              "max-size": "400MB",
+              "when-full": "REMOVE"
+            }
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<h4 id="_logging_configuration" class="discrete">Logging configuration</h4>
+<div class="paragraph">
+<p>You can also include Apache Log4j configuration in XML format as part of your <code>ConfigMap</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Use the <code>spec.logging.categories</code> field in your <code>Infinispan</code> CR to adjust logging levels for Infinispan clusters.
+Add Apache Log4j configuration only if you require advanced file-based logging capabilities.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>apiVersion: v1
+kind: ConfigMap
+metadata:
+   name: my-cluster-config
+   namespace: ispn-namespace
+data:
+   infinispan-config.xml: &gt;
+     &lt;infinispan&gt;
+       &lt;!-- Add custom Infinispan configuration if required. --&gt;
+       &lt;!-- You can provide either Infinispan configuration, logging configuration, or both. --&gt;
+     &lt;/infinispan&gt;
+
+   log4j.xml: &gt;
+     &lt;?xml version="1.0" encoding="UTF-8"?&gt;
+     &lt;Configuration name="ServerConfig" monitorInterval="60" shutdownHook="disable"&gt;
+         &lt;Appenders&gt;
+             &lt;!-- Colored output on the console --&gt;
+             &lt;Console name="STDOUT"&gt;
+                 &lt;PatternLayout pattern="%d{HH:mm:ss,SSS} %-5p (%t) [%c] %m%throwable%n"/&gt;
+             &lt;/Console&gt;
+         &lt;/Appenders&gt;
+
+         &lt;Loggers&gt;
+             &lt;Root level="INFO"&gt;
+                 &lt;AppenderRef ref="STDOUT" level="TRACE"/&gt;
+             &lt;/Root&gt;
+             &lt;Logger name="org.infinispan" level="TRACE"/&gt;
+         &lt;/Loggers&gt;
+     &lt;/Configuration&gt;</code></pre>
 </div>
 </div>
 </div>
@@ -1864,6 +2018,7 @@ spec:
     type: DataGrid
     container:
       storage: 2Gi
+      # The ephemeralStorage and storageClassName fields are mutually exclusive.
       ephemeralStorage: false
       storageClassName: my-storage-class
     sites:
@@ -2013,23 +2168,49 @@ However you should adjust the amount of storage available to Data Grid Service p
 <p>Allocate storage resources with the <code>spec.service.container.storage</code> field.</p>
 </li>
 <li>
-<p>Optionally configure the <code>ephemeralStorage</code> and <code>storageClassName</code> fields as required.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>spec:
-  service:
-    type: DataGrid
-    container:
-      storage: 2Gi
-      ephemeralStorage: false
-      storageClassName: my-storage-class</code></pre>
+<p>Configure either the <code>ephemeralStorage</code> field or the <code>storageClassName</code> field as required.</p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>These fields are mutually exclusive.
+Add only one of them to your <code>Infinispan</code> CR.</p>
 </div>
+</td>
+</tr>
+</table>
 </div>
 </li>
 <li>
 <p>Apply the changes.</p>
 </li>
 </ol>
+</div>
+<div class="listingblock">
+<div class="title">Ephemeral storage</div>
+<div class="content">
+<pre class="highlight nowrap"><code>spec:
+  service:
+    type: DataGrid
+    container:
+      storage: 2Gi
+      ephemeralStorage: true</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Name of a <code>StorageClass</code> object</div>
+<div class="content">
+<pre class="highlight nowrap"><code>spec:
+  service:
+    type: DataGrid
+    container:
+      storage: 2Gi
+      storageClassName: my-storage-class</code></pre>
+</div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -5688,7 +5869,7 @@ You should separate Infinispan configuration from application code for easier va
 <p>You can create a single cache for each <code>Cache</code> CR.</p>
 </li>
 <li>
-<p>If your <code>Cache</code> CR contains both a template and an XML configuration, Infinispan Operator uses the template.</p>
+<p>If your <code>Cache</code> CR contains a template and a cache configuration, Infinispan Operator uses the template.</p>
 </li>
 <li>
 <p>If you edit caches in the Kubernetes Dashboard, the changes are reflected through the user interface but do not take effect on the Infinispan cluster. You cannot edit caches. To change cache configuration, you must first delete the cache through the console or CLI and then re-create the cache.</p>
@@ -5714,19 +5895,15 @@ You should separate Infinispan configuration from application code for easier va
 </div>
 </div>
 <div class="sect2">
-<h3 id="creating-caches-xml_creating-caches"><a class="anchor" href="#creating-caches-xml_creating-caches"></a>15.3. Creating caches from XML</h3>
+<h3 id="creating-caches_creating-caches"><a class="anchor" href="#creating-caches_creating-caches"></a>15.3. Creating caches with the Cache CR</h3>
 <div class="paragraph _abstract">
-<p>Complete the following steps to create caches on Data Grid Service clusters using valid <code>infinispan.xml</code> configuration.</p>
+<p>Complete the following steps to create caches on Data Grid Service clusters using valid configuration in XML or YAML format.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Create a <code>Cache</code> CR that contains an XML cache configuration.</p>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>Specify a name for the <code>Cache</code> CR with the <code>metadata.name</code> field.</p>
+<p>Create a <code>Cache</code> CR with a unique value in the <code>metadata.name</code> field.</p>
 </li>
 <li>
 <p>Specify the target Infinispan cluster with the <code>spec.clusterName</code> field.</p>
@@ -5741,8 +5918,8 @@ You should separate Infinispan configuration from application code for easier va
 </td>
 <td class="content">
 <div class="paragraph">
-<p>The <code>name</code> attribute in the XML configuration is ignored.
-Only the <code>spec.name</code> field applies to the resulting cache.</p>
+<p>The <code>name</code> attribute in the cache configuration does not take effect.
+If you do not specify a name with the <code>spec.name</code> field then the cache uses the value of the <code>metadata.name</code> field.</p>
 </div>
 </td>
 </tr>
@@ -5750,22 +5927,7 @@ Only the <code>spec.name</code> field applies to the resulting cache.</p>
 </div>
 </li>
 <li>
-<p>Add an XML cache configuration with the <code>spec.template</code> field.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>apiVersion: infinispan.org/v2alpha1
-kind: Cache
-metadata:
-  name: mycachedefinition
-spec:
-  clusterName: infinispan
-  name: mycache
-  template: &lt;distributed-cache name="mycache" mode="SYNC"&gt;&lt;persistence&gt;&lt;file-store/&gt;&lt;/persistence&gt;&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
+<p>Add a cache configuration with the <code>spec.template</code> field.</p>
 </li>
 <li>
 <p>Apply the <code>Cache</code> CR, for example:</p>
@@ -5777,6 +5939,41 @@ cache.infinispan.org/mycachedefinition created</code></pre>
 </div>
 </li>
 </ol>
+</div>
+<h4 id="_cache_cr_examples" class="discrete">Cache CR examples</h4>
+<div class="listingblock">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code>apiVersion: infinispan.org/v2alpha1
+kind: Cache
+metadata:
+  name: mycachedefinition
+spec:
+  clusterName: infinispan
+  name: myXMLcache
+  template: &lt;distributed-cache mode="SYNC" statistics="true"&gt;&lt;encoding media-type="application/x-protostream"/&gt;&lt;persistence&gt;&lt;file-store/&gt;&lt;/persistence&gt;&lt;/distributed-cache&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code>apiVersion: infinispan.org/v2alpha1
+kind: Cache
+metadata:
+  name: mycachedefinition
+spec:
+  clusterName: infinispan
+  name: myYAMLcache
+  template: |
+  distributedCache:
+    mode: "SYNC"
+    owners: "2"
+    statistics: "true"
+    encoding:
+      mediaType: "application/x-protostream"
+    persistence:
+      fileStore: ~</code></pre>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -7581,7 +7778,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2022-03-01 13:53:14 +0100
+Last updated 2022-03-10 10:43:08 -0500
 </div>
 </div>
 <script>
