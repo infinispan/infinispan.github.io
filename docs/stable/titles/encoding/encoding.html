@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.10">
-<title>Marshalling and Encoding Data</title>
+<title>Encoding Infinispan caches and marshalling data</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /* Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -436,7 +436,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 @media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-<link rel="canonical" href="https://infinispan.org/docs/stable/index.html">
+<link rel="canonical" href="https://infinispan.org/docs/stable/titles/encoding/encoding.html">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/themes/default/style.min.css">
 <link rel="stylesheet" href="../../css/css.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
@@ -521,7 +521,7 @@ $(addBlockSwitches);
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
-<h1>Marshalling and Encoding Data</h1>
+<h1>Encoding Infinispan caches and marshalling data</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
@@ -594,8 +594,8 @@ $(addBlockSwitches);
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan caches can store keys and values in different encodings.
-This document describes how Infinispan encodes data for remote and embedded caches and explains how to use various media types with your applications.</p>
+<p>Remote and embedded caches can store keys and values in different encodings, or media types.
+Infinispan also includes an implementation of the ProtoStream API to marshall Java objects as Protocol Buffers (Protobuf).</p>
 </div>
 </div>
 </div>
@@ -1946,30 +1946,19 @@ builder.serialization()
 <div class="sect3">
 <h4 id="registering-sci-remote-caches_marshalling"><a class="anchor" href="#registering-sci-remote-caches_marshalling"></a>2.2.6. Registering Protobuf schemas with Infinispan Server</h4>
 <div class="paragraph">
-<p>You must register Protobuf schemas with Infinispan Server if you want to perform Ickle queries or convert from <code>application/x-protostream</code> to other media types such as <code>application/json</code>.</p>
+<p>Register Protobuf schemas with Infinispan Server to perform Ickle queries or convert from <code>application/x-protostream</code> to other media types such as <code>application/json</code>.</p>
 </div>
 <div class="ulist">
 <div class="title">Prerequisites</div>
 <ul>
 <li>
-<p>Generate a <code>SerializationContextInitializer</code> implementation with the ProtoStream processor.</p>
+<p>Generate Protobuf schema with the ProtoStream processor.</p>
 <div class="paragraph">
-<p>After the build completes, you can find generated Protobuf schema in the <code>target/&lt;schemaFilePath&gt;/</code> directory.</p>
+<p>You can find generated Protobuf schema in the <code>target/&lt;schemaFilePath&gt;/</code> directory.</p>
 </div>
 </li>
-</ul>
-</div>
-<div class="paragraph">
-<div class="title">Procedure</div>
-<p>Do one of the following to register your generated Protobuf schema with Infinispan Server:</p>
-</div>
-<div class="ulist">
-<ul>
 <li>
-<p>Add the generated Protobuf schema to the dedicated <code>___protobuf_metadata</code> cache with the Infinispan command line interface (CLI), REST interface, or <code>ProtobufMetadataManager</code> JMX MBean.</p>
-<div class="paragraph">
-<p>This method ensures that Infinispan automatically distributes your schema across the cluster.</p>
-</div>
+<p>Have a user with <code>CREATE</code> permissions.</p>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -1978,12 +1967,39 @@ builder.serialization()
 </td>
 <td class="content">
 <div class="paragraph">
-<p>If you enable security authorization for caches, users must have the <code>CREATE</code> permission to add schemas to the <code>___protobuf_metadata</code> cache.
-Assign users the <code>deployer</code> role at minimum if you use default authorization settings.</p>
+<p>Security authorization requires <code>CREATE</code> permissions to add schemas.
+With the default settings, you need the <code>deployer</code> role at minimum.</p>
 </div>
 </td>
 </tr>
 </table>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<div class="title">Procedure</div>
+<p>Add Protobuf schema to Infinispan Server in one of the following ways:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Open the Infinispan Console in any browser, select the <strong>Schema</strong> tab and then <strong>Add Protobuf schema</strong>.</p>
+</li>
+<li>
+<p>Use the <code class="command">schema</code> command with the <code>--upload=</code> argument from the Infinispan command line interface (CLI).</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>[//containers/default]&gt; schema --upload=person.proto person</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Include the Protobuf schema in the payload of a <code>POST</code> request with the REST API.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight nowrap"><code>POST/rest/v2/schemas/&lt;schema_name&gt;</code></pre>
+</div>
 </div>
 </li>
 <li>
@@ -2048,17 +2064,6 @@ remoteBuilder.addServer().host(host).port(<span class="predefined-type">Integer<
 LibraryInitalizer initializer = <span class="keyword">new</span> LibraryInitalizerImpl();
 remoteBuilder.addContextInitializer(initializer);</code></pre>
 </div>
-</div>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p><a href="../cli/cli.html#registering_protobuf_schemas">CLI: Registering Protobuf schemas</a></p>
-</li>
-<li>
-<p><a href="../rest/rest.html#rest_v2_create_protobuf">REST API: Creating Protobuf schemas</a></p>
-</li>
-</ul>
 </div>
 </div>
 <div class="sect3">
@@ -2516,7 +2521,7 @@ Cache&lt;<span class="predefined-type">Integer</span>, <span class="type">byte</
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2022-01-26 05:44:20 -0500
+Last updated 2022-03-11 07:29:16 -0500
 </div>
 </div>
 <style>
