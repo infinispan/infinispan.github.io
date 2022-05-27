@@ -5,7 +5,7 @@
            xmlns:jgroups="urn:org:jgroups"
            xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
-  <xs:import namespace="urn:org:jgroups" schemaLocation="http://www.jgroups.org/schema/jgroups-4.0.xsd"/>
+  <xs:import namespace="urn:org:jgroups" schemaLocation="http://www.jgroups.org/schema/jgroups-5.2.xsd"/>
 
   <xs:element name="infinispan" type="tns:infinispan">
     <xs:annotation>
@@ -452,28 +452,28 @@
     <xs:attribute name="node-name" type="xs:string">
       <xs:annotation>
         <xs:documentation>
-          Name of the current node. This is a friendly name to make logs, etc. make more sense. Defaults to a combination of host name and a random number (to differentiate multiple nodes on the same host)
+          Specifies the name of the current node. Defaults to a combination of the host name and a random number to differentiate between multiple nodes on the same host.
         </xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="machine" type="xs:string">
       <xs:annotation>
         <xs:documentation>
-          The id of the machine where this node runs.
+          Specifies the ID of the machine where the node runs. When a single physical machine hosts multiple JVM instances, the machine ID ensures that data is distributed across different physical hosts.
         </xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="rack" type="xs:string">
       <xs:annotation>
         <xs:documentation>
-          The id of the rack where this node runs.
+          Specifies the ID of the rack where the node runs. The rack ID ensures that the copies of data are stored on different rack than the original data.
         </xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="site" type="xs:string">
       <xs:annotation>
         <xs:documentation>
-          The id of the site where this node runs.
+          The ID of the site where the node runs.In clusters with nodes in multiple physical locations site ID ensures that backup copies of data are stored across different locations.
         </xs:documentation>
       </xs:annotation>
     </xs:attribute>
@@ -488,6 +488,13 @@
       <xs:annotation>
         <xs:documentation>
           The amount of time in milliseconds to wait for a cluster with sufficient nodes to form. Defaults to 60000
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="raft-members" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>
+          The list of raft members separated by space.
         </xs:documentation>
       </xs:annotation>
     </xs:attribute>
@@ -563,7 +570,7 @@
                   <xs:attribute name="class" type="xs:string">
                     <xs:annotation>
                       <xs:documentation>
-                        Specifies the class name of a custom principal to role mapper implementation. 
+                        Specifies the class name of a custom principal to role mapper implementation.
                       </xs:documentation>
                     </xs:annotation>
                   </xs:attribute>
@@ -1029,6 +1036,13 @@
           <xs:attribute name="storage" type="tns:index-storage" default="filesystem">
             <xs:annotation>
               <xs:documentation>Specify index storage options.</xs:documentation>
+            </xs:annotation>
+          </xs:attribute>
+          <xs:attribute name="startup-mode" type="tns:startup-mode" default="none">
+            <xs:annotation>
+              <xs:documentation>
+                Triggers an indexing process when the cache starts.
+              </xs:documentation>
             </xs:annotation>
           </xs:attribute>
           <xs:attribute name="path" type="xs:string">
@@ -1956,16 +1970,6 @@
         <xs:documentation>If true, when the cache starts, data stored in the cache store will be pre-loaded into memory. This is particularly useful when data in the cache store will be needed immediately after startup and you want to avoid cache operations being delayed as a result of loading this data lazily. Can be used to provide a 'warm-cache' on startup, however there is a performance penalty as startup time is affected by this process. Likewise in some cases you cannot pre-load data in caches stores, such as when using shared remote stores.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="fetch-state" type="xs:boolean" default="false">
-      <xs:annotation>
-        <xs:documentation>Fetches the persistent state of a cache when joining
-          a cluster. Values are true / false (default). The purpose of this
-          property is to retrieve the persistent state of a cache and apply it to the local cache store of a node when it joins a cluster. Fetching
-          the persistent state does not apply if a cache store is shared because it accesses the same data as the other stores. This property can be `true` for one configured cache loader only. If more than
-          one cache loader fetches the persistent state, a configuration exception is thrown when the cache service starts.
-        </xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="purge" type="xs:boolean" default="false">
       <xs:annotation>
         <xs:documentation>
@@ -2569,6 +2573,41 @@
       <xs:enumeration value="local-heap">
         <xs:annotation>
           <xs:documentation>JVM heap index storage, not persisted between restarts. Only suitable for small datasets with low concurrency.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="startup-mode">
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="purge">
+        <xs:annotation>
+          <xs:documentation>
+            Clears the index when the cache starts.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="reindex">
+        <xs:annotation>
+          <xs:documentation>
+            Rebuilds the index when the cache starts.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="auto">
+        <xs:annotation>
+          <xs:documentation>
+            Automatically triggers an indexing operation when the cache starts.
+            If data is volatile and the index is persistent then the cache is cleared when it starts.
+            If data is persistent and the index is volatile then the cache is reindexed when it starts.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="none">
+        <xs:annotation>
+          <xs:documentation>
+            Cache startup does not trigger an indexing operation. This is the default value.
           </xs:documentation>
         </xs:annotation>
       </xs:enumeration>
