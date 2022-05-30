@@ -1,0 +1,130 @@
+---
+layout: blog
+title: Infinispan 14 indexing & query news
+permalink: /blog/:year/:month/:day/infinispan-14-indexing-query-news
+date: '2022-06-14T18:00:00.000-00:00'
+author: fax4ever
+tags: [ "indexing", "query", "schema", "startup", "annotations" ]
+---
+
+= Infinispan 14 indexing & query news
+
+Dear Infinispan community,
+
+with the Infinispan 14 development release 03 we introduced some news on indexing and search capabilities.
+
+== Infinispan indexing annotations
+
+Hibernate annotations are going to be replaced with the new Infinispan indexing annotations, that will be used in the same exact way
+for both embedded and remote queries.
+
+Here is an example of two annotated POJOs:
+
+.Poem.java
+[source,java]
+----
+@Indexed
+public class Poem {
+
+   private Author author;
+   private String description;
+   private Integer year;
+
+   @Embedded(includeDepth = 2, structure = Structure.NESTED)
+   public Author getAuthor() {
+      return author;
+   }
+
+   @Text(projectable = true, analyzer = "whitespace", termVector = TermVector.WITH_OFFSETS)
+   public String getDescription() {
+      return description;
+   }
+
+   @Basic(projectable = true, sortable = true, indexNullAs = "1800")
+   public Integer getYear() {
+      return year;
+   }
+}
+----
+
+.Author.java
+[source,java]
+----
+@Indexed
+public class Author {
+
+   private String name;
+
+   public Author(String name) {
+      this.name = name;
+   }
+
+   @Keyword(projectable = true, sortable = true, normalizer = "lowercase", indexNullAs = "unnamed", norms = false)
+   public String getName() {
+      return name;
+   }
+
+   public void setName(String name) {
+      this.name = name;
+   }
+}
+----
+
+Indexed fields without any special string/text transformation will be annotated as `@Basic`.
+If we need to apply a normalizer to a String field, we will opt for a `@Keyword` annotation.
+If we need to apply an analyzer to a String field, we will opt for a `@Text` annotation.
+
+The new annotations allow setting with the same annotation if the field should be sortable, or projectable, or its normalizer or its analyzer.
+However, not all the combinations will be possible, for instance the attribute sortable is not present on the `@Text` annotation,
+since an analyzed field cannot be used to sort the result set.
+
+`indexNullAs` attribute allow now to define a default value to use on index in case the corresponding entity values was null.
+
+Embedded indexes are defined using the `@Embedded` annotation, and it is possible to choose between the `NESTED` structure which
+preserves the original object relationship structure and `FLATTENED` structure which makes the leaf fields multi-valued
+fields of the parent entity.
+
+== Index startup mode
+
+Sometimes indexes can be persistent and cache data not or vice versa, for those cases it can be useful
+to perform some operations to ensure the index will be consistent with data in the cache.
+
+We introduced the `startup-mode` configuration. Here is an example:
+
+[source,xml]
+----
+<distributed-cache>
+  <indexing storage="filesystem" startup-mode="purge">
+    <!-- Additional indexing configuration goes here. -->
+  </indexing>
+</distributed-cache>
+----
+
+With this configuration every time the cache is started, the indexes will be purged.
+Possible values are: `purge`, `reindex`, `none` and `auto`, with the latter Infinispan will decide if and in case which operation
+to perform according to how indexes ad cache data are configured.
+
+== Index schema update
+
+This should be considered an advanced feature to be used only in case your model needs to be evolved time to time, and you need to
+continue to query your cache data without the aid of some data migrations or reindexing.
+
+For a comprehensive guide about when to use schema update instead of migrate or reindex the data please refer to the documentation.
+
+The command can be triggered from the HotRod remote administration API:
+
+[source]
+----
+remoteCacheManager.administration().updateIndexSchema(CACHE_NAME);
+----
+
+or using the REST API, targeting the uri:
+
+[source]
+----
+POST .../v2/caches/{cacheName}/search/indexes?action=updateSchema
+----
+
+or using the Infinispan cli by running `update-schema` on the runtime cache instance.
+
+
