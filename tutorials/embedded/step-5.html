@@ -18,44 +18,43 @@ title: The Weather App
     </p>
     <p>
       In order to turn a CacheManager into a clustered one, we need to supply a special "global" configuration to it with an enabled transport:
+    </p>
       <pre>
         <code class="java">
-          = preserve do
-            :escaped
-              GlobalConfigurationBuilder global = GlobalConfigurationBuilder.defaultClusteredBuilder();
-              global.transport().clusterName("WeatherApp");
-              cacheManager = new DefaultCacheManager(global.build());
+          GlobalConfigurationBuilder global = GlobalConfigurationBuilder.defaultClusteredBuilder();
+          global.transport().clusterName("WeatherApp");
+          cacheManager = new DefaultCacheManager(global.build());
         </code>
       </pre>
+    <p>
       We went the easy route by using the convenience <i>defaultClusteredBuilder()</i> method, but we can achieve the same result by constructing a plain <i>GlobalConfigurationBuidler</i> and tweaking the necessary parameters. Making the CacheManager clustered is not enough: we also want a clustered cache. For this example we will use a distributed synchronous cache with two owners (the default), by changing the default cache configuration:
+    </p>
       <pre>
         <code class="java">
-          = preserve do
-            :escaped
-              config.clustering().cacheMode(CacheMode.DIST_SYNC);
+          config.clustering().cacheMode(CacheMode.DIST_SYNC);
         </code>
       </pre>
+    <p>
       The entries will be distributed among the cluster members according to the hash of their keys. Since we asked for two owners, each entry will have a primary owner and a backup owner.
       <br/>
       Since the entries we will be inserting will need to be transferred between the nodes over the network, we need to make sure both keys and values can be serialized with the default Infinispan marshaller - ProtoStream. As the Cache utilise a String for the key, we don't have to do anything for the key as Strings are supported natively by ProtoStream. For the value, LocationWeather, it's necessary to annotate the class with <i>@ProtoField annotations,</i> and generate a <i>SerializationContextInitializer</i> implementation, which is then registered with the GlobalConfigurationBuidler.
-
+    </p>
       <pre>
         <code class="java">
-          = preserve do
-            :escaped
-              serialization().addContextInitializers(new SerializationContextInitializerImpl());
+          serialization().addContextInitializers(new SerializationContextInitializerImpl());
         </code>
       </pre>
+    <p>
       It is now time to fire up your multiple terminals and try this for yourself:
+    </p>
       <pre>
         <code class="nohighlight">
-          = preserve do
-            :escaped
-              $ git checkout -f step-5
-              $ mvn clean package exec:exec # from terminal 1
-              $ mvn exec:exec # from terminal 2
+          git checkout -f step-5
+          mvn clean package exec:exec # from terminal 1
+          mvn exec:exec # from terminal 2
         </code>
       </pre>
+    <p>
       Make sure you start the second instance soon after the first one has started, because we have not told either instance to "wait" for the other. While the end result will be similar to the previous run (obviously multiplied by two) you will see some extra logging related to the node discovery. We want to control this behaviour, so we'll be looking at listeners in the next step.
     </p>
   </div>

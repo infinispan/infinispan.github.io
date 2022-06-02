@@ -21,10 +21,9 @@ title: The Weather App
     </p>
     <p>
       To compute this we will need to group each of the locations by its country and then average the temperatures within those groupings. This is quite simple with the <a href="https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html">Streams</a> interface recently added to the JRE.  We can utilize the <a href="https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html#collect-java.util.stream.Collector-">collect</a> method along with the new <a href="https://docs.oracle.com/javase/8/docs/api/java/util/stream/Collectors.html">Collectors</a> class to do both of these operations. This is what that would look like:
+      </p>
       <pre>
         <code class="java">
-          = preserve do
-            :escaped
               public void computeCountryAverages() {
                  Map<String, Double> averages = cache.entrySet().stream()
                          .collect(Collectors.groupingBy(e -> e.getValue().country,
@@ -32,15 +31,15 @@ title: The Weather App
               }
         </code>
       </pre>
+    <p>
       As you can see we are first grouping the elements by the country and then finally averaging the weather within those countries, just like we wanted! And it requires very little code.
     </p>
     <p>
       Unfortunately the above code doesn't work for a distributed cache like we have.  The reason for this is we have to transport the collector operations to each node so they can be processed there.  Thus we have to make sure these are able to be serialized.  Unfortunately the Collectors class doesn't produce instances that are serializable by default.  Therefore Infinispan has a bridge class to support using Collectors, which is aptly named
       <a href="https://docs.jboss.org/infinispan/8.2/apidocs/org/infinispan/stream/CacheCollectors.html">CacheCollectors</a> which allows for the user to provide a serializable <a href="https://docs.oracle.com/javase/8/docs/api/java/util/function/Supplier.html">Supplier</a> of a Collector.  This can be used like the following:
+    </p>
       <pre>
         <code class="java">
-          = preserve do
-            :escaped
               public void computeCountryAverages() {
                  Map<String, Double> averages = cache.entrySet().stream()
                          .collect(CacheCollectors(() -> Collectors.groupingBy(e -> e.getValue().country,
@@ -48,7 +47,6 @@ title: The Weather App
               }
         </code>
       </pre>
-    </p>
     <p>
       The above code will serialize the supplier of the collector and send that across to the other nodes where it can then create the non serializable Collector locally. This allows for the operations to be executed locally to each entry.
     </p>
@@ -56,37 +54,31 @@ title: The Weather App
       That's it ! Let's see it at work
       <pre>
         <code class="nohighlight">
-          = preserve do
-            :escaped
-              $ git checkout -f step-10
-              $ mvn clean package exec:exec # on terminal 1
-              $ mvn exec:exec # on terminal 2
+          git checkout -f step-10
+          mvn clean package exec:exec # on terminal 1
+          mvn exec:exec # on terminal 2
         </code>
       </pre>
-    </p>
     <p>
       Here is the trimmed output:
-
+    </p>
       <details>
         <summary>Coordinator Node Output</summary>
         <div>
           <pre>
             <code class="nohighlight">
-              = preserve do
-                :escaped   
-                  ---- Average country temperatures ----
-                  Average temperature in Canada is -11.0° C
-                  Average temperature in USA is 5.8° C
-                  Average temperature in Romania is 7.0° C
-                  Average temperature in UK is 3.0° C
-                  Average temperature in Italy is 5.5° C
-                  Average temperature in Portugal is 13.6° C
-                  Average temperature in Switzerland is -0.1° C
+              ---- Average country temperatures ----
+              Average temperature in Canada is -11.0° C
+              Average temperature in USA is 5.8° C
+              Average temperature in Romania is 7.0° C
+              Average temperature in UK is 3.0° C
+              Average temperature in Italy is 5.5° C
+              Average temperature in Portugal is 13.6° C
+              Average temperature in Switzerland is -0.1° C
             </code>
           </pre>
         </div>
       </details>
-    </p>
     <p>
       Now that we have a fully working application, which actually does something useful, we might want to run it in production, so we need to find a way to make changing configuration according to the
       environment a bit simpler. On to the next step.
