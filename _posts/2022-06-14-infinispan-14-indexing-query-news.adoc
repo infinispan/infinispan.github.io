@@ -11,14 +11,14 @@ tags: [ "indexing", "query", "schema", "startup", "annotations" ]
 
 Dear Infinispan community,
 
-with the Infinispan 14 development release 03 we introduced some news on indexing and search capabilities.
+with the Infinispan 14 development release 03 we introduced improvements on indexing and search capabilities.
 
 == Infinispan indexing annotations
 
-Hibernate annotations are going to be replaced with the new Infinispan indexing annotations, that will be used in the same exact way
-for both embedded and remote queries.
+We are going to replace Hibernate annotations with Infinispan indexing annotations.
+The new annotations can be used in the same way for both embedded and remote queries.
 
-Here is an example of two annotated POJOs:
+Here are examples of two annotated POJOs:
 
 .Poem.java
 [source,java]
@@ -70,24 +70,22 @@ public class Author {
 }
 ----
 
-Indexed fields without any special string/text transformation will be annotated as `@Basic`.
-If we need to apply a normalizer to a String field, we will opt for a `@Keyword` annotation.
-If we need to apply an analyzer to a String field, we will opt for a `@Text` annotation.
+Use the `@Basic` annotation for indexed fields without any special string/text transformation.
+When you apply a normalizer to a String field, use the `@Keyword` annotation.
+When you apply an analyzer to a String field, use the `@Text` annotation.
 
-The new annotations allow setting with the same annotation if the field should be sortable, or projectable, or its normalizer or its analyzer.
-However, not all the combinations will be possible, for instance the attribute sortable is not present on the `@Text` annotation,
-since an analyzed field cannot be used to sort the result set.
+The new annotations allow you to set a single annotation per indexed field if the field should be `sortable` or `projectable` and if you want to use an `analyzer` or `normalizer` on the field.
+However, the combination of an attribute and the annotation must be supported, for instance the attribute `sortable` cannot be used with the `@Text` annotation, since an analyzed field cannot be used to sort the result set.
 
-`indexNullAs` attribute allow now to define a default value to use on index in case the corresponding entity values was null.
+When indexing entities with null values, define a default value with the `indexNullAs` attribute.
 
-Embedded indexes are defined using the `@Embedded` annotation, and it is possible to choose between the `NESTED` structure which
-preserves the original object relationship structure and `FLATTENED` structure which makes the leaf fields multi-valued
-fields of the parent entity.
+For embedded indexes use the `@Embedded` annotation and choose between two structures.
+The `NESTED` structure preserves the original object relationship structure and the `FLATTENED` structure makes the leaf fields multi-valued of the parent entity, so the embedded entity will not be present in the index.
 
 == Index startup mode
 
-Sometimes indexes can be persistent and cache data not or vice versa, for those cases it can be useful
-to perform some operations to ensure the index will be consistent with data in the cache.
+Indexes can be persistent and cache data can be volatile and vice versa.
+You can perform some operations to keep the index consistent with data in the cache.
 
 We introduced the `startup-mode` configuration. Here is an example:
 
@@ -101,15 +99,14 @@ We introduced the `startup-mode` configuration. Here is an example:
 ----
 
 With this configuration every time the cache is started, the indexes will be purged.
-Possible values are: `purge`, `reindex`, `none` and `auto`, with the latter Infinispan will decide if and in case which operation
-to perform according to how indexes ad cache data are configured.
+Possible values are: `purge`, `reindex`, `none`, and `auto`.
+When you choose `auto` mode, Infinispan decides what is the right operation to run to align cache data and indexes.
 
 == Index schema update
 
-This should be considered an advanced feature to be used only in case your model needs to be evolved time to time, and you need to
-continue to query your cache data without the aid of some data migrations or reindexing.
+This is an advanced feature to be used only in case your model needs to be evolved while continuing querying the cache data without data migrations or re-indexing.
 
-For a comprehensive guide about when to use schema update instead of migrate or reindex the data please refer to the documentation.
+For a comprehensive guide about when to use schema update instead of migrating or re-indexing the data refer to the documentation.
 
 The command can be triggered from the HotRod remote administration API:
 
@@ -125,6 +122,4 @@ or using the REST API, targeting the uri:
 POST .../v2/caches/{cacheName}/search/indexes?action=updateSchema
 ----
 
-or using the Infinispan cli by running `update-schema` on the runtime cache instance.
-
-
+or using the Infinispan CLI by running `update-schema` on the runtime cache instance.
