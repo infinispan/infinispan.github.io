@@ -1,0 +1,78 @@
+---
+layout: blog
+title: Anchored keys - scaling up a cluster without transferring values
+permalink: /blog/:year/:month/:day/anchored-keys
+date: '2021-12-01T12:00:00.000-00:00'
+author: ttarrant
+tags: [ "lithops", "python", "cloudbutton" ]
+---
+
+= Lithops Hot Rod storage backend
+
+We are very happy to announce a Hot Rod storage backend for https://lithops-cloud.github.io/[Lithops], an open source framework for big data analytics 
+and embarrassingly parallel jobs, that provides an universal API for building parallel applications in the cloud. 
+The work was done in the context of the https://cloudbutton.eu[CloudButton] project, which aims to build a serverless platform for quickly deploying
+workloads to the cloud, but the advantages are available to everyone using Infinispan!
+
+== Background
+
+[caption="Lithops"]
+image::/assets/images/blog/lithops.png[Lithops,252,205]
+
+Lithops is a Python multi-cloud distributed computing framework. It allows you to run unmodified local python code at massive scale in the main serverless 
+computing platforms. Lithops delivers the user’s code into the cloud without requiring knowledge of how it is deployed and run. Moreover, its 
+multicloud-agnostic architecture ensures portability across cloud providers.
+
+Lithops has multiple storage backends and, up until now, it was able to access an Infinispan Server via its REST API.
+While the REST API is functional, it doesn't offer all of the advantages that Hot Rod, our native protocol, provides, such as topology awareness and
+client-side intelligence to automatically locate the owner of an entry, thus avoiding extra network hops.
+
+== The new Hot Rod Python client
+
+We used to have a Hot Rod Python client that lied in semi-abandoned state for a long time. We decided it was time to get back on track. 
+The https://github.com/infinispan/python-client[Hot Rod Python client] repository has been completely overhauled with our brand new implementation, which 
+supports modern Infinispan features such as authentication, cache creation, etc.
+This is now installable using PIP, the Python Package Installer. The following is a short example that shows how to connect to a secure Infinispan server and manipulate an entry:
+
+.Example.py
+[source,python]
+----
+from Infinispan import Infinispan
+conf=Infinispan.Configuration()
+conf.addServer("localhost",11222)
+conf.setProtocol("2.4")
+conf.setSasl("PLAIN", "node0", "writer", "somePassword")
+manager=Infinispan.RemoteCacheManager(conf)
+manager.start()
+key=Infinispan.UCharVector()
+key.push_back(56)
+value=Infinispan.UCharVector()
+value.push_back(8)
+cache=Infinispan.RemoteCache(manager)
+cache.put(key,value)
+res=cache.get(key)
+print (res.pop())
+manager.stop()
+----
+
+== The Lithops backend
+
+
+Enabling the Lithops Hot Rod storage backend is very simple, as demonstrated by the code snippet below:
+
+.LithopsStorageHotRod.py
+[source,python]
+----
+from lithops import Storage
+
+if __name__ == "__main__":
+    st = Storage(backend='infinispan_hotrod')
+    st.put_object(bucket='mybucket',
+                  key='test.txt',
+                  body='Hello World')
+
+    print(st.get_object(bucket='mybucket',
+                        key='test.txt'))
+----
+
+
