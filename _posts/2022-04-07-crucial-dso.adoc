@@ -1,0 +1,82 @@
+---
+layout: blog
+title: Crucial DSO Server
+permalink: /blog/:year/:month/:day/crucial-dso
+date: '2022-04-07T12:00:00.000-00:00'
+author: ttarrant
+tags: [ "crucial", "dso", "cloudbutton" ]
+---
+
+= Crucial DSO server
+
+Traditionally, an object-relational mapping (ORM) converts the data between the application and storage tiers. The ORM materializes the frontier between the two tiers, and it reduces the coupling. However, it also forces to repeatedly convert the objects between their in-memory and their serialized representations back and forth. This negatively impacts performance and increases execution costs.
+
+https://github.com/crucial-project/dso[Crucial DSO] is a general-purpose synchronization and data sharing framework. With DSO, instead of fetching objects from storage, the application directly calls them. DSO ensures that the objects are persisted and shared consistently among several client machines.
+DSO is built on top of Infinispan and leverages its extensibility. 
+The work was done in the context of the https://cloudbutton.eu[CloudButton] project, which aims to build a serverless platform for quickly deploying
+workloads to the cloud, but the advantages are available to everyone using Infinispan!
+
+
+== Programming with DSO
+
+DSO offers several client-side programming libraries. The most complete one is for the Java language. To declare a DSO object in Java, the programmer uses the `@Shared` keyword on the field of an object. As an example, consider the following two classes.
+
+.Example.py
+[source,java]
+----
+class Hero {
+    @Shared Room location;
+}
+
+class Room {
+    Treasure loot();
+}
+----
+
+The `Hero` class contains a `location` field annotated with `@Shared`. This tells DSO to push the location to the storage tier, allowing several instances of Hero on several application machines to access the same location object transparently.
+
+DSO ensures that the objects are strongly consistent over time. In the example above, this means for instance that if two heroes stand in the same room, only one of them may loot the treasure. More precisely, the synchronization contract of every DSO object `o` is that `o` is atomic, aka. linearizable. In Java, this is equivalent to guarding every method `m` of some object `o` with `synchronized(o) { o.m }`.
+
+DSO includes a library of shared objects (counter, integer, list, maps, barrier, etc.).
+
+DSO follows a standard client-server architecture. 
+The server component is built as an Infinispan Server extension. To quickly setup a DSO-enabled Infinispan Server on Kubernetes using the Infinispan Operator, we can use the https://infinispan.org/docs/infinispan-operator/2.2.x/operator.html#deploying-code[code deployment capabilities]. Until an official release of DSO is published, you will need to build it yourself and make the generated artifacts available from a local Maven repository or a simple web server.
+
+.dso.yaml
+[source, yaml]
+----
+apiVersion: infinispan.org/v1
+kind: Infinispan
+metadata:
+  name: infinispan
+spec:
+  replicas: 2
+  dependencies:
+    artifacts:
+      - url: https://repo1.maven.org/maven2/com/fasterxml/uuid/java-uuid-generator/3.3.0/java-uuid-generator-3.3.0.jar
+        type: file
+      - url: https://repo1.maven.org/maven2/com/google/guava/guava/18.0/guava-18.0.jar
+        type: file
+      - url: http://example.com/dso-core-2.0.jar
+        type: file
+      - url: http://example.com/dso-server-2.0.jar
+        type: file
+  service:
+    type: DataGrid
+----
+
+(We will soon make a bundle available for simpler installation)
+
+
+When the server starts, you should see the following log:
+
+```
+INFO  (main) [org.crucial.dso.Factory] Factory[Cache '__dso'@kashyyyk-4890] Created
+INFO  (main) [org.crucial.dso.Factory] Factory singleton  is Factory[Cache '__dso'@kashyyyk-4890]
+INFO  (main) [org.infinispan.CONTAINER] DSO cache initialized
+```
+
+
+Head over to Crucial's https://github.com/crucial-project/dso[DSO] page for code, examples and more details about this exciting project.
+
+
