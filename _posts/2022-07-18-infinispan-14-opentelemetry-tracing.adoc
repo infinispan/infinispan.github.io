@@ -1,0 +1,164 @@
+---
+layout: blog
+title: Infinispan 14 OpenTelemetry tracing integration
+permalink: /blog/:year/:month/:day/infinispan-14-opentelemetry-tracing
+date: '2022-07-18T19:37:00.000-00:00'
+author: fax4ever
+tags: [ "opentelemetry", "tracing" ]
+---
+
+= Infinispan 14 OpenTelemetry tracing integration
+
+Dear Infinispan community,
+
+with the Infinispan 14 development release 04 we started to support tracing with OpenTelemetry.
+
+Basically, if configured, cache events tracing spans will be produced by the Infinispan server and will be delivered to a
+remote tracing collector server (such as Jaeger or Zipkin).
+
+Moreover, if a Java client application with the HotRot or the Rest client produces some tracing spans,
+these spans can be correlated as parent spans of the corresponding spans events produces by the Infinispan server.
+
+== Set up tracing on Infinispan server
+
+The new version of Infinispan server comes with a gRPC OpenTelemetry Protocol (OTLP) exporter,
+and now of most of the tracing servers support it.
+
+For instance with the newer Jaeger servers versions it is possible to collect this protocol data enabling the option:
+
+[source, shell script]
+----
+./jaeger-all-in-one --collector.otlp.enabled
+----
+
+The server will open a port to import gRPC OTLP tracing data at port 4317.
+
+The tracing on the Infinispan server is configured setting some system properties or environment variables:
+
+[source, properties]
+----
+infinispan.tracing.enabled=true
+otel.service.name=infinispan-server-service
+otel.exporter.otlp.endpoint=http://localhost:4317
+otel.metrics.exporter=none
+----
+
+The first property is Infinispan specific and enables the tracing capability of the Infinispan server.
+The further properties belong to the https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk-extensions/autoconfigure/README.md[OpenTelemetry SDK Autoconfigure project]
+that Infinispan uses to configure the tracing exporter.
+In this case OTLP gRPC exporter protocol is used and the server runs in the same machine of the Infinispan server.
+
+Starting the server with these parameters:
+[source, shell script]
+----
+export JAVA_OPTS="-Dinfinispan.tracing.enabled=true -Dotel.service.name=infinispan-server-service -Dotel.exporter.otlp.endpoint=http://localhost:4317 -Dotel.metrics.exporter=none"
+./server.sh
+----
+
+The following log is produced when the server starts:
+[source, bash]
+----
+(ForkJoinPool.commonPool-worker-2) [org.infinispan.server.core.telemetry.TelemetryServiceFactory] ISPN000952: OpenTelemetry instance loaded: OpenTelemetrySdk{...
+----
+
+To indicate the fact that the OpenTelemetrySdk is correctly configured.
+
+== Tracing from a HotRod client application
+
+Any OpenTelemetry tracing context present on HotRot client applications will be automatically propagated by the new Hot Rod v4 client to the server tracing context.
+
+For instance for a client defining some tracing spans containing cache operations, such as the following:
+
+[source,java]
+----
+public class MyRestClient {
+
+    public void putSomeValues(RemoteCache cache) {
+        Span span = tracer.spanBuilder("sub-bulk-1").setSpanKind(SpanKind.CLIENT).startSpan();
+        // put the span into the current Context
+        try (Scope scope = span.makeCurrent()) {
+            cache.put(1, "A");
+            cache.put(2, "B");
+            cache.put(3, "C");
+        } catch (Throwable throwable) {
+            span.setStatus(StatusCode.ERROR, "Something bad happened!");
+            span.recordException(throwable);
+            throw throwable;
+        } finally {
+            span.end(); // Cannot set a span after this call
+        }
+    }
+}
+----
+
+the client span `sub-bulk-1` will be correlated to any related server spans, in this case the three put operations.
+
+Opening the Jaeger console, we can see that client and server spans are correctly aggregated:
+
+[caption="Jaeger console",link=/assets/images/blog/tracing-hotrod-client.png]
+image::/assets/images/blog/tracing-hotrod-client.png[Tracing output]
+
+You can find a complete application example here: https://github.com/fax4ever/infinispan-play/tree/main/tracing-hotrod-client
+
+== Tracing from a REST client application
+
+The same result can be achieved from a Rest client, putting manually in the HTTP headers requests the current tracing context
+using a standard a OpenTelemetry instance of `W3CTraceContextPropagator`.
+
+[source,java]
+----
+public class MyRestClient {
+
+    public void putSomeValues(RestCacheClient cache) {
+        Span span = tracer.spanBuilder("sub-bulk-1").setSpanKind(SpanKind.CLIENT).startSpan();
+        // put the span into the current Context
+        try (Scope scope = span.makeCurrent()) {
+            putSomeEntries(cache);
+        } catch (Throwable throwable) {
+            span.setStatus(StatusCode.ERROR, "Something bad happened!");
+            span.recordException(throwable);
+            throw throwable;
+        } finally {
+            span.end(); // Cannot set a span after this call
+        }
+    }
+
+    private void putSomeEntries(RestCacheClient cache) {
+        Map<String, String> contextMap = getContextMap();
+
+        CompletableFuture[] futures = new CompletableFuture[3];
+
+        futures[0] = cache.put("1", MediaType.TEXT_PLAIN.toString(),
+            RestEntity.create(MediaType.TEXT_PLAIN, "A"), contextMap).toCompletableFuture();
+        futures[1] = cache.put("2", MediaType.TEXT_PLAIN.toString(),
+            RestEntity.create(MediaType.TEXT_PLAIN, "B"), contextMap).toCompletableFuture();
+        futures[2] = cache.put("3", MediaType.TEXT_PLAIN.toString(),
+            RestEntity.create(MediaType.TEXT_PLAIN, "C"), contextMap).toCompletableFuture();
+
+        CompletableFuture.allOf(futures).join();
+    }
+
+    public static Map<String, String> getContextMap() {
+        HashMap<String, String> result = new HashMap<>();
+
+        // Inject the request with the *current* Context, which contains our current Span.
+        W3CTraceContextPropagator.getInstance().inject(Context.current(), result,
+          (carrier, key, value) -> carrier.put(key, value));
+        return result;
+    }
+}
+----
+
+Opening the Jaeger console, we can see that client and server spans are correctly aggregated:
+
+[caption="Jaeger console",link=/assets/images/blog/tracing-rest-client.png]
+image::/assets/images/blog/tracing-rest-client.png[Tracing output]
+
+You can find a complete application example here: https://github.com/fax4ever/infinispan-play/tree/main/tracing-rest-client
+
+
+
+
+
+
+
