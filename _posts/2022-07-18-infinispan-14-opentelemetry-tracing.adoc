@@ -11,29 +11,28 @@ tags: [ "opentelemetry", "tracing" ]
 
 Dear Infinispan community,
 
-with the Infinispan 14 development release 04 we started to support tracing with OpenTelemetry.
+With the Infinispan 14 development release 04, we started to support tracing with OpenTelemetry.
 
-Basically, if configured, cache events tracing spans will be produced by the Infinispan server and will be delivered to a
-remote tracing collector server (such as Jaeger or Zipkin).
+If configured, Infinispan Server produces cache events tracing spans and sends them to a remote tracing collector server, such as Jaeger or Zipkin.
 
 Moreover, if a Java client application with the HotRot or the Rest client produces some tracing spans,
-these spans can be correlated as parent spans of the corresponding spans events produces by the Infinispan server.
+these spans can be correlated as parent spans of the corresponding spans events produced by the Infinispan Server.
 
-== Set up tracing on Infinispan server
+== Set up tracing on Infinispan Server
 
-The new version of Infinispan server comes with a gRPC OpenTelemetry Protocol (OTLP) exporter,
-and now of most of the tracing servers support it.
+The new version of Infinispan Server comes with a gRPC OpenTelemetry Protocol (OTLP) Exporter,
+which is now supported by the majority of tracing servers.
 
-For instance with the newer Jaeger servers versions it is possible to collect this protocol data enabling the option:
+For instance, with the newer Jaeger server versions, you can enable data collection through the OTLP protocol with the following option:
 
 [source, shell script]
 ----
 ./jaeger-all-in-one --collector.otlp.enabled
 ----
 
-The server will open a port to import gRPC OTLP tracing data at port 4317.
+The server opens a port to import gRPC OTLP tracing data at port 4317.
 
-The tracing on the Infinispan server is configured setting some system properties or environment variables:
+Configure tracing on the Infinispan Server by setting system properties or environment variables:
 
 [source, properties]
 ----
@@ -43,10 +42,10 @@ otel.exporter.otlp.endpoint=http://localhost:4317
 otel.metrics.exporter=none
 ----
 
-The first property is Infinispan specific and enables the tracing capability of the Infinispan server.
+The first property is Infinispan specific and enables the tracing capability of the Infinispan Server.
 The further properties belong to the https://github.com/open-telemetry/opentelemetry-java/blob/main/sdk-extensions/autoconfigure/README.md[OpenTelemetry SDK Autoconfigure project]
 that Infinispan uses to configure the tracing exporter.
-In this case OTLP gRPC exporter protocol is used and the server runs in the same machine of the Infinispan server.
+In this case, OTLP gRPC Exporter protocol is used and the server runs on the same machine as the Infinispan Server.
 
 Starting the server with these parameters:
 [source, shell script]
@@ -61,13 +60,13 @@ The following log is produced when the server starts:
 (ForkJoinPool.commonPool-worker-2) [org.infinispan.server.core.telemetry.TelemetryServiceFactory] ISPN000952: OpenTelemetry instance loaded: OpenTelemetrySdk{...
 ----
 
-To indicate the fact that the OpenTelemetrySdk is correctly configured.
+This indicates that the OpenTelemetrySdk is correctly configured.
 
 == Tracing from a HotRod client application
 
 Any OpenTelemetry tracing context present on HotRot client applications will be automatically propagated by the new Hot Rod v4 client to the server tracing context.
 
-For instance for a client defining some tracing spans containing cache operations, such as the following:
+For instance, for a client that defines some tracing spans containing cache operations, such as the following:
 
 [source,java]
 ----
@@ -91,7 +90,7 @@ public class MyRestClient {
 }
 ----
 
-the client span `sub-bulk-1` will be correlated to any related server spans, in this case the three put operations.
+The client span `sub-bulk-1` will be correlated to any related server spans, in this case the three put operations.
 
 Opening the Jaeger console, we can see that client and server spans are correctly aggregated:
 
@@ -102,8 +101,7 @@ You can find a complete application example here: https://github.com/fax4ever/in
 
 == Tracing from a REST client application
 
-The same result can be achieved from a Rest client, putting manually in the HTTP headers requests the current tracing context
-using a standard a OpenTelemetry instance of `W3CTraceContextPropagator`.
+You can achieve the same with a REST client by putting manually in the HTTP headers the requests to provide information about the current tracing context using a standard OpenTelemetry instance of `W3CTraceContextPropagator`.
 
 [source,java]
 ----
@@ -149,16 +147,9 @@ public class MyRestClient {
 }
 ----
 
-Opening the Jaeger console, we can see that client and server spans are correctly aggregated:
+Opening the Jaeger console, you can see that client and server spans are correctly aggregated:
 
 [caption="Jaeger console",link=/assets/images/blog/tracing-rest-client.png]
 image::/assets/images/blog/tracing-rest-client.png[Tracing output]
 
 You can find a complete application example here: https://github.com/fax4ever/infinispan-play/tree/main/tracing-rest-client
-
-
-
-
-
-
-
