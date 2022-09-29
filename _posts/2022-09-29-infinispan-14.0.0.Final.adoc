@@ -1,0 +1,160 @@
+---
+layout: blog
+title: Infinispan 14.0.0.Final
+permalink: /blog/:year/:month/:day/infinispan-14
+date: '2022-09-29T12:00:00.000-00:00'
+author: ttarrant
+tags: [ "release", "development" ]
+---
+
+= Infinispan 14.0.0.Final
+
+Flying saucers are probably the most common type of UFO. They are sleek and shiny and, most importantly, they come in peace bringing lots of goodies from outer space!
+Just like Infinispan 14! 
+Oh, and the fact that it’s also the https://untappd.com/b/kinnegar-brewing-flying-saucer-foreign-export-stout/1415125[name of a beer] is no sheer coincidence.
+
+[caption="Flying Saucer"]
+image::/assets/images/blog/flying-saucer.jpg[Flying Saucer, 1230,1220]
+
+
+== JDK requirements
+You will need at least JDK 11 in order to use Infinispan 14. Infinispan also supports JDK 17 LTS and the recently released JDK 19.
+
+== Jakarta EE
+We now ship https://jakarta.ee[Jakarta EE] variants of most of our modules: just append `-jakarta` to the artifact name:
++
+[source,xml]
+----
+<dependency>
+   <groupId>org.infinispan</groupId>
+   <artifactId>infinispan-core-jakarta</artifactId>
+   <version>14.0.0.Final</version>
+</dependency>
+----
++
+
+== Core
+* Cluster Listener using `includeCurrentState`` will have better memory and performance performance. Every key no longer requires calculating its segment while iterating and memory is freed much earlier and is closed as each segment completes transfer
+* State Transfer reduces how long memory is required to be held therefore reducing required memory overheads when configuring your server.
+* State transfer metrics are exposed through JMX. Expose the number of segments during transfer.
+* Size method when invoked on a cache has been optimized in various cases to be an `O(1)` operation instead of `O(N)`. Involves if expiration and if stores are configured, please check https://issues.redhat.com/browse/ISPN-9366[ISPN-9366] for more information.
+* Reduced some cases of blocking threads being over utilized, therefore reducing how large the blocking thread pool would need to grow.
+* Dynamic RBAC: a dynamic, clustered role mapper that can be modified at runtime to grant/deny access to specific principals.
+
+== Query 
+* Native Infinispan indexing annotations which finally replace the legacy Hibernate Query annotations we've used in past versions (see https://infinispan.org/blog/2022/06/14/infinispan-14-indexing-query-news)
+* Index startup mode to determine what happens to indexes on cache start (see https://infinispan.org/blog/2022/06/14/infinispan-14-indexing-query-news)
+* Dynamic index schema updates allow you to evolve your schema at runtime with near-zero impact to your queries (see https://infinispan.org/blog/2022/06/14/infinispan-14-indexing-query-news)
+* Support Protobuf's `oneof`
+* We improved the hybrid query system
+* Support normalizers with the HotRod client
+
+== Persistence
+* `SoftIndexFileStore` (default file store) segmentation performance has been improved significantly. This also reduces the number of Index segments required which reduces the number of open files and threads required on the server.
+* `JDBCStringBasedStore` no longer requires configuring the database min and max version as this is dynamically configured when checking the JDBC connection.
+* `JPAStore` has been removed. It had been deprecated for quite a while, but the move to support Hibernate 6 prompted its removal as `JPAStore` only worked with Hibernate 5.
+
+== Hot Rod client
+* A new Hot Rod client with a completely redesigned API.
+* Sync (blocking), Async (non-blocking) and https://smallrye.io/smallrye-mutiny/[Mutiny] sub-APIs that fit with your programming model of choice.
++
+[source,java]
+----
+try (SyncContainer infinispan = Infinispan.create("hotrod://localhost")) {
+    // Sync
+    SyncCache<String, String> mycache = infinispan.sync().caches().get("mycache");
+    mycache.set("key", "value");
+    String value = mycache.get("key");
+    // set with options
+    mycache.set("key", "anothervalue", writeOptions().lifespan(Duration.ofHours(1)).timeout(Duration.ofMillis(500)).build());
+
+    // Async
+    infinispan.async().caches()
+    .get("mycache").thenApply(c -> 
+        c.set("key", "value").thenApply(ignore -> 
+            c.get("key").thenApply(value -> 
+                c.set("key", "anothervalue", 
+                writeOptions().lifespan(Duration.ofHours(1)).timeout(Duration.ofMillis(500)).build()))
+            ));
+
+    // Mutiny
+    infinispan.mutiny().caches()
+    .get("mycache").map(c -> 
+        c.query("age > :age").param("age", 80).skip(5).limit(10).find())
+            .subscribe().with(System.out::println);
+}
+----
+
+== Server
+
+* RESP endpoint: a Redis-compatible endpoint connector (implementing the RESP 3 protocol) with support for a subset of commands: `set`, `get`, `del`, `mget`, `mset`, `incr`, `decr`, `publish`, `subscribe`, `auth`, `ping`. The connector integrates with our security and protocol auto-detections, so that it is easily usable from our single-port endpoint. The implemented commands should be enough for typical caching usage. If you would like to see more, reach out via our community.
+* If you need to use https://www.nist.gov/standardsgov/compliance-faqs-federal-information-processing-standards-fips[FIPS], it's now possible to use https://docs.oracle.com/en/java/javase/17/security/pkcs11-reference-guide1.html[PKCS#11 keystores]
+* Masked and external credentials, to avoid the use of secrets in your configuration files 
+* Custom security providers, such as BouncyCastle, can now be used. Just drop your provider implementation in the `server/lib` and configure:
++
+[source,xml]
+----
+<ssl>
+    <keystore path="server.bcfks" password="secret" alias="server" provider="BC" type="BCFKS"/>
+</ssl>
+----
++
+* Improved TLS engine configuration, allowing fine-grained ciphersuites selection for both TLSv1.3 and TLSv1.2:
++
+[source,xml]
+----
+<engine enabled-protocols="TLSv1.3 TLSv1.2" enabled-ciphersuites="TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384" enabled-ciphersuites-tls13="TLS_AES_256_GCM_SHA384"/>
+----
++
+* Endpoint worker threads configuration has been removed. With the rewrite in Infinispan 13 to utilize non blocking threads, this configuration was unused and deprecated.
+* https://docs.oracle.com/en/java/javase/17/management/monitoring-and-management-using-jmx-technology.html[JMX] integration with our security realms for authentication and authorization.
+* Experimental https://kernel.dk/io_uring.pdf[IO_Uring] support
+* REST endpoints expose distribution information for caches and clusters. For more information, see https://issues.redhat.com/browse/ISPN-12192[ISPN-12192] and https://issues.redhat.com/browse/ISPN-12193[ISPN-12193].
+
+== Console
+* Cache creation wizard. See our recent https://infinispan.org/blog/2022/09/12/infinispan-14-console-wizard[blog post] about it
+
+
+== CLI
+* List cache entries, including metadata, using different formats (table, JSON, CSV)
+* Configuration converter
+* Schema command to upload, delete, modify protobuf schema
+* Index command to manage indexes
+* Client certificate authentication
+
+== Image
+* Now based upon https://catalog.redhat.com/software/containers/ubi8/openjdk-17/618bdbf34ae3739687568813[ubi8/openjdk-17-runtime]
+* Images provided for both amd64 and arm64 architectures
+* `SERVER_LIBS` environment variable added to allow dependencies to be downloaded prior to server startup
+* The `config-generator` has been removed. Its functionality can be replaced by using configuration overlays
+
+== Operator
+* Multi-Operand support, which means a single operator can managed different versions of Infinispan
+* FIPS support
+* Custom user configuration refactored to allow greater control of Infinispan configuration
+* Image based upon https://catalog.redhat.com/software/containers/ubi9/ubi-micro/615bdf943f6014fa45ae1b58[ubi9/ubi-micro]
+* Bundle provided for both amd64 and arm64 architectures
+* Admin service is now headless
+
+== Hibernate ORM second-level cache
+Hibernate caching implementation supporting Hibernate 6. Note that Hibernate 5 caching support is no longer provided due to Jakarta EE migration.
+
+
+== Observability
+* Integration with OpenTelemetry tracing (see https://infinispan.org/blog/2022/07/18/infinispan-14-opentelemetry-tracing)
+* Client / server request tracing correlations on both Hot Rod and REST APIs (see https://infinispan.org/blog/2022/07/18/infinispan-14-opentelemetry-tracing)
+* Integration with Micrometer to produce Prometheus and OpenMetrics metrics
+
+== Other
+Infinispan Quarkus server now supports the same command line arguments as the normal JVM Infinispan server. In addition the Infinispan Quarkus native binary can be used in an existing unzipped Infinispan Server zip file for ease of use. 
+
+== Documentation
+Many improvements, updates and fixes.
+
+
+== Release notes
+
+You can look at the https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12310799&version=12352858[release notes] to see what has changed since our latest CR.
+
+Get them from our https://infinispan.org/download/[download page].
+
