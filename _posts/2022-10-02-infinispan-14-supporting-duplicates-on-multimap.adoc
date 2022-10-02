@@ -1,0 +1,63 @@
+---
+layout: blog
+title: Infinispan 14 supporting duplicates on multimap
+permalink: /blog/:year/:month/:day/infinispan-14-supporting-duplicates-on-multimap
+date: '2022-10-2T00:00:00.000-00:00'
+author: miador
+tags: [ "multimap" ]
+---
+
+= Infinispan 14 supporting duplicates on multimap
+
+Dear Infinispan community,
+
+With the Infinispan 14 development release 04 multimap cache supports duplicates.
+
+By default `supportsDuplicates` is set to false and can be configured during initialization.
+
+The following is an example on how you can set multimap to support duplicate key-value pairs:
+
+[source,java]
+----
+public class MyEmbeddedMultimapCacheExmaple {
+
+public static void main(String[] args) {
+      DefaultCacheManager cacheManager = new DefaultCacheManager();
+
+      MultimapCacheManager multimapCacheManager = EmbeddedMultimapCacheManagerFactory.from(cacheManager);
+
+      multimapCacheManager.defineConfiguration("multimap", new ConfigurationBuilder().build());
+
+      // Get the MultimapCache with duplicates support
+      MultimapCache<String, String> multimap = multimapCacheManager.get("multimap", true);
+
+      // Store duplicate values in a key
+      CompletableFuture.allOf(
+            multimap.put("key", "value1"),
+            multimap.put("key", "value1"),
+            multimap.put("key", "value3"))
+            .whenComplete((nil, ex) -> {
+               // Retrieve the values
+               multimap.get("key").whenComplete((values, ex2) -> {
+                  // Print them out
+                  System.out.println(values);
+
+                  System.out.println("Multimap size:" + values.size());
+                  // Stop the cache manager and release all resources
+                  cacheManager.stop();
+               });
+            });
+   }
+}
+----
+
+[source]
+----
+[value1, value1, value3]
+Multimap size: 3
+----
+
+== Further reading
+
+Check out for available documentation
+https://infinispan.org/docs/14.0.x/titles/embedding/embedding.html#multimap-cache[Infinispan MultimapCache Guide].
