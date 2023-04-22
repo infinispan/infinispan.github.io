@@ -1,0 +1,281 @@
+---
+layout: blog
+title: Infinispan 15.0.0.Dev01
+permalink: /blog/:year/:month/:day/infinispan-15.0.0.Dev01
+date: '2023-04-24T00:00:00.000-00:00'
+author: ttarrant
+tags: [ "release", "development" ]
+---
+
+= Infinispan 15.0.0.Dev01
+
+Infinispan 15.0.0.Dev01 marks the beginning of a new development cycle, and there are a number of
+notable changes that we are making that deserve a detailed post.
+
+== Bye bye, Java EE, Hello Jakarta EE
+
+We've made the decision to drop Java EE support completely and focus solely on https://jakarta.ee[Jakarta EE].
+For 14.0 we provided artifacts for both, but we believe the time has come to move on. All of the leading
+application servers (like https://wildfly.org[WildFly] and https://openliberty.io[OpenLiberty]) as well as the most 
+important stacks (like https://quarkus.io[Quarkus] and https://spring.io[Spring]) have adopted Jakarta EE, so we've decided it was time for us to make the move too.
+
+== JCache changes
+
+The choice to drop Java EE directly impacts our JCache provider implementation. 
+The JCache API (aka JSR 107) is essentially in maintenance mode: it was never adopted by Java EE and there are a number 
+of obstacles (mostly legal) that prevent it from moving to Jakarta EE. We understand the need to have an implementation
+agnostic caching API, so we are going to continue supporting our JCache provider, but we will drop those parts which require Java EE,
+most notably the `javax.cache.annotation` package. Hopefully a modern caching API will emerge as part of Jakarta EE.
+
+== Dropping Spring 5 / Spring Boot 2 support
+
+Dropping Java EE also means having to drop Spring 5 and Spring Boot 2 support. 
+
+== Quarkus
+
+We've merged our Quarkus components (embedded, CLI and server) into the main repository and have upgraded them to Quarkus 3.0.
+Our https://quarkus.io/extensions/io.quarkus/quarkus-infinispan-client[client extension] continues to be part of the Quarkus ecosystem.
+
+== Security Manager
+
+The Java Security Manager has been https://openjdk.org/jeps/411[deprecated for removal]. 
+It was designed mostly for sandboxing Java applets, but it was somehow (wrongly) co-opted as a way to implement similar functionality for normal
+Java applications. It was slow and cumbersome, and we're glad to see it go. Luckily, the removal of SecurityManager support from Infinispan does 
+not affect its authentication and authorization capabilities.
+
+== Java 17 and 21
+
+Starting with Infinispan 15, we will baseline on JDK 17 and also offer support for JDK 21, including virtual threads.
+
+== But what if I rely on JavaEE, Spring 5, Spring Boot 2 and JCache annotations ?
+
+Don't worry, we have you covered for quite some time, as we will continue to support Infinispan 14.0 for quite a while, with security patches, bug fixes and
+improvements that we can backport.
+
+== Other features and tentative release date
+
+What you can expect to see in Infinispan 15:
+
+* many improvements to our Redis-compatible https://redis.io/docs/reference/protocol-spec/[RESP] endpoint, including many more commands
+* a completely overhauled https://memcached.org/[Memcached] endpoint with support for authentication and the binary protocol
+* improved performance across the board, with particular focus on the remote endpoints and clustering
+* CDC integration, courtesy of our friends over at https://debezium.io/[Debezium]
+* Much more!
+
+We hope to have the final release of Infinispan 15 ready for consumption by the end of the year and we will be making regular development releases.
+
+== Release notes
+
+=== Sub-task
+
+    https://issues.redhat.com/browse/ISPN-12152[ISPN-12152] - Remove the Kryo and Protostuff Marshallers
+    https://issues.redhat.com/browse/ISPN-13985[ISPN-13985] - Test AsyncCache new API.
+    https://issues.redhat.com/browse/ISPN-13994[ISPN-13994] - Pass added SerialAllowList to configuration
+    https://issues.redhat.com/browse/ISPN-14016[ISPN-14016] - Implement HotRodMutinyCaches methods
+
+=== Feature Request
+
+    https://issues.redhat.com/browse/ISPN-12081[ISPN-12081] - Weak counter creation
+    https://issues.redhat.com/browse/ISPN-13424[ISPN-13424] - Spring 6 integration
+    https://issues.redhat.com/browse/ISPN-13946[ISPN-13946] - Expose indexes metamodel
+    https://issues.redhat.com/browse/ISPN-14085[ISPN-14085] - Allow to pass new list of indexed entities in update schema API
+    https://issues.redhat.com/browse/ISPN-14233[ISPN-14233] - REST API makes it possible to download any server report
+    https://issues.redhat.com/browse/ISPN-14298[ISPN-14298] - Delete a counter
+    https://issues.redhat.com/browse/ISPN-14300[ISPN-14300] - Add a delta in a value
+    https://issues.redhat.com/browse/ISPN-14303[ISPN-14303] - Reset counter
+    https://issues.redhat.com/browse/ISPN-14309[ISPN-14309] - Improve Counters Table Filtering
+    https://issues.redhat.com/browse/ISPN-14344[ISPN-14344] - StoreMigrator support reading segmented SingleFileStores
+    https://issues.redhat.com/browse/ISPN-14361[ISPN-14361] - Create Hibernate 2LC implementation for Hibernate 6.2.x.
+    https://issues.redhat.com/browse/ISPN-14577[ISPN-14577] - Running tests with alternate JDK
+    https://issues.redhat.com/browse/ISPN-14731[ISPN-14731] - Hot Rod client should support alternate resolution strategies
+    https://issues.redhat.com/browse/ISPN-14758[ISPN-14758] - Add cli command alternative to /rest/v2/caches/{cacheName}/{cacheKey}?extended endpoint
+
+=== Bug
+
+    https://issues.redhat.com/browse/ISPN-12224[ISPN-12224] - Cluster in a confusing state after restarted from graceful shutdown - no hint for waiting on complete restarted
+    https://issues.redhat.com/browse/ISPN-13877[ISPN-13877] - NullPointerException in MetricsCollector.java
+    https://issues.redhat.com/browse/ISPN-14090[ISPN-14090] - Counters client 14 are incompatible with Server 13
+    https://issues.redhat.com/browse/ISPN-14112[ISPN-14112] - REST/CLI command will add a schema definition with 'upload' if the given file does not exists
+    https://issues.redhat.com/browse/ISPN-14119[ISPN-14119] - Cache details page: Queries give error in case of running after entries expiration
+    https://issues.redhat.com/browse/ISPN-14210[ISPN-14210] - Stores that do not return the EXPIRATION Characteristic should not allow expiration
+    https://issues.redhat.com/browse/ISPN-14238[ISPN-14238] - Memcached server: corrupted response
+    https://issues.redhat.com/browse/ISPN-14240[ISPN-14240] - Client certificate authentication doesn't work with HTTP/2
+    https://issues.redhat.com/browse/ISPN-14256[ISPN-14256] - CLI expands `-` filename breaking stdin batch
+    https://issues.redhat.com/browse/ISPN-14264[ISPN-14264] - [Console] Counters page - double click on Strong/Weak select loads all counters
+    https://issues.redhat.com/browse/ISPN-14271[ISPN-14271] - Cache wizard back button not working
+    https://issues.redhat.com/browse/ISPN-14278[ISPN-14278] - [Doc] sql-store examples should be updated
+    https://issues.redhat.com/browse/ISPN-14279[ISPN-14279] - "Divide by 0"-Exception on Cache.getStats()
+    https://issues.redhat.com/browse/ISPN-14280[ISPN-14280] - JSON parser doesn't report error locations correctly
+    https://issues.redhat.com/browse/ISPN-14282[ISPN-14282] - Spring Boot actuator embedded metrics use deprecated code
+    https://issues.redhat.com/browse/ISPN-14290[ISPN-14290] - [Docs] YAML Configuration example with typos
+    https://issues.redhat.com/browse/ISPN-14313[ISPN-14313] - Set different properties and port for cross-site testdriver
+    https://issues.redhat.com/browse/ISPN-14315[ISPN-14315] - Not possible to get server config over REST
+    https://issues.redhat.com/browse/ISPN-14316[ISPN-14316] - '/rest/v2/server/report' throws exception if there are 1+ instances on the host
+    https://issues.redhat.com/browse/ISPN-14317[ISPN-14317] - Not possible to create cluster backup over REST
+    https://issues.redhat.com/browse/ISPN-14319[ISPN-14319] - Use InetSocketAddress.getHostString() instead of getHostName()
+    https://issues.redhat.com/browse/ISPN-14323[ISPN-14323] - Get command blocks in text/plain caches
+    https://issues.redhat.com/browse/ISPN-14329[ISPN-14329] - Availability of caches should be prevented until a cluster is complete after "shutdown cluster"
+    https://issues.redhat.com/browse/ISPN-14348[ISPN-14348] - BytesObjectOutput.writeUTF performance improvements
+    https://issues.redhat.com/browse/ISPN-14356[ISPN-14356] - NPE if not configuring datasource connection pool maxSize
+    https://issues.redhat.com/browse/ISPN-14362[ISPN-14362] - Json escape should use two equality checks instead of HashMap lookup
+    https://issues.redhat.com/browse/ISPN-14364[ISPN-14364] - Yaml parser mishandles lists
+    https://issues.redhat.com/browse/ISPN-14368[ISPN-14368] - CacheInputEntryStream escapes the value for every byte in the value
+    https://issues.redhat.com/browse/ISPN-14376[ISPN-14376] - Web console crashes when cache name has a dot
+    https://issues.redhat.com/browse/ISPN-14377[ISPN-14377] - Stats command inaccurate results
+    https://issues.redhat.com/browse/ISPN-14390[ISPN-14390] - When reading entries from read only store apply expiration
+    https://issues.redhat.com/browse/ISPN-14399[ISPN-14399] - Do not allow read only and passivation to be configured together
+    https://issues.redhat.com/browse/ISPN-14406[ISPN-14406] - Stage returned from reindexing on explicit keys completes earlier than expected
+    https://issues.redhat.com/browse/ISPN-14416[ISPN-14416] - Data Distribution chart size issue
+    https://issues.redhat.com/browse/ISPN-14417[ISPN-14417] - The metrics for misses and retrievals are updated after page reload
+    https://issues.redhat.com/browse/ISPN-14421[ISPN-14421] - CVE-2022-41881 codec-haproxy: HAProxyMessageDecoder Stack Exhaustion DoS [jdg-8]
+    https://issues.redhat.com/browse/ISPN-14435[ISPN-14435] - Backwards compatibility broken with InvalidMagicIdException
+    https://issues.redhat.com/browse/ISPN-14440[ISPN-14440] - calling AsyncCache#keys or MutinyCache#keys throws an exception because the ToEmptyBytesKeyValueFilterConverter cannot be found.
+    https://issues.redhat.com/browse/ISPN-14453[ISPN-14453] - Ickl Queries should support BigInteger and BigDecimal
+    https://issues.redhat.com/browse/ISPN-14461[ISPN-14461] - Add missing licence: MPL-1.1
+    https://issues.redhat.com/browse/ISPN-14466[ISPN-14466] - Cache configuration update failure cause not returned in http body
+    https://issues.redhat.com/browse/ISPN-14468[ISPN-14468] - REST: return error if failed to create counter
+    https://issues.redhat.com/browse/ISPN-14470[ISPN-14470] - REST cache configuration comparison returns 204 for different caches
+    https://issues.redhat.com/browse/ISPN-14477[ISPN-14477] - Concurrent Spring session access results in lost session attributes
+    https://issues.redhat.com/browse/ISPN-14479[ISPN-14479] - SQL Cache store initiation fails on Sql type CHAR
+    https://issues.redhat.com/browse/ISPN-14491[ISPN-14491] - Adding entries with putAll does not add metadata version - following replaceWithVersion will end with a timout
+    https://issues.redhat.com/browse/ISPN-14510[ISPN-14510] - org.infinispan.server.cli.CliIT.testCliInteractive failure
+    https://issues.redhat.com/browse/ISPN-14511[ISPN-14511] - RestOperations.testCounter[HTTP_20] failure
+    https://issues.redhat.com/browse/ISPN-14512[ISPN-14512] - Fix *-jakarta modules
+    https://issues.redhat.com/browse/ISPN-14516[ISPN-14516] - Wrong versions in spring-boot-3-tests module
+    https://issues.redhat.com/browse/ISPN-14527[ISPN-14527] - Meta model may not reflect some schema changes
+    https://issues.redhat.com/browse/ISPN-14535[ISPN-14535] - GetCounterNameOperation can fail replay
+    https://issues.redhat.com/browse/ISPN-14540[ISPN-14540] - [Docs]Fix JSON example for Off-heap storage
+    https://issues.redhat.com/browse/ISPN-14542[ISPN-14542] - AsyncStore needs to use SecurityAction when retrieving ComponentRegistry
+    https://issues.redhat.com/browse/ISPN-14543[ISPN-14543] - Build resource filtering corrupts binary files
+    https://issues.redhat.com/browse/ISPN-14544[ISPN-14544] - RESP endpoint cache shouldn't require no expiration configured
+    https://issues.redhat.com/browse/ISPN-14545[ISPN-14545] - SIFS Compactor does not properly shut down but the index thinks it is okay
+    https://issues.redhat.com/browse/ISPN-14569[ISPN-14569] - Protocol parser throws a NPE if all branches of a switch statement or if/else contain a throw clause
+    https://issues.redhat.com/browse/ISPN-14573[ISPN-14573] - AbstractAuthorization.testRestServerNodeReport is failing
+    https://issues.redhat.com/browse/ISPN-14574[ISPN-14574] - [CLI] ClassCastException with get clusters -s option
+    https://issues.redhat.com/browse/ISPN-14578[ISPN-14578] - We should never be using CompletableFuture.completionStage
+    https://issues.redhat.com/browse/ISPN-14579[ISPN-14579] - Various RESP commands are requesting wrong size for buffer
+    https://issues.redhat.com/browse/ISPN-14580[ISPN-14580] - We should use voidPromise for all context writes that don't use a future
+    https://issues.redhat.com/browse/ISPN-14583[ISPN-14583] - RESP endpoint should bundle flush calls to allow pipelining
+    https://issues.redhat.com/browse/ISPN-14589[ISPN-14589] - JdbcStringBasedCacheStorePassivation.testFailoverWithPassivation failures
+    https://issues.redhat.com/browse/ISPN-14683[ISPN-14683] - NPE in configuration reader if resolver is null
+    https://issues.redhat.com/browse/ISPN-14685[ISPN-14685] - EncodingConfiguration matching is too strict
+    https://issues.redhat.com/browse/ISPN-14687[ISPN-14687] - Detect circular references on marshalling
+    https://issues.redhat.com/browse/ISPN-14691[ISPN-14691] - Fix Authorization error in Actuator Metrics Binding
+    https://issues.redhat.com/browse/ISPN-14730[ISPN-14730] - Exclude completely the non jakarta commons dependency
+    https://issues.redhat.com/browse/ISPN-14732[ISPN-14732] - ClasspathURLStreamHandlerProvider should throw FileNotFoundException if it cannot find a resource
+    https://issues.redhat.com/browse/ISPN-14733[ISPN-14733] - Make quarkus modules inherit from Infinispan parent
+    https://issues.redhat.com/browse/ISPN-14737[ISPN-14737] - SoftIndexFileStore Index can become corrupted
+    https://issues.redhat.com/browse/ISPN-14738[ISPN-14738] - RESP endpoint commands don't require previous value
+    https://issues.redhat.com/browse/ISPN-14739[ISPN-14739] - OffHeapConcurrentMap shouldn't require reading previous value on put
+    https://issues.redhat.com/browse/ISPN-14744[ISPN-14744] - RemoteCacheManagerAdmin docs should mention supported config formats
+    https://issues.redhat.com/browse/ISPN-14753[ISPN-14753] - Prevent SoftIndexFileStore Compactor from running multiple times
+    https://issues.redhat.com/browse/ISPN-14755[ISPN-14755] - Empty authorization roles serialized as JSON cannot be parsed
+    https://issues.redhat.com/browse/ISPN-14759[ISPN-14759] - SoftIndexFileStore Index can lag behind LogAppender under heavy load
+    https://issues.redhat.com/browse/ISPN-14763[ISPN-14763] - Users unable to configure StoreMigrator marshaller allow-list via properties
+    https://issues.redhat.com/browse/ISPN-14767[ISPN-14767] - CLI table printer breaks when values have line breaks
+
+=== Task
+
+    https://issues.redhat.com/browse/ISPN-11701[ISPN-11701] - Add store migration capabilities to the CLI
+    https://issues.redhat.com/browse/ISPN-14263[ISPN-14263] - Restrict most JGroupsTransport INFO logging when using a ForkChannel.
+    https://issues.redhat.com/browse/ISPN-14287[ISPN-14287] - Remove extended-statistics module
+    https://issues.redhat.com/browse/ISPN-14288[ISPN-14288] - Remove kryo and protostuff marshallers
+    https://issues.redhat.com/browse/ISPN-14375[ISPN-14375] - Remove all uses of SecurityManager/AccessControlContext
+    https://issues.redhat.com/browse/ISPN-14414[ISPN-14414] - REST API retrieve caches in initializing state
+    https://issues.redhat.com/browse/ISPN-14424[ISPN-14424] - [Docs] Fix errors in the REST guide
+    https://issues.redhat.com/browse/ISPN-14426[ISPN-14426] - Disable tracing propagation on HotRod client using a system property
+    https://issues.redhat.com/browse/ISPN-14492[ISPN-14492] - Build Infinispan with JDK 17
+    https://issues.redhat.com/browse/ISPN-14541[ISPN-14541] - [Docs] Use Java serialization or JBoss Marshalling with cyclic objects
+    https://issues.redhat.com/browse/ISPN-14575[ISPN-14575] - Remove properties attribute from indexing configuration
+    https://issues.redhat.com/browse/ISPN-14591[ISPN-14591] - Add exception to the BlockHound for the registering of a proto file
+    https://issues.redhat.com/browse/ISPN-14705[ISPN-14705] - Expose indexing failures statistics using Infinispan indexing failure handler
+    https://issues.redhat.com/browse/ISPN-14713[ISPN-14713] - Include new api dependency in Spring Boot 3 modules
+    https://issues.redhat.com/browse/ISPN-14742[ISPN-14742] - Remove GeronimoTransactionManager
+    https://issues.redhat.com/browse/ISPN-14756[ISPN-14756] - Remove JCache support
+    https://issues.redhat.com/browse/ISPN-14769[ISPN-14769] - Replace completedExceptionFuture with failedFuture
+    https://issues.redhat.com/browse/ISPN-14771[ISPN-14771] - Change PrivateMetadata in OffHeap to use a flag for presence instead of 4 bytes for length
+    https://issues.redhat.com/browse/ISPN-14786[ISPN-14786] - Remove Wildfly modules
+    https://issues.redhat.com/browse/ISPN-14787[ISPN-14787] - Remove Spring5 and Spring Boot 2 support
+    https://issues.redhat.com/browse/ISPN-14789[ISPN-14789] - Fix port number in exam,ples of property files in SB starter docs
+    https://issues.redhat.com/browse/ISPN-14792[ISPN-14792] - Remove Security Integration tests with WildFly
+
+=== Component Upgrade
+
+    https://issues.redhat.com/browse/ISPN-14270[ISPN-14270] - Update to Spring Boot 3
+    https://issues.redhat.com/browse/ISPN-14320[ISPN-14320] - Update Patternfly to 2022.14 Release
+    https://issues.redhat.com/browse/ISPN-14342[ISPN-14342] - Apache SSHD 2.9.2
+    https://issues.redhat.com/browse/ISPN-14343[ISPN-14343] - Jackson 2.14.1
+    https://issues.redhat.com/browse/ISPN-14346[ISPN-14346] - Upgrade JGroups to 5.2.10.Final
+    https://issues.redhat.com/browse/ISPN-14365[ISPN-14365] - JBoss Marshalling 2.1.1
+    https://issues.redhat.com/browse/ISPN-14372[ISPN-14372] - Update Patternfly to 2022.15 Release
+    https://issues.redhat.com/browse/ISPN-14401[ISPN-14401] - Protostream 4.6.0.Final
+    https://issues.redhat.com/browse/ISPN-14437[ISPN-14437] - Update XStream to 1.4.20 to fix CVEs
+    https://issues.redhat.com/browse/ISPN-14442[ISPN-14442] - Update to 2.19.0 log4j
+    https://issues.redhat.com/browse/ISPN-14444[ISPN-14444] - Update Patternfly to 2022.16 Release
+    https://issues.redhat.com/browse/ISPN-14448[ISPN-14448] - Surefire 3.0.0-M8
+    https://issues.redhat.com/browse/ISPN-14462[ISPN-14462] - Upgrade assertj-core to 3.24.1
+    https://issues.redhat.com/browse/ISPN-14476[ISPN-14476] - Bump JGroups to 5.2.12.Final
+    https://issues.redhat.com/browse/ISPN-14513[ISPN-14513] - Upgrade Narayana to 5.13.1.Final
+    https://issues.redhat.com/browse/ISPN-14523[ISPN-14523] - Log4j 2.20.0
+    https://issues.redhat.com/browse/ISPN-14525[ISPN-14525] - Elytron 2.1.0.Final
+    https://issues.redhat.com/browse/ISPN-14550[ISPN-14550] - Upgrade Patternfly Dependencies to Release 2023.01 (2023-02-02)
+    https://issues.redhat.com/browse/ISPN-14553[ISPN-14553] - Spring and Spring Boot dependencies
+    https://issues.redhat.com/browse/ISPN-14681[ISPN-14681] - Surefire 3.0.0
+    https://issues.redhat.com/browse/ISPN-14694[ISPN-14694] - Upgrade Patternfly Dependencies to Release 2023.02 (2023-03-24)
+    https://issues.redhat.com/browse/ISPN-14711[ISPN-14711] - Updates latests SB 3 and 2
+    https://issues.redhat.com/browse/ISPN-14734[ISPN-14734] - Quarkus 3.0.0.CR2
+    https://issues.redhat.com/browse/ISPN-14745[ISPN-14745] - Narayana 6.0.0.Final
+    https://issues.redhat.com/browse/ISPN-14746[ISPN-14746] - Fabric8 kubernetes-client 6.5.1
+    https://issues.redhat.com/browse/ISPN-14747[ISPN-14747] - jboss-threads 3.5.0.Final
+    https://issues.redhat.com/browse/ISPN-14764[ISPN-14764] - Upgrade to plexus-utils 3.5.1
+
+Enhancement
+
+    https://issues.redhat.com/browse/ISPN-12106[ISPN-12106] - Add a refresh button in the cache detail
+    https://issues.redhat.com/browse/ISPN-12223[ISPN-12223] - Confusing behaviour in case of joining nodes if a partition is DEGRADED
+    https://issues.redhat.com/browse/ISPN-12484[ISPN-12484] - Explicit Locks should throw AvailabilityException during ClusterPartition instead of Timeouts
+    https://issues.redhat.com/browse/ISPN-14092[ISPN-14092] - Cache Configuration Wizard Direct Link
+    https://issues.redhat.com/browse/ISPN-14142[ISPN-14142] - Transport: add option to skip flow control
+    https://issues.redhat.com/browse/ISPN-14204[ISPN-14204] - Standardize NYC and LON for XSite tests
+    https://issues.redhat.com/browse/ISPN-14205[ISPN-14205] - InfinispanGenericContainer::getNetworkIpAddress fail fast if container is not running
+    https://issues.redhat.com/browse/ISPN-14213[ISPN-14213] - [Docs]: Add a statement why we provide no performance numbers
+    https://issues.redhat.com/browse/ISPN-14223[ISPN-14223] - Create Redis cache on first access
+    https://issues.redhat.com/browse/ISPN-14244[ISPN-14244] - Don't pretty print XML/JSON by default
+    https://issues.redhat.com/browse/ISPN-14246[ISPN-14246] - Query Statistics Tooltip
+    https://issues.redhat.com/browse/ISPN-14247[ISPN-14247] - Drop snakeyaml dependency
+    https://issues.redhat.com/browse/ISPN-14259[ISPN-14259] - Support benchmark CLI as a batch command
+    https://issues.redhat.com/browse/ISPN-14322[ISPN-14322] - Number of owners is 2 by default
+    https://issues.redhat.com/browse/ISPN-14327[ISPN-14327] - Overlays should be able to replace endpoint configuration
+    https://issues.redhat.com/browse/ISPN-14341[ISPN-14341] - Allow injecting a MeterRegistry instance into Infinispan
+    https://issues.redhat.com/browse/ISPN-14374[ISPN-14374] - Env variable for max_site_masters
+    https://issues.redhat.com/browse/ISPN-14394[ISPN-14394] - Cache Configuration Wizard indexing startup mode
+    https://issues.redhat.com/browse/ISPN-14415[ISPN-14415] - Expose REST endpoint to compare two cache configurations
+    https://issues.redhat.com/browse/ISPN-14423[ISPN-14423] - Improve configuration parser error reporting
+    https://issues.redhat.com/browse/ISPN-14451[ISPN-14451] - Set Hot Rod protocol version to AUTO via properties
+    https://issues.redhat.com/browse/ISPN-14456[ISPN-14456] - Validation for delta (counter)
+    https://issues.redhat.com/browse/ISPN-14467[ISPN-14467] - Suppressed exceptions should be sent over the wire
+    https://issues.redhat.com/browse/ISPN-14472[ISPN-14472] - Maven Shade 3.4.1
+    https://issues.redhat.com/browse/ISPN-14473[ISPN-14473] - Improve REST API error reporting
+    https://issues.redhat.com/browse/ISPN-14474[ISPN-14474] - Add a transcoder for 'application/x-www-form-urlencoded'
+    https://issues.redhat.com/browse/ISPN-14482[ISPN-14482] - Provide a single executor for all caches to execute indexing commands
+    https://issues.redhat.com/browse/ISPN-14490[ISPN-14490] - Add blocking scheduled tasks to BlockingManager
+    https://issues.redhat.com/browse/ISPN-14507[ISPN-14507] - [docs] REST updates
+    https://issues.redhat.com/browse/ISPN-14517[ISPN-14517] - Generate test certificates from code
+    https://issues.redhat.com/browse/ISPN-14528[ISPN-14528] - Configuration conversion should support templates
+    https://issues.redhat.com/browse/ISPN-14552[ISPN-14552] - Statistics reset REST API
+    https://issues.redhat.com/browse/ISPN-14570[ISPN-14570] - Protocol Parser should allow for code to be provided before the decode is invoked
+    https://issues.redhat.com/browse/ISPN-14585[ISPN-14585] - Convert RESP endpoint to use parser generator
+    https://issues.redhat.com/browse/ISPN-14680[ISPN-14680] - Reuse image in Server testsuite
+    https://issues.redhat.com/browse/ISPN-14689[ISPN-14689] - Handle RESP SET optional arguments
+    https://issues.redhat.com/browse/ISPN-14690[ISPN-14690] - Rework virtual thread detection and make it optional
+    https://issues.redhat.com/browse/ISPN-14720[ISPN-14720] - RESP endpoint should be able to parse commands as enum
+    https://issues.redhat.com/browse/ISPN-14722[ISPN-14722] - Expose auto/manual indexing mode
+    https://issues.redhat.com/browse/ISPN-14723[ISPN-14723] - Allow to configure index sharding
+    https://issues.redhat.com/browse/ISPN-14724[ISPN-14724] - Create a simple DSL to build Protocol Buffers schema
+    https://issues.redhat.com/browse/ISPN-14735[ISPN-14735] - Move to JakartaEE packages
+    https://issues.redhat.com/browse/ISPN-14761[ISPN-14761] - Add marshalling info in the entries tab for not protostream
+    https://issues.redhat.com/browse/ISPN-14765[ISPN-14765] - Java serialization to JSON transcoder
+    https://issues.redhat.com/browse/ISPN-14784[ISPN-14784] - Build with JDK 21
+
+Get them from our https://infinispan.org/download/[download page].]
+
