@@ -1,0 +1,68 @@
+---
+layout: blog
+title: Reviving MongoDB cache store
+permalink: /blog/:year/:month/:day/reviving-mongodb-cachestore
+date: '2023-05-04T00:00:00.000-00:00'
+author: antoniomacri
+tags: [ "cache store", "mongodb", "persistence" ]
+---
+
+= Reviving MongoDB cache store
+
+After a long period of inactivity, the MongoDB store is now back to life.
+It has been upgraded to work with Infinispan 15.
+
+== Reactive MongoDB driver
+
+Since the Infinispan cache store API is now fully reactive, the store has also been modified to use the reactive MongoDB driver.
+
+== Database formats
+
+The older MongoDB cache store worked by persisting keys and values as binary blobs.
+This should be the most efficient way, but it makes it harder to inspect the documents stored in Mongo.
+Therefore, the new implementation allows choosing between two formats:
+
+* `binary`: the binary format similar to that used with the previous MongoDB store:
++
+[source,json]
+----
+[
+  {
+    "_id": {"$binary": {"base64": "mAEBigERCg9KDTAtNjc5LTc3NTQzLTk=", "subType": "00"}},
+    "value": {"$binary": {"base64": "mAELigFLCkmCARBib29rX3NhbXBsZS5Cb29rigEzChpUaGUgV2luZC1VcCBCaXJkIENocm9uaWNsZRjNDyISCgZIYXJ1a2kSCE11cmFrYW1p", "subType": "00"}}
+    ...
+  }
+]
+----
+
+* `structured`: a structured BSON representation of the objects:
++
+[source,json]
+----
+[
+  {
+    "_id": {
+      "_type": "string",
+      "_value": "0-679-77543-9"
+    },
+    "value": {
+      "_type": "book_sample.Book",
+      "title": "The Wind-Up Bird Chronicle",
+      "publicationYear": 1997,
+      "authors": [
+        {
+          "name": "Haruki",
+          "surname": "Murakami"
+        }
+      ]
+    },
+    ...
+  }
+]
+
+----
+
+
+== Expiration
+
+The MongoDB store supports expiration. However, in order to ensure correctness the expired entries are removed from the database one by one, instead of using a bulk operation. Therefore, make sure this does not have a negative impact on MongoDB instances.
