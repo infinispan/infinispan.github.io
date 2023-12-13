@@ -1,0 +1,90 @@
+---
+layout: blog
+title: Infinispan kNN Vector Search
+permalink: /blog/:year/:month/:day/infinispan-vector-search
+date: '2023-12-13T19:37:00.000-00:00'
+author: fax4ever
+tags: [ "search", "vector", "knn", "indexing", "embeddings" ]
+---
+
+= Infinispan kNN Vector Search
+
+With the Infinispan 15 development release 06, we have started to expose vector search capabilities using the Infinispan indexed queries.
+We have introduced a special predicate named kNN predicate to find and order the result by the k nearest neighbors of a given vector.
+
+== Mapping the embeddings
+
+We have introduced a specific indexing annotation `@Vector` to mark a field as an embedded. The term embedded here is used in the context of the kNN search.
+
+The vector dimension is mandatory and should be defined at mapping time.
+Always at mapping time other options that are possible to choose are: the similarity (distance) function, the beam width and the maximum number of connections. These values may affect the performance of the approximation algorithm that is used to compute the kNN search.
+
+We support `byte[]` embeddings. Here is an example of mapping:
+
+```` [source, java]
+@Vector(dimension = 3)
+@ProtoField(2)
+public byte[] getByteVector() {
+   return byteVector;
+}
+````
+
+That corresponds to the Proto schema:
+
+```` [source, protobuf]
+/**
+ * @Vector(dimension=3)
+ */
+optional bytes byteVector = 2;
+````
+
+We also support float[] embeddings. Here is an example of mapping:
+
+```` [source, java]
+@Vector(dimension = 3)
+@ProtoField(3)
+public float[] getFloatVector() {
+   return floatVector;
+}
+````
+
+That corresponds to the Proto schema:
+
+```` [source, protobuf]
+/**
+ * @Vector(dimension=3)
+ */
+repeated float floatVector = 3;
+````
+
+== Searching the embeddings
+
+Here is an example of the ickle query:
+
+```` [source, sql]
+from Item i where i.byteVector <-> [7,7,7]~3
+````
+
+You can parametrize it many different ways:
+
+```` [source, java]
+query = cache.query("from org.infinispan.query.model.Item i where i.byteVector <-> [:a,:b,:c]~3");
+query.setParameter("a", 0);
+query.setParameter("b", 2);
+query.setParameter("c", 3);
+hits = query.list();
+assertThat(hits).extracting("code").containsExactly("c2", "c1", "c3"); // the order matters
+````
+
+Or you can pass the entire vector as a single parameter:
+
+```` [source, java]
+query = cache.query("from org.infinispan.query.model.Item i where i.floatVector <-> [:a]~:b");
+query.setParameter("a", new float[]{7.1f, 7.0f, 3.1f});
+query.setParameter("b", 3);
+hits = query.list();
+assertThat(hits).extracting("code").containsExactly("c5", "c6", "c4");
+````
+
+If the cache is distributed, the query will be a broadcast query, and it will aggregate all the results from all the nodes that contain shards of the indexes that are related to the search.
+When we get the result as usual we get all the metadata from the corresponding entities, so that the returning items can easily relate to the application domain.
