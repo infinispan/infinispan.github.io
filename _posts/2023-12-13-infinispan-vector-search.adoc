@@ -27,70 +27,77 @@ Bear in mind that these values affect the performance of the approximation algor
 
 We support `byte[]` embeddings. Here is an example of mapping:
 
-```` [source, java]
+[source, java]
+----
 @Vector(dimension = 3)
 @ProtoField(2)
 public byte[] getByteVector() {
    return byteVector;
 }
-````
+----
 
 That corresponds to the Proto schema:
 
-```` [source, protobuf]
+[source, proto]
+----
 /**
  * @Vector(dimension=3)
  */
 optional bytes byteVector = 2;
-````
+----
 
-We also support float[] embeddings. Here is an example of mapping:
+We also support `float[]` embeddings. Here is an example of mapping:
 
-```` [source, java]
+[source, java]
+----
 @Vector(dimension = 3)
 @ProtoField(3)
 public float[] getFloatVector() {
    return floatVector;
 }
-````
+----
 
 That corresponds to the Proto schema:
 
-```` [source, protobuf]
+[source, proto]
+----
 /**
  * @Vector(dimension=3)
  */
 repeated float floatVector = 3;
-````
+----
 
 == Searching the embeddings
 
 The following query shows how to perform a kNN search using a supplied vector and a specific distance
 
-```` [source, sql]
+[source, sql]
+----
 from Item i where i.byteVector <-> [7,7,7]~3
-````
+----
 
 The query can be parameterized in several ways:
 
-```` [source, java]
+[source, java]
+----
 query = cache.query("from org.infinispan.query.model.Item i where i.byteVector <-> [:a,:b,:c]~3");
 query.setParameter("a", 0);
 query.setParameter("b", 2);
 query.setParameter("c", 3);
 hits = query.list();
 assertThat(hits).extracting("code").containsExactly("c2", "c1", "c3"); // the order matters
-````
+----
 
 Or you can pass the entire vector as a single parameter:
 
-```` [source, java]
+[source, java]
+----
 query = cache.query("from org.infinispan.query.model.Item i where i.floatVector <-> [:a]~:b");
 query.setParameter("a", new float[]{7.1f, 7.0f, 3.1f});
 query.setParameter("b", 3);
 hits = query.list();
 assertThat(hits).extracting("code").containsExactly("c5", "c6", "c4");
-````
+----
 
 If the cache is distributed, the query will be a broadcast query, and it will aggregate all the results from all the nodes that contain shards of the indexes that are related to the search.
 When we get the result as usual we get all the metadata from the corresponding entities, so that the returning items can easily relate to the application domain.
