@@ -1,0 +1,194 @@
+---
+layout: blog
+title: Infinispan Insights, security basics and secured caches
+permalink: /blog/:year/:month/:day/infinispan-secured-caches
+date: '2023-12-20T00:00:00.000-00:00'
+author: karesti
+tags: [ "tutorial", "security", "rbac", "authentication" ]
+---
+
+= Infinispan Insights: Security basics and secured caches
+
+This article shows you how to secure your Infinispan cluster, protecting both cluster management and data
+access in various Infinispan caches
+
+*Key Points:*
+
+* Learn how default authentication works in Infinispan
+* Explore how authorization works in Infinispan.
+* Understand the basics of creating secure caches in a straightforward way with Infinispan.
+
+== Security in a nutshell
+
+When we talk about security, there are two main things to consider: proving who you are (authentication) and deciding
+what you're allowed to do (authorization). These tasks are managed by one or more security realms.
+
+==== Authentication
+Authentication is the process of verifying the identity of an entity, such as a user, system, or device, to ensure
+that it is who or what it claims to be. It can be done through different methods such as password based authentication,
+token based authentication, certificate based… and more.
+
+==== Authorization
+Authorization is the process of granting or denying access permissions to authenticated users or entities.
+It defines what actions or resources users are allowed to access based on their verified identity.
+Authorization works alongside authentication to ensure that only authorized users can perform specific actions within a
+system. Infinispan uses Role-Based Access Control (RBAC) for authorization.
+
+==== Security Realms
+A security realm is a set of policies and authentication methods governing access to a system or resource.
+It establishes rules for user authentication and authorization, such as using usernames/passwords or advanced methods
+like OAuth. Security realms integrate Infinispan Server deployments with the network protocols and infrastructure
+in your environment that control access and verify user identities.
+Infinispan integrates with Kerberos, LDAP, Trust stores… and token based authentication such as https://openid.net/[OpenID Connect]
+providers such as https://www.keycloak.org/[Keycloak].
+
+== Infinispan Server Security
+To truly grasp the basics, the best method is hands-on experience.
+Infinispan 15.0 simplifies understanding authentication and authorization through a visual interface.
+
+
+==== Running the Infinispan Server with a single user
+Start by running the Infinispan Server with a Docker or Podman container.
+Make sure you have the latest version of the Infinispan Server 15.0 image by pulling it locally.
+
+[source, bash]
+----
+# Podman
+podman run -it -p 11222:11222 -e USER="admin" -e PASS="password" --net=host quay.io/infinispan/server:15.0
+
+# Docker
+docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" quay.io/infinispan/server:15.0
+----
+
+==== Infinispan defaults
+In Infinispan, the default security realm relies on properties.
+Users are established in a local properties file on the active server.
+By running the container and providing "USER" and "PASS" environment variables, the
+server generates a user capable of authenticating to Infinispan and is automatically granted
+the "admin" implicit role.
+
+[caption="Console: authenticate",link=/assets/images/blog/2013-12-19-secured-caches/browser-DIGEST.png]
+image::/assets/images/blog/2013-12-19-secured-caches/browser-DIGEST.png[Browser authentication, 800,547]
+
+Infinispan doesn't maintain user authentication through a session management system in the server for
+its REST API. The REST API operates in a stateless manner, and authentication, as well as role-based
+access control (RBAC), is facilitated through the AUTHENTICATION header when interacting
+with the REST API. The console is built using the REST API. DIGEST mechanism is part
+of the supported mechanism, so the browser will ask for user/password using the native browser
+authentication mechanism. For security reasons, BASIC authentication is not enabled by default
+unless TLS is also configured.
+
+==== Implicit RBAC
+Infinispan safeguards operations by specifying various permissions to operations such as creating caches,
+resetting statistics, uploading data schemas, and more. A role is a set of 1 or more permissions.
+Implicit authorization is enabled by default, providing predefined roles to which users can be assigned,
+granting them the ability to execute specific actions.
+
+Starting from Infinispan 15, a new feature in the console allows users to view these roles, their
+corresponding permissions, and descriptions. It is now also possible to create custom roles with
+specific permissions directly from the web console (previously, this capability was limited to the
+Command Line Tool). However, for the purpose of this article, we will focus on utilizing the pre-existing
+implicit roles.
+
+[caption="Console: implicit roles",link=/assets/images/blog/2013-12-19-secured-caches/implicit-ROLES.png]
+image::/assets/images/blog/2013-12-19-secured-caches/implicit-ROLES.png[Implicit roles, 800,394]
+
+==== Running the server with multiple users
+
+To start Infinispan locally with multiple users and distinct roles, we can employ a
+identities batch that is passed to the container during startup.
+
+1) Create a file called *identities.batch* with the following content.
+To simplify matters, we have established a straightforward one-to-one mapping between user
+names and roles.
+
+*identities.batch*
+----
+user create "admin" -p "password" -g admin
+user create "observer" -p "password" -g observer
+user create "monitor" -p "password" -g monitor
+user create "deployer" -p "password" -g deployer
+user create "application" -p "password" -g application
+----
+
+2) Provide the file on run, by creating the user-config volume and passing the IDENTITIES_BATCH env variable.
+
+[source, bash]
+----
+# Podman
+podman run -it -p 11222:11222 -v $(pwd):/user-config -e IDENTITIES_BATCH="/user-config/identities.batch" --net=host quay.io/infinispan/server:15.0
+
+# Docker
+docker run -it -p 11222:11222 -v $(pwd):/user-config -e IDENTITIES_BATCH="/user-config/identities.batch" quay.io/infinispan/server:15.0
+----
+
+Those users are now available and listed in the Infinispan Web Console.
+
+[caption="Console: multiple users",link=/assets/images/blog/2013-12-19-secured-caches/users-BATCH.png]
+image::/assets/images/blog/2013-12-19-secured-caches/users-BATCH.png[Implicit roles, 724,453]
+
+When connecting with the "observer" user, which possesses the "observer" role,
+it becomes apparent that this user is unable to access certain actions in the console that
+necessitate "admin" role’s permissions. Examples include creating a cache, viewing connected clients,
+or accessing the access management functionalities.
+
+[caption="Console: connect observer",link=/assets/images/blog/2013-12-19-secured-caches/connect-OBSERVER.png]
+image::/assets/images/blog/2013-12-19-secured-caches/connect-OBSERVER.png[connect observer, 800,271]
+
+== Secured Caches in Infinispan
+
+In Infinispan, it's possible to create caches with data manipulation permissions restricted
+to specific roles.
+
+==== Creating a secured cache
+
+For testing purposes, connect using the credentials admin/password and click on the
+“Create a cache” button in the Data Container page. In the cache creation wizard, after opting
+for all the default settings, select the "Authorization" capability, and the "admin" and "monitor"
+roles.
+
+[caption="Console: create secured caches",link=/assets/images/blog/2013-12-19-secured-caches/create-CACHE.png]
+image::/assets/images/blog/2013-12-19-secured-caches/create-CACHE.png[Create Secured Cache, 800,408]
+
+The final cache configuration will look like this:
+
+*config.yaml*
+----
+distributedCache:
+  owners: "2"
+  mode: "SYNC"
+  statistics: "true"
+  encoding:
+    mediaType: "application/x-protostream"
+  security:
+    authorization:
+      enabled: "true"
+      roles:
+        - "admin"
+        - "monitor"
+----
+
+==== Accessing the Secured  Cache
+
+When using the "admin" user, the cache will have unrestricted access because the admin role has all the permissions. On the other hand, connecting with the "monitor" user, which is assigned the monitor role, the cache is visible. However, as the monitor role is designed solely for monitoring and not data creation, only data associated with the cache metrics will be accessible.
+
+For users lacking the admin or monitor role, accessing the cache from the console is not possible.
+
+[caption="Console: monitor connects",link=/assets/images/blog/2013-12-19-secured-caches/secured-cache-MONITOR.png]
+image::/assets/images/blog/2013-12-19-secured-caches/secured-cache-MONITOR.png[Console: monitor connects, 800,310]
+
+== Going further
+In this article, you've explored the interplay of permissions, roles, Infinispan Security,
+and the fundamentals of secured caches. Beyond these, Infinispan Security management offers a
+range of additional capabilities. These include features like
+https://infinispan.org/docs/stable/titles/security/security.html#configuring-encryption[data encryption]
+and advanced security, such as providing access to an entire group of users managed by systems like LDAP.
+This is achieved through a Principal Role Mapper, which establishes a connection between all these
+users and a specific role.
+Infinispan supports many authentication mechanisms, such as token based authentication,
+which can be handled with Keycloak. Run the
+https://infinispan.org/tutorials/simple/simple_tutorials.html#secured_with_token_keycloak_remote-cache-tutorials[simple tutorial]
+to test it.
+
+
+
