@@ -108,11 +108,11 @@ def gen_versions_xml_file(filePath, sourceData)
 end
 
 forceDocumentationDownload = (ENV.fetch("FORCE_DOCUMENTATION_DOWNLOAD") { "true" }).upcase
-if forceDocumentationDownload == "FALSE" and File.exists?("docs/versions.xml")
+if forceDocumentationDownload == "FALSE" and File.file?("docs/versions.xml")
   puts "Documentation exists. Skip the forced download..."
 else
   FileUtils.rm_rf(Dir.glob("docs/*"))
-  Dir.mkdir("docs/") unless File.exists?("docs/")
+  Dir.mkdir("docs/") unless File.directory?("docs/")
   coreDocIndex = Array.new
   operatorDocIndex = Array.new
   helmChartDocIndex = Array.new
