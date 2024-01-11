@@ -8,6 +8,7 @@ mkdir _site
 # Put bundles in a known path
 bundle config set path $HOME/.bundle
 # Update gems
+gem install bundler:2.1.4
 bundle install
 # Build the site
 bundle exec jekyll build
