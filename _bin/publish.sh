@@ -8,8 +8,8 @@ mkdir _site
 # Put bundles in a known path
 bundle config set path $HOME/.bundle
 # Update gems
-if ! command -v bundle &> /dev/null
-then
+if ! [ -x "$(command -v bundle)" ]; then
+    echo "Bundler missing"
     gem install bundler:2.1.4
 fi
 #
