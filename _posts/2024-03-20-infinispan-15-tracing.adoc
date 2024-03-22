@@ -16,14 +16,14 @@ With the new version we evolved the integration in order to:
 * Trace more event types: cluster, cross-site, cache-store and security.
 * Allow to select and configure, also at runtime, the span types that we want to produce and send to the collector.
 
-All the source code we're presenting on this article is taken from https://github.com/fax4ever/infinispan-demo/tree/main/infinispan-15-tracing[this demo project].
+The source code featured in this blog post has been taken from https://github.com/fax4ever/infinispan-demo/tree/main/infinispan-15-tracing[this demo project].
 
 == Configure tracing
 
 === Global configuration
 
-To enable tracing globally you need as usual to define the `collector-endpoint`, but instead of using a system property
-it is possible to use the infinispan server configuration, in which we introduced a component to configure the tracing globally.
+We enable tracing globally by defining a `collector-endpoint` as usual. Instead of relying on a system property,
+we can now do it directly in the Infinispan Server Configuration:
 
 [source,xml]
 ----
@@ -34,12 +34,10 @@ it is possible to use the infinispan server configuration, in which we introduce
 </infinispan>
 ----
 
-By default we support the tracing with the OpenTelemetry Protocol (OTLP),
-with the default exporter protocol `http/protobuf`, and not anymore `grpc`.
-For instance the default Jaeger port using this combination is the `4318`.
+By default, we now support tracing using the OpenTelemetry Protocol (OTLP) with the default exporter protocol as `http/protobuf`, instead of `grpc`.
+The default Jaeger port using this combination is the `4318`.
 
-We also activate the tracing of the security audit. This is a new tracing category we introduced with Infinispan 15 and it is defined at cache manager level (globally).
-In the demo this is the configuration passed to the Infinispan Helm Chart:
+We've also activate tracing for security audits. This is a new tracing category introduced with Infinispan 15, and it's defined at the cache manager level globally.
 
 [source,yaml]
 ----
@@ -53,8 +51,8 @@ infinispan:
 
 === Cache configuration
 
-The other tracing categories are configurable at cache level, since they are cache scoped.
-For instance this is a possible cache configuration enabling the tracing on more categories:
+Cache scoped tracing categories must be configured in the cache configuration.
+Here's an example of a cache configuration that enables tracing for additional categories:
 
 [source,yaml]
 ----
@@ -79,15 +77,16 @@ replicatedCache:
       - "x-site"
 ----
 
-In this case the enabled tracing categories will be container, persistence, cluster and x-site.
-By default only the container category is enabled.
+In the example above `container`, `persistence`, `cluster` and `x-site` (cross-site replication) are enabled.
+In the absence of category specification, `container` tracing is enabled by default.
 
 ==== Runtime enabling / disabling them
 
 Furthermore, it is possible to enable / disable them or even the entire tracing at runtime.
 
-For instance this is a piece of code using the HotRod client to enable at runtime the category `container` and `persistence`,
-disabling the others. A similar command can be invoked also with the REST interface or the command line interface.
+It is possible to update enabled tracing categories at runtime and programmatically using the Infinispan HotRod client or the REST API.
+
+The following example enables tracing for the `container` and `persistence` categories while disabling any other previously enabled categories:
 
 [source,java]
 ----
@@ -104,32 +103,27 @@ If we open the Jaeger console we can see immediately some security audit events 
 [caption="Security audit",link=/assets/images/blog/tracing-15-01-security-audit.png]
 image::/assets/images/blog/tracing-15-01-security-audit.png[Tracing output]
 
-When the demo starts we only have enabled the container tracing.
-So after the first interaction we can have a log similar to the following:
+At startup, only container tracing is enabled.
+After some interaction, we might see a log similar to the following:
 
 [caption="Security audit",link=/assets/images/blog/tracing-15-02-container.png]
 image::/assets/images/blog/tracing-15-02-container.png[Tracing output]
 
-We have the span from the client and the corresponding span of container level of the server
-(that traces the HotRod call).
+We have the client's span and its matching container level span at the server.
 
-If we want to know more about the internal Infinispan operations we need to enable more span categories.
+Enable more span categories to gain further insights into Infinispan's internal operations.
 
-In our demo for instance we first enable (at runtime) the persistence category
-and after another interaction from the client we client we can see also the internal call that Infinispan does
-to interact with the configured cache store.
+In our demo we initially enable the persistence category at runtime. After some interactions from the client,
+we can observe the internal calls that Infinispan makes to interact with the configured cache store.
 
 [caption="Security audit",link=/assets/images/blog/tracing-15-03-persistence.png]
 image::/assets/images/blog/tracing-15-03-persistence.png[Tracing output]
 
-After that we enabled (the same at runtime) the cluster category, so that for the first interaction from the client
-it is possible to see also the call that the Infinispan server does to align the cluster.
+Afterward, we enable (also at runtime) the cluster category. After the first interaction,
+it's possible to observe the call that the Infinispan Server makes to synchronize the cluster alignment.
 
 [caption="Security audit",link=/assets/images/blog/tracing-15-04-cluster.png]
 image::/assets/images/blog/tracing-15-04-cluster.png[Tracing output]
 
-This concludes our short tour on the news on tracing for Infinispan 15.
-For more information you can consult how to
+For more information, read the documentation guide:
 https://infinispan.org/docs/stable/titles/server/server.html#opentelemetry-tracing[Enabling and configuring Infinispan OpenTelemetry tracing].
-
-Keep in touch!
