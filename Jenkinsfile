@@ -32,6 +32,13 @@ pipeline {
             }
         }
 
+        stage('Sync Schemas') {
+            steps {
+                echo "Using PATH = ${env.PATH}"
+                sh "_bin/sync_schemas.sh"
+            }
+        }
+
         stage('Publish') {
             steps {
                 echo "Using PATH = ${env.PATH}"
