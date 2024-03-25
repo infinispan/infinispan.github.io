@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xs:schema elementFormDefault="qualified" version="1.0"
+           targetNamespace="urn:infinispan:config:store:sql:15.0"
+           xmlns:tns="urn:infinispan:config:store:sql:15.0"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:jdbc-common="urn:infinispan:config:store:jdbc-common:15.0">
+  <xs:import namespace="urn:infinispan:config:store:jdbc-common:15.0"
+             schemaLocation="https://infinispan.org/schemas/infinispan-cachestore-jdbc-common-config-15.0.xsd" />
+
+  <xs:element name="table-jdbc-store">
+    <xs:complexType>
+      <xs:complexContent>
+        <xs:extension base="tns:abstract-sql-store">
+          <xs:attribute name="table-name" type="xs:string">
+            <xs:annotation>
+              <xs:documentation>
+                Specifies a database table that loads entries to the cache and stores data from the cache.
+                The SQL cache store automatically generates statements based on the database dialect to perform all operations.
+                Every field in the schema must be readable from the columns in the database table.
+                If the SQL cache store does not allow modifications to the database, is read only, then tables can have more columns than the schema defines.
+              </xs:documentation>
+            </xs:annotation>
+          </xs:attribute>
+        </xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="query-jdbc-store">
+    <xs:complexType>
+      <xs:complexContent>
+        <xs:extension base="tns:abstract-sql-store">
+          <xs:sequence>
+            <xs:element name="queries" type="tns:queries"/>
+          </xs:sequence>
+          <xs:attribute name="key-columns" type="xs:string">
+            <xs:annotation>
+              <xs:documentation>
+                Specifies the columns from the database table that correspond to key(s).
+                Use commas (,) to separate multiple columns.
+              </xs:documentation>
+            </xs:annotation>
+          </xs:attribute>
+        </xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="abstract-sql-store">
+    <xs:complexContent>
+      <xs:extension base="jdbc-common:abstract-jdbc-store">
+        <xs:sequence>
+          <xs:element name="schema" type="tns:schema"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="schema">
+    <xs:attribute name="message-name" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>
+          Specifies the Protobuf message name to use for the value of the cache entry.
+          If the database table contains only one column for the value, you do not need to specify a message name and an appropriate data type is automatically used.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="key-message-name" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>
+          Specifies the Protobuf message name to use for the key of the cache entry.
+          If the database table contains only one column for the key, you do not need to specify a message name and an appropriate data type is automatically used.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="package" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>
+          Specifies the package for key and value message names.
+          You must specify a package if you set the 'key-message-name' or
+          'message-name' attributes.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="embedded-key" type="xs:boolean" default="false">
+      <xs:annotation>
+        <xs:documentation>
+          Specifies if key field(s) are also part of the value schema.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="queries">
+     <xs:attribute name="select-all" type="xs:string" use="required">
+        <xs:annotation>
+          <xs:documentation>
+            Defines a SQL query that bulk loads cache entries from a database.
+            You can use an asterisk operator in the SELECT clause.
+            You can use parameters only if you explicitly define them in the statement, for example "WHERE FOO = 'BAR'"".
+            Columns that this query returns must match the columns that the 'select-single' query returns.
+            Columns must also match Protobuf schema for composite keys and values exactly.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="select-single" type="xs:string" use="required">
+        <xs:annotation>
+          <xs:documentation>
+            Defines a SQL query that loads cache entries from a database.
+            You can use an asterisk operator in the SELECT clause.
+            You must include every field from the key schema as a named parameter, for example "FOO = :bar".
+            Columns that this query returns must match the columns that the 'select-all' query returns.
+            Columns must also match Protobuf schema for composite keys and values exactly.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="delete-all" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>
+            Defines a SQL query to clear the cache.
+            This attribute is required if you configure the SQL cache store to allow modifications to the database.
+            You can use parameters only if you explicitly define them in the statement, for example "WHERE FOO = 'BAR'"".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="delete-single" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>
+            Defines a SQL query to delete specific entries from the cache.
+            This attribute is required if you configure the SQL cache store to allow modifications to the database.
+            You must include every field from the key schema as a named parameter, for example "FOO = :bar".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="upsert" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>
+            Defines a SQL query to modify entries in the cache.
+            This attribute is required if you configure the SQL cache store to allow modifications to the database.
+            You must include every field from the key and value schema as a named parameter, for example "FOO = :bar".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="size" type="xs:string" use="required">
+        <xs:annotation>
+          <xs:documentation>
+            Defines a SQL query to count the number of entries in the cache.
+            You can use parameters only if you explicitly define them in the statement, for example "WHERE FOO = 'BAR'"".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+  </xs:complexType>
+
+</xs:schema>
