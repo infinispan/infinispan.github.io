@@ -2,7 +2,7 @@
 layout: blog
 title: Infinispan 15 Tracing Improvement
 permalink: /blog/:year/:month/:day/infinispan-15-tracing
-date: '2024-03-20T9:00:00.000-00:00'
+date: '2024-04-05T00:00:00.000-00:00'
 author: fax4ever
 tags: [ "opentelemetry", "tracing" ]
 ---
@@ -12,9 +12,9 @@ tags: [ "opentelemetry", "tracing" ]
 In the previous version of Infinispan https://infinispan.org/blog/2022/07/18/infinispan-14-opentelemetry-tracing[we introduced the OpenTelemetry Tracing capability].
 With the new version we evolved the integration in order to:
 
-* Allow to configure it both globally and on-cache basis using the standard Infinispan configuration.
-* Trace more event types: cluster, cross-site, cache-store and security.
-* Allow to select and configure, also at runtime, the span types that we want to produce and send to the collector.
+* configure it both globally and per-cach using the standard Infinispan configuration.
+* trace more event types: cluster, cross-site, cache-store and security.
+* select and configure, even at runtime, the span types that we want to produce and send to the collector.
 
 The source code featured in this blog post has been taken from https://github.com/fax4ever/infinispan-demo/tree/main/infinispan-15-tracing[this demo project].
 
@@ -37,7 +37,7 @@ we can now do it directly in the Infinispan Server Configuration:
 By default, we now support tracing using the OpenTelemetry Protocol (OTLP) with the default exporter protocol as `http/protobuf`, instead of `grpc`.
 The default Jaeger port using this combination is the `4318`.
 
-We've also activate tracing for security audits. This is a new tracing category introduced with Infinispan 15, and it's defined at the cache manager level globally.
+We've also activated tracing for security audits. This is a new tracing category introduced with Infinispan 15, and it's defined at the cache manager level.
 
 [source,yaml]
 ----
@@ -51,7 +51,7 @@ infinispan:
 
 === Cache configuration
 
-Cache scoped tracing categories must be configured in the cache configuration.
+Cache-scoped tracing categories must be configured in the cache configuration.
 Here's an example of a cache configuration that enables tracing for additional categories:
 
 [source,yaml]
@@ -77,14 +77,12 @@ replicatedCache:
       - "x-site"
 ----
 
-In the example above `container`, `persistence`, `cluster` and `x-site` (cross-site replication) are enabled.
+In the above example, `container`, `persistence`, `cluster` and `x-site` (cross-site replication) are enabled.
 In the absence of category specification, `container` tracing is enabled by default.
 
-==== Runtime enabling / disabling them
+==== Runtime operations
 
-Furthermore, it is possible to enable / disable them or even the entire tracing at runtime.
-
-It is possible to update enabled tracing categories at runtime and programmatically using the Infinispan HotRod client or the REST API.
+Furthermore, it is possible to enable / disable tracing categories, or even the entire tracing subsystem at runtime, using either the Hot Rod client or the REST API.
 
 The following example enables tracing for the `container` and `persistence` categories while disabling any other previously enabled categories:
 
@@ -109,7 +107,7 @@ After some interaction, we might see a log similar to the following:
 [caption="Security audit",link=/assets/images/blog/tracing-15-02-container.png]
 image::/assets/images/blog/tracing-15-02-container.png[Tracing output]
 
-We have the client's span and its matching container level span at the server.
+We have the client's span and its matching container-level span on the server.
 
 Enable more span categories to gain further insights into Infinispan's internal operations.
 
@@ -119,7 +117,7 @@ we can observe the internal calls that Infinispan makes to interact with the con
 [caption="Security audit",link=/assets/images/blog/tracing-15-03-persistence.png]
 image::/assets/images/blog/tracing-15-03-persistence.png[Tracing output]
 
-Afterward, we enable (also at runtime) the cluster category. After the first interaction,
+Afterwards, we enable (also at runtime) the cluster category. After the first interaction,
 it's possible to observe the call that the Infinispan Server makes to synchronize the cluster alignment.
 
 [caption="Security audit",link=/assets/images/blog/tracing-15-04-cluster.png]
