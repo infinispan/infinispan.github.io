@@ -10,7 +10,7 @@ bundle config set path $HOME/.bundle
 # Update gems
 if ! [ -x "$(command -v bundle)" ]; then
     echo "Bundler missing"
-    gem install bundler:2.1.4
+    gem install bundler:2.5.1
 fi
 #
 bundle install
