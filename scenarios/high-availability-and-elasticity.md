@@ -1,5 +1,5 @@
 ---
-layout: use-case-single
+layout: scenario-single
 title: Achieve High Availability and Elasticity
 ---
 

@@ -1,6 +1,6 @@
 ---
 layout: use-cases
 title: Use Cases
-subtitle: Infinispan is a highly flexible data store that optimizes application performance and reduces operational costs
+subtitle: Use Infinispan in real-world applications
 permalink: /use-cases/
 ---
