@@ -148,7 +148,7 @@ else
         url = artifact["download"]
         fullname = File.basename(url)
         name = File.basename(url, ".zip")
-        %x( wget #{url} -O _tmp.zip)
+        %x( wget -nv #{url} -O _tmp.zip)
         %x( unzip _tmp.zip "*-Source/documentation/*" -d _tmp)
         %x( mkdir -p docs/hotrod-clients/#{client}/docs )
         %x( rm _tmp/*/documentation/.gitignore )
@@ -163,10 +163,8 @@ else
 
   # Simple tutorials latest
   cfg["simple_tutorials"].each do |version, sub|
-    puts "#{version} wget"
     zipUrl = sub["zip-url"]
-    puts "#{version} wget #{zipUrl}"
-    %x( wget #{zipUrl} -O _jstmp.zip)
+    %x( wget -nv #{zipUrl} -O _jstmp.zip)
     %x( unzip _jstmp.zip "*documentation/*" -d _jstmp)
     Dir.glob("_jstmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
@@ -181,10 +179,8 @@ else
 
   # Hot Rod JS client latest
   cfg["hr_js_client"].each do |version, sub|
-    puts "#{version} wget"
     zipUrl = sub["zip-url"]
-    puts "#{version} wget #{zipUrl}"
-    %x( wget #{zipUrl} -O _jstmp.zip)
+    %x( wget -nv #{zipUrl} -O _jstmp.zip)
     %x( unzip _jstmp.zip "*documentation/*" -d _jstmp)
     Dir.glob("_jstmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
@@ -199,10 +195,8 @@ else
 
   # Hot Rod C++ client latest
   cfg["hr_cpp_client"].each do |version, sub|
-    puts "#{version} wget"
     zipUrl = sub["zip-url"]
-    puts "#{version} wget #{zipUrl}"
-    %x( wget #{zipUrl} -O _cpptmp.zip)
+    %x( wget -nv #{zipUrl} -O _cpptmp.zip)
     %x( unzip _cpptmp.zip "*documentation/*" -d _cpptmp)
     Dir.glob("_cpptmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
@@ -217,10 +211,8 @@ else
 
   # Hot Rod .NET/C# client latest
   cfg["hr_dotnet_client"].each do |version, sub|
-    puts "#{version} wget"
     zipUrl = sub["zip-url"]
-    puts "#{version} wget #{zipUrl}"
-    %x( wget #{zipUrl} -O _dotnettmp.zip)
+    %x( wget -nv #{zipUrl} -O _dotnettmp.zip)
     %x( unzip _dotnettmp.zip "*documentation/*" -d _dotnettmp)
     Dir.glob("_dotnettmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
@@ -235,10 +227,8 @@ else
 
   # and then it's operator's turn
   cfg["ispn_operator"].each do |version, sub|
-    puts "#{version} wget"
     zipUrl = sub["zip-url"]
-    puts "#{version} wget #{zipUrl}"
-    %x( wget #{zipUrl} -O _optmp.zip)
+    %x( wget -nv #{zipUrl} -O _optmp.zip)
     %x( unzip _optmp.zip "*documentation/*" -d _optmp)
     Dir.glob("_optmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
@@ -260,10 +250,8 @@ else
 
   # Helm chart docs
   cfg["helm_chart"].each do |version, sub|
-    puts "#{version} wget"
     zipUrl = sub["zip-url"]
-    puts "#{version} wget #{zipUrl}"
-    %x( wget #{zipUrl} -O _charttmp.zip)
+    %x( wget -nv #{zipUrl} -O _charttmp.zip)
     %x( unzip _charttmp.zip "*documentation/*" -d _charttmp)
     Dir.glob("_charttmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
@@ -279,10 +267,8 @@ else
 
   # now for the spring boot starter docs
   cfg["sb_starter"].each do |version, sub|
-    puts "#{version} wget"
     zipUrl = sub["zip-url"]
-    puts "#{version} wget #{zipUrl}"
-    %x( wget #{zipUrl} -O _sbtmp.zip)
+    %x( wget -nv #{zipUrl} -O _sbtmp.zip)
     %x( unzip _sbtmp.zip "*documentation/*" -d _sbtmp)
     Dir.glob("_sbtmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
