@@ -1,0 +1,297 @@
+---
+layout: blog
+title: Infinispan 15 indexing & query news
+permalink: /blog/:year/:month/:day/infinispan-15-queries
+date: '2024-06-10T00:00:00.000-00:00'
+author: fax4ever
+tags: [ "search", "vector", "score", "knn", "indexing", "embeddings" ]
+---
+
+= Infinispan 15 indexing & query news
+
+A short while back we released Infinispan 15 which delivered many improvements to the query API. This blog is an in-depth dive into some of these:
+
+1. <<rest_projections,Rest queries with projections>>: more projection types are supported using the REST API.
+2. <<continuous-queries,Query cache API>>: regular and continuous queries can be defined directly from the cache API.
+3. <<filter-elements,Filter elements for kNN queries>>: it is now possible to filter out the set of entities on which to apply a kNN-vector search.
+4. <<index-query-by-keys, Index by keys - query by keys>>: indexes can be defined also on the keys, not only on the values, so that we can query also the keys values.
+
+[[rest_projections]]
+== Rest queries with projections
+
+Recently we introduced score and version projections, which are added to the already available entity and field projections.
+
+The same projections are now available using the REST query API.
+
+Following an example of entity, query and result:
+
+[source,java]
+----
+@Indexed(index = "play")
+public class Game {
+
+   private final String name;
+   private final String description;
+
+   @ProtoFactory
+   public Game(String name, String description) {
+      this.name = name;
+      this.description = description;
+   }
+
+   @Keyword(projectable = true, sortable = true)
+   @ProtoField(1)
+   public String getName() {
+      return name;
+   }
+
+   @Text
+   @ProtoField(2)
+   public String getDescription() {
+      return description;
+   }
+}
+----
+
+
+[source,sql]
+----
+select g, g.description, version(g), score(g) from Game g where g.description : 'bla3'
+----
+
+
+[source,json]
+----
+{
+    "hit_count": 1,
+    "hit_count_exact": true,
+    "hits": [
+        {
+            "hit": {
+                "version()": 7,
+                "description": "bla bla3",
+                "*": {
+                    "_type": "Game",
+                    "name": "bla3",
+                    "description": "bla bla3"
+                },
+                "score()": 0.90565
+            }
+        }
+    ]
+}
+----
+
+
+In this case we have requested the version projection using the projection function `version(g)`
+and receiving the corresponding result in the `version()` attribute of the returned `hit`.
+Similarly, a `score()` projection is produced.
+The special attribute `*` corresponds to the entity projection result, in which the special field `_type` corresponds to the type of the entity.
+
+
+[[continuous-queries]]
+== Query cache API
+
+With Infinispan 15, both embedded and remote caches can be queried with the same API method `cache#query`.
+The use of the search factory to access the query APIs is no longer required and it is now deprecated.
+Here is an example:
+
+[source,java]
+----
+Query<Person> query = myCache.query("FROM space.Person WHERE name = 'user1' AND age > 20");
+----
+
+From this point forward we will use the usual API to configure and run the query. For instance:
+
+[source,java]
+----
+query.startOffset(10);
+query.maxResults(10);
+QueryResult<Person> = query.execute();
+----
+
+Similarly, it is possible to get a continuous query instance (both for remote and embedded cache),
+using the method `cache#continuousQuery`:
+
+[source,java]
+----
+ContinuousQuery<Integer, Person> continuousQuery = myCache.continuousQuery();
+----
+
+From which as usual it will be possible to define the continuous callback:
+
+[source,java]
+----
+continuousQuery.addContinuousQueryListener(query, new ContinuousQueryListener<>() {
+
+      @Override
+      public void resultJoining(Integer key, Object value) {
+         // handle entity creations
+      }
+      @Override
+      public void resultUpdated(Integer key, Object value) {
+         // handle entry updates
+      }
+      @Override
+      public void resultLeaving(Integer key) {
+         // handle entry leavings
+      }
+   });
+----
+
+[[filter-elements]]
+== Filter elements for kNN queries
+
+kNN queries can be run filtering the population on which to apply the search.
+A kNN filter is defined using any kind of predicate (included boolean expressions) provided by the Infinispan query language.
+
+For instance, let's consider the following entity:
+
+[source,java]
+----
+@Indexed
+public class Item {
+
+   private String code;
+   private float[] floatVector;
+   private String description;
+
+   @ProtoFactory
+   public Item(String code, float[] floatVector, String description) {
+      this.code = code;
+      this.floatVector = floatVector;
+      this.description = description;
+   }
+
+   @Keyword
+   @ProtoField(1)
+   public String getCode() {
+      return code;
+   }
+
+   @Vector(dimension = 3)
+   @ProtoField(2)
+   public float[] getFloatVector() {
+      return floatVector;
+   }
+
+   @Text
+   @ProtoField(3)
+   public String getDescription() {
+      return description;
+   }
+}
+----
+
+Suppose that we want to limit the vector search only to record with the word `cat` in the description. We can do like this:
+
+[source,java]
+----
+Query<Object[]> query = remoteCache.query(
+      "select score(i), i from Item i where i.floatVector <-> [:a]~:k filtering i.description : 'cat'");
+query.setParameter("a", new float[]{7.0f, 7.0f, 7.0f});
+query.setParameter("k", 3);
+
+List<Object[]> hits = query.list();
+----
+
+This is example shows a combination of full text search and vector search.
+
+Boolean composite predicates are also supported.
+In the following we will limit the search only to the items having the term `cat` in their description and having code `w739`.
+
+[source,java]
+----
+Query<Object[]> query = remoteCache.query(
+      "select score(i), i from Item i where i.floatVector <-> [:a]~:k filtering (i.description : 'cat' or i.code : 'w739')");
+query.setParameter("a", new float[]{7.0f, 7.0f, 7.0f});
+query.setParameter("k", 3);
+
+List<Object[]> hits = query.list();
+----
+
+[[index-query-by-keys]]
+== Index by keys - query by keys
+
+In case of complex keys, e.g., keys that are entities themselves, it is now possible to define indexes on the keys as well.
+
+Once this is done, we will be able to run queries targeting fields from both keys and values,
+on both projections and selections.
+
+As an example let's consider a cache having keys of the type `PlaceKey` and values of type `Place`.
+A possible indexing mapping to enable the index by the keys is the following:
+
+[source,java]
+----
+@Indexed
+public class PlaceKey {
+
+   private Integer row;
+   private Integer column;
+
+   @ProtoFactory
+   public StructureKey(Integer row, Integer column) {
+      this.row = row;
+      this.column = column;
+   }
+
+   @Basic(projectable = true, sortable = true)
+   @ProtoField(2)
+   public Integer getRow() {
+      return row;
+   }
+
+   @Basic(projectable = true, sortable = true)
+   @ProtoField(3)
+   public Integer getColumn() {
+      return column;
+   }
+}
+----
+
+[source,java]
+----
+@Indexed(keyEntity = "model.PlaceKey")
+public class Place {
+
+   private final String code;
+   private final String description;
+
+   @ProtoFactory
+   public Structure(String code, String description) {
+      this.code = code;
+      this.description = description;
+   }
+
+   @ProtoField(1)
+   @Basic
+   public String getCode() {
+      return code;
+   }
+
+   @ProtoField(2)
+   @Text
+   public String getDescription() {
+      return description;
+   }
+
+   @ProtoSchema(includeClasses = { Place.class, PlaceKey.class }, schemaPackageName = "model")
+   public interface StructureSchema extends GeneratedSchema {
+      PlaceSchema INSTANCE = new PlaceSchemaImpl();
+   }
+}
+----
+
+Notice that the type of the key must be declared in the main entity definition using the `keyEntity` attribute of
+the `@Indexing` annotation.
+
+After that it is possible to search for all the cache entries having the field `column` in their keys equals to `77` and
+containing the term `cat` in the field `description` of their values, projecting the field `row` of the keys and the field `code`
+of the value, using for instance the following query:
+
+[source,java]
+----
+RemoteCache<PlaceKey, Place> cache = remoteCacheManager.getCache();
+Query<Object[]> query = cache.query("select p.key.row, p.code from model.Place p where p.key.column = 77 and p.description : 'cat'");
+List<Object[]> list = query.list();
+----
