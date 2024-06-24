@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.23">
-<title>Using the RESP protocol endpoint with Infinispan</title>
+<title>Using the RESP protocol with Infinispan</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -522,16 +522,17 @@ $(addBlockSwitches);
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
-<h1>Using the RESP protocol endpoint with Infinispan</h1>
+<h1>Using the RESP protocol with Infinispan</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#resp-endpoint">1. Using the RESP endpoint</a></li>
-<li><a href="#resp-logical-databases_resp-endpoint">2. Mapping caches to Redis logical databases</a>
 <ul class="sectlevel2">
-<li><a href="#redis-commands_resp-endpoint">2.1. Redis commands</a></li>
+<li><a href="#enabling-resp-endpoint_resp-endpoint">1. Infinispan RESP endpoint</a>
+<ul class="sectlevel3">
+<li><a href="#configuring_caches_for_the_resp_endpoint">1.1. Configuring caches for the RESP endpoint</a></li>
 </ul>
 </li>
+<li><a href="#resp-logical-databases_resp-endpoint">2. Mapping caches to Redis logical databases</a></li>
+<li><a href="#redis-commands_resp-endpoint">3. Redis commands</a></li>
 </ul>
 </div>
 </div>
@@ -539,29 +540,159 @@ $(addBlockSwitches);
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan Server includes an endpoint that implements the RESP3 protocol and allows you to interact with remote caches using Redis clients.</p>
+<p>Infinispan Server includes an endpoint that implements the <a href="https://github.com/redis/redis-specifications/blob/master/protocol/RESP3.md">RESP3 protocol</a> and allows you to interact with remote caches using Redis clients.</p>
 </div>
 </div>
 </div>
-<div class="sect1">
-<h2 id="resp-endpoint"><a class="anchor" href="#resp-endpoint"></a>1. Using the RESP endpoint</h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="enabling-resp-endpoint_resp-endpoint"><a class="anchor" href="#enabling-resp-endpoint_resp-endpoint"></a>1. Infinispan RESP endpoint</h3>
 <div class="paragraph">
-<p>Infinispan Server includes a module that implements the <a href="https://github.com/redis/redis-specifications/blob/master/protocol/RESP3.md">RESP3 protocol</a>.
-The RESP endpoint allows Redis clients to connect to one or several Infinispan-backed RESP servers and perform cache operations.</p>
+<p>The RESP endpoint is enabled by default on the single-port endpoint. Redis client connections will automatically be detected and routed to the internal connector.
+The RESP endpoint works with:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Standalone Infinispan Server deployments, exactly like standalone Redis, where each server instance runs independently of each other.</p>
+</li>
+<li>
+<p>Clustered Infinispan Server deployments, where server instances replicate or distribute data between each other. Clustered deployments provides clients with failover capabilities.</p>
+</li>
+</ul>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Install Infinispan Server.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p><a href="../server/server.html#creating-users_server-getting-started">Create a user</a></p>
+</li>
+</ol>
 </div>
 <div class="paragraph">
-<p>The RESP endpoint is enabled by default on the single-port endpoint. Redis client connections will automatically be detected and routed to the internal connector.</p>
+<div class="title">Verification</div>
+<p>When you start Infinispan Server check for the following log message:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>[org.infinispan.SERVER] ISPN080018: Started connector Resp (internal)</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>Unresolved directive in ../../stories/assembly_resp_endpoint.adoc - include::../topics/proc_server_enabling_resp.adoc[leveloffset=+1]
-:leveloffset: +1</p>
+<p>You can now connect to the RESP endpoint with a Redis client.
+For example, with the Redis CLI you can do the following to add an entry to the cache:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>redis-cli -p 11222 --user username --pass password</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>127.0.0.1:11222&gt; SET k v
+OK
+127.0.0.1:11222&gt; GET k
+"v"
+127.0.0.1:11222&gt; quit</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="configuring_caches_for_the_resp_endpoint"><a class="anchor" href="#configuring_caches_for_the_resp_endpoint"></a>1.1. Configuring caches for the RESP endpoint</h4>
+<div class="paragraph">
+<p>The RESP endpoint automatically configures and starts a <code>respCache</code> cache. This cache has the following configuration:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>local-cache</code> or <code>distributed-cache</code> depending on the Infinispan Server clustering mode.</p>
+</li>
+<li>
+<p><code>application/octet-stream</code> encoding for both keys and values.</p>
+</li>
+<li>
+<p><code>RESPHashFunctionPartitioner</code> hash partitioner, which supports the CRC16 hashing used by Redis clients</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The cache configuration cannot enable capabilities that violate the RESP protocol.
+For example, specifying an incompatible hash partitioning function or a key encoding different from <code>application/octet-stream</code>.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Configure your cache value encoding with Protobuf encoding if you want to view cache entries in the Infinispan Console (<code>value media-type="application/x-protostream"</code>).</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<h5 id="resp_endpoint_configuration" class="discrete">RESP endpoint configuration</h5>
+<div class="paragraph">
+<p>If the implicit configuration used by the single-port endpoint does not fit your needs, use explicit configuration.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;endpoints&gt;
+  &lt;endpoint socket-binding="default" security-realm="default"&gt;
+    &lt;resp-connector cache="mycache" /&gt;
+    &lt;hotrod-connector /&gt;
+    &lt;rest-connector/&gt;
+  &lt;/endpoint&gt;
+&lt;/endpoints&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "server": {
+    "endpoints": {
+      "endpoint": {
+        "socket-binding": "default",
+        "security-realm": "default",
+        "resp-connector": {
+          "cache": "mycache"
+        },
+        "hotrod-connector": {},
+        "rest-connector": {}
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">server:
+  endpoints:
+    endpoint:
+      socketBinding: "default"
+      securityRealm: "default"
+      respConnector:
+        cache: "mycache"
+      hotrodConnector: ~
+      restConnector: ~</code></pre>
 </div>
 </div>
 </div>
-<div class="sect1">
-<h2 id="resp-logical-databases_resp-endpoint"><a class="anchor" href="#resp-logical-databases_resp-endpoint"></a>2. Mapping caches to Redis logical databases</h2>
-<div class="sectionbody">
+</div>
+<div class="sect2">
+<h3 id="resp-logical-databases_resp-endpoint"><a class="anchor" href="#resp-logical-databases_resp-endpoint"></a>2. Mapping caches to Redis logical databases</h3>
 <div class="paragraph">
 <p>Use the cache <code>aliases</code> configuration attributes to map caches to Redis logical databases.
 The default <code>respCache</code> is mapped to logical database <code>0</code>.</p>
@@ -581,8 +712,9 @@ The default <code>respCache</code> is mapped to logical database <code>0</code>.
 </tr>
 </table>
 </div>
+</div>
 <div class="sect2">
-<h3 id="redis-commands_resp-endpoint"><a class="anchor" href="#redis-commands_resp-endpoint"></a>2.1. Redis commands</h3>
+<h3 id="redis-commands_resp-endpoint"><a class="anchor" href="#redis-commands_resp-endpoint"></a>3. Redis commands</h3>
 <div class="paragraph">
 <p>The Infinispan RESP endpoint implements the following Redis commands:</p>
 </div>
@@ -1259,11 +1391,9 @@ This command is deprecated. Use the <code>GETRANGE</code> command instead.
 </div>
 </div>
 </div>
-</div>
-</div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-04-18 11:25:44 -0400
+Last updated 2024-06-18 12:05:20 -0400
 </div>
 </div>
 <script type="text/x-mathjax-config">
