@@ -71,7 +71,7 @@ end
 def extract_maven_artifact(artifact, target)
   puts "Downloading #{artifact} to #{target}"
   %x( mvn org.apache.maven.plugins:maven-dependency-plugin:3.1.1:copy -DoutputDirectory=#{target} -DrepoUrl=https://search.maven.org/artifact/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
-  %x( unzip -q #{target}/*.zip -d #{target} )
+  %x( unzip -qo #{target}/*.zip -d #{target} )
   FileUtils.rm Dir.glob("#{target}/*.zip")
 end
 
@@ -149,7 +149,7 @@ else
         fullname = File.basename(url)
         name = File.basename(url, ".zip")
         %x( wget -nv #{url} -O _tmp.zip)
-        %x( unzip _tmp.zip "*-Source/documentation/*" -d _tmp)
+        %x( unzip -o _tmp.zip "*-Source/documentation/*" -d _tmp)
         %x( mkdir -p docs/hotrod-clients/#{client}/docs )
         %x( rm _tmp/*/documentation/.gitignore )
         %x( mv _tmp/*/documentation "docs/hotrod-clients/#{client}/docs/#{docs_version}" )
@@ -165,7 +165,7 @@ else
   cfg["simple_tutorials"].each do |version, sub|
     zipUrl = sub["zip-url"]
     %x( wget -nv #{zipUrl} -O _jstmp.zip)
-    %x( unzip _jstmp.zip "*documentation/*" -d _jstmp)
+    %x( unzip -o _jstmp.zip "*documentation/*" -d _jstmp)
     Dir.glob("_jstmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
     end
@@ -181,7 +181,7 @@ else
   cfg["hr_js_client"].each do |version, sub|
     zipUrl = sub["zip-url"]
     %x( wget -nv #{zipUrl} -O _jstmp.zip)
-    %x( unzip _jstmp.zip "*documentation/*" -d _jstmp)
+    %x( unzip -o _jstmp.zip "*documentation/*" -d _jstmp)
     Dir.glob("_jstmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
     end
@@ -197,7 +197,7 @@ else
   cfg["hr_cpp_client"].each do |version, sub|
     zipUrl = sub["zip-url"]
     %x( wget -nv #{zipUrl} -O _cpptmp.zip)
-    %x( unzip _cpptmp.zip "*documentation/*" -d _cpptmp)
+    %x( unzip -o _cpptmp.zip "*documentation/*" -d _cpptmp)
     Dir.glob("_cpptmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
     end
@@ -213,7 +213,7 @@ else
   cfg["hr_dotnet_client"].each do |version, sub|
     zipUrl = sub["zip-url"]
     %x( wget -nv #{zipUrl} -O _dotnettmp.zip)
-    %x( unzip _dotnettmp.zip "*documentation/*" -d _dotnettmp)
+    %x( unzip -o _dotnettmp.zip "*documentation/*" -d _dotnettmp)
     Dir.glob("_dotnettmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
     end
@@ -229,7 +229,7 @@ else
   cfg["ispn_operator"].each do |version, sub|
     zipUrl = sub["zip-url"]
     %x( wget -nv #{zipUrl} -O _optmp.zip)
-    %x( unzip _optmp.zip "*documentation/*" -d _optmp)
+    %x( unzip -o _optmp.zip "*documentation/*" -d _optmp)
     Dir.glob("_optmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
     end
@@ -252,7 +252,7 @@ else
   cfg["helm_chart"].each do |version, sub|
     zipUrl = sub["zip-url"]
     %x( wget -nv #{zipUrl} -O _charttmp.zip)
-    %x( unzip _charttmp.zip "*documentation/*" -d _charttmp)
+    %x( unzip -o _charttmp.zip "*documentation/*" -d _charttmp)
     Dir.glob("_charttmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
     end
@@ -269,7 +269,7 @@ else
   cfg["sb_starter"].each do |version, sub|
     zipUrl = sub["zip-url"]
     %x( wget -nv #{zipUrl} -O _sbtmp.zip)
-    %x( unzip _sbtmp.zip "*documentation/*" -d _sbtmp)
+    %x( unzip -o _sbtmp.zip "*documentation/*" -d _sbtmp)
     Dir.glob("_sbtmp/**/*.asciidoc").each do |f|
       %x( asciidoctor #{f} )
     end
