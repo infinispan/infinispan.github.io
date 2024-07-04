@@ -29,6 +29,7 @@ update_version ()
 }
 
 update_version "stable"
+update_version "unstable"
 update_version "old.\"14.0\""
 update_version "old.\"13.0\""
 update_version "old.\"12.1\""
