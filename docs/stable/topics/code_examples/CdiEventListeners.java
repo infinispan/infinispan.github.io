@@ -1,4 +1,4 @@
-import jakarta.transaction.event.Observes;
+import javax.enterprise.event.Observes;
 import org.infinispan.notifications.cachemanagerlistener.event.CacheStartedEvent;
 import org.infinispan.notifications.cachelistener.event.*;
 
