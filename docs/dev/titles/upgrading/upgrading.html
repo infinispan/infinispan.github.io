@@ -530,7 +530,11 @@ $(addBlockSwitches);
 <ul class="sectlevel3">
 <li><a href="#upgrading_from_15_0_to_15_1">1.1. Upgrading from 15.0 to 15.1</a>
 <ul class="sectlevel4">
-<li><a href="#jgroups_metrics">JGroups Metrics</a></li>
+<li><a href="#java_hotrod_client_changes">Java HotRod Client Changes</a>
+<ul class="sectlevel5">
+<li><a href="#remotecache_withflags_no_longer_uses_threadlocal">RemoteCache withFlags no longer uses ThreadLocal</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#upgrading_from_14_0_to_15_0">1.2. Upgrading from 14.0 to 15.0</a>
@@ -945,129 +949,20 @@ Find out how to perform rolling upgrades of Infinispan Server deployments and ho
 <div class="sect3">
 <h4 id="upgrading_from_15_0_to_15_1"><a class="anchor" href="#upgrading_from_15_0_to_15_1"></a>1.1. Upgrading from 15.0 to 15.1</h4>
 <div class="sect4">
-<h5 id="jgroups_metrics"><a class="anchor" href="#jgroups_metrics"></a>JGroups Metrics</h5>
+<h5 id="java_hotrod_client_changes"><a class="anchor" href="#java_hotrod_client_changes"></a>Java HotRod Client Changes</h5>
+<div class="sect5">
+<h6 id="remotecache_withflags_no_longer_uses_threadlocal"><a class="anchor" href="#remotecache_withflags_no_longer_uses_threadlocal"></a>RemoteCache withFlags no longer uses ThreadLocal</h6>
 <div class="paragraph">
-<p>The following metrics have been removed:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Protocols <code>org.jgroups.protocols.MFC</code>. <code>org.jgroups.protocols.MFC_NB</code>, <code>org.jgroups.protocols.UFC</code> and <code>org.jgroups.protocols.UFC_NB</code></p>
-<div class="ulist">
-<ul>
-<li>
-<p><code>get_number_of_credit_requests_received</code></p>
-</li>
-<li>
-<p><code>get_number_of_credit_requests_sent</code></p>
-</li>
-<li>
-<p><code>get_number_of_credit_responses_received</code></p>
-</li>
-<li>
-<p><code>get_number_of_credit_responses_sent</code></p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Protocols <code>org.jgroups.protocols.SHARED_LOOPBACK</code>, <code>org.jgroups.protocols.TCP, org.jgroups.protocols.TCP_NIO2</code>, <code>org.jgroups.protocols.TUNNEL</code>, and <code>org.jgroups.protocols.UDP</code></p>
-<div class="ulist">
-<ul>
-<li>
-<p><code>get_num_rejected_msgs</code></p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Protocol <code>org.jgroups.protocols.RED</code></p>
-<div class="ulist">
-<ul>
-<li>
-<p><code>get_dropped_messages</code></p>
-</li>
-<li>
-<p><code>get_total_messages</code></p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Protocol <code>org.jgroups.protocols.UNICAST3</code></p>
-<div class="ulist">
-<ul>
-<li>
-<p><code>get_num_messages_received</code></p>
-</li>
-<li>
-<p><code>get_num_messages_sent</code></p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Protocol <code>org.jgroups.protocols.pbcast.STABLE</code></p>
-<div class="ulist">
-<ul>
-<li>
-<p><code>get_stability_received</code></p>
-</li>
-<li>
-<p><code>get_stability_sent</code></p>
-</li>
-<li>
-<p><code>get_stable_received</code></p>
-</li>
-<li>
-<p><code>get_stable_sent</code></p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Protocol <code>org.jgroups.protocols.pbcast.STATE_TRANSFER</code></p>
-<div class="ulist">
-<ul>
-<li>
-<p><code>get_average_state_size</code></p>
-</li>
-<li>
-<p><code>get_number_of_state_bytes_sent</code></p>
-</li>
-<li>
-<p><code>get_number_of_state_requests</code></p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
+<p>Previously a RemoteCache would store its Flag settings in a ThreadLocal
+which was then cleared when an invocation of the cache was done.
+This does not work with Virtual Threads and is very error prone if the
+same RemoteCache is shared between threads.</p>
 </div>
 <div class="paragraph">
-<p>The following metrics have been renamed:</p>
+<p>Instead now withFlags will return a new instance if new flags are applied
+and the previous instance will be untouched.
+This allows for thread and virtual thread safety.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>Protocols <code>org.jgroups.protocols.SHARED_LOOPBACK</code>, <code>org.jgroups.protocols.TCP, org.jgroups.protocols.TCP_NIO2</code>, <code>org.jgroups.protocols.TUNNEL</code>, and <code>org.jgroups.protocols.UDP</code></p>
-<div class="ulist">
-<ul>
-<li>
-<p><code>get_num_mcast_msgs_received</code> &#8594; <code>get_num_mcasts_received</code></p>
-</li>
-<li>
-<p><code>get_num_mcast_msgs_sent</code> &#8594; <code>get_num_mcasts_sent</code></p>
-</li>
-<li>
-<p><code>get_num_ucast_msgs_received</code> &#8594; <code>get_num_ucasts_received</code></p>
-</li>
-<li>
-<p><code>get_num_ucast_msgs_sent</code> - <code>get_num_ucasts_sent</code></p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
 </div>
 </div>
 </div>
@@ -5151,7 +5046,7 @@ cache stores.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-04-18 11:25:44 -0400
+Last updated 2024-08-22 08:35:40 UTC
 </div>
 </div>
 <script type="text/x-mathjax-config">
