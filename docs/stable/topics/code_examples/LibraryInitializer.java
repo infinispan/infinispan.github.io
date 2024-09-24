@@ -1,4 +1,4 @@
-@ProtoSchema(
+@AutoProtoSchemaBuilder(
       includeClasses = {
             Book.class,
             Author.class,

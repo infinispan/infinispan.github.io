@@ -1,5 +1,5 @@
 ...
-import jakarta.inject.Inject;
+import javax.inject.Inject;
 
 public class GreetingService {
 
