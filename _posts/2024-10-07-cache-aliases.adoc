@@ -1,0 +1,310 @@
+---
+layout: blog
+title: Supporting Multiple Redis Databases with Infinispan cache aliases enhancement
+permalink: /blog/:year/:month/:day/cache-aliases-redis-databases
+date: '2024-10-07T00:00:00.000-00:00'
+author: karesti
+tags: [ "resp", "aliases", "cache", "redis", "database" ]
+---
+In Infinispan 15 we provided a large set of commands to make it possible to replace your Redis Server
+by Infinispan, without changing your code. In this tutorial you will learn how Infinispan cache aliases
+will help you on replacing your Redis Server by Infinispan for multiple Redis databases.
+
+Key takeaways:
+
+* What are cache aliases and how to create caches with aliases or update existing ones
+* Learn how Infinispan and Redis differ in data organization
+* Support multiple databases in Infinispan with cache aliases when using the **RESP protocol**
+
+_Supporting multiple Redis databases is available since Infinispan 15.0 (latest stable release at the time of this writing).
+However, Hot Rod, CLI and Infinispan Console support is Tech Preview in Infinispan 15.1 (in development right now)._
+
+## Redis Hot Replacement for Infinispan
+Since Infinispan 15, you can use Infinispan as a hot replacement for Redis because it supports most Redis
+commands through the RESP protocol. This works because Infinispan Server has the RESP endpoint enabled by
+default. Redis clients will automatically connect and be routed to Infinispan’s internal connector.
+
+### Running the Infinispan Server and using a Redis client
+Testing a Redis client with Infinispan Server is very easy.
+
+First run the Infinispan Server as explained in the https://infinispan.org/get-started/[Getting Started tutorial].
+
+*Important: Caches aliases fully work from 15.1.0.Dev04 release. Make sure you pull the latest 15.1 image locally.*
+
+*Command line with Docker or Podman*
+----
+docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" quay.io/infinispan/server:15.1
+
+podman run -it -p 11222:11222 -e USER="admin" -e PASS="password" --net=host quay.io/infinispan/server:15.1
+----
+
+
+Next, connect to Infinispan using https://redis.io/docs/latest/develop/connect/cli/[Redis-CLI].
+Use port **11222** instead of the default **6379**. Since Infinispan is secured by default, make sure
+to provide the admin credentials.
+
+----
+> redis-cli -p 11222 --user admin --pass password
+127.0.0.1:11222> set hello world
+OK
+127.0.0.1:11222> get hello
+"world"
+----
+
+_**That’s all!**_
+
+If you're wondering where the data is stored, it’s in the **“respCache”**. This is the default cache
+used by the Infinispan RESP connector, and it's pre-configured with sensible defaults.
+It’s ready to use and serves as a good replacement for Redis. Please note that starting with I
+nfinispan 15.1, the data container cache list includes a new column called "Aliases".
+We'll cover that later.
+
+Infinispan Server Console in **http://localhost:11222 (admin/password)** credentials.
+
+[caption="RESP Cache Data Container",link=/assets/images/blog/2024-09-26-cache-aliases/respCacheDataContainer.png]
+image::/assets/images/blog/2024-09-26-cache-aliases/respCacheDataContainer.png[RESP Cache Data Container]
+
+### Redis Databases versus Infinispan Caches
+In Redis, databases are essentially separate, isolated namespaces within a single Redis server.
+Each database can store its own set of key-value pairs independently from the others.
+
+By default, Redis provides 16 databases, numbered from 0 to 15. You can switch between these databases
+using the SELECT command. This feature helps organize data and isolate different applications or use cases
+within the same Redis instance, though it's important to note that all databases share the same memory
+space and configuration settings.
+
+Infinispan on the other hand employs a distributed cache model where data is spread across multiple nodes.
+It doesn't use the concept of separate databases; instead, it organizes data using caches, which can be
+configured with different settings and partitioned across a cluster. Data is distributed and replicated across multiple nodes, offering high availability and scalability. There isn’t a direct equivalent to Redis’s databases, but data can be segmented using different caches and configurations.
+
+Here is a table that resumes the main differences between Redis Databases and Infinispan caches:
+
+[cols="1,1,1"]
+|===
+|Aspect|Redis Database|Infinispan Cache
+
+|**Definition**
+|A logical namespace within a single Redis instance, allowing isolation of keys and values. Default of 16 databases per instance. All databases share server resources and configuration.
+|A container for key-value pairs within a distributed or in-memory cache. Can be distributed across multiple nodes, with multiple caches configurable within the same instance.
+
+|**Storage Model**
+|Stores data in a single server’s memory with simple key-value storage. Databases are isolated from each other but share server resources.
+|Stores data across a cluster of nodes with features like partitioning, replication, and distributed caching. Suitable for large-scale and high-availability scenarios.
+
+|**Isolation**
+|Provides isolation between databases using the _SELECT_ command. All databases share memory and configuration settings.
+|Provides isolation and configuration flexibility at the cache level. Each cache can be independently configured and may be distributed or replicated.
+
+|**Configuration and Flexibility**
+|Limited to basic configuration options related to the database index and server settings. All databases share the same server resources.
+|Extensive configuration options for each cache, including different modes (e.g., local, distributed, replicated), eviction policies, and more.
+|===
+
+If the Infinispan connector uses a single cache named “respCache” by default,
+you can support multiple Redis databases… by using **cache aliases**.
+
+## Cache alias to rescue
+In Infinispan, cache aliases are alternative names you can assign to a cache.
+They allow you to refer to the same underlying cache configuration using different names.
+Cache aliases in Infinispan allow for efficient switching between different versions or states
+of cached data, without having to modify or reload your application logic. This makes cache
+aliases especially useful in scenarios where data needs to be updated, but you want to ensure
+high availability and minimal impact to application performance.
+
+### Use cases for cache aliases
+Cache aliases in Infinispan are great for managing changing data without disrupting
+your application. It allows you to switch between data snapshots easily. You can keep
+using an old data version while loading a new one. When the new data is ready, you just
+switch the alias to point to it, without downtime. There is better performance and high
+availability since your app doesn’t touch the cache that’s being updated, it runs smoothly
+without slowdowns or errors. If something goes wrong, you can quickly rollback and switch
+to the previous data version with the alias.
+
+For example, imagine an online shop that needs to update its catalog:
+
+1. The shop keeps showing products using the current data (_current_catalog_ pointing to _catalog_snapshot_1_).
+1. While customers browse, new product data is loaded into _catalog_snapshot_2_ in the background.
+1. Once _catalog_snapshot_2_ is fully updated, the alias (_current_catalog_) is switched to point to _catalog_snapshot_2_.
+1. he old _catalog_snapshot_1_ cache is now free to be cleared and used for the next update.
+
+The website updates its catalog data without causing big delays or downtime for users.
+
+## Creating a cache with an alias
+Before learning how to use cache aliases for the RESP protocol and multiple databases,
+let’s first learn how to create and update cache aliases. There are several ways to create
+a cache or cache configuration in Infinispan, but my favorite is using the **Infinispan Server Console**.
+
+Run the Infinispan Server and access the Console as explained in the https://infinispan.org/get-started/[“Getting started tutorial”].
+To create a cache, use the cache creation wizard by clicking the **"Create Cache"** button.
+In the cache tuning step, you'll find the "Aliases" option, where you can add as many aliases as you want.
+
+[caption="Create cache with aliases",link=/assets/images/blog/2024-09-26-cache-aliases/createAndAddAlias.png]
+image::/assets/images/blog/2024-09-26-cache-aliases/createAndAddAlias.png[Create cache with aliases]
+
+In the final step, you'll be able to review the configuration in **JSON**, **XML**, or **YAML** formats.
+
+[caption="Confirm cache with aliases",link=/assets/images/blog/2024-09-26-cache-aliases/confirmCacheWithAlias.png]
+image::/assets/images/blog/2024-09-26-cache-aliases/confirmCacheWithAlias.png[Confirm cache with aliases]
+
+When you create a cache with aliases, the list will show the cache's aliases.
+You can filter caches by name or alias using the “search by” field..
+
+[caption="Display cache with aliases",link=/assets/images/blog/2024-09-26-cache-aliases/alias1Alias2MyCache.png]
+image::/assets/images/blog/2024-09-26-cache-aliases/alias1Alias2MyCache.png[Display cache with aliases]
+
+
+## Adding an alias at runtime
+For existing caches, good news! The aliases attribute in a cache configuration can be
+changed at runtime. You can do this in several ways:
+
+* Using the **administration API** in **Hotrod**
+* Using the Infinispan Server Command Line Interface (CLI)
+* Using the *Server Console* or *REST API*
+
+*To perform this operation, you need ADMIN access in Infinispan.*
+
+### Using the Hotrod Client
+To modify an alias at runtime, use the administration API. Below is an example for client/server mode.
+If you're using Infinispan Embedded in your application, a similar API is available.
+
+[source, java]
+----
+RemoteCacheManager remoteCacheManager = // created or injected if using Quarkus or Spring Boot
+remoteCacheManager.administration().updateConfigurationAttribute("myCache", "aliases", "alias alias2");
+RemoteCache<String, String> cacheFromAlias = cacheManager.getCache("alias");
+----
+
+Check this example and more in the https://infinispan.org/tutorials/simple/simple_tutorials.html[Infinispan Simple Tutorials].
+
+### Using the Command Line Tool
+The Command Line Tool (CLI) of Infinispan provides a way to change cache aliases at runtime.
+
+First, run the CLI with the following command:
+[source, bash]
+----
+podman/docker run -it --net=host infinispan/cli
+----
+
+From the command line, connect to the running server:
+[source, bash]
+----
+[disconnected]> connect
+Username: admin
+Password: ********
+[6b0130c153e3-50183@cluster//containers/default]>
+----
+
+Then, use “alter cache” command to update aliases attribute:
+[source, bash]
+----
+alter cache myCache2 --attribute=aliases --value=current_catalog
+----
+Finally, describe the configuration of the cache and verify the change:
+[source, bash]
+----
+[6b0130c153e3-50183@cluster//containers/default]> describe caches/cache2
+{
+  "myCache2" : {
+    "distributed-cache" : {
+      "aliases" : [ "current_catalog" ],
+      "owners" : "2",
+      "mode" : "SYNC",
+      "statistics" : true,
+      "encoding" : {
+        "media-type" : "application/x-protostream"
+      }
+    }
+  }
+}
+----
+*TIP: Use help command*
+[source, bash]
+----
+[6b0130c153e3-50183@cluster//containers/default]> alter cache -h
+Usage: alter cache [<options>] <name>
+Alters a cache configuration
+
+Options:
+--attribute  The configuration attribute
+--value      The value for the configuration attribute. If the attribute supports multiple values, separate them with commas
+-f, --file
+-h, --help
+
+Argument:
+The cache name
+----
+
+### Using the Server Console
+From the list of caches, select _Edit aliases_ action.
+[caption="Edit aliases",link=/assets/images/blog/2024-09-26-cache-aliases/editAliasAction.png]
+image::/assets/images/blog/2024-09-26-cache-aliases/editAliasAction.png[Edit aliases]
+
+A modal dialog will open. You can add or remove aliases from there.
+[caption="Update aliases",link=/assets/images/blog/2024-09-26-cache-aliases/updateAliasesModal.png]
+image::/assets/images/blog/2024-09-26-cache-aliases/updateAliasesModal.png[Update aliases]
+
+## Supporting multiple databases
+Let’s try selecting databases 0 and 1 using the Redis CLI. To switch databases in Redis,
+use the _SELECT_ command followed by the database number. Lets try over Infinispan again.
+
+First, use `SELECT 0` to start in database 0. Then, use `SELECT 1` to switch to database 1.
+[source, bash]
+----
+> redis-cli  --user admin --pass password
+127.0.0.1:11222[1]> select 0
+OK
+127.0.0.1:11222[1]> select 1
+(error) ERR DB index is out of range
+----
+
+Database 0 works, but database 1 does not.
+On closer inspection of the *respCache* configuration, we see the default *respCache* with
+*alias "0"* is defined.
+
+[caption="Resp cache config",link=/assets/images/blog/2024-09-26-cache-aliases/respCacheConfig.png]
+image::/assets/images/blog/2024-09-26-cache-aliases/respCacheConfig.png[Resp cache config]
+
+To select *database “1”*, you need to create a new cache.
+Lets use the Infinispan Console again to do that.
+Go to the cache creation wizard and choose “add cache configuration” option this time.
+
+[caption="Create cache with config",link=/assets/images/blog/2024-09-26-cache-aliases/addCacheConfig.png]
+image::/assets/images/blog/2024-09-26-cache-aliases/addCacheConfig.png[Create cache with config]
+
+Choose the *RESP.DIST* template and create the cache. This template is specifically
+designed for RESP caches.
+
+[caption="RESP template",link=/assets/images/blog/2024-09-26-cache-aliases/selectRESPDIST.png]
+image::/assets/images/blog/2024-09-26-cache-aliases/selectRESPDIST.png[RESP template]
+
+Finally, *add alias "1"* to the new cache as described in the section on adding an alias at runtime.
+Alternatively, you can copy and paste the configuration from *respCache* changing the alias `0` to alias `1`.
+
+[caption="Two RESP caches",link=/assets/images/blog/2024-09-26-cache-aliases/twoRESPCaches.png]
+image::/assets/images/blog/2024-09-26-cache-aliases/twoRESPCaches.png[Two RESP caches]
+
+Now that we have a cache with alias `1`, we can select and add the data:
+[source, bash]
+----
+> redis-cli  --user admin --pass password
+127.0.0.1:11222[1]> select 0
+OK
+127.0.0.1:11222[1]> select 1
+OK
+127.0.0.1:11222[1]> set hello word
+OK
+----
+
+It is *important* to highlight that, *unlike Redis Databases, each cache can be set
+up differently based on your application's needs*. This lets you take advantage of
+Infinispan's flexible configuration (For example, you can add backups using Cross-Site Replication
+for some “databases” and not all of them) while still keeping the simplicity of
+using your Redis client in your app.
+
+## Conclusions
+In this tutorial, you’ve learned how to use multiple databases with the RESP protocol
+and how to use Infinispan caches as a replacement for Redis databases.
+By using different caches instead of Redis databases, you gain several advantages,
+as discussed. You can now approach your data needs in a more flexible and effective way,
+tailored to your specific scenarios. You have also learned what cache aliases are and how
+helpful they can be in different situations, not just Redis databases.
