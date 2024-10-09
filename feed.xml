@@ -1,4 +1,464 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.3">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2024-10-05T13:43:10+02:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Infinispan as an Open Source cache layer for CMS</title><link href="https://infinispan.org/blog/2024/06/21/cms-cache" rel="alternate" type="text/html" title="Infinispan as an Open Source cache layer for CMS" /><published>2024-06-21T02:00:00+02:00</published><updated>2024-06-21T02:00:00+02:00</updated><id>https://infinispan.org/blog/2024/06/21/cms-cache</id><content type="html" xml:base="https://infinispan.org/blog/2024/06/21/cms-cache"><![CDATA[<div class="sect1">
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.3">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2024-10-09T10:13:08+02:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Supporting Multiple Redis Databases with Infinispan cache aliases enhancement</title><link href="https://infinispan.org/blog/2024/10/07/cache-aliases-redis-databases" rel="alternate" type="text/html" title="Supporting Multiple Redis Databases with Infinispan cache aliases enhancement" /><published>2024-10-07T02:00:00+02:00</published><updated>2024-10-07T02:00:00+02:00</updated><id>https://infinispan.org/blog/2024/10/07/cache-aliases</id><content type="html" xml:base="https://infinispan.org/blog/2024/10/07/cache-aliases-redis-databases"><![CDATA[<div class="paragraph">
+<p>In Infinispan 15 we provided a large set of commands to make it possible to replace your Redis Server
+by Infinispan, without changing your code. In this tutorial you will learn how Infinispan cache aliases
+will help you on replacing your Redis Server by Infinispan for multiple Redis databases.</p>
+</div>
+<div class="paragraph">
+<p>Key takeaways:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>What are cache aliases and how to create caches with aliases or update existing ones</p>
+</li>
+<li>
+<p>Learn how Infinispan and Redis differ in data organization</p>
+</li>
+<li>
+<p>Support multiple databases in Infinispan with cache aliases when using the <strong>RESP protocol</strong></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><em>Supporting multiple Redis databases is available since Infinispan 15.0 (latest stable release at the time of this writing).
+However, Hot Rod, CLI and Infinispan Console support is Tech Preview in Infinispan 15.1 (in development right now).</em></p>
+</div>
+<div class="sect1">
+<h2 id="redis-hot-replacement-for-infinispan">Redis Hot Replacement for Infinispan</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Since Infinispan 15, you can use Infinispan as a hot replacement for Redis because it supports most Redis
+commands through the RESP protocol. This works because Infinispan Server has the RESP endpoint enabled by
+default. Redis clients will automatically connect and be routed to Infinispan’s internal connector.</p>
+</div>
+<div class="sect2">
+<h3 id="running-the-infinispan-server-and-using-a-redis-client">Running the Infinispan Server and using a Redis client</h3>
+<div class="paragraph">
+<p>Testing a Redis client with Infinispan Server is very easy.</p>
+</div>
+<div class="paragraph">
+<p>First run the Infinispan Server as explained in the <a href="https://infinispan.org/get-started/">Getting Started tutorial</a>.</p>
+</div>
+<div class="paragraph">
+<p><strong>Important: Caches aliases fully work from 15.1.0.Dev04 release. Make sure you pull the latest 15.1 image locally.</strong></p>
+</div>
+<div class="paragraph">
+<p><strong>Command line with Docker or Podman</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" quay.io/infinispan/server:15.1
+
+podman run -it -p 11222:11222 -e USER="admin" -e PASS="password" --net=host quay.io/infinispan/server:15.1</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Next, connect to Infinispan using <a href="https://redis.io/docs/latest/develop/connect/cli/">Redis-CLI</a>.
+Use port <strong>11222</strong> instead of the default <strong>6379</strong>. Since Infinispan is secured by default, make sure
+to provide the admin credentials.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>&gt; redis-cli -p 11222 --user admin --pass password
+127.0.0.1:11222&gt; set hello world
+OK
+127.0.0.1:11222&gt; get hello
+"world"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><em><strong>That’s all!</strong></em></p>
+</div>
+<div class="paragraph">
+<p>If you&#8217;re wondering where the data is stored, it’s in the <strong>“respCache”</strong>. This is the default cache
+used by the Infinispan RESP connector, and it&#8217;s pre-configured with sensible defaults.
+It’s ready to use and serves as a good replacement for Redis. Please note that starting with I
+nfinispan 15.1, the data container cache list includes a new column called "Aliases".
+We&#8217;ll cover that later.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan Server Console in <strong><a href="http://localhost:11222" class="bare">http://localhost:11222</a> (admin/password)</strong> credentials.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2024-09-26-cache-aliases/respCacheDataContainer.png"><img src="/assets/images/blog/2024-09-26-cache-aliases/respCacheDataContainer.png" alt="RESP Cache Data Container"></a>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="redis-databases-versus-infinispan-caches">Redis Databases versus Infinispan Caches</h3>
+<div class="paragraph">
+<p>In Redis, databases are essentially separate, isolated namespaces within a single Redis server.
+Each database can store its own set of key-value pairs independently from the others.</p>
+</div>
+<div class="paragraph">
+<p>By default, Redis provides 16 databases, numbered from 0 to 15. You can switch between these databases
+using the SELECT command. This feature helps organize data and isolate different applications or use cases
+within the same Redis instance, though it&#8217;s important to note that all databases share the same memory
+space and configuration settings.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan on the other hand employs a distributed cache model where data is spread across multiple nodes.
+It doesn&#8217;t use the concept of separate databases; instead, it organizes data using caches, which can be
+configured with different settings and partitioned across a cluster. Data is distributed and replicated across multiple nodes, offering high availability and scalability. There isn’t a direct equivalent to Redis’s databases, but data can be segmented using different caches and configurations.</p>
+</div>
+<div class="paragraph">
+<p>Here is a table that resumes the main differences between Redis Databases and Infinispan caches:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Aspect</th>
+<th class="tableblock halign-left valign-top">Redis Database</th>
+<th class="tableblock halign-left valign-top">Infinispan Cache</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Definition</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A logical namespace within a single Redis instance, allowing isolation of keys and values. Default of 16 databases per instance. All databases share server resources and configuration.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A container for key-value pairs within a distributed or in-memory cache. Can be distributed across multiple nodes, with multiple caches configurable within the same instance.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Storage Model</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stores data in a single server’s memory with simple key-value storage. Databases are isolated from each other but share server resources.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stores data across a cluster of nodes with features like partitioning, replication, and distributed caching. Suitable for large-scale and high-availability scenarios.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Isolation</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Provides isolation between databases using the <em>SELECT</em> command. All databases share memory and configuration settings.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Provides isolation and configuration flexibility at the cache level. Each cache can be independently configured and may be distributed or replicated.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Configuration and Flexibility</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Limited to basic configuration options related to the database index and server settings. All databases share the same server resources.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extensive configuration options for each cache, including different modes (e.g., local, distributed, replicated), eviction policies, and more.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>If the Infinispan connector uses a single cache named “respCache” by default,
+you can support multiple Redis databases… by using <strong>cache aliases</strong>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="cache-alias-to-rescue">Cache alias to rescue</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In Infinispan, cache aliases are alternative names you can assign to a cache.
+They allow you to refer to the same underlying cache configuration using different names.
+Cache aliases in Infinispan allow for efficient switching between different versions or states
+of cached data, without having to modify or reload your application logic. This makes cache
+aliases especially useful in scenarios where data needs to be updated, but you want to ensure
+high availability and minimal impact to application performance.</p>
+</div>
+<div class="sect2">
+<h3 id="use-cases-for-cache-aliases">Use cases for cache aliases</h3>
+<div class="paragraph">
+<p>Cache aliases in Infinispan are great for managing changing data without disrupting
+your application. It allows you to switch between data snapshots easily. You can keep
+using an old data version while loading a new one. When the new data is ready, you just
+switch the alias to point to it, without downtime. There is better performance and high
+availability since your app doesn’t touch the cache that’s being updated, it runs smoothly
+without slowdowns or errors. If something goes wrong, you can quickly rollback and switch
+to the previous data version with the alias.</p>
+</div>
+<div class="paragraph">
+<p>For example, imagine an online shop that needs to update its catalog:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The shop keeps showing products using the current data (<em>current_catalog</em> pointing to <em>catalog_snapshot_1</em>).</p>
+</li>
+<li>
+<p>While customers browse, new product data is loaded into <em>catalog_snapshot_2</em> in the background.</p>
+</li>
+<li>
+<p>Once <em>catalog_snapshot_2</em> is fully updated, the alias (<em>current_catalog</em>) is switched to point to <em>catalog_snapshot_2</em>.</p>
+</li>
+<li>
+<p>he old <em>catalog_snapshot_1</em> cache is now free to be cleared and used for the next update.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The website updates its catalog data without causing big delays or downtime for users.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="creating-a-cache-with-an-alias">Creating a cache with an alias</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Before learning how to use cache aliases for the RESP protocol and multiple databases,
+let’s first learn how to create and update cache aliases. There are several ways to create
+a cache or cache configuration in Infinispan, but my favorite is using the <strong>Infinispan Server Console</strong>.</p>
+</div>
+<div class="paragraph">
+<p>Run the Infinispan Server and access the Console as explained in the <a href="https://infinispan.org/get-started/">“Getting started tutorial”</a>.
+To create a cache, use the cache creation wizard by clicking the <strong>"Create Cache"</strong> button.
+In the cache tuning step, you&#8217;ll find the "Aliases" option, where you can add as many aliases as you want.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2024-09-26-cache-aliases/createAndAddAlias.png"><img src="/assets/images/blog/2024-09-26-cache-aliases/createAndAddAlias.png" alt="Create cache with aliases"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>In the final step, you&#8217;ll be able to review the configuration in <strong>JSON</strong>, <strong>XML</strong>, or <strong>YAML</strong> formats.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2024-09-26-cache-aliases/confirmCacheWithAlias.png"><img src="/assets/images/blog/2024-09-26-cache-aliases/confirmCacheWithAlias.png" alt="Confirm cache with aliases"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>When you create a cache with aliases, the list will show the cache&#8217;s aliases.
+You can filter caches by name or alias using the “search by” field..</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2024-09-26-cache-aliases/alias1Alias2MyCache.png"><img src="/assets/images/blog/2024-09-26-cache-aliases/alias1Alias2MyCache.png" alt="Display cache with aliases"></a>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="adding-an-alias-at-runtime">Adding an alias at runtime</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>For existing caches, good news! The aliases attribute in a cache configuration can be
+changed at runtime. You can do this in several ways:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Using the <strong>administration API</strong> in <strong>Hotrod</strong></p>
+</li>
+<li>
+<p>Using the Infinispan Server Command Line Interface (CLI)</p>
+</li>
+<li>
+<p>Using the <strong>Server Console</strong> or <strong>REST API</strong></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>To perform this operation, you need ADMIN access in Infinispan.</strong></p>
+</div>
+<div class="sect2">
+<h3 id="using-the-hotrod-client">Using the Hotrod Client</h3>
+<div class="paragraph">
+<p>To modify an alias at runtime, use the administration API. Below is an example for client/server mode.
+If you&#8217;re using Infinispan Embedded in your application, a similar API is available.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">RemoteCacheManager remoteCacheManager = // created or injected if using Quarkus or Spring Boot
+remoteCacheManager.administration().updateConfigurationAttribute("myCache", "aliases", "alias alias2");
+RemoteCache&lt;String, String&gt; cacheFromAlias = cacheManager.getCache("alias");</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Check this example and more in the <a href="https://infinispan.org/tutorials/simple/simple_tutorials.html">Infinispan Simple Tutorials</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="using-the-command-line-tool">Using the Command Line Tool</h3>
+<div class="paragraph">
+<p>The Command Line Tool (CLI) of Infinispan provides a way to change cache aliases at runtime.</p>
+</div>
+<div class="paragraph">
+<p>First, run the CLI with the following command:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">podman/docker run -it --net=host infinispan/cli</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>From the command line, connect to the running server:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">[disconnected]&gt; connect
+Username: admin
+Password: ********
+[6b0130c153e3-50183@cluster//containers/default]&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Then, use “alter cache” command to update aliases attribute:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">alter cache myCache2 --attribute=aliases --value=current_catalog</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Finally, describe the configuration of the cache and verify the change:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">[6b0130c153e3-50183@cluster//containers/default]&gt; describe caches/cache2
+{
+  "myCache2" : {
+    "distributed-cache" : {
+      "aliases" : [ "current_catalog" ],
+      "owners" : "2",
+      "mode" : "SYNC",
+      "statistics" : true,
+      "encoding" : {
+        "media-type" : "application/x-protostream"
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>TIP: Use help command</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">[6b0130c153e3-50183@cluster//containers/default]&gt; alter cache -h
+Usage: alter cache [&lt;options&gt;] &lt;name&gt;
+Alters a cache configuration
+
+Options:
+--attribute  The configuration attribute
+--value      The value for the configuration attribute. If the attribute supports multiple values, separate them with commas
+-f, --file
+-h, --help
+
+Argument:
+The cache name</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="using-the-server-console">Using the Server Console</h3>
+<div class="paragraph">
+<p>From the list of caches, select <em>Edit aliases</em> action.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2024-09-26-cache-aliases/editAliasAction.png"><img src="/assets/images/blog/2024-09-26-cache-aliases/editAliasAction.png" alt="Edit aliases"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>A modal dialog will open. You can add or remove aliases from there.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2024-09-26-cache-aliases/updateAliasesModal.png"><img src="/assets/images/blog/2024-09-26-cache-aliases/updateAliasesModal.png" alt="Update aliases"></a>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="supporting-multiple-databases">Supporting multiple databases</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Let’s try selecting databases 0 and 1 using the Redis CLI. To switch databases in Redis,
+use the <em>SELECT</em> command followed by the database number. Lets try over Infinispan again.</p>
+</div>
+<div class="paragraph">
+<p>First, use <code>SELECT 0</code> to start in database 0. Then, use <code>SELECT 1</code> to switch to database 1.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">&gt; redis-cli  --user admin --pass password
+127.0.0.1:11222[1]&gt; select 0
+OK
+127.0.0.1:11222[1]&gt; select 1
+(error) ERR DB index is out of range</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Database 0 works, but database 1 does not.
+On closer inspection of the <strong>respCache</strong> configuration, we see the default <strong>respCache</strong> with
+<strong>alias "0"</strong> is defined.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2024-09-26-cache-aliases/respCacheConfig.png"><img src="/assets/images/blog/2024-09-26-cache-aliases/respCacheConfig.png" alt="Resp cache config"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>To select <strong>database “1”</strong>, you need to create a new cache.
+Lets use the Infinispan Console again to do that.
+Go to the cache creation wizard and choose “add cache configuration” option this time.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2024-09-26-cache-aliases/addCacheConfig.png"><img src="/assets/images/blog/2024-09-26-cache-aliases/addCacheConfig.png" alt="Create cache with config"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>Choose the <strong>RESP.DIST</strong> template and create the cache. This template is specifically
+designed for RESP caches.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2024-09-26-cache-aliases/selectRESPDIST.png"><img src="/assets/images/blog/2024-09-26-cache-aliases/selectRESPDIST.png" alt="RESP template"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>Finally, <strong>add alias "1"</strong> to the new cache as described in the section on adding an alias at runtime.
+Alternatively, you can copy and paste the configuration from <strong>respCache</strong> changing the alias <code>0</code> to alias <code>1</code>.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2024-09-26-cache-aliases/twoRESPCaches.png"><img src="/assets/images/blog/2024-09-26-cache-aliases/twoRESPCaches.png" alt="Two RESP caches"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>Now that we have a cache with alias <code>1</code>, we can select and add the data:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">&gt; redis-cli  --user admin --pass password
+127.0.0.1:11222[1]&gt; select 0
+OK
+127.0.0.1:11222[1]&gt; select 1
+OK
+127.0.0.1:11222[1]&gt; set hello word
+OK</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It is <strong>important</strong> to highlight that, <strong>unlike Redis Databases, each cache can be set
+up differently based on your application&#8217;s needs</strong>. This lets you take advantage of
+Infinispan&#8217;s flexible configuration (For example, you can add backups using Cross-Site Replication
+for some “databases” and not all of them) while still keeping the simplicity of
+using your Redis client in your app.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="conclusions">Conclusions</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In this tutorial, you’ve learned how to use multiple databases with the RESP protocol
+and how to use Infinispan caches as a replacement for Redis databases.
+By using different caches instead of Redis databases, you gain several advantages,
+as discussed. You can now approach your data needs in a more flexible and effective way,
+tailored to your specific scenarios. You have also learned what cache aliases are and how
+helpful they can be in different situations, not just Redis databases.</p>
+</div>
+</div>
+</div>]]></content><author><name>Katia Aresti</name></author><category term="resp" /><category term="aliases" /><category term="cache" /><category term="redis" /><category term="database" /><summary type="html"><![CDATA[In Infinispan 15 we provided a large set of commands to make it possible to replace your Redis Server by Infinispan, without changing your code. In this tutorial you will learn how Infinispan cache aliases will help you on replacing your Redis Server by Infinispan for multiple Redis databases.]]></summary></entry><entry><title type="html">Infinispan as an Open Source cache layer for CMS</title><link href="https://infinispan.org/blog/2024/06/21/cms-cache" rel="alternate" type="text/html" title="Infinispan as an Open Source cache layer for CMS" /><published>2024-06-21T02:00:00+02:00</published><updated>2024-06-21T02:00:00+02:00</updated><id>https://infinispan.org/blog/2024/06/21/cms-cache</id><content type="html" xml:base="https://infinispan.org/blog/2024/06/21/cms-cache"><![CDATA[<div class="sect1">
 <h2 id="infinispan-as-an-open-source-cache-layer-for-cms">Infinispan as an Open Source cache layer for CMS</h2>
 <div class="sectionbody">
 <div class="paragraph">
@@ -1360,461 +1820,4 @@ The Infinispan Team</p>
 </div>
 <div class="paragraph">
 <p>(*) What? You also noticed we changed the expected result for a test. Surely you can easily guess why&#8230;&#8203; if not just ask us on <a href="https://infinispan.zulipchat.com/#">Zulip</a>!</p>
-</div>]]></content><author><name>Vittorio Rigamonti</name></author><category term="demo" /><category term="use case" /><category term="resp" /><category term="redis" /><summary type="html"><![CDATA[As you may know Infinispan 15 extended its RESP compatibility implementing most of the command related to the principal data types (set, list, hashes, sorted set&#8230;&#8203;).]]></summary></entry><entry><title type="html">Infinispan Insights, securing Infinispan with Keycloak</title><link href="https://infinispan.org/blog/2024/01/09/securing-infinispan-with-keycloak" rel="alternate" type="text/html" title="Infinispan Insights, securing Infinispan with Keycloak" /><published>2024-01-09T01:00:00+01:00</published><updated>2024-01-09T01:00:00+01:00</updated><id>https://infinispan.org/blog/2024/01/09/infinispan-security-keycloak</id><content type="html" xml:base="https://infinispan.org/blog/2024/01/09/securing-infinispan-with-keycloak"><![CDATA[<div class="sect1">
-<h2 id="infinispan-insights-securing-infinispan-with-keycloak">Infinispan Insights: Securing Infinispan with Keycloak</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>This tutorial shows you how to secure your Infinispan cluster using Keycloak.
-To understand the basics of Infinispan Security, check
-<a href="https://infinispan.org/blog/2023/12/19/infinispan-secured-caches">this blog post</a> before.</p>
-</div>
-<div class="paragraph">
-<p><strong>Key Points:</strong></p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Learn how to create a security realm in Keycloak.</p>
-</li>
-<li>
-<p>Override the default security realm in Infinispan.</p>
-</li>
-<li>
-<p>Authentication and authorization in Infinispan with Keycloak.</p>
-</li>
-</ul>
-</div>
-<div class="sect2">
-<h3 id="infinispan-and-keycloak-in-a-nutshell">Infinispan and Keycloak in a nutshell</h3>
-<div class="sect3">
-<h4 id="about-infinispan">About Infinispan</h4>
-<div class="paragraph">
-<p>Infinispan is an open-source, in-memory distributed key/value data store. It is designed to provide fast
-and scalable access to frequently accessed data by storing it in memory. In addition to caching,
-Infinispan offers features for data distribution, replication, and partitioning, making it suitable
-for use in distributed and clustered environments.</p>
-</div>
-<div class="paragraph">
-<p>Infinispan is often used in scenarios where low-latency access to data is critical, such as caching
-frequently accessed database queries, session data in web applications, or other
-use cases where quick access to data can improve overall system performance</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="about-keycloak">About Keycloak</h4>
-<div class="paragraph">
-<p><a href="https://www.keycloak.org/">Keycloak</a> is an open-source identity and access management solution developed by Red Hat.
-It provides functionalities for identity and access management, including features like single sign-on (SSO),
-user authentication, authorization, and user federation. Keycloak is designed to simplify the implementation
-of security protocols and standards such as OAuth 2.0, OpenID Connect, and SAML.
-Some key features include Single Sign-On (SSO), Identity Brokering, User Authentication,
-User Federation, RBAC and more.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="infinispan-and-keycloak">Infinispan and Keycloak</h4>
-<div class="paragraph">
-<p>Keycloak uses Infinispan as its underlying data store for caching and storage purposes.
-Infinispan provides  scalable and efficient caching of authentication and authorization-related data.
-This helps improve performance and responsiveness, especially in scenarios where quick access to user
-session information and other identity-related data is crucial.</p>
-</div>
-<div class="paragraph">
-<p>Some ways <strong>Keycloak leverages Infinispan</strong> include Caching User Sessions, storing Authorization policies,
-providing distributed caching, improving performance, <a href="https://www.keycloak.org/2023/12/recover-site-failures">failover recovering</a>
-and more.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="what-about-infinispan-leveraging-keycloak">What about Infinispan leveraging Keycloak ?</h4>
-<div class="paragraph">
-<p>Infinispan provides several ways to handle authentication and user management.
-By default, the security realm is properties based. However, token based authentication is supported
-and Keycloak can be used for that purpose.</p>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="creating-a-security-realm-in-keycloak">Creating a Security Realm in Keycloak</h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="run-keycloak-in-dev-mode">Run Keycloak in dev mode</h3>
-<div class="paragraph">
-<p>The easiest way to use Keycloak on your laptop is in a container using the development mode.
-Because we&#8217;re going to run Keycloak in one container and Infinispan in another, let&#8217;s set up
-a network to connect them.</p>
-</div>
-<div class="paragraph">
-<p>For Linux users, there&#8217;s an option called <strong>network_mode: host</strong> that might be available
-to you instead of using a network bridge. However, since this option doesn&#8217;t work for
-Mac or Windows currently, we&#8217;ll focus on the method that suits all operating systems.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker network create -d bridge mynetwork
-docker run -p 8080:8080 --network=mynetwork --name=keycloak -e KEYCLOAK_ADMIN=keycloak -e KEYCLOAK_ADMIN_PASSWORD=keycloak quay.io/keycloak/keycloak:latest start-dev</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Keycloak Image will create an administrator user by defining the KEYCLOAK_ADMIN and KEYCLOAK_ADMIN_PASSWORD
-environment variables.</p>
-</div>
-<div class="paragraph">
-<p>After getting the container up and running, go to <a href="http://localhost:8080">http://localhost:8080</a>
-Click on the Administration Console link, and log in using the credentials <strong>"keycloak/keycloak"</strong>.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/adminKeycloak.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/adminKeycloak.png" alt="Admin Keycloak" width="800" height="316"></a>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="create-a-realm">Create a realm</h3>
-<div class="paragraph">
-<p>Keycloak realms are a fundamental concept in Keycloak. Realms in Keycloak serve as a way to
-isolate and manage different sets of users, applications, and their associated configurations.</p>
-</div>
-<div class="paragraph">
-<p>Using the web administration tool, create a new realm called <strong>"Infinispan"</strong>.
-This realm is what the Infinispan Server will use in the later steps of this tutorial.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/createRealmKeycloak.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/createRealmKeycloak.png" alt="Keycloak create realm" width="200" height="192"></a>
-</div>
-</div>
-<div class="paragraph">
-<p>Name your realm <strong>“infinispan”</strong>.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/infinispanRealmKeycloak.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/infinispanRealmKeycloak.png" alt="Keycloak: realm name is infinispan" width="800" height="569"></a>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="create-the-infinispan-clients">Create the Infinispan clients</h3>
-<div class="paragraph">
-<p>Clients are entities that can request authentication of a user. Clients come in two forms.
-The first type of client is an application that wants to participate in single-sign-on.
-These clients just want Keycloak to provide security for them. The other type of client is one that
-is requesting an access token so that it can invoke other services on behalf of the authenticated user.</p>
-</div>
-<div class="paragraph">
-<p>For the Infinispan Server and testing the Console security, we&#8217;ll require two clients set up
-in Keycloak: one named <strong>"infinispan-console"</strong> and the other <strong>"infinispan-server"</strong>.</p>
-</div>
-<div class="sect3">
-<h4 id="infinispan-console-client">Infinispan Console Client</h4>
-<div class="paragraph">
-<p>Create a Keycloak client named <strong>“infinispan-console”</strong>. The Infinispan Web Console uses this client
-to authenticate console users with Keycloak in order to obtain an authentication token. This token is
-then used to authenticate all requests by the console to the Infinispan server.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/infinispan-client-stepOne.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/infinispan-client-stepOne.png" alt="Keycloak: infinispan-console client step 1" width="800" height="377"></a>
-</div>
-</div>
-<div class="paragraph">
-<p>Configure the valid redirect URIs with Infinispan’s console URI: <strong><a href="http://localhost:11222" class="bare">http://localhost:11222</a></strong></p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/infinispan-client-stepTwo.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/infinispan-client-stepTwo.png" alt="Keycloak: infinispan-console client step 2" width="800" height="503"></a>
-</div>
-</div>
-<div class="paragraph">
-<p>This step is completed.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="infinispan-server-client">Infinispan Server Client</h4>
-<div class="paragraph">
-<p>Create a second client called <strong>"infinispan-server"</strong>. Set <strong>"client authentication"</strong> to <strong>"ON"</strong>.
-This defines the type of the OIDC client. When it&#8217;s ON, the OIDC type is set to confidential
-access type. When it&#8217;s OFF, it is set to public access type ("infinispan-console" client type).</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/infinispan-server-client-stepTwo.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/infinispan-server-client-stepTwo.png" alt="Keycloak: infinispan-server client step 2" width="800" height="368"></a>
-</div>
-</div>
-<div class="paragraph">
-<p>This step is completed.</p>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="create-a-user">Create a user</h3>
-<div class="paragraph">
-<p>Once we have the two clients created, we need to create an admin user for Infinispan.</p>
-</div>
-<div class="paragraph">
-<p>Click on the <strong>"users"</strong> menu, and create a user named <strong>"admin"</strong>.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/createAdminUser.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/createAdminUser.png" alt="Keycloak: create admin" width="800" height="448"></a>
-</div>
-</div>
-<div class="paragraph">
-<p>Once the user admin is created, navigate to the user detail page.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/adminDetailKeycloak.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/adminDetailKeycloak.png" alt="Keycloak: admin detail" width="800" height="575"></a>
-</div>
-</div>
-<div class="paragraph">
-<p>In the credentials tab, create a password for the user, for example, <strong>"adminPassword"</strong>.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/adminSetAPasswordKeycloak.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/adminSetAPasswordKeycloak.png" alt="Keycloak: admin set password" width="500" height="273"></a>
-</div>
-</div>
-<div class="paragraph">
-<p>We are now ready to run Infinispan.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="running-infinispan-secured-with-a-keycloak-realm">Running Infinispan secured with a Keycloak realm</h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="create-the-infinispan-security-realm-configuration">Create the Infinispan security realm configuration</h3>
-<div class="paragraph">
-<p>You can configure this in XML, JSON, or YAML. In the example provided below, the configuration
-is in YAML format.</p>
-</div>
-<div class="paragraph">
-<p>Create a file named <strong>infinispan-token-realm.yaml</strong> with the following content.</p>
-</div>
-<div class="paragraph">
-<p><strong>infinispan-token-realm.yaml</strong></p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>server:
- security:
-   securityRealms:
-     - name: default
-       tokenRealm:
-         name: infinispan
-         authServerUrl: 'http://keycloak:8080'
-         client-id: infinispan-console
-         oauth2Introspection:
-           clientId: infinispan-server
-           clientSecret: 'COPY AND PASTE THE SECRET FROM KEYCLOAK'
-           introspectionUrl: 'http://keycloak:8080/realms/infinispan/protocol/openid-connect/token/introspect'</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>We are not done yet!!</p>
-</div>
-<div class="paragraph">
-<p>Read the following sections to understand and <strong>change the placeholders</strong> in the file.</p>
-</div>
-<div class="sect3">
-<h4 id="default-security-realm-name">Default Security Realm name</h4>
-<div class="paragraph">
-<p>The security realm is named <strong>"default"</strong>. This file is designed to replace the default security realm
-in Infinispan, which is originally based on properties, with the configuration for this
-token-based realm.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="client-secret">Client Secret</h4>
-<div class="paragraph">
-<p>Retrieve the secret for the <strong>"infinispan-server"</strong> client from the Keycloak Administration,
-and then paste the secret value into the file replacing <strong>'COPY AND PASTE THE SECRET FROM KEYCLOAK'</strong>.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/grabSecretFromInfinispanServerClient.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/grabSecretFromInfinispanServerClient.png" alt="Keycloak: grab secret" width="800" height="465"></a>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="authentication-server-url-authserverurl">Authentication Server URL - <strong>authServerUrl</strong></h4>
-<div class="paragraph">
-<p>The authentication server is Keycloak, and it&#8217;s running at <strong>localhost:8080</strong>. However, in the YAML
-configuration above, we used <strong>"keycloak"</strong> instead of "localhost" (the container name).
-This adjustment is needed when running containers in a Docker network. The Infinispan Server
-will be reaching out to the Keycloak Server inside the Docker environment. As mentioned earlier,
-Linux users can use "localhost" with the <strong>network_mode: host</strong> configuration.</p>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="run-the-infinispan-server-overriding-the-default-security-realm">Run the Infinispan Server overriding the default security realm</h3>
-<div class="paragraph">
-<p>Lets run Infinispan in a container providing the created security realm configuration.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker run -it -p 11222:11222 -v $(pwd):/user-config
---network=mynetwork
---name=infinispan quay.io/infinispan/server:15.0
--c infinispan.xml
--c /user-config/infinispan-token-realm.yaml</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The command:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Creates a volume "user-config"</strong> in the current directory where we created the file <code>infinispan-token-realm.yaml</code></p>
-</li>
-<li>
-<p><strong>Attaches the container to the network "mynetwork"</strong> so Infinispan and Keycloak can connect</p>
-</li>
-<li>
-<p><strong>Uses <code>-c</code></strong>, which means the container is using the default configuration file, <code>infinispan.xml</code>.
-Yet, specifying another <code>-c</code> file, it adds the content of <code>infinispan-token-realm.yaml</code> to <code>infinispan.xml</code>.
-Since this file configures the default security realm, the original Infinispan default properties realm
-will be replaced with the token-based realm.</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="verify-the-changes">Verify the changes</h3>
-<div class="paragraph">
-<p>Accessing the following URL provides the information used by the Infinispan Web console
-to handle authentication.</p>
-</div>
-<div class="paragraph">
-<p><a href="http://localhost:11222/rest/v2/login?action=config" class="bare">http://localhost:11222/rest/v2/login?action=config</a></p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
-   "mode": "OIDC",
-   "clientId": "infinispan-console",
-   "ready": "true",
-   "realm": "infinispan",
-   "url": "http://keycloak:8080"
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The Infinispan Console will use the information above, and making use of the
-<a href="https://www.keycloak.org/docs/latest/securing_apps/index.html#_javascript_adapter">Keycloak Javascript Adapter</a>,
-the interface  will redirect to Keycloak for user authentication.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="connect-to-the-console-with-the-admin-user">Connect to the console with the admin user</h3>
-<div class="paragraph">
-<p>Go the console web URL: <a href="http://localhost:11222" class="bare">http://localhost:11222</a></p>
-</div>
-<div class="sect3">
-<h4 id="this-site-cant-be-reached">This site can’t be reached</h4>
-<div class="paragraph">
-<p>The console needs to access Keycloak from outside the container.
-However, the realm configuration uses <code>keycloak</code> host.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/siteNotReached.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/siteNotReached.png" alt="Site not reached" width="400" height="263"></a>
-</div>
-</div>
-<div class="paragraph">
-<p>To avoid this issue, the workaround is simple: add to the following line to the <code>/etc/hosts</code> file:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre> 127.0.0.1      keycloak</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>As mentioned before, If you are using linux you can avoid this by using localhost and running
-both containers with network_mode: host.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="authenticate-using-keycloak">Authenticate using Keycloak</h4>
-<div class="paragraph">
-<p>When opening the Infinispan Console, Infinispan will attempt to make a call to a REST API
-that requires authentication. You&#8217;ll be redirected to the Keycloak authentication, where you
-should use the credentials <strong>admin/adminPassword</strong>. When you initially connect as admin,
-you&#8217;ll be prompted to change the password. For this example, you can stick with "adminPassword".</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/authenticateUsingKeycloak.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/authenticateUsingKeycloak.png" alt="Infinispan: authenticate with Keycloak" width="400" height="258"></a>
-</div>
-</div>
-<div class="paragraph">
-<p>After Keycloak redirects back to the Infinispan Console, you can verify that admin is authenticated.
-However, you will encounter Unauthorized errors in the console interface, since the connected
-user’s roles are not known by Infinispan.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/adminIsNotAnAdmin.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/adminIsNotAnAdmin.png" alt="Admin has not admin role" width="800" height="264"></a>
-</div>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="create-and-assign-infinispan-admin-role">Create and assign Infinispan ADMIN role</h3>
-<div class="paragraph">
-<p>To grant complete access to the admin user, it&#8217;s necessary to create a role named <strong>"admin"</strong>
-and assign that role to the user in Keycloak.</p>
-</div>
-<div class="sect3">
-<h4 id="create-the-admin-role-in-keycloak">Create the ADMIN role in Keycloak</h4>
-<div class="paragraph">
-<p>Open the Keycloak administration interface, click on "Roles", and then create a role with the name
-"admin".</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/createRoleAdminKeycloak.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/createRoleAdminKeycloak.png" alt="Keycloak: create admin role" width="800" height="285"></a>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="assign-the-admin-role-in-keycloak">Assign the ADMIN role in Keycloak</h4>
-<div class="paragraph">
-<p>In the admin user detail page, go to the Role Mapping tab and assign the previously created
-"admin" role there.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/asignAdminRoleToAdminUser.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/asignAdminRoleToAdminUser.png" alt="Keycloak: assign admin role to admin user" width="800" height="361"></a>
-</div>
-</div>
-<div class="paragraph">
-<p>Return to the Infinispan Console, and you&#8217;ll notice that the admin user is now granted the
-admin role in Infinispan as well.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/adminIsGranted.png"><img src="/assets/images/blog/2024-01-09-infinispan-secured-keycloak/adminIsGranted.png" alt="Infinispan: admin is granted" width="800" height="440"></a>
-</div>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="to-go-further">To go further</h3>
-<div class="paragraph">
-<p>In the <a href="https://infinispan.org/tutorials/simple/simple_tutorials.html#secured_with_token_keycloak_remote-cache-tutorials">Infinispan Simple tutorials</a>
-repository you will find an example with docker-compose, for Linux and non linux users.
-There are many other advanced features in Keycloak, this is just the most simple use case.</p>
-</div>
-<div class="paragraph">
-<p>Learn more about it in the Keycloak and Infinispan documentation.</p>
-</div>
-</div>
-</div>
-</div>]]></content><author><name>Katia Aresti</name></author><category term="tutorial" /><category term="security" /><category term="rbac" /><category term="authentication" /><category term="keycloak" /><summary type="html"><![CDATA[Infinispan Insights: Securing Infinispan with Keycloak]]></summary></entry></feed>
+</div>]]></content><author><name>Vittorio Rigamonti</name></author><category term="demo" /><category term="use case" /><category term="resp" /><category term="redis" /><summary type="html"><![CDATA[As you may know Infinispan 15 extended its RESP compatibility implementing most of the command related to the principal data types (set, list, hashes, sorted set&#8230;&#8203;).]]></summary></entry></feed>
