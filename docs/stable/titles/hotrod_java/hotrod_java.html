@@ -566,6 +566,7 @@ $(addBlockSwitches);
 </li>
 <li><a href="#forcing-return-values_hotrod-client-configuration">3.8. Forcing Return Values</a></li>
 <li><a href="#creating-caches-hotrod_hotrod-client-configuration">3.9. Creating remote caches from Hot Rod clients</a></li>
+<li><a href="#configuring-hotrod-metrics_hotrod-client-configuration">3.10. Configuring Hot Rod Client metrics</a></li>
 </ul>
 </li>
 <li><a href="#hotrod-client-api_hot_rod">4. Hot Rod Client API</a>
@@ -923,7 +924,7 @@ artifact you add as a dependency to your project.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;properties&gt;
-  &lt;version.infinispan&gt;15.0.5.Final&lt;/version.infinispan&gt;
+  &lt;version.infinispan&gt;15.0.10.Final&lt;/version.infinispan&gt;
 &lt;/properties&gt;
 
 &lt;dependencyManagement&gt;
@@ -2055,6 +2056,101 @@ infinispan.client.hotrod.cache.[my.other.cache].configuration_uri=file:///path/t
 </ul>
 </div>
 </div>
+<div class="sect2">
+<h3 id="configuring-hotrod-metrics_hotrod-client-configuration"><a class="anchor" href="#configuring-hotrod-metrics_hotrod-client-configuration"></a>3.10. Configuring Hot Rod Client metrics</h3>
+<div class="paragraph">
+<p>Hot Rod Java clients collect and expose metrics related to the connection pool and cache requests.
+Implement the SPI <code>RemoteCacheManagerMetricsRegistry</code> to register metrics in the collector of your choice.
+Infinispan provides an implementation using Micrometer.</p>
+</div>
+<div class="paragraph">
+<p>You can configure generic implementation of Hot Rod client metrics or the provided Micrometer implementation as shown in the following examples.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Configure a generic implementation.</p>
+<div class="listingblock primary">
+<div class="title">ConfigurationBuilder</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-java" data-lang="java">RemoteCacheManagerMetricsRegistry registry = ...;
+ConfigurationBuilder clientBuilder = new ConfigurationBuilder();
+clientBuilder.addServer()
+               .host("127.0.0.1")
+               .port(11222)
+             .withMetricRegistry(registry);
+RemoteCacheManager remoteCacheManager = new RemoteCacheManager(clientBuilder.build());</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Configure the Micrometer implementation.</p>
+<div class="paragraph">
+<p>Infinispan provides a Micrometer implementation to collect the metrics.
+This implementation has some configuration options used by Micrometer.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">ConfigurationBuilder</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-java" data-lang="java">ConfigurationBuilder clientBuilder = ...; <i class="conum" data-value="1"></i><b>(1)</b>
+MeterRegistry registry = ...; <i class="conum" data-value="2"></i><b>(2)</b>
+MicrometerRemoteCacheManagerMetricsRegistry.Builder metricsBuilder = new MicrometerRemoteCacheManagerMetricsRegistry.Builder(registry) <i class="conum" data-value="3"></i><b>(3)</b>
+   .withHistograms(histograms) <i class="conum" data-value="4"></i><b>(4)</b>
+   .withPrefix(prefix) <i class="conum" data-value="5"></i><b>(5)</b>
+   .withTag("my-tag", "my-value"); <i class="conum" data-value="6"></i><b>(6)</b>
+HotRodMetricRegistry registry = metricsBuilder.build();
+clientBuilder.withMetricRegistry(registry);</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The Hot Rod client configuration builder.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The Micrometer <code>MeterRegistry</code> implementation used by the application.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Set the <code>MeterRegistry</code> implementation in the <code>Builder</code> constructor. Must be non-null.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Enables histograms.
+Micrometer will expose the histogram percentiles when enabled.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Metrics name are in the format <code>vendor.&lt;prefix&gt;.&lt;name&gt;</code>.
+The <code>&lt;prefix&gt;</code> is configured here and, by default, is <code>client.hotrod</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>Adds Micrometer tags to all metrics (for example, an application ID).
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Histograms can affect resources consumption and may degrade performance.</p>
+</div>
+</td>
+</tr>
+</table>
+</div></td>
+</tr>
+</table>
+</div>
+</li>
+</ul>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -3132,6 +3228,20 @@ Hot Rod transactions should not use <code>FULL_XA</code> because it degrades per
 <p>Transactional <a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html">RemoteCache</a> are configured per-cache basis.
 The exception is the transaction&#8217;s <code>timeout</code> which is global, because a single transaction can interact with multiple <a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html">RemoteCache</a>s.</p>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Embedded Infinispan supports pessimistic locks but Hot Rod clients do not. Therefore, the transaction result obtained from using pessimistic locks in Infinispan server might differ from the result obtained from Hot Rod client.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>The following example shows how to configure a transactional <a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html">RemoteCache</a> for cache <code>my-cache</code>:</p>
 </div>
@@ -3521,7 +3631,7 @@ container.start();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-04-18 11:25:44 -0400
+Last updated 2024-10-11 14:14:58 UTC
 </div>
 </div>
 <script type="text/x-mathjax-config">
