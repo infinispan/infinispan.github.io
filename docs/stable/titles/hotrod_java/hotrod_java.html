@@ -744,6 +744,31 @@ builder.addCluster("NYC").clusterClientIntelligence(ClientIntelligence.BASIC);</
 <pre class="highlight nowrap"><code>infinispan.client.hotrod.cluster.intelligence.NYC=BASIC</code></pre>
 </div>
 </div>
+<h4 id="failed_server_timeout" class="discrete">Failed Server Timeout</h4>
+<div class="paragraph">
+<p>If a server does not report the topology as BASIC, or the client is unable to connect to a server due to network issues, the client will mark the server as failed.
+A client does not attempt to connect to a server marked as failed until the client receives an updated topology.
+Because BASIC topology never sends an update, the client will not re-attempt connection.</p>
+</div>
+<div class="paragraph">
+<p>To avoid such a situation, you can use the <code>serverFailureTimeout</code> setting that clears the failed server status after a defined period of time.
+Infinispan will try to reconnect to the server after the defined timeout. If the server is still unreachable, it is marked as failed again and the connection will be re-attempted after the defined timeout.
+You can disabled reconnection attempts by setting the <code>serverFailureTimeout</code> value to <code>-1</code>.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">ConfigurationBuilder</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-java" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
+builder.serverFailureTimeout(5000).clusterClientIntelligence(ClientIntelligence.BASIC);</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">hotrod-client.properties</div>
+<div class="content">
+<pre class="highlight nowrap"><code>infinispan.client.hotrod.server_failure_timeout=5000
+infinispan.client.hotrod.client_intelligence=BASIC</code></pre>
+</div>
+</div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
 <ul>
@@ -923,7 +948,7 @@ artifact you add as a dependency to your project.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;properties&gt;
-  &lt;version.infinispan&gt;15.0.5.Final&lt;/version.infinispan&gt;
+  &lt;version.infinispan&gt;15.0.11.Final&lt;/version.infinispan&gt;
 &lt;/properties&gt;
 
 &lt;dependencyManagement&gt;
@@ -3132,6 +3157,20 @@ Hot Rod transactions should not use <code>FULL_XA</code> because it degrades per
 <p>Transactional <a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html">RemoteCache</a> are configured per-cache basis.
 The exception is the transaction&#8217;s <code>timeout</code> which is global, because a single transaction can interact with multiple <a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html">RemoteCache</a>s.</p>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Embedded Infinispan supports pessimistic locks but Hot Rod clients do not. Therefore, the transaction result obtained from using pessimistic locks in Infinispan server might differ from the result obtained from Hot Rod client.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>The following example shows how to configure a transactional <a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html">RemoteCache</a> for cache <code>my-cache</code>:</p>
 </div>
@@ -3521,7 +3560,7 @@ container.start();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-04-18 11:25:44 -0400
+Last updated 2024-11-12 16:45:32 UTC
 </div>
 </div>
 <script type="text/x-mathjax-config">
