@@ -547,7 +547,6 @@ $(addBlockSwitches);
 <ul class="sectlevel3">
 <li><a href="#configuring-hotrod-clusters_hotrod-client-configuration">3.2.1. Defining Infinispan Clusters in Client Configuration</a></li>
 <li><a href="#switching-hotrod-clusters_hotrod-client-configuration">3.2.2. Manually Switching Infinispan Clusters</a></li>
-<li><a href="#configuring-hotrod-connection-pools_hotrod-client-configuration">3.2.3. Configuring Connection Pools</a></li>
 </ul>
 </li>
 <li><a href="#configuring-hotrod-authentication_hotrod-client-configuration">3.3. Configuring Authentication Mechanisms for Hot Rod Clients</a>
@@ -665,6 +664,22 @@ and automatically switch to available nodes.</p>
 requests directly to those nodes, which reduces latency.</p>
 </li>
 </ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The client only supports Hot Rod protocol version 3.0 and newer.
+The server supports Hot Rod protocol version 2.0 and newer.
+If a client is needed that supports older versions up to 2.0 the hotrod-client-legacy module can be used.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 </div>
 <div class="sect2">
@@ -892,8 +907,22 @@ For instance during a migration or upgrade to your Infinispan cluster, the Hot R
 <div class="title">Infinispan 10 and later</div>
 <p>Hot Rod protocol version 3.x automatically negotiates the highest version possible for clients with Infinispan Server.</p>
 </div>
-<div class="paragraph">
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
 <div class="title">Infinispan 9.4 and earlier</div>
+<div class="paragraph">
+<p>The client no longer supports HotRod protocol versions older than 3.0. As such you must use an older client or the <code>hotrod-client-legacy</code> module.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
 <p>Clients that use a Hot Rod protocol version that is higher than the Infinispan Server version must set the <code>infinispan.client.hotrod.protocol_version</code> property.</p>
 </div>
 <div class="ulist _additional-resources">
@@ -1171,60 +1200,6 @@ configuration, which is defined as a list of Infinispan servers.</p>
 </ul>
 </div>
 </div>
-<div class="sect3">
-<h4 id="configuring-hotrod-connection-pools_hotrod-client-configuration"><a class="anchor" href="#configuring-hotrod-connection-pools_hotrod-client-configuration"></a>3.2.3. Configuring Connection Pools</h4>
-<div class="paragraph">
-<p>Hot Rod Java clients keep pools of persistent connections to Infinispan servers to reuse TCP connections instead of creating them on each request.</p>
-</div>
-<div class="ulist">
-<div class="title">Procedure</div>
-<ul>
-<li>
-<p>Configure Hot Rod client connection pool settings as in the following examples:</p>
-</li>
-</ul>
-</div>
-<div class="listingblock primary">
-<div class="title">ConfigurationBuilder</div>
-<div class="content">
-<pre class="highlight nowrap"><code class="language-java" data-lang="java">ConfigurationBuilder clientBuilder = new ConfigurationBuilder();
-clientBuilder.addServer()
-               .host("127.0.0.1")
-               .port(11222)
-             .connectionPool()
-               .maxActive(10)
-               .exhaustedAction(ExhaustedAction.valueOf("WAIT"))
-               .maxWait(1)
-               .minIdle(20)
-               .minEvictableIdleTime(300000)
-               .maxPendingRequests(20);
-RemoteCacheManager remoteCacheManager = new RemoteCacheManager(clientBuilder.build());</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">hotrod-client.properties</div>
-<div class="content">
-<pre class="highlight nowrap"><code>infinispan.client.hotrod.server_list = 127.0.0.1:11222
-infinispan.client.hotrod.connection_pool.max_active = 10
-infinispan.client.hotrod.connection_pool.exhausted_action = WAIT
-infinispan.client.hotrod.connection_pool.max_wait = 1
-infinispan.client.hotrod.connection_pool.min_idle = 20
-infinispan.client.hotrod.connection_pool.min_evictable_idle_time = 300000
-infinispan.client.hotrod.connection_pool.max_pending_requests = 20</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>These configuration options give fine-grained control over the pool.
-We recommend tuning the pool according to the application needs.
-Otherwise, you might experience an increase in latency for new connections opening or a decrease in throughput with few connections available.</p>
-</div>
-<div class="paragraph">
-<p>A large pool could lead to a "herd effect" of new connections, given an abrupt increase in load.
-However, it should help in throughput with more connections to attend requests.
-A smaller pool avoids this effect and consumes fewer resources.
-However, it can only handle so many requests before starting to degrade.</p>
-</div>
-</div>
 </div>
 <div class="sect2">
 <h3 id="configuring-hotrod-authentication_hotrod-client-configuration"><a class="anchor" href="#configuring-hotrod-authentication_hotrod-client-configuration"></a>3.3. Configuring Authentication Mechanisms for Hot Rod Clients</h3>
@@ -1238,19 +1213,6 @@ However, it can only handle so many requests before starting to degrade.</p>
 <p>Specify authentication mechanisms with the <code>saslMechanism()</code> method from the <code>AuthenticationConfigurationBuilder</code> class or with the <code>infinispan.client.hotrod.sasl_mechanism</code> property.</p>
 </li>
 </ul>
-</div>
-<div class="admonitionblock warning">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
-</td>
-<td class="content">
-Authorization is an expensive operation performed on each new connection.
-We strongly recommend tuning the connection pool.
-</td>
-</tr>
-</table>
 </div>
 <div class="listingblock primary">
 <div class="title">SCRAM</div>
@@ -1709,7 +1671,7 @@ infinispan.client.hotrod.sasl_mechanism = EXTERNAL</code></pre>
 <div class="sect2">
 <h3 id="enabling-hotrod-client-statistics_hotrod-client-configuration"><a class="anchor" href="#enabling-hotrod-client-statistics_hotrod-client-configuration"></a>3.5. Enabling Hot Rod client statistics</h3>
 <div class="paragraph">
-<p>Hot Rod Java clients can provide statistics that include remote cache and near-cache hits and misses as well as connection pool usage.</p>
+<p>Hot Rod Java clients can provide statistics that include remote cache and near-cache hits and misses.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -1856,9 +1818,6 @@ This means you do not need to manually keep the cache size within the boundaries
 <ul>
 <li>
 <p>Reside on Infinispan Server and keep track of the entries that the client has requested.</p>
-</li>
-<li>
-<p>Require a connection pool configuration that has a maximum of one active connection per server and uses the <code>WAIT</code> exhausted action.</p>
 </li>
 <li>
 <p>Cannot be used with unbounded near caches.</p>
@@ -2084,7 +2043,7 @@ infinispan.client.hotrod.cache.[my.other.cache].configuration_uri=file:///path/t
 <div class="sect2">
 <h3 id="configuring-hotrod-metrics_hotrod-client-configuration"><a class="anchor" href="#configuring-hotrod-metrics_hotrod-client-configuration"></a>3.10. Configuring Hot Rod Client metrics</h3>
 <div class="paragraph">
-<p>Hot Rod Java clients collect and expose metrics related to the connection pool and cache requests.
+<p>Hot Rod Java clients collect and expose metrics related to the cache requests.
 Implement the SPI <code>RemoteCacheManagerMetricsRegistry</code> to register metrics in the collector of your choice.
 Infinispan provides an implementation using Micrometer.</p>
 </div>
@@ -3656,7 +3615,7 @@ container.start();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-11-21 18:26:40 UTC
+Last updated 2024-11-22 07:34:42 UTC
 </div>
 </div>
 <script type="text/x-mathjax-config">
