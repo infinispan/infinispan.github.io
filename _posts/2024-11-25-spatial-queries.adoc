@@ -1,0 +1,139 @@
+---
+layout: blog
+title: Spatial queries
+permalink: /blog/:year/:month/:day/spatial-queries
+date: '2024-11-25T00:00:00.000-00:00'
+author: fax4ever
+tags: [ "search", "indexing", "spatial", "queries", "geographical" ]
+---
+
+= Spatial queries
+
+The upcoming Infinispan 15.1 will support *geographical queries*.
+The feature allows users to perform queries based on geographical criteria. 
+Spatial predicates can used in combination with other predicates to implement additional filtering.
+Moreover, spatial fields can be used to project distances and to order the results according to distances from a given geographical point.
+
+== Spatial fields mapping
+
+You can define on the same entity one or more spatial fields.
+Each of them denotes a pair of geographical coordinates: latitude and longitude.
+
+Suppose we want to define a train route, having a `name` field and two spatial fields `departure` and `arrival`.
+We can use `@GeoField` annotations together with pairs of `@Latitude` and `Longitude` annotations.
+Here is an example:
+
+[source,java]
+----
+@Proto
+@Indexed
+@GeoPoint(fieldName = "departure", projectable = true)
+@GeoPoint(fieldName = "arrival", sortable = true)
+public record TrainRoute(
+   @Keyword(normalizer = "lowercase") String name,
+   @Latitude(fieldName = "departure") Double departureLat,
+   @Longitude(fieldName = "departure") Double departureLon,
+   @Latitude(fieldName = "arrival") Double arrivalLat,
+   @Longitude(fieldName = "arrival") Double arrivalLon
+) {
+}
+----
+
+Alternatively, we can use the `@GeoField` annotation together with `LatLng` fields,
+in this case the same entity could be designed with the following, more compact, code:
+
+[source,java]
+----
+@Proto
+@Indexed
+public record TrainRoute(
+   @Keyword(normalizer = "lowercase") String name,
+   @GeoField LatLng departure,
+   @GeoField LatLng arrival
+) {
+}
+----
+
+The result on the index model is the same: in both cases we have defined
+two spatial fields: `departure` and `arrival`.
+
+For more information about spatial mappings see the documentation section:
+https://infinispan.org/docs/dev/titles/query/query.html#spatial_fields_mapping[Spatial fields mapping]
+
+== Spatial predicates
+
+Infinispan's query language supports three spatial predicates: `within circle`, `within polygon` and `within box`.
+
+In order to find all the trains departing from a place that is at most 300 Km from
+Bologna, we can define the following query:
+
+[source,java]
+----
+Query<TrainRoute> query = cache.query(
+   "from geo.TrainRoute r where r.departure within circle(:lat, :lon, :distance)");
+query.setParameter("lat", BOLOGNA.latitude());
+query.setParameter("lon", BOLOGNA.longitude());
+query.setParameter("distance", 300_000);
+List<TrainRoute> trainRoutes = trainQuery.list();
+assertThat(trainRoutes).extracting(TrainRoute::name)
+      .containsExactlyInAnyOrder("Milan-Como", "Bologna-Venezia", "Bologna-Selva");
+----
+
+The above query will return trains starting from Milano, since Milan is within 300 Km from Bologna.
+Conversely, the result set will not contain any trains departing from Roma.
+Notice that parameters can be used as arguments of the predicates.
+
+Another way to filter places is to define a given number of vertices.
+Those vertices will denote a polygon used to filter all the places that are contained within.
+Here is an example:
+
+[source,java]
+----
+query = cache.query(
+   "from geo.TrainRoute r where r.arrival within polygon(:a, :b, :c, :d)");
+query.setParameter("a", "(47.00, 8.00)");
+query.setParameter("b", "(47.00, 12.00)");
+query.setParameter("c", "(45.70, 12.00)");
+query.setParameter("d", "(45.70, 8.00)");
+query = trainQuery.list();
+assertThat(trainRoutes).extracting(TrainRoute::name)
+      .containsExactlyInAnyOrder("Milano-Como", "Bologna-Selva");
+----
+
+In the above example, only trains arriving in Como and Selva are returned, since Milano, Bologna and Roma
+are not far enough north.
+
+For more information about spatial predicates see the documentation section:
+https://infinispan.org/docs/dev/titles/query/query.html#spatial_predicates[Spatial predicates]
+
+== Spatial sorting and projections
+
+If we want to sort our results according to the distance from a given query point,
+we can use the `order by distance` clause. Here is an example:
+
+[source,sql]
+----
+select r.name, distance(r.arrival, 41.91, 12.46)
+from geo.TrainRoute r
+where r.departure within box(45.74, 8.30, 44.22, 12.59)
+order by distance(r.arrival, 41.91, 12.46)
+----
+
+In the same example we also project the distances from the same query point.
+The result will be ordered in ascending order of distances:
+
+[source,java]
+----
+List<Object[]> list = result.list();
+assertThat(list).extracting(item -> item[0])
+  .containsExactly("Bologna-Venezia", "Milano-Como", "Bologna-Selva");
+assertThat(list).extracting(item -> item[1])
+  .containsExactly(392893.53564872313, 510660.6643083735, 519774.5486163137);
+----
+
+If you want to use spatial queries with Infinispan, you can do so today by downloading our latest development release.
+
+For more information spatial  sorting and projections see the documentation sections:
+
+* https://infinispan.org/docs/dev/titles/query/query.html#spatial_sorting[Spatial Sorting]
+* https://infinispan.org/docs/dev/titles/query/query.html#spatial_projections[Spatial Projections]
