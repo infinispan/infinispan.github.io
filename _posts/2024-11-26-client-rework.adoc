@@ -1,35 +1,35 @@
 ---
 layout: blog
-title: Infinispan Java HotRod client pool rework
+title: Infinispan Java Hot Rod client pool rework
 permalink: /blog/:year/:month/:day/hotrod-client-pool-rework
-date: '2024-11-25:00:00.000-00:00'
+date: '2024-11-26:00:00.000-00:00'
 author: wburns
 tags: [ "client", "hotrod", "performance" ]
 ---
 
-With Infinispan 15.1 we will be shipping a new default client implementation.
+Infinispan 15.1 will be shipping a new default Hot Rod client implementation.
 This implementation completely overhauls the "pool" implementation and adds many
 internal code optimizations and reductions.
 
 ### An overview of the changes
 
-* Remove ChannelPool implementation, replaced with single pipelined Channel per server
-* Reduce per operation allocation rate
-* Remove unnecessary allocations on during response processing
+* Remove `ChannelPool` implementation, replaced with single pipelined `Channel`-per-server
+* Reduce per-operation allocation rate
+* Remove unnecessary allocations during response processing
 * New protocol (HR 4.1) supporting streaming API in a connection stateless way
 * Internal refactoring to simplify adding additional commands
 * Multiple fixes for client bloom filters
 * Rework client flags to be more consistent and not tied to thread locals
 * Drop client support for HR protocol versions older than 3.0
-* New hotrod-client-legacy jar for the old client
+* New `hotrod-client-legacy` jar for the old client
 
 ### How fast is it though?
 
-As you can see this is quite an extensive rework and I am guessing many of you want to just know
-"How fast is it?". Lets test it out and find out.
+As you can see this is quite an extensive rework and I am guessing many of you want to know just
+"How fast is it?". Lets test it and find out.
 
 Using the following https://github.com/infinispan/infinispan-benchmarks/tree/main/getputremovetest[JMH benchmark]
-we found that in each case the new client had better performance.
+we found that in each case the new client has better performance.
 
 |===
 | Clients | Servers | Concurrency | Performance Difference |
@@ -41,38 +41,38 @@ we found that in each case the new client had better performance.
 
 |===
 
-From this table you should expect a performance benefit in majority of cases while also reaping the other benefits
-listed in the remainder of this post.
+From this table you should expect a performance benefit in the majority of cases while also reaping the other benefits
+listed below.
 
-#### What does pipelined Channel mean though?
+#### What does *pipelined* `Channel` mean though?
 
-In the previous client we would keep a pool of connections and for each concurrent operation we would allocate the
+In the previous client, we would keep a pool of connections and, for each concurrent operation, we would allocate the
 operations required and then submit the bytes to the server in a single socket and wait until the bytes were flushed
-to the socket. During that period another thread could not use the same socket, thus it would use another socket.
+to the socket. During that period another thread could not use the same socket, thus it would use another.
 
-The new client however uses pipelined requests so that multiple requests can be sent on the same socket without immediately
-flushing and instead only flushing after the concurrent requests are sent. This means if multiple threads all send an
-operation we can keep those requests possibly in a single packet when being sent to the server instead of one per request.
+The new client, however, uses pipelined requests so that multiple requests can be sent on the same socket without flsuhing immediately.
+Flushing is only performed after the concurrent requests are sent. This means, if multiple threads all send an
+operation, we can keep those requests possibly in a single packet when being sent to the server instead of one per-request.
 
-This has the possibility of a loss in performance in a very specific case. That being having a single client instance and a single
-server on hardware with a lot of cores. This is due to the use of an event loop in both the client and the server, so the operations
+This has the possibility of a loss in performance in a very specific case: a single client instance and a single
+server on hardware with a lot of cores. This is due to the use of an event loop in both the client and the server: operations
 to a server from the same client are always sent on a dedicated thread and the server proceses responses on a dedicated thread per
-client as well. As the number of clients and servers are scaled up though this concern dissolves very quickly and depending on your
-hardware may not be a concern at all as given the numbers we have above.
+client as well. As the number of clients and servers are scaled up, though, this concern dissolves very quickly and, depending on your
+hardware, may not be a concern at all as given the numbers we have above.
 
 ### File Descriptors
 
 What about resource usage during the test? As mentioned above the client now only uses a single connection
 per server instead of a pool per server.
 
-Using a single server after everything has been initialized we can see we are using 35 file descriptors.
+Using a single server, after everything has been initialized, we can see we are using 35 file descriptors.
 
 ```
 perf@perf:~$ lsof -p <pid> -i | wc -l
 35
 ```
 
-While running with the now legacy client we see the following (note this is filtering only on the HR port)
+While running with the legacy client we see the following (note this is filtering only on the HR port)
 
 ```
 perf@perf:~$ lsof -p <pid> -i | grep 11222 | wc -l
@@ -93,9 +93,9 @@ perf@perf:~$ lsof -p <pid> -i | grep 11222 | wc -l
 
 That is one for the LISTEN for the server and the single connection between the client to the server.
 
-In this run we _also_ saw 5.8% increase from the new client, pretty great!
+In this run we _also_ saw a 5.8% increase from the new client, pretty great!
 
-This should help out all users as we have had some cases in the past where users were using hundreds of clients
+This should help out all users, as we have had some cases in the past where users were using hundreds of clients
 and dozens of servers, causing for almost 100K+ connections. With this change in place the most number of client
 connections will be capped at the number of clients times the number of servers, completely eliminating the
 effect of concurrency on the number of client connections.
@@ -105,12 +105,12 @@ effect of concurrency on the number of client connections.
 The per operation allocation rates have been reduced as well, thus not requiring client applications to have
 as much resource dedicated to the GC there.
 
-In the above test the legacy client allocation rate was around 660 MB/s where as the new client was only 350 MB/s
-so almost half the allocation rate!
+In the above test the legacy client allocation rate was around 660 MB/s where as the new client was only 350 MB/s:
+almost half the allocation rate!
 As you can expect in test test we saw half the number of GC runs between the legacy and new client.
 
 The biggest reason for this is because of our simplified internal operations and other miscellaneous per operation things.
-Just as a simple measure, you can see how much less objects are required in the constructor for our operations.
+Just as a simple measure, you can see how much fewer objects are required in the constructor for our operations.
 
 
 Legacy PutOperation
@@ -142,18 +142,18 @@ to use a streamed based approach to read and write byte[] values to the remote c
 memory at a given time.
 
 The problem is the underlying operations were implemented in a way where it would reserve a connection while the read or write operation was performed.
-This is problematic with our current single connection per server approach in the client. Instead HotRod protocol 4.1 implements new "stateless" commands
-that send/receive chunks of the value bytes as they are read/received with a non blocking operation underneath. The OutputStream|InputStream instances
+This is problematic with our current single connection per server approach in the client. Instead Hot Rod protocol 4.1 implements new "stateless" commands
+that send/receive chunks of the value bytes as they are read/received with a non blocking operation underneath. The `OutputStream|InputStream` instances
 will still block waiting for the underlying socket to complete its operations, but with the change to the protocol it no longer requires reserving the
 socket to the server.
 
 Initial performance tests show a small to no change in performance which is well within what we would hope for. Please test it out if you are using it
 and let us know!
 
-### Client HotRod flags
+### Client Hot Rod flags
 
-Many of you may not be aware, but when you applied a Flag to an operation on the RemoteCache instance, you would have to set for 
-_every_ operation and if you shared the RemoteCache instance between threads they were independent. This embedded Cache instance
+Many of you may not be aware, but when you applied a `Flag` to an operation on the `RemoteCache` instance, you would have to set for 
+_every_ operation and if you shared the `RemoteCache` instance between threads they were independent. This embedded `Cache` instance
 behaved in a different fashion saving the Flag between operations and was the same between threads if using the same instance.
 
 The RemoteCache behavior while being error prone due to above was also detrimental to performance as you would need additional allocations
@@ -164,7 +164,7 @@ Note this change is for both the new client and the legacy client referred to in
 
 ### Legacy Client
 
-The new client, due to how it works cannot support older HotRod protocols and as such it does not support anything older than
+The new client, due to how it works, cannot support older Hot Rod protocols and as such it does not support anything older than
 protocol 3.0. The 3.0 protocol was introduce in Infinispan 10.0, which was released over 5 years ago.
 The protocol definitions can be found https://infinispan.org/docs/dev/titles/hotrod_protocol/hotrod_protocol.html[here] for reference.
 
