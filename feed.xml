@@ -1,4 +1,168 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.3">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2024-11-22T21:33:46+01:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Supporting Multiple Redis Databases with Infinispan cache aliases enhancement</title><link href="https://infinispan.org/blog/2024/10/07/cache-aliases-redis-databases" rel="alternate" type="text/html" title="Supporting Multiple Redis Databases with Infinispan cache aliases enhancement" /><published>2024-10-07T02:00:00+02:00</published><updated>2024-10-07T02:00:00+02:00</updated><id>https://infinispan.org/blog/2024/10/07/cache-aliases</id><content type="html" xml:base="https://infinispan.org/blog/2024/10/07/cache-aliases-redis-databases"><![CDATA[<div class="paragraph">
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.3">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2024-11-26T13:44:49+01:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Spatial queries</title><link href="https://infinispan.org/blog/2024/11/25/spatial-queries" rel="alternate" type="text/html" title="Spatial queries" /><published>2024-11-25T01:00:00+01:00</published><updated>2024-11-25T01:00:00+01:00</updated><id>https://infinispan.org/blog/2024/11/25/spatial-queries</id><content type="html" xml:base="https://infinispan.org/blog/2024/11/25/spatial-queries"><![CDATA[<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>The upcoming Infinispan 15.1 will support <strong>geographical queries</strong>.
+The feature allows users to perform queries based on geographical criteria.
+Spatial predicates can used in combination with other predicates to implement additional filtering.
+Moreover, spatial fields can be used to project distances and to order the results according to distances from a given geographical point.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="spatial-fields-mapping">Spatial fields mapping</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>You can define on the same entity one or more spatial fields.
+Each of them denotes a pair of geographical coordinates: latitude and longitude.</p>
+</div>
+<div class="paragraph">
+<p>Suppose we want to define a train route, having a <code>name</code> field and two spatial fields <code>departure</code> and <code>arrival</code>.
+We can use <code>@GeoField</code> annotations together with pairs of <code>@Latitude</code> and <code>Longitude</code> annotations.
+Here is an example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
+@Indexed
+@GeoPoint(fieldName = "departure", projectable = true)
+@GeoPoint(fieldName = "arrival", sortable = true)
+public record TrainRoute(
+   @Keyword(normalizer = "lowercase") String name,
+   @Latitude(fieldName = "departure") Double departureLat,
+   @Longitude(fieldName = "departure") Double departureLon,
+   @Latitude(fieldName = "arrival") Double arrivalLat,
+   @Longitude(fieldName = "arrival") Double arrivalLon
+) {
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Alternatively, we can use the <code>@GeoField</code> annotation together with <code>LatLng</code> fields,
+in this case the same entity could be designed with the following, more compact, code:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
+@Indexed
+public record TrainRoute(
+   @Keyword(normalizer = "lowercase") String name,
+   @GeoField LatLng departure,
+   @GeoField LatLng arrival
+) {
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The result on the index model is the same: in both cases we have defined
+two spatial fields: <code>departure</code> and <code>arrival</code>.</p>
+</div>
+<div class="paragraph">
+<p>For more information about spatial mappings see the documentation section:
+<a href="https://infinispan.org/docs/dev/titles/query/query.html#spatial_fields_mapping">Spatial fields mapping</a></p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="spatial-predicates">Spatial predicates</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan&#8217;s query language supports three spatial predicates: <code>within circle</code>, <code>within polygon</code> and <code>within box</code>.</p>
+</div>
+<div class="paragraph">
+<p>In order to find all the trains departing from a place that is at most 300 Km from
+Bologna, we can define the following query:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;TrainRoute&gt; query = cache.query(
+   "from geo.TrainRoute r where r.departure within circle(:lat, :lon, :distance)");
+query.setParameter("lat", BOLOGNA.latitude());
+query.setParameter("lon", BOLOGNA.longitude());
+query.setParameter("distance", 300_000);
+List&lt;TrainRoute&gt; trainRoutes = trainQuery.list();
+assertThat(trainRoutes).extracting(TrainRoute::name)
+      .containsExactlyInAnyOrder("Milan-Como", "Bologna-Venezia", "Bologna-Selva");</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The above query will return trains starting from Milano, since Milan is within 300 Km from Bologna.
+Conversely, the result set will not contain any trains departing from Roma.
+Notice that parameters can be used as arguments of the predicates.</p>
+</div>
+<div class="paragraph">
+<p>Another way to filter places is to define a given number of vertices.
+Those vertices will denote a polygon used to filter all the places that are contained within.
+Here is an example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">query = cache.query(
+   "from geo.TrainRoute r where r.arrival within polygon(:a, :b, :c, :d)");
+query.setParameter("a", "(47.00, 8.00)");
+query.setParameter("b", "(47.00, 12.00)");
+query.setParameter("c", "(45.70, 12.00)");
+query.setParameter("d", "(45.70, 8.00)");
+query = trainQuery.list();
+assertThat(trainRoutes).extracting(TrainRoute::name)
+      .containsExactlyInAnyOrder("Milano-Como", "Bologna-Selva");</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the above example, only trains arriving in Como and Selva are returned, since Milano, Bologna and Roma
+are not far enough north.</p>
+</div>
+<div class="paragraph">
+<p>For more information about spatial predicates see the documentation section:
+<a href="https://infinispan.org/docs/dev/titles/query/query.html#spatial_predicates">Spatial predicates</a></p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="spatial-sorting-and-projections">Spatial sorting and projections</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>If we want to sort our results according to the distance from a given query point,
+we can use the <code>order by distance</code> clause. Here is an example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sql hljs" data-lang="sql">select r.name, distance(r.arrival, 41.91, 12.46)
+from geo.TrainRoute r
+where r.departure within box(45.74, 8.30, 44.22, 12.59)
+order by distance(r.arrival, 41.91, 12.46)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the same example we also project the distances from the same query point.
+The result will be ordered in ascending order of distances:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">List&lt;Object[]&gt; list = result.list();
+assertThat(list).extracting(item -&gt; item[0])
+  .containsExactly("Bologna-Venezia", "Milano-Como", "Bologna-Selva");
+assertThat(list).extracting(item -&gt; item[1])
+  .containsExactly(392893.53564872313, 510660.6643083735, 519774.5486163137);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you want to use spatial queries with Infinispan, you can do so today by downloading our latest development release.</p>
+</div>
+<div class="paragraph">
+<p>For more information spatial  sorting and projections see the documentation sections:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://infinispan.org/docs/dev/titles/query/query.html#spatial_sorting">Spatial Sorting</a></p>
+</li>
+<li>
+<p><a href="https://infinispan.org/docs/dev/titles/query/query.html#spatial_projections">Spatial Projections</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>]]></content><author><name>Fabio Massimo Ercoli</name></author><category term="search" /><category term="indexing" /><category term="spatial" /><category term="queries" /><category term="geographical" /><summary type="html"><![CDATA[The upcoming Infinispan 15.1 will support geographical queries. The feature allows users to perform queries based on geographical criteria. Spatial predicates can used in combination with other predicates to implement additional filtering. Moreover, spatial fields can be used to project distances and to order the results according to distances from a given geographical point.]]></summary></entry><entry><title type="html">Supporting Multiple Redis Databases with Infinispan cache aliases enhancement</title><link href="https://infinispan.org/blog/2024/10/07/cache-aliases-redis-databases" rel="alternate" type="text/html" title="Supporting Multiple Redis Databases with Infinispan cache aliases enhancement" /><published>2024-10-07T02:00:00+02:00</published><updated>2024-10-07T02:00:00+02:00</updated><id>https://infinispan.org/blog/2024/10/07/cache-aliases</id><content type="html" xml:base="https://infinispan.org/blog/2024/10/07/cache-aliases-redis-databases"><![CDATA[<div class="paragraph">
 <p>In Infinispan 15 we provided a large set of commands to make it possible to replace your Redis Server
 by Infinispan, without changing your code. In this tutorial you will learn how Infinispan cache aliases
 will help you on replacing your Redis Server by Infinispan for multiple Redis databases.</p>
@@ -1796,28 +1960,4 @@ Key lookup is also now slightly faster (on average 4 less hash comparisons)</p>
 <div class="content">
 <iframe width="640" height="380" src="https://www.youtube.com/embed/Xi9gTA0jfD0?rel=0" frameborder="0" allowfullscreen></iframe>
 </div>
-</div>]]></content><author><name>Tristan Tarrant</name></author><category term="video" /><category term="demo" /><category term="redis" /><summary type="html"><![CDATA[Dear Infinispan community,]]></summary></entry><entry><title type="html">Infinispan RESP in action: Resque use case</title><link href="https://infinispan.org/blog/2024/01/19/infinispan-resp-resque-use-case" rel="alternate" type="text/html" title="Infinispan RESP in action: Resque use case" /><published>2024-01-19T01:00:00+01:00</published><updated>2024-01-19T01:00:00+01:00</updated><id>https://infinispan.org/blog/2024/01/19/infinispan-resp-resque-use-case</id><content type="html" xml:base="https://infinispan.org/blog/2024/01/19/infinispan-resp-resque-use-case"><![CDATA[<div class="paragraph">
-<p>As you may know Infinispan 15 extended its RESP compatibility implementing most of the command related to the principal data types (set, list, hashes, sorted set&#8230;&#8203;).</p>
-</div>
-<div class="paragraph">
-<p>In this post we want to present a demo case of integration between a real application (<a href="https://github.com/resque/resque">Resque</a>) and Infinispan used as a Redis-compatible cache backend.<br>
-Aim of this is to show how it&#8217;s easy to switch between Redis and Infinispan making available to your application all the advanced features of our clustered cache server.</p>
-</div>
-<div class="paragraph">
-<p>Resque is a job scheduler that creates jobs and send them to execution queues, it uses Redis as default backend and provides a testsuite and a demo application.<br>
-Try yourself how Infinispan can seamlessly replace the default backend: just clone
-<a href="https://github.com/rigazilla/resque/tree/ispn-testsuite">this Resque fork</a> and follow the <a href="https://github.com/rigazilla/resque/blob/ispn-testsuite/README.ispn.md">Infinispan README</a> to run both the test suite and the demo application.</p>
-</div>
-<div class="paragraph">
-<p>Everything worked as a charm? Nice! Now check the diff with the original project, we only added code to turn on/off Infinispan instead of Redis. Nothing more than that! (*)</p>
-</div>
-<div class="paragraph">
-<p>Hope you ejoyed this post!</p>
-</div>
-<div class="paragraph">
-<p>Cheers,<br>
-The Infinispan Team</p>
-</div>
-<div class="paragraph">
-<p>(*) What? You also noticed we changed the expected result for a test. Surely you can easily guess why&#8230;&#8203; if not just ask us on <a href="https://infinispan.zulipchat.com/#">Zulip</a>!</p>
-</div>]]></content><author><name>Vittorio Rigamonti</name></author><category term="demo" /><category term="use case" /><category term="resp" /><category term="redis" /><summary type="html"><![CDATA[As you may know Infinispan 15 extended its RESP compatibility implementing most of the command related to the principal data types (set, list, hashes, sorted set&#8230;&#8203;).]]></summary></entry></feed>
+</div>]]></content><author><name>Tristan Tarrant</name></author><category term="video" /><category term="demo" /><category term="redis" /><summary type="html"><![CDATA[Dear Infinispan community,]]></summary></entry></feed>
