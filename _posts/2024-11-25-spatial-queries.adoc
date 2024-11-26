@@ -9,22 +9,18 @@ tags: [ "search", "indexing", "spatial", "queries", "geographical" ]
 
 = Spatial queries
 
-From Infinispan 15.1 we started to support *geographical queries*.
-The feature allows users to use alone or to combine spatial predicates with other predicates to
-filter the entities according to some geographical criteria.
-Moreover, spatial fields can be used to project distances and to order the results according to distances
-from a given geographical point.
+The upcoming Infinispan 15.1 will support *geographical queries*.
+The feature allows users to perform queries based on geographical criteria. 
+Spatial predicates can used in combination with other predicates to implement additional filtering.
+Moreover, spatial fields can be used to project distances and to order the results according to distances from a given geographical point.
 
 == Spatial fields mapping
 
 You can define on the same entity one or more spatial fields.
-Each of them denotes a pair of geographical coordinates:
-the latitude and the longitude.
+Each of them denotes a pair of geographical coordinates: latitude and longitude.
 
-Suppose we want to define a train route, having a `name` field
-and two spatial fields `departure` and `arrival`.
-In this case we can use `@GeoField` annotations together
-with couples of `@Latitude` and `Longitude` annotations.
+Suppose we want to define a train route, having a `name` field and two spatial fields `departure` and `arrival`.
+We can use `@GeoField` annotations together with pairs of `@Latitude` and `Longitude` annotations.
 Here is an example:
 
 [source,java]
@@ -44,7 +40,7 @@ public record TrainRoute(
 ----
 
 Alternatively, we can use the `@GeoField` annotation together with `LatLng` fields,
-in this case the same entity could be designed as the following:
+in this case the same entity could be designed with the following, more compact, code:
 
 [source,java]
 ----
@@ -58,7 +54,7 @@ public record TrainRoute(
 }
 ----
 
-The result on the index model is the same, in both cases we had defined
+The result on the index model is the same: in both cases we have defined
 two spatial fields: `departure` and `arrival`.
 
 For more information about spatial mappings see the documentation section:
@@ -66,9 +62,9 @@ https://infinispan.org/docs/dev/titles/query/query.html#spatial_fields_mapping[S
 
 == Spatial predicates
 
-We support three spatial predicates: `within circle`, `within polygon` and `within box`.
+Infinispan's query language supports three spatial predicates: `within circle`, `within polygon` and `within box`.
 
-Let's suppose we want find all the trains departing from a place that is far at most 300 Km from
+In order to find all the trains departing from a place that is at most 300 Km from
 Bologna, we can define the following query:
 
 [source,java]
@@ -80,15 +76,15 @@ query.setParameter("lon", BOLOGNA.longitude());
 query.setParameter("distance", 300_000);
 List<TrainRoute> trainRoutes = trainQuery.list();
 assertThat(trainRoutes).extracting(TrainRoute::name)
-      .containsExactlyInAnyOrder("Milan-Como", "Bologna-Venice", "Bologna-Selva");
+      .containsExactlyInAnyOrder("Milan-Como", "Bologna-Venezia", "Bologna-Selva");
 ----
 
-In this case also a train starting from Milan is returned, since Milan has a distance from Bologna
-that is less than 300. While for instance no train departing from Rome has returned.
+The above query will return trains starting from Milano, since Milan is within 300 Km from Bologna.
+Conversely, the result set will not contain any trains departing from Roma.
 Notice that parameters can be used as arguments of the predicates.
 
 Another way to filter places is to define a given number of vertices.
-Those vertices will denote a polygon used to filter all the places that are contained in.
+Those vertices will denote a polygon used to filter all the places that are contained within.
 Here is an example:
 
 [source,java]
@@ -101,10 +97,10 @@ query.setParameter("c", "(45.70, 12.00)");
 query.setParameter("d", "(45.70, 8.00)");
 query = trainQuery.list();
 assertThat(trainRoutes).extracting(TrainRoute::name)
-      .containsExactlyInAnyOrder("Milan-Como", "Bologna-Selva");
+      .containsExactlyInAnyOrder("Milano-Como", "Bologna-Selva");
 ----
 
-In the case of the example only trains arriving to Como and Selva are returned, since Milan, Bologna and Roma
+In the above example, only trains arriving in Como and Selva are returned, since Milano, Bologna and Roma
 are not far enough north.
 
 For more information about spatial predicates see the documentation section:
@@ -130,10 +126,12 @@ The result will be ordered in ascending order of distances:
 ----
 List<Object[]> list = result.list();
 assertThat(list).extracting(item -> item[0])
-  .containsExactly("Bologna-Venice", "Milan-Como", "Bologna-Selva");
+  .containsExactly("Bologna-Venezia", "Milano-Como", "Bologna-Selva");
 assertThat(list).extracting(item -> item[1])
   .containsExactly(392893.53564872313, 510660.6643083735, 519774.5486163137);
 ----
+
+If you want to use spatial queries with Infinispan, you can do so today by downloading our latest development release.
 
 For more information spatial  sorting and projections see the documentation sections:
 
