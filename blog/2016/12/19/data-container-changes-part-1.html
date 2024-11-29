@@ -107,12 +107,12 @@
       <div class="grid__item width-12-12">
           <div class="paragraph">
 <p>Infinispan 9.0 Beta 1 introduces some big changes to the Infinispan data
-container.  This is the first of two blog posts detailing those
+container.  This is the first of two blog posts detailing those
 changes.</p>
 </div>
 <div class="paragraph">
 <p>This post will cover the changes to eviction which utilizes a new
-provider, <a href="https://github.com/ben-manes/caffeine">Caffeine</a>.  As you may
+provider, <a href="https://github.com/ben-manes/caffeine">Caffeine</a>.  As you may
 already know Infinispan has supported our own implementations of
 <a href="https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU">LRU</a> (Least
 Recently Used) and
@@ -122,11 +122,11 @@ Inter-reference Receny Set) algorithms for our bounded caches.</p>
 <div class="paragraph">
 <p>Our implementations of eviction were even rewritten for Infinispan 8,
 but we found we still had some issues or limitations with them,
-especially LIRS.  Our old implementation had some problems with keeping
-the correct number of entries.  The new implementation while not having
-that issue had others, such as being considerably more complex.  And
+especially LIRS.  Our old implementation had some problems with keeping
+the correct number of entries.  The new implementation while not having
+that issue had others, such as being considerably more complex.  And
 while it implemented the entire LIRS specification, it could have memory
-usage <a href="https://issues.jboss.org/browse/ISPN-7171">issues</a>.  This led us to
+usage <a href="https://issues.jboss.org/browse/ISPN-7171">issues</a>.  This led us to
 looking at alternatives and Caffeine seemed like a logical fit as well
 as being well maintained and the author, Ben Manes, is quite
 responsive.</p>
@@ -137,16 +137,16 @@ responsive.</p>
 <div class="paragraph">
 <p>Caffeine doesn&#8217;t utilize LRU or LIRS for its eviction algorithm and
 instead implements <a href="https://arxiv.org/abs/1512.00727">TinyLFU</a> with an
-admission window.  This has the benefit of the high hit ratio like LIRS,
-while also requiring low memory overhead like LRU.  Caffeine also
+admission window.  This has the benefit of the high hit ratio like LIRS,
+while also requiring low memory overhead like LRU.  Caffeine also
 provides custom weighting for objects, which allow us to reuse the code
 that was developed for MEMORY based eviction as well.</p>
 </div>
 <div class="paragraph">
 <p>The only thing that Caffeine doesn&#8217;t support is our idea of a custom
-<a href="https://docs.jboss.org/infinispan/8.2/apidocs/org/infinispan/commons/equivalence/Equivalence.html">Equivalence</a>. 
+<a href="https://docs.jboss.org/infinispan/8.2/apidocs/org/infinispan/commons/equivalence/Equivalence.html">Equivalence</a>.
 Thus Infinispan now wraps byte[] instances to ensure equals and hashCode
-methods work properly.  This also gives us a good opportunity to
+methods work properly.  This also gives us a good opportunity to
 reevaluate the dataContainer configuration element.</p>
 </div>
 </div>
@@ -156,11 +156,11 @@ reevaluate the dataContainer configuration element.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The data container configuration has thus been deprecated and is now
-replaced by a new configuration element named memory.   Also since we
+replaced by a new configuration element named memory.   Also since we
 are adding a new element the eviction configuration could also be
-consolidated into memory, and thus eviction is also deprecated.  And
+consolidated into memory, and thus eviction is also deprecated.  And
 last but not least the storeAsBinary configuration element has also been
-integrated into the new memory configuration element.  Now we have 1
+integrated into the new memory configuration element.  Now we have 1
 configuration element instead of 3, can&#8217;t beat that!</p>
 </div>
 </div>
@@ -170,27 +170,27 @@ configuration element instead of 3, can&#8217;t beat that!</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The new memory configuration will start out pretty simple and new
-elements can be added as there is a need.  The memory element will be
+elements can be added as there is a need.  The memory element will be
 composed of a single sub element that can be of three different
-choices.  For this post we will go over two of the sub elements: OBJECT
+choices.  For this post we will go over two of the sub elements: OBJECT
 and BINARY.</p>
 </div>
 <div class="sect2">
 <h3 id="object">OBJECT</h3>
 <div class="paragraph">
 <p>Object storage stores the actual objects as provided from the user in
-the Java Heap.  This is the default storage method when no memory
-configuration is provided.  This method will provide the best
+the Java Heap.  This is the default storage method when no memory
+configuration is provided.  This method will provide the best
 performance when using operations that operate upon the entire data set,
 such as distributed streams, indexing and local reads etc.</p>
 </div>
 <div class="paragraph">
 <p>Unfortunately OBJECT storage only allows for COUNT based eviction as we
-cannot properly estimate user object types properly.  This could be
+cannot properly estimate user object types properly.  This could be
 improved in a feature version if there is enough interest. Note that you
 can technically configured MEMORY eviction type with the OBJECT storage
 type with declarative configuration, but it will throw an exception when
-you build the configuration.  Therefore OBJECT only has a single element
+you build the configuration.  Therefore OBJECT only has a single element
 named size to determine the amount of entries that can be stored in the
 cache.</p>
 </div>
@@ -208,16 +208,16 @@ cache.</p>
 <h3 id="binary">BINARY</h3>
 <div class="paragraph">
 <p>Binary storage stores the object in its serialized form in a byte
-array.  This has an interesting side effect of objects are always stored
-as a deep copy.  This can be useful if you want to modify an object
+array.  This has an interesting side effect of objects are always stored
+as a deep copy.  This can be useful if you want to modify an object
 after retrieving it without affecting the underlying cache stored
-object.  Since objects have to be deserialized when performing
+object.  Since objects have to be deserialized when performing
 operations on them some things such as distributed streams and local
 gets will be a little bit slower.</p>
 </div>
 <div class="paragraph">
 <p>A nice benefit of storing entries as BINARY is that we can estimate the
-total on heap size of the object.  Thus BINARY supports both COUNT and
+total on heap size of the object.  Thus BINARY supports both COUNT and
 MEMORY based eviction types.</p>
 </div>
 <div class="paragraph">
@@ -233,7 +233,7 @@ MEMORY based eviction types.</p>
 <div class="sect2">
 <h3 id="off-heap">OFF-HEAP</h3>
 <div class="paragraph">
-<p>This option will be described in more detail in the next blog post. 
+<p>This option will be described in more detail in the next blog post.
 Stay tuned!</p>
 </div>
 </div>
@@ -244,14 +244,14 @@ Stay tuned!</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Caffeine should bring us a great solution, while also reducing a lot of
-maintenance ourselves.  The new memory configuration also provides a
+maintenance ourselves.  The new memory configuration also provides a
 simpler solution by removing two other configuration elements.</p>
 </div>
 <div class="paragraph">
 <p>We hope you enjoy the new changes to the data container and look out for
 another blog post coming soon to detail the other new changes to the
-data container!  In the meantime please check out our latest
-<a href="http://infinispan.org/download/">Infinispan 9.0</a> before it goes final and
+data container!  In the meantime please check out our latest
+ <a href="https://infinispan.org/download/">Infinispan 9.0</a> before it goes final and
 give us any feedback on <a href="irc://irc.freenode.net/infinispan">IRC</a> or
 <a href="https://jira.jboss.org/browse/ISPN">JIRA</a></p>
 </div>

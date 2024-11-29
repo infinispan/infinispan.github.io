@@ -106,7 +106,7 @@
       </div>
       <div class="grid__item width-12-12">
           <div class="paragraph">
-<p>Infinispan has supported expiration now for quite some time.  However
+<p>Infinispan has supported expiration now for quite some time.  However
 there have always been some nuances with how it operated, and with this
 latest wave of enhancements, we hope that they are mostly covered.</p>
 </div>
@@ -120,9 +120,9 @@ with Infinispan 7 or older.</p>
 <div class="sect2">
 <h3 id="max-idle">Max Idle</h3>
 <div class="paragraph">
-<p>Max Idle, I would say is the black sheep of clustered expiration.  It
+<p>Max Idle, I would say is the black sheep of clustered expiration.  It
 works great with a single node, but if you have a cluster where a key is
-accessed on different nodes the recent access time is not in sync.  When
+accessed on different nodes the recent access time is not in sync.  When
 a clustered cache is used with max idle this can make some nodes contain
 data and some others to not, it can be a bit confusing.</p>
 </div>
@@ -130,9 +130,9 @@ data and some others to not, it can be a bit confusing.</p>
 <div class="sect2">
 <h3 id="single-node-expiration">Single node expiration</h3>
 <div class="paragraph">
-<p>Expiration has only ever took place on a per node basis.  That is that
+<p>Expiration has only ever took place on a per node basis.  That is that
 the entry is only removed from a node when it has that key accessed or
-the reaper thread finds it.  This means that the different nodes can
+the reaper thread finds it.  This means that the different nodes can
 have different amount of entries (although expired entries - don&#8217;t show
 up).</p>
 </div>
@@ -140,9 +140,9 @@ up).</p>
 <div class="sect2">
 <h3 id="expiration-event">Expiration Event?</h3>
 <div class="paragraph">
-<p>When an entry expires it should raise an expiration event, correct? 
+<p>When an entry expires it should raise an expiration event, correct?
 Infinispan didn&#8217;t have such an event, instead an invalidation event was
-raised.  This could be for obvious reasons a bit confusing.  The worst
+raised.  This could be for obvious reasons a bit confusing.  The worst
 part is that the event is raised on each node at possibly different
 times since the entries aren&#8217;t removed at approximately the same time.</p>
 </div>
@@ -157,29 +157,29 @@ times since the entries aren&#8217;t removed at approximately the same time.</p>
 better handling of entries expiring.</p>
 </div>
 <div class="sect2">
-<h3 id="cluster-wide-expiration">Cluster wide expiration </h3>
+<h3 id="cluster-wide-expiration">Cluster wide expiration</h3>
 <div class="paragraph">
 <p>When an entry in a replicated or distributed cache expires it will now
 expire that entry across the entire cluster at once.</p>
 </div>
 <div class="paragraph">
 <p>When an entry expires on one node (either by access or reaper thread)
-that node will asynchronously send a remove expired command.  This
+that node will asynchronously send a remove expired command.  This
 command runs just like a remove except it has some conditional values
 such as checking for the lifespan and value to make sure they match
-before actually removing the entry.  This is to prevent a concurrent
-write from being overwritten.  This then ensures that the entry is
+before actually removing the entry.  This is to prevent a concurrent
+write from being overwritten.  This then ensures that the entry is
 removed from all nodes at approximately the same time.</p>
 </div>
 <div class="paragraph">
 <p>Unfortunately cluster wide expiration is not as safe when an entry
-expires from a store and it wasn&#8217;t in memory.  In very rare
-circumstances, it can overwrite a concurrent update.  This case is very
+expires from a store and it wasn&#8217;t in memory.  In very rare
+circumstances, it can overwrite a concurrent update.  This case is very
 rare because entries only expire from a store when the reaper thread
 runs, you would then have to have a concurrent put at the precise moment
-the reaper thread is expiring that entry.  This is because the API for
+the reaper thread is expiring that entry.  This is because the API for
 cache store expiration only exposes the key and doesn&#8217;t include the
-value or metadata.  This is planned to be enhanced hopefully somewhat
+value or metadata.  This is planned to be enhanced hopefully somewhat
 soon though!</p>
 </div>
 </div>
@@ -187,9 +187,9 @@ soon though!</p>
 <h3 id="yes-expiration-events">Yes, Expiration Events!</h3>
 <div class="paragraph">
 <p>Infinispan also has added a new event,
-<a href="https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/notifications/cachelistener/event/CacheEntryExpiredEvent.html">CacheEntryExpired</a>. 
+<a href="https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/notifications/cachelistener/event/CacheEntryExpiredEvent.html">CacheEntryExpired</a>.
 This is fired whenever an entry expires or is removed due to a cluster
-wide expiration.  Note in the latter case, the event is raised across
+wide expiration.  Note in the latter case, the event is raised across
 the entire cluster at the same time, which also includes only receiving
 a cluster expiration event.</p>
 </div>
@@ -206,9 +206,9 @@ expirations, in memory expirations never even raised an event, doh!</p>
 <div class="sect2">
 <h3 id="max-idle-2">Max Idle</h3>
 <div class="paragraph">
-<p>Unfortunately, max idle is unchanged in the latest enhancements. 
+<p>Unfortunately, max idle is unchanged in the latest enhancements.
 Implementing a correct max idle is a very network costly operation as
-you would have to send updates to other nodes.  Instead it is highly
+you would have to send updates to other nodes.  Instead it is highly
 recommended to not use max idle in a clustered cache as it can cause
 unexpected behaviour (where an entry may expire early even though it was
 accessed recently).</p>
@@ -223,8 +223,8 @@ accessed recently).</p>
 <h3 id="concurrent-expiration-access">Concurrent expiration access</h3>
 <div class="paragraph">
 <p>There is an interesting case when using a clustered cache and you have
-an expired entry.  If that entry is read from multiple nodes at the same
-time it can cause more than 1 expiration event to occur.  If this does
+an expired entry.  If that entry is read from multiple nodes at the same
+time it can cause more than 1 expiration event to occur.  If this does
 occur the first event will contain the value (if applicable) and any
 others will show a null value.</p>
 </div>
@@ -233,16 +233,16 @@ others will show a null value.</p>
 <h3 id="what-do-i-need-to-change">What do I need to change?</h3>
 <div class="paragraph">
 <p>The new expiration changes come along for free, no configuration etc.
-required.  However if you were listening to cache entry invalidation
+required.  However if you were listening to cache entry invalidation
 events for entries expiring you should change your Listener to use the
-new annotation.  Other than that everything should just work!</p>
+new annotation.  Other than that everything should just work!</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="i-have-a-question-or-concern">I have a question or concern</h3>
 <div class="paragraph">
 <p>If you have any questions or concerns please get in contact with
-<a href="http://infinispan.org/getinvolved/">us</a>!</p>
+ <a href="https://infinispan.org/getinvolved/">us</a>!</p>
 </div>
 </div>
 </div>
