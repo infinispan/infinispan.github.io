@@ -5,15 +5,13 @@ permalink: /blog/:year/:month/:day/distributed-iteration-improvements
 date: '2018-02-19T03:00:00.000-08:00'
 author: wburns
 tags: [ " performance", "streams", "distribution", "iteration" ]
-blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-7355108497333904806
-blogger_orig_url: https://blog.infinispan.org/2018/02/distributed-iteration-improvements.html
 ---
 Infinispan hasn't always provided a way for iterating upon entries in a
 distributed cache. In fact the
 https://issues.jboss.org/browse/ISPN-4222[first iteration] wasn't until
 Infinispan 7. Then in Infinispan 8, with the addition of Java 8, we
 fully integrated this into
-http://blog.infinispan.org/2015/09/distributed-streams.html[distributed
+https://infinispan.org/blog/2015/09/distributed-streams.html[distributed
 streams], which brought some minor iteration improvements in
 performance.
 
@@ -25,9 +23,7 @@ utilization.
 
 == New implementation details
 
-===  
-
-There are a few different aspects that have been changed.  A lot of
+There are a few different aspects that have been changed.  A lot of
 these revolve around the amount of entries being retrieved at once,
 which if you are familiar with DistributedStreams can be configured via
 the
@@ -36,12 +32,12 @@ method. Note that if this is not specified it defaults to the
 https://docs.jboss.org/infinispan/9.2/apidocs/org/infinispan/configuration/cache/StateTransferConfigurationBuilder.html#chunkSize-int-[chunk
 size] in state transfer.
 
-==== Entry retrieval is now pull based instead of push
+=== Entry retrieval is now pull based instead of push
 
 Infinispan core (embedded) has added
 https://github.com/ReactiveX/RxJava/tree/2.x[rxjava2] and
 https://github.com/reactive-streams/reactive-streams-jvm[reactive
-streams] as dependencies and rewrote all of the old push style iterator
+streams] as dependencies and rewrote all the old push style iterator
 code over to pull style to fully utilize the Publisher and Subscriber
 interfaces.
 
@@ -53,7 +49,7 @@ these calls to retrieve entries are done async and finish very quickly
 irrespective of user interaction. The old method required multiple
 threads to be reserved for this purpose.
 
-==== Streamed batches
+=== Streamed batches
 
 The responses from a remote node are written directly to the output
 stream so there are no intermediate collections allocated. This means we
@@ -61,7 +57,7 @@ only have to iterate upon the data once as we retain the iterator
 between requests. On the originator we still have to store the batches
 in a collection to be enqueued for the user to pull.
 
-==== Rewritten Parallel Distribution
+=== Rewritten Parallel Distribution
 
 Great care was taken to implement parallel distribution in a way to
 vastly reduce contention and ensure that we properly follow the
@@ -98,7 +94,7 @@ count, entry sizes and distributed batch sizes.
 
 Due to the variance in each test a large number of tests were ran and
 with different permutations to make sure it covered a large amount of
-test cases. The JMH test that was ran can be found at
+test cases. The JMH test that was run can be found at
 https://github.com/infinispan/infinispan-benchmarks/tree/master/iteration[github].
 All the default settings were used for the run except -t4 (runs with 4
 worker threads) was provided. This was all ran on my measly laptop
@@ -139,17 +135,17 @@ more complete view.
 
 If you were specifying a distribution mode manually, either sequential
 or distribution you will only see a few percent faster run (*3.5*%), but
-every little bit helps! Also if you can switch to parallel you may want
+every little bit helps! Also, if you can switch to parallel you may want
 to think about doing so.
 
-Also you can see if you were running with rehash disabled prior, it has
+Also, you can see if you were running with rehash disabled prior, it has
 even more gains (*14*%). Those don't even include the fact that no
 rehash was *28*% faster than with before (which means it is about *32*%
-faster in general now). So if you can get away with a _at most once_
+faster in general now). So if you can get away with an _at most once_
 guarantee, disabling rehash will provide the best throughput.
 
 
-== Whats next? 
+== Whats next?
 
 
 As was mentioned this is not exposed to the user directly. You still
@@ -172,19 +168,19 @@ guarantees _at most once_).
 
 Another side benefit is that the Subscriber methods could be called on
 different threads so there is no overhead required on the ISPN side for
-coordinating these into queue(s). Thus the Subscriber _should_ be able
+coordinating these into queue(s). Thus, the Subscriber _should_ be able
 to retrieve all entries faster than just doing an iterator.
 
 === Java 9 Flow
 
-Also many of you may be wondering why we aren't using the new Flow API
+Also, many of you may be wondering why we aren't using the new Flow API
 introduced in Java 9. Luckily the Flow API is a 1:1 conversion of
 reactive streams. So whenever Infinispan will start supporting Java 9
 interfaces/classes, we hope to properly expose these as the JDK
 classes.
 
 
-=== Segment Based Iteration 
+=== Segment Based Iteration
 
 With Infinispan 9.3, we hope to introduce
 https://issues.jboss.org/browse/ISPN-5451[data container] and
@@ -198,6 +194,6 @@ development commences.
 === Give us Feedback
 
 We hope you find a bit more performance when working with your
-distributed iteration. Also we value any feedback on what you want our
+distributed iteration. Also, we value any feedback on what you want our
 APIs to look like or find any bugs. As always let us know at any of the
-places listed http://infinispan.org/community/[here].
+places listed  https://infinispan.org/community/[here].

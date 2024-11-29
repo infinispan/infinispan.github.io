@@ -5,10 +5,8 @@ permalink: /blog/:year/:month/:day/expiration-enhancements
 date: '2015-10-26T08:34:00.000-07:00'
 author: infinispan
 tags: []
-blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-5108391745247132049
-blogger_orig_url: https://blog.infinispan.org/2015/10/expiration-enhancements.html
 ---
-Infinispan has supported expiration now for quite some time.  However
+Infinispan has supported expiration now for quite some time.  However
 there have always been some nuances with how it operated, and with this
 latest wave of enhancements, we hope that they are mostly covered.
 
@@ -22,27 +20,27 @@ with Infinispan 7 or older.
 
 === Max Idle
 
-Max Idle, I would say is the black sheep of clustered expiration.  It
+Max Idle, I would say is the black sheep of clustered expiration.  It
 works great with a single node, but if you have a cluster where a key is
-accessed on different nodes the recent access time is not in sync.  When
+accessed on different nodes the recent access time is not in sync.  When
 a clustered cache is used with max idle this can make some nodes contain
 data and some others to not, it can be a bit confusing.
 
 
 === Single node expiration
 
-Expiration has only ever took place on a per node basis.  That is that
+Expiration has only ever took place on a per node basis.  That is that
 the entry is only removed from a node when it has that key accessed or
-the reaper thread finds it.  This means that the different nodes can
+the reaper thread finds it.  This means that the different nodes can
 have different amount of entries (although expired entries - don't show
 up).
 
 
 === Expiration Event?
 
-When an entry expires it should raise an expiration event, correct? 
+When an entry expires it should raise an expiration event, correct?
 Infinispan didn't have such an event, instead an invalidation event was
-raised.  This could be for obvious reasons a bit confusing.  The worst
+raised.  This could be for obvious reasons a bit confusing.  The worst
 part is that the event is raised on each node at possibly different
 times since the entries aren't removed at approximately the same time.
 
@@ -54,36 +52,36 @@ The following are new enhancements added with Infinispan 8 to allow for
 better handling of entries expiring.
 
 
-=== Cluster wide expiration 
+=== Cluster wide expiration
 
 When an entry in a replicated or distributed cache expires it will now
 expire that entry across the entire cluster at once.
 
 When an entry expires on one node (either by access or reaper thread)
-that node will asynchronously send a remove expired command.  This
+that node will asynchronously send a remove expired command.  This
 command runs just like a remove except it has some conditional values
 such as checking for the lifespan and value to make sure they match
-before actually removing the entry.  This is to prevent a concurrent
-write from being overwritten.  This then ensures that the entry is
+before actually removing the entry.  This is to prevent a concurrent
+write from being overwritten.  This then ensures that the entry is
 removed from all nodes at approximately the same time.
 
 Unfortunately cluster wide expiration is not as safe when an entry
-expires from a store and it wasn't in memory.  In very rare
-circumstances, it can overwrite a concurrent update.  This case is very
+expires from a store and it wasn't in memory.  In very rare
+circumstances, it can overwrite a concurrent update.  This case is very
 rare because entries only expire from a store when the reaper thread
 runs, you would then have to have a concurrent put at the precise moment
-the reaper thread is expiring that entry.  This is because the API for
+the reaper thread is expiring that entry.  This is because the API for
 cache store expiration only exposes the key and doesn't include the
-value or metadata.  This is planned to be enhanced hopefully somewhat
+value or metadata.  This is planned to be enhanced hopefully somewhat
 soon though!
 
 
 === Yes, Expiration Events!
 
 Infinispan also has added a new event,
-https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/notifications/cachelistener/event/CacheEntryExpiredEvent.html[CacheEntryExpired]. 
+https://docs.jboss.org/infinispan/8.0/apidocs/org/infinispan/notifications/cachelistener/event/CacheEntryExpiredEvent.html[CacheEntryExpired].
 This is fired whenever an entry expires or is removed due to a cluster
-wide expiration.  Note in the latter case, the event is raised across
+wide expiration.  Note in the latter case, the event is raised across
 the entire cluster at the same time, which also includes only receiving
 a cluster expiration event.
 
@@ -97,9 +95,9 @@ expirations, in memory expirations never even raised an event, doh!
 
 === Max Idle
 
-Unfortunately, max idle is unchanged in the latest enhancements. 
+Unfortunately, max idle is unchanged in the latest enhancements.
 Implementing a correct max idle is a very network costly operation as
-you would have to send updates to other nodes.  Instead it is highly
+you would have to send updates to other nodes.  Instead it is highly
 recommended to not use max idle in a clustered cache as it can cause
 unexpected behaviour (where an entry may expire early even though it was
 accessed recently).
@@ -112,8 +110,8 @@ accessed recently).
 === Concurrent expiration access
 
 There is an interesting case when using a clustered cache and you have
-an expired entry.  If that entry is read from multiple nodes at the same
-time it can cause more than 1 expiration event to occur.  If this does
+an expired entry.  If that entry is read from multiple nodes at the same
+time it can cause more than 1 expiration event to occur.  If this does
 occur the first event will contain the value (if applicable) and any
 others will show a null value.
 
@@ -121,12 +119,12 @@ others will show a null value.
 === What do I need to change?
 
 The new expiration changes come along for free, no configuration etc.
-required.  However if you were listening to cache entry invalidation
+required.  However if you were listening to cache entry invalidation
 events for entries expiring you should change your Listener to use the
-new annotation.  Other than that everything should just work!
+new annotation.  Other than that everything should just work!
 
 
 === I have a question or concern
 
 If you have any questions or concerns please get in contact with
-http://infinispan.org/getinvolved/[us]!
+ https://infinispan.org/getinvolved/[us]!

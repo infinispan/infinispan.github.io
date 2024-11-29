@@ -5,13 +5,11 @@ permalink: /blog/:year/:month/:day/data-container-changes-part-2
 date: '2017-01-23T13:35:00.002-08:00'
 author: wburns
 tags: [data, storage]
-blogger_id: tag:blogger.com,1999:blog-5717179571414330874.post-3597184894679767136
-blogger_orig_url: https://blog.infinispan.org/2017/01/data-container-changes-part-2.html
 ---
 Before the end of the year I wrote a
-http://blog.infinispan.org/2016/12/data-container-changes-part-1.html[blog
+https://infinispan.org/blog/2016/12/data-container-changes-part-1.html[blog
 post] detailing some of the more recent changes that Infinispan
-introduced with the in memory data container.  As was mentioned in the
+introduced with the in memory data container.  As was mentioned in the
 previous post we would be detailing some other new changes. If you poked
 around in our new
 https://docs.jboss.org/infinispan/9.0/configdocs/infinispan-config-9.0.html[schema]
@@ -30,7 +28,7 @@ configure your cache to utilize off heap.
 
 The off heap configuration is another option under the new memory
 element that was discussed in the previous post. It is used in the same
-way that either OBJECT or BINARY is used.  You can use either COUNT or
+way that either OBJECT or BINARY is used.  You can use either COUNT or
 MEMORY eviciton types, the example below shows the latter.
 
 === XML
@@ -58,7 +56,7 @@ feature. This section will describe these in further detail.
 Off Heap runs in essentially BINARY mode, which requires entries to be
 serialized into their byte[] forms. Thus all keys and entries must be
 Serializable or have provided Infinispan
-http://infinispan.org/docs/dev/user_guide/user_guide.html#marshalling[Externalizers].
+ https://infinispan.org/docs/dev/user_guide/user_guide.html#marshalling[Externalizers].
 
 
 === Size
@@ -66,13 +64,13 @@ http://infinispan.org/docs/dev/user_guide/user_guide.html#marshalling[Externaliz
 
 Currently a key and a value must be able to be stored in a byte[].
 Therefore a key or value in serialized form cannot be more than just
-over 2 Gigabytes.  This could be enhanced possibly at a later point, if
-the need arose.  I hope you aren't transferring this over your network
+over 2 Gigabytes.  This could be enhanced possibly at a later point, if
+the need arose.  I hope you aren't transferring this over your network
 though!
 
 
 
-== Implementation Details 
+== Implementation Details
 
 
 Our off heap implementation uses the Java Unsafe to allocate memory
@@ -83,11 +81,11 @@ the bucket. Then the entry is added to the bucket as the first element
 or if an entry(ies) is present it is added to the rear of the linked
 list.
 
-All of this data is protected by an array of ReadWriteLock instances. 
+All of this data is protected by an array of ReadWriteLock instances.
 The number of address pointers is evenly divisible by the number of lock
-instances.  The number of lock instances is how many cores your machines
-doubled and rounded to the nearest power of two.  Thus each lock
-protects an equivalent amount of address spaces.  This provides for good
+instances.  The number of lock instances is how many cores your machines
+doubled and rounded to the nearest power of two.  Thus each lock
+protects an equivalent amount of address spaces.  This provides for good
 lock granularity and reads will not block each other but unfortunately
 writes will wait and block all reads.
 
@@ -96,7 +94,7 @@ this will create a backing LRU doubly linked list to keep track of which
 elements were accessed most recently and removes the least recently
 accessed element when there are too many present in the cache.
 
-===  
+===
 
 === Memory Overhead
 
@@ -112,11 +110,11 @@ As was mentioned there is a new address count parameter when configuring
 off heap. This value is used to determine how many linked list pointers
 are available. Normally you want to have more node pointers than you
 have entries in the cache, since then chances are you have one element
-in each linked list.  This is very similar to the
+in each linked list.  This is very similar to the
 https://docs.oracle.com/javase/7/docs/api/java/util/HashMap.html#HashMap%28int%29[int
-argument constructor] for HashMap.  It is also rounded up to the nearest
-power of two.  The big difference being that this off heap
-implementation will not resize.  Thus your read/write times will be
+argument constructor] for HashMap.  It is also rounded up to the nearest
+power of two.  The big difference being that this off heap
+implementation will not resize.  Thus your read/write times will be
 slower if you have a lot of collisions. The overhead of a pointer is 8
 bytes, so for approximately one million pointers it will be 8 Megabytes
 of off heap.
@@ -128,11 +126,11 @@ head/tail pointers and a counter and an additional Java lock object.
 
 Unfortunately to store your entries we may need to wrap them with some
 data. Thus for every entry you add to the cache we store an additional
-25 bytes for each entry.  This data is used for header information and
+25 bytes for each entry.  This data is used for header information and
 also our linked list forward pointer.
 
 Bounded off heap requires additional housekeeping for its LRU list
-nodes.  Thus each entry adds an additional 36 bytes above the number
+nodes.  Thus each entry adds an additional 36 bytes above the number
 above. It is larger due to requiring a doubly linked list and having to
 have pointers to and from the entry and eviction node.
 
@@ -151,8 +149,8 @@ there is an additional deserialization phase required.
 
 We hope you all try out our new off heap feature! Please make sure to
 contact us if you have any feedback, find any bugs or have any
-questions!  You can get in contact with us on our
+questions!  You can get in contact with us on our
 https://developer.jboss.org/en/infinispan/content[forum],
 https://issues.jboss.org/projects/ISPN[issue tracker], or directly on
 IRC freenode channel
-http://webchat.freenode.net/?channels=%23infinispan[Infinispan]. 
+http://webchat.freenode.net/?channels=%23infinispan[Infinispan].
