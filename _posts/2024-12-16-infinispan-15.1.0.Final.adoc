@@ -1,0 +1,129 @@
+---
+layout: blog
+title: Infinispan 15.1.0.Final
+permalink: /blog/:year/:month/:day/infinispan-15-1
+date: '2024-12-16T00:00:00.000-00:00'
+author: ttarrant
+tags: [ "release", "final" ]
+---
+
+= Infinispan 15.1.0.Final
+
+*_"It Was All A Dream"_*
+
+No, man. This time it's for real!
+
+Freshly brewed, for the fine connoisseurs of distributed caching, we are proud to present Infinispan 15.1, codenamed https://untappd.com/b/j-wakefield-brewing-it-was-all-a-dream/1942262["It Was All A Dream"]
+
+[caption="It Was All A Dream"]
+image::/assets/images/blog/itwasalladream.png[It Was All A Dream, 197, 640, align="center"]
+
+Just like its beer namesake, this is a stout release, packed with flavor and features. Here's a quick rundown of what's new:
+
+== Query
+=== Spatial queries
+Infinispan now supports geographical queries. The feature allows users to perform queries based on geographical criteria. Spatial predicates can be used in combination with other predicates to implement additional filtering. Moreover, spatial fields can be used to project distances and to order the results according to distances from a given geographical point.
+You can define on the same entity one or more spatial fields. Each of them denotes a pair of geographical coordinates: latitude and longitude.
+Infinispan’s query language supports three spatial predicates: `within circle`, `within polygon` and `within box`.
+If we want to sort our results according to the distance from a given query point, we can use the order by distance clause. We can also project the distances from the same query point.
+Different units of measurement can be used to denote the radius of the circle predicate or to project the distances from a given query point.
+Read our recent https://infinispan.org/blog/2024/11/25/spatial-queries[blog post] and the https://infinispan.org/docs/stable/titles/query/query.html#spatial_search_ickle-query-language[documentation] for more information.
+
+=== Nested entities joins
+This contribution has been made by *András Gyuró* and *Gabor Ori* from our amazing Infinispan open source community. A big thanks to them!
+The feature allows to exploit the nested (not-flattened) relations between root entities and embedded entities in order to join their values to be queried.
+As an example, let’s suppose we have an entity Team having a nested embedded field named players.
+It is possible to execute a query which selects all the teams having at least one player having number `7` and at the same time having name `Ryan` or `Will`. A possible query in this case could be:
+
+[source,sql]
+----
+select t.name from model.Team t
+join t.players p
+where (p.name ='Ryan' AND p.number=7) or (p.name='Will' AND p.number=7)
+----
+
+=== Non-blocking query API
+A new addition has been added to the Query API. Non-blocking/reactive alternative methods are available to query your data. Those methods are:
+
+[source,java]
+----
+Publisher<T> publish(int maxBatchSize);
+CompletionStage<QueryResult<T>> executeAsync();
+CompletionStage<Integer> executeStatementAsync();
+----
+
+The new methods are experimental, meaning they may change in the future, and only available for the Hot Rod client (remote query).
+
+
+== New Java Hot Rod client
+A brand-new client implementation has been introduced replacing the current `hotrod-client` module. The public API is still the same so the code can be used without changes. The new client completely removes the prior connection pool, instead opting for a single pipelined channel to each server instead. The client configuration is thus ignored and deprecated.
+
+Due to only having a single client connection to each server users should see a substantial decrease in file descriptors in use for both server and client applications.
+Also, the majority of usage should see performance gains with the new client. The opposite may occur in cases of a single server with extremely high concurrency usage on the client.
+
+The new client has dropped support for HotRod protocols older than 3.0, which is from Infinispan 10. This was mostly done as some features in some versions of 2 require dedicated sockets which is not acceptable in the new client.
+
+The streaming cache commands (`InputStream` and `OutputStream`-based) had to be reworked to support a single socket, and thus we had to add a new Hot Rod protocol 4.1 to support these commands. If you are using the new client you can only use these streaming commands if your server also supports 4.1 or newer.
+
+If you find the need to use a Hot Rod protocol version older than 3.0 the prior client can be used by importing the `hotrod-client-legacy` module instead.
+
+== Console
+
+=== Cache aliases
+
+[caption="Update aliases",link=/assets/images/blog/2024-09-26-cache-aliases/updateAliasesModal.png]
+image::/assets/images/blog/2024-09-26-cache-aliases/updateAliasesModal.png[Update aliases]
+
+=== Tracing
+
+[caption="Tracing categories",link=/assets/images/blog/151-tracing.png]
+image::/assets/images/blog/151-tracing.png[Tracing categories]
+
+== Cache aliases
+Infinispan 15.0 had cache aliases that only worked within the context of the RESP connector. Now this functionality has been extended to all parts of Infinispan, including all other protocols as well as embedded.
+
+== Certificate reloading
+SSL/TLS certificates have an expiration date, after which they will no longer be valid.
+The process of renewing a certificate is also known as *rotation*.
+Infinispan now monitors the keystore files for changes and automatically reloads them without requiring a server or client restart.
+
+NOTE: to ensure seamless operations during certificate rotation, use certificates signed by a Certificate Authority and
+configure both server and client trust stores with the CA certificate. The use of self-signed certificates will cause
+temporary handshake failures until all clients and servers have been updated.
+
+== Time quantities in configuration
+Wherever a time quantity, such as a timeout or an interval, is specified within a declarative configuration, it is possible to describe it using time units:
+* `ms`:  milliseconds
+* `s`:  seconds
+* `m`:  minutes
+* `h`:  hours
+* `d`:  days
+
+For example:
+
+[source,json]
+----
+{ "distributed-cache": { "remote-timeout":  "35s"} }
+----
+
+== Fixes
+Too many to count. We want to thank our amazing community members for https://github.com/infinispan/infinispan/issues[reporting issues] and helping out with providing detailed information that helps us debug and solve problems.
+
+== Deprecations and removals
+The main change is the removal of the old server templates (like `org.infinispan.DIST_SYNC`) which were redundant and didn't provide any advantage to defining configurations.
+
+
+== JDK requirements
+Like for 15.0, you will need at least JDK 17 in order to use Infinispan 15.1. Infinispan also supports JDK 21 and the recently released JDK 23.
+
+
+== Documentation
+As usual, many improvements, updates and fixes.
+
+
+== Release notes
+
+You can look at the https://github.com/infinispan/infinispan/releases/tag/15.1.0.Final[release notes] to see what was changed since our last development build.
+
+Get them from our https://infinispan.org/download/[download page].
+
