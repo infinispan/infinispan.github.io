@@ -865,11 +865,25 @@ $(addBlockSwitches);
 </li>
 <li><a href="#tshoot_server">18. Troubleshooting Infinispan Server deployments</a>
 <ul class="sectlevel2">
-<li><a href="#getting-server-reports_server">18.1. Getting diagnostic reports from Infinispan Server</a></li>
-<li><a href="#configuring-server-logs-cli_server">18.2. Changing Infinispan Server logging configuration at runtime</a></li>
+<li><a href="#getting-server-reports_server">18.1. Getting diagnostic reports from Infinispan Server</a>
+<ul class="sectlevel3">
+<li><a href="#understanding_the_report">18.1.1. Understanding the report</a>
+<ul class="sectlevel4">
+<li><a href="#environment">Environment</a></li>
+<li><a href="#infinispan_server">Infinispan server</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#configuring-server-logs-cli_server">18.2. Changing Infinispan Server logging configuration at runtime</a>
+<ul class="sectlevel3">
+<li><a href="#access_logging">18.2.1. Access logging</a></li>
+</ul>
+</li>
 <li><a href="#gathering-cli-statistics_server">18.3. Gathering resource statistics from the CLI</a></li>
 <li><a href="#accessing-health-rest_server">18.4. Accessing cluster health via REST</a></li>
 <li><a href="#accessing-health-jmx_server">18.5. Accessing cluster health via JMX</a></li>
+<li><a href="#configuring-server-benchmark-cli_server">18.6. Benchmark the Infinispan Server</a></li>
 </ul>
 </li>
 </ul>
@@ -13197,6 +13211,89 @@ Downloaded report 'infinispan-&lt;hostname&gt;-&lt;timestamp&gt;-report.tar.gz'<
 </li>
 </ol>
 </div>
+<div class="sect3">
+<h4 id="understanding_the_report"><a class="anchor" href="#understanding_the_report"></a>18.1.1. Understanding the report</h4>
+<div class="paragraph">
+<p>The report generated with the CLI contains different categories of files containing information about the environment and the application.
+We split the files into subcategories and briefly describe how to read each one.</p>
+</div>
+<div class="sect4">
+<h5 id="environment"><a class="anchor" href="#environment"></a>Environment</h5>
+<div class="paragraph">
+<p>These files contain metrics of the environment the Infinispan server is running on.
+In addition to understanding how the application behaves, external factors might cause issues, such as misconfiguration in the network, many processes running in the same host, etc.
+The following files shed light on these factors for investigation:</p>
+</div>
+<div class="ulist">
+<div class="title">Host:</div>
+<ul>
+<li>
+<p><code>cpuinfo</code>: Provides information about the host’s CPU.</p>
+</li>
+<li>
+<p><code>df</code>: Provides information about the host’s filesystem.</p>
+</li>
+<li>
+<p><code>lsof</code>: Describes the open files in the host.</p>
+</li>
+<li>
+<p><code>meminfo</code>: Provides information about the host’s memory.</p>
+</li>
+<li>
+<p><code>os-release</code>: Describes the current OS the server is running on.</p>
+</li>
+<li>
+<p><code>uname</code>: Additional system information.</p>
+</li>
+</ul>
+</div>
+<div class="ulist">
+<div class="title">Network:</div>
+<ul>
+<li>
+<p><code>ip-address</code>: Describes the network interfaces in the host and the address and capabilities of each one.</p>
+</li>
+<li>
+<p><code>ip-maddress</code>: Describes the multicast address on each network interface in the host.</p>
+</li>
+<li>
+<p><code>ip-mroute</code>: Describes the multicast routing table in the host.</p>
+</li>
+<li>
+<p><code>ip-route</code>: Describes the the routing table in the host.</p>
+</li>
+<li>
+<p><code>ss-tcp</code>: List the TCP sockets in the host.</p>
+</li>
+<li>
+<p><code>ss-udp</code>: List the UDP sockets in the host.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="infinispan_server"><a class="anchor" href="#infinispan_server"></a>Infinispan server</h5>
+<div class="paragraph">
+<p>Additionally, the report collects information from the running server.
+The report generates a thread dump utilizing the <code>jstack</code> command.
+The server logs and configurations are also included in the files.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The report tries to collect all this information. However, some files might be missing if the host cannot run a specific command.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="configuring-server-logs-cli_server"><a class="anchor" href="#configuring-server-logs-cli_server"></a>18.2. Changing Infinispan Server logging configuration at runtime</h3>
@@ -13321,6 +13418,78 @@ configuration, which means the root configuration is used instead:</p>
 </div>
 </li>
 </ol>
+</div>
+<div class="sect3">
+<h4 id="access_logging"><a class="anchor" href="#access_logging"></a>18.2.1. Access logging</h4>
+<div class="paragraph">
+<p>The command also allows for enabling access logs during runtime to analyze issues.
+You can enable the access logging for a specific endpoint and utilize the CLI command to parse those files to generate server-side metrics.
+This technique is useful in identifying whether latency is an issue from the connection between client and server or intra-cluster.</p>
+</div>
+<div class="paragraph">
+<p>The workflow for this analysis involves a few steps:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Enable access logging with the CLI for the endpoint you are analyzing.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>logging set --level=TRACE org.infinispan.RESP_ACCESS_LOG</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this example, enabling the access log for the RESP endpoint.</p>
+</div>
+</li>
+<li>
+<p>Run the tests to reproduce the issue or workload to measure.</p>
+</li>
+<li>
+<p>Disable access logging with the CLI.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>logging set --level=INFO org.infinispan.RESP_ACCESS_LOG</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Download the access log files.</p>
+<div class="paragraph">
+<p>The <a href="../cli/cli.html#server1"><code>server report</code></a> command is also capable of downloading the log files.</p>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>With the access log files available, you can utilize the CLI command to analyze the server&#8217;s behavior more deeply.
+The <a href="../cli/cli.html#troubleshoot1">CLI command</a> provides information about long-running commands, segmentation per client, and operations.</p>
+</div>
+<h5 id="categories" class="discrete">Categories</h5>
+<div class="paragraph">
+<p>Infinispan provides an access log for each endpoint available on the server.
+You can edit the logging level to enable each endpoint individually.
+The loggers available for each endpoint are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>org.infinispan.HOTROD_ACCESS_LOG</code>: Enables the access log for the <a href="../server/server.html#hot_rod">Hot Rod endpoint</a>.</p>
+</li>
+<li>
+<p><code>org.infinispan.REST_ACCESS_LOG</code>: Enables the access log for the <a href="../server/server.html#rest">REST endpoint</a>.</p>
+</li>
+<li>
+<p><code>org.infinispan.MEMCACHED_ACCESS_LOG</code>: Enables the access log for the <a href="../server/server.html#memcached">Memcached endpoint</a>.</p>
+</li>
+<li>
+<p><code>org.infinispan.RESP_ACCESS_LOG</code>: Enables the access log for the <a href="../server/server.html#resp">RESP endpoint</a>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Observe that each logger can be activated individually and independently of the others.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -13499,12 +13668,30 @@ configuration, which means the root configuration is used instead:</p>
 </ol>
 </div>
 </div>
+<div class="sect2">
+<h3 id="configuring-server-benchmark-cli_server"><a class="anchor" href="#configuring-server-benchmark-cli_server"></a>18.6. Benchmark the Infinispan Server</h3>
+<div class="paragraph">
+<p>Infinispan provides a built-in benchmark utility accessible through the CLI to validate server configuration changes.
+This benchmark will run operations for writes and reads, submitting requests as fast as possible.
+Since this might be a contrived scenario that does not represent a real production environment, the numbers should be read carefully.
+Nevertheless, this approach is simple enough to verify for configuration changes.</p>
+</div>
+<div class="paragraph">
+<p>The recommended metric to read from this benchmark is <strong>throughput</strong>.
+<a href="https://hyperfoil.io/">Hyperfoil</a> with our <a href="https://github.com/infinispan/infinispan-ansible-benchmark">Ansible Benchmark automation</a>,
+or <a href="https://github.com/jgroups-extras/IspnPerfTest">IspnPerfTest</a> for an embedded test provides a more flexible benchmarking alternative.
+However, these harnesses require an additional setup phase before running.</p>
+</div>
+<div class="paragraph">
+<p>Check the <a href="../cli/cli.html#benchmark1">CLI command</a> documentation for more information.</p>
+</div>
+</div>
 </div>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-01-02 09:15:48 UTC
+Last updated 2025-01-16 10:06:34 UTC
 </div>
 </div>
 <script type="text/x-mathjax-config">
