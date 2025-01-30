@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.23">
-<title>Using the RESP protocol endpoint with Infinispan</title>
+<title>Using the RESP protocol with Infinispan</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -533,13 +533,18 @@ $(addBlockSwitches);
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
-<h1>Using the RESP protocol endpoint with Infinispan</h1>
+<h1>Using the RESP protocol with Infinispan</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
-<li><a href="#resp-endpoint">1. Using the RESP endpoint</a>
+<li><a href="#resp-logical-databases_resp-endpoint">1. Mapping caches to Redis logical databases</a>
 <ul class="sectlevel2">
-<li><a href="#enabling-resp-endpoint_resp-endpoint">1.1. Enabling the RESP endpoint</a></li>
+<li><a href="#resp-differences_resp-endpoint">1.1. Differences between Infinispan and Redis implementation</a>
+<ul class="sectlevel3">
+<li><a href="#isolation">1.1.1. Isolation</a></li>
+<li><a href="#transactions">1.1.2. Transactions</a></li>
+</ul>
+</li>
 <li><a href="#redis-commands_resp-endpoint">1.2. Redis commands</a></li>
 </ul>
 </li>
@@ -550,52 +555,20 @@ $(addBlockSwitches);
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan Server includes an endpoint that implements the RESP3 protocol and allows you to interact with remote caches using Redis clients.</p>
+<p>Infinispan Server includes an endpoint that implements the <a href="https://github.com/redis/redis-specifications/blob/master/protocol/RESP3.md">RESP3 protocol</a> and allows you to interact with remote caches using Redis clients.</p>
+</div>
+<div id="resp-endpoint" class="paragraph">
+<p>include::../topics/proc_server_configuring_resp.adoc
+:leveloffset: +2</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="resp-endpoint"><a class="anchor" href="#resp-endpoint"></a>1. Using the RESP endpoint</h2>
+<h2 id="resp-logical-databases_resp-endpoint"><a class="anchor" href="#resp-logical-databases_resp-endpoint"></a>1. Mapping caches to Redis logical databases</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan Server includes an experimental module that implements the <a href="https://github.com/redis/redis-specifications/blob/master/protocol/RESP3.md">RESP3 protocol</a>.
-The RESP endpoint allows Redis clients to connect to one or several Infinispan-backed RESP servers and perform cache operations.</p>
-</div>
-<div class="sect2">
-<h3 id="enabling-resp-endpoint_resp-endpoint"><a class="anchor" href="#enabling-resp-endpoint_resp-endpoint"></a>1.1. Enabling the RESP endpoint</h3>
-<div class="paragraph">
-<p>Add the <code>resp-connector</code> to Infinispan Server configuration to enable the RESP endpoint.
-You can enable the RESP endpoint with:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Standalone Infinispan Server deployments, exactly like standalone Redis, where each server instance runs independently of each other.</p>
-</li>
-<li>
-<p>Clustered Infinispan Server deployments, where server instances replicate or distribute data between each other. Clustered deployments provides clients with failover capabilities.</p>
-</li>
-</ul>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Install Infinispan Server.</p>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Open your Infinispan Server configuration for editing.</p>
-</li>
-<li>
-<p>Add cache configuration to the <code>cache-container</code> section if required.</p>
-<div class="paragraph">
-<p>Cache configuration cannot enable capabilities that violate the RESP protocol.
-For example, specifying expiration values in a cache for the RESP endpoint results in a fatal error at startup.</p>
+<p>Use the cache <code>aliases</code> configuration attributes to map caches to Redis logical databases.
+The default <code>respCache</code> is mapped to logical database <code>0</code>.</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -605,105 +578,68 @@ For example, specifying expiration values in a cache for the RESP endpoint resul
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Configure your cache with Protobuf encoding if you want to view cache entries in the Infinispan Console (<code>encoding media-type="application/x-protostream"</code>).</p>
+<p>Infinispan can use multiple logical databases even in clustered mode, as opposed to Redis which only supports database
+<code>0</code> when using Redis Cluster.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
-</li>
-<li>
-<p>Add an <code>endpoint</code> declaration to your configuration.</p>
-</li>
-<li>
-<p>Add the <code>resp-connector</code> element and specify the name of the cache to use with the RESP connector with the <code>cache</code> attribute.</p>
+<div class="sect2">
+<h3 id="resp-differences_resp-endpoint"><a class="anchor" href="#resp-differences_resp-endpoint"></a>1.1. Differences between Infinispan and Redis implementation</h3>
 <div class="paragraph">
-<p>You can use only one cache with the RESP endpoint.</p>
+<p>Infinispan provides different guarantees compared to Redis for some functionalities.
+This chapter summarizes the differences and, when possible, alternative configurations for a similar behavior.</p>
 </div>
-</li>
-<li>
-<p>Declare the security realm to use with the RESP endpoint with the <code>security-realm</code> attribute, if required.</p>
-</li>
-<li>
-<p>Ensure that the endpoint declaration also adds a Hot Rod and REST connector.</p>
-</li>
-<li>
-<p>Save the changes to your configuration.</p>
-</li>
-</ol>
+<div class="sect3">
+<h4 id="isolation"><a class="anchor" href="#isolation"></a>1.1.1. Isolation</h4>
+<div class="paragraph">
+<p>Redis utilizes a single thread to handle user requests, which provides serializable isolation and atomic behavior for multi-key requests.
+Infinispan provides a relaxed isolation level, which is configurable.
+Concurrent requests might perceive a partial result for commands that access multiple keys, such as <code>MSET</code>, where only a subset of the keys were inserted in the cache before the operation finishes.</p>
 </div>
 <div class="paragraph">
-<div class="title">Verification</div>
-<p>When you start Infinispan Server check for the following log message:</p>
+<p>The only alternative in Infinispan for an atomic behavior is to submit multi-keys operations within a <code>MULTI…EXEC</code> block.
+However, this requires configuring the default cache with transactional capabilities.</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>[org.infinispan.SERVER] ISPN080018: Started connector Resp (internal)</code></pre>
-</div>
-</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
 <div class="paragraph">
-<p>You can now connect to the RESP endpoint with a Redis client.
-For example, with the Redis CLI you can do the following to add an entry to the cache:</p>
+<p>Infinispan does not provide serializable transactions.
+See the <a href="../configuring/configuring.html#transaction_manager">cache configuration guide</a> for more information.</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>redis-cli -p 11222 --user username --pass password</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>127.0.0.1:11222&gt; SET k v
-OK
-127.0.0.1:11222&gt; GET k
-"v"
-127.0.0.1:11222&gt; quit</code></pre>
+</td>
+</tr>
+</table>
 </div>
 </div>
-<h5 id="resp_endpoint_configuration" class="discrete">RESP endpoint configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
-<div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;endpoints&gt;
-  &lt;endpoint socket-binding="default" security-realm="default"&gt;
-    &lt;resp-connector cache="mycache" /&gt;
-    &lt;hotrod-connector /&gt;
-    &lt;rest-connector/&gt;
-  &lt;/endpoint&gt;
-&lt;/endpoints&gt;</code></pre>
+<div class="sect3">
+<h4 id="transactions"><a class="anchor" href="#transactions"></a>1.1.2. Transactions</h4>
+<div class="paragraph">
+<p>Applications utilizing the <code>MULTI…EXEC</code> commands should update the default cache configuration to enable transactional capabilities.
+Transactions in Redis do not have the concept of rollback to revert in case of failures.
+Infinispan provides ACID transactions and rollback in case of failures.
+Additionally, the transactions are distributed in cluster mode and can operate across many slots.</p>
 </div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The recommended configuration utilizes <code>PESSIMISTIC</code> locking and transaction mode different from <code>NONE</code>.
+See the <a href="../configuring/configuring.html#transaction_manager">cache configuration guide</a> for more information.</p>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
-<div class="content">
-<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
-  "server": {
-    "endpoints": {
-      "endpoint": {
-        "socket-binding": "default",
-        "security-realm": "default",
-        "resp-connector": {
-          "cache": "mycache"
-        },
-        "hotrod-connector": {},
-        "rest-connector": {}
-      }
-    }
-  }
-}</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
-<div class="content">
-<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">server:
-  endpoints:
-    endpoint:
-      socketBinding: "default"
-      securityRealm: "default"
-      respConnector:
-        cache: "mycache"
-      hotrodConnector: ~
-      restConnector: ~</code></pre>
+</td>
+</tr>
+</table>
 </div>
 </div>
 </div>
@@ -715,52 +651,722 @@ OK
 <div class="ulist">
 <ul>
 <li>
+<p><a href="https://redis.io/commands/append">APPEND</a></p>
+</li>
+<li>
 <p><a href="https://redis.io/commands/auth">AUTH</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/blpop">BLPOP</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/blmpop">BLMPOP</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/brpop">BRPOP</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/client-getname">CLIENT GETNAME</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/client-id">CLIENT ID</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/client-info">CLIENT INFO</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/client-list">CLIENT LIST</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/client-setinfo">CLIENT SETINFO</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/client-setname">CLIENT SETNAME</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/command">COMMAND</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/config">CONFIG</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/cluster-keyslot/">CLUSTER KEYSLOT</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/cluster-nodes/">CLUSTER NODES</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This commands includes all required fields, but some fields are set to <code>0</code> as they do not apply to Infinispan.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/cluster-shards/">CLUSTER SHARDS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/cluster-slots/">CLUSTER SLOTS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/dbsize">DBSIZE</a></p>
 </li>
 <li>
 <p><a href="https://redis.io/commands/decr">DECR</a></p>
 </li>
 <li>
+<p><a href="https://redis.io/commands/decrby">DECRBY</a></p>
+</li>
+<li>
 <p><a href="https://redis.io/commands/del">DEL</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/discard">DISCARD</a></p>
 </li>
 <li>
 <p><a href="https://redis.io/commands/echo">ECHO</a></p>
 </li>
 <li>
+<p><a href="https://redis.io/commands/exec">EXEC</a></p>
+<div class="paragraph">
+<p>See the <a href="#multi_command">MULTI</a> command.</p>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/exists">EXISTS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/expire">EXPIRE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/expireat">EXPIREAT</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/expiretime">EXPIRETIME</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/flushall">FLUSHALL</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This command behaves like <code>FLUSHDB</code> and flushes only the current database.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/flushdb">FLUSHDB</a></p>
+</li>
+<li>
 <p><a href="https://redis.io/commands/get">GET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/getdel">GETDEL</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/getex">GETEX</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/getrange">GETRANGE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/getset">GETSET</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This command is deprecated. Use the <code>SET</code> command with the appropriate flags instead.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hdel">HDEL</a></p>
 </li>
 <li>
 <p><a href="https://redis.io/commands/hello">HELLO</a></p>
 </li>
 <li>
+<p><a href="https://redis.io/commands/hexists">HEXISTS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hget">HGET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/hgetall">HGETALL</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hincrby">HINCRBY</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hincrbyfloat">HINCRBYFLOAT</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hkeys">HKEYS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hlen">HLEN</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hmget">HMGET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hmset">HMSET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hrandfield">HRANDFIELD</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hscan">HSCAN</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hset">HSET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hsetnx">HSETNX</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hstrlen">HSTRLEN</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/hvals">HVALS</a></p>
+</li>
+<li>
 <p><a href="https://redis.io/commands/incr">INCR</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/incrby">INCRBY</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/incrbyfloat">INCRBYFLOAT</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/info">INFO</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This implementation attempts to return all attributes that a real Redis server returns. However, in most cases, the values are set to <code>0</code> because they cannot be retrieved, or don&#8217;t apply to Infinispan.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/keys">KEYS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lindex">LINDEX</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/linsert">LINSERT</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The current implementation has a time complexity of O(N), where N is the size of the list.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/llen">LLEN</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lcs">LCS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lmove">LMOVE</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The current implementation is atomic for rotation when the source and destination are the same list. For different lists, there is relaxed consistency for concurrent operations or failures unless the resp cache is configured to use transactions.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lmpop">LMPOP</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lpop">LPOP</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lpos">LPOS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lpush">LPUSH</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lpushx">LPUSHX</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lrange">LRANGE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lrem">LREM</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lset">LSET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/ltrim">LTRIM</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/memory-info">MEMORY USAGE</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This command will return the memory used by the key and the value. It doesn&#8217;t include the memory used by additional metadata associated with the entry.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/memory-stats">MEMORY STATS</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This command will return the same fields as a real Redis server, but all values will be set to <code>0</code>.
+</td>
+</tr>
+</table>
+</div>
 </li>
 <li>
 <p><a href="https://redis.io/commands/mget">MGET</a></p>
 </li>
 <li>
+<p><a href="https://redis.io/commands/module-list">MODULE LIST</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This command always returns an empty list of modules.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
 <p><a href="https://redis.io/commands/mset">MSET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/msetnx">MSETNX</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/multi">MULTI</a> <a id="multi_command"></a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The current implementation has a relaxed isolation level. Redis offers serializable transactions.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/persist">PERSIST</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/pfadd">PFADD</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/pexpire">PEXPIRE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/pexpireat">PEXPIREAT</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/pexpiretime">PEXPIRETIME</a></p>
 </li>
 <li>
 <p><a href="https://redis.io/commands/ping">PING</a></p>
 </li>
 <li>
+<p><a href="https://redis.io/commands/psetex">PSETEX</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This command is deprecated. Use the <code>SET</code> command with the appropriate flags.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/psubscribe">PSUBSCRIBE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/pubsub-channels">PUBSUB CHANNELS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/pubsub-numpat">PUBSUB NUMPAT</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/pttl">PTTL</a></p>
+</li>
+<li>
 <p><a href="https://redis.io/commands/publish">PUBLISH</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/punsubscribe">PUNSUBSCRIBE</a></p>
 </li>
 <li>
 <p><a href="https://redis.io/commands/quit">QUIT</a></p>
 </li>
 <li>
+<p><a href="https://redis.io/commands/randomkey">RANDOMKEY</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/rpop">RPOP</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/rpoplpush">RPOPLPUSH</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/rpush">RPUSH</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/rpushx">RPUSHX</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/readonly">READONLY</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/readwrite">READWRITE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/rename">RENAME</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/renamenx">RENAMENX</a></p>
+</li>
+<li>
 <p><a href="https://redis.io/commands/reset">RESET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/sadd">SADD</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/scard">SCARD</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/scan">SCAN</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Cursors are reaped in case they have not been used within a timeout. The timeout is 5 minutes.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/sdiff">SDIFF</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/sdiffstore">SDIFFSTORE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/select">SELECT</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Infinispan allows the SELECT command both in local and clustered mode, unlike Redis Cluster which forbids use of this command and only supports database zero.
+</td>
+</tr>
+</table>
+</div>
 </li>
 <li>
 <p><a href="https://redis.io/commands/set">SET</a></p>
 </li>
 <li>
+<p><a href="https://redis.io/commands/setex">SETEX</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This command is deprecated. Use the <code>SET</code> command with the appropriate flags instead.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/setnx">SETNX</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This command is deprecated. Use the <code>SET</code> command with the appropriate flags instead.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/set">SETRANGE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/sinter">SINTER</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/sintercard">SINTERCARD</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/sinterstore">SINTERSTORE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/sismember">SISMEMBER</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/sort">SORT</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/sort_ro">SORT_RO</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/members">SMEMBERS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/smismember">SMISMEMBER</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/smove">SMOVE</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The current implementation has a relaxed isolation level. A client can see the source and destination set without
+the element. The operation is not atomic, it could remove the element from source and fails to insert to the target set.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/spop">SPOP</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/srandmember">SRANDMEMBER</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/srem">SREM</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/sscan">SSCAN</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/lcs">STRALGO LCS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/strlen">STRLEN</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/substr">SUBSTR</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This command is deprecated. Use the <code>GETRANGE</code> command instead.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
 <p><a href="https://redis.io/commands/subscribe">SUBSCRIBE</a></p>
 </li>
 <li>
+<p><a href="https://redis.io/commands/sunion">SUNION</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/sunionstore">SUNIONSTORE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/time">TIME</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/touch">TOUCH</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/ttl">TTL</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/type">TYPE</a></p>
+</li>
+<li>
 <p><a href="https://redis.io/commands/unsubscribe">UNSUBSCRIBE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/unwatch">UNWATCH</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/watch">WATCH</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zadd">ZADD</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zcard">ZCARD</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zcount">ZCOUNT</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zdiff">ZDIFF</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zdiffstore">ZDIFFSTORE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zincrby">ZINCRBY</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zinter">ZINTER</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zintercard">ZINTERCARD</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zinterstore">ZINTERSTORE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zlexcount">ZLEXCOUNT</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zmpop">ZMPOP</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/zmscore">ZMSCORE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zpopmax">ZPOPMAX</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zpopmin">ZPOPMIN</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zunion">ZUNION</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zunionstore">ZUNIONSTORE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zrandmember">ZRANDMEMBER</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zrange">ZRANGE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zrangebylex">ZRANGEBYLEX</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zrangebyscore">ZRANGEBYSCORE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zrevrange">ZREVRANGE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zrevrangebylex">ZREVRANGEBYLEX</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zrevrangebyscore">ZREVRANGEBYSCORE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zrangestore">ZRANGESTORE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/zrank">ZRANK</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zrem">ZREM</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zremrangebylex">ZREMRANGEBYLEX</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zremrangebyrank">ZREMRANGEBYRANK</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zremrangebyscore">ZREMRANGEBYSCORE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/docs/latest/commands/zrevrank">ZREVRANK</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zscore">ZSCAN</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/zscore">ZSCORE</a></p>
 </li>
 </ul>
 </div>
@@ -770,7 +1376,7 @@ OK
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-01-30 11:39:53 UTC
+Last updated 2025-01-30 12:10:07 UTC
 </div>
 </div>
 <script type="text/x-mathjax-config">

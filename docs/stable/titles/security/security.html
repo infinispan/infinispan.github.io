@@ -549,6 +549,18 @@ $(addBlockSwitches);
 </ul>
 </li>
 <li><a href="#configuring-role-mappers_security-authorization">2.1.3. Configuring role mappers</a></li>
+<li><a href="#configuring-cluster-role-mapper_security-authorization">2.1.4. Configuring the cluster role and permission mappers</a>
+<ul class="sectlevel4">
+<li><a href="#creating-roles_security-authorization">Creating new roles</a></li>
+<li><a href="#granting-roles-to-users_security-authorization">Granting roles to users</a></li>
+<li><a href="#cluster_role_mapper_name_rewriters">Cluster role mapper name rewriters</a>
+<ul class="sectlevel5">
+<li><a href="#case_principal_transformer">Case Principal Transformer</a></li>
+<li><a href="#regex_principal_transformer">Regex Principal Transformer</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#configuring-cache-authorization_security-authorization">2.2. Configuring caches with security authorization</a></li>
@@ -558,7 +570,11 @@ $(addBlockSwitches);
 <ul class="sectlevel2">
 <li><a href="#creating-security-realms_security-realms">3.1. Creating security realms</a></li>
 <li><a href="#setting-up-kerberos-identities_security-realms">3.2. Setting up Kerberos identities</a></li>
-<li><a href="#property-security-realms_security-realms">3.3. Property realms</a></li>
+<li><a href="#property-security-realms_security-realms">3.3. Property realms</a>
+<ul class="sectlevel3">
+<li><a href="#property_realm_file_structure">3.3.1. Property realm file structure</a></li>
+</ul>
+</li>
 <li><a href="#ldap-security-realms_security-realms">3.4. LDAP realms</a>
 <ul class="sectlevel3">
 <li><a href="#ldap_connection_properties">3.4.1. LDAP connection properties</a></li>
@@ -576,6 +592,22 @@ $(addBlockSwitches);
 <li><a href="#token-security-realms_security-realms">3.5. Token realms</a></li>
 <li><a href="#trust-store-security-realms_security-realms">3.6. Trust store realms</a></li>
 <li><a href="#distributed-security-realms_security-realms">3.7. Distributed security realms</a></li>
+<li><a href="#aggregate-security-realms_security-realms">3.8. Aggregate security realms</a>
+<ul class="sectlevel3">
+<li><a href="#name_rewriters">3.8.1. Name rewriters</a>
+<ul class="sectlevel4">
+<li><a href="#case_principal_transformer_3">Case Principal Transformer</a></li>
+<li><a href="#common_name_principal_transformer_2">Common Name Principal Transformer</a></li>
+<li><a href="#regex_principal_transformer_3">Regex Principal Transformer</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#caching-security-realms_security-realms">3.9. Security realm caching</a>
+<ul class="sectlevel3">
+<li><a href="#flushing_realm_caches">3.9.1. Flushing realm caches</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#authentication-mechanisms">4. Endpoint authentication mechanisms</a>
@@ -600,8 +632,9 @@ $(addBlockSwitches);
 <ul class="sectlevel2">
 <li><a href="#configuring-server-keystores_endpoint-security">5.1. Configuring Infinispan Server keystores</a>
 <ul class="sectlevel3">
-<li><a href="#generating-server-keystores_endpoint-security">5.1.1. Generating Infinispan Server keystores</a></li>
-<li><a href="#configuring-ssl-engine_endpoint-security">5.1.2. Configuring TLS versions and cipher suites</a></li>
+<li><a href="#ssltls_certificate_rotation">5.1.1. SSL/TLS Certificate rotation</a></li>
+<li><a href="#generating-server-keystores_endpoint-security">5.1.2. Generating Infinispan Server keystores</a></li>
+<li><a href="#configuring-ssl-engine_endpoint-security">5.1.3. Configuring TLS versions and cipher suites</a></li>
 </ul>
 </li>
 <li><a href="#configuring-server-fips_endpoint-security">5.2. Configuring Infinispan Server on a system with FIPS 140-2 compliant cryptography</a>
@@ -764,10 +797,10 @@ to readily integrate with enterprise-level security frameworks.</p>
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/security/AuthorizationPermission.html">org.infinispan.security.AuthorizationPermission Enum</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/security/AuthorizationPermission.html">org.infinispan.security.AuthorizationPermission Enum</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/configdocs/">Infinispan configuration schema reference</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/configdocs/">Infinispan configuration schema reference</a></p>
 </li>
 </ul>
 </div>
@@ -900,7 +933,7 @@ to readily integrate with enterprise-level security frameworks.</p>
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/security/package-summary.html">Infinispan Security API</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/security/package-summary.html">Infinispan Security API</a></p>
 </li>
 </ul>
 </div>
@@ -939,6 +972,20 @@ Principals represent either an individual user identity, such as a username, or 
 <p>Uses the Common Name (CN) as the role name. You can use this role mapper with an LDAP directory or with client certificates that contain Distinguished Names (DN); for example <code>cn=managers,ou=people,dc=example,dc=com</code> maps to the <code>managers</code> role.</p>
 </dd>
 </dl>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+By default, principal-to-role mapping is only applied to principals which represent groups.
+It is possible to configure Infinispan to also perform the mapping for user principals by setting the
+<code>authorization.group-only-mapping</code> configuration attribute to <code>false</code>.
+</td>
+</tr>
+</table>
 </div>
 <div class="sect4">
 <h5 id="mapping_users_to_roles_and_permissions_in_infinispan"><a class="anchor" href="#mapping_users_to_roles_and_permissions_in_infinispan"></a>Mapping users to roles and permissions in Infinispan</h5>
@@ -982,19 +1029,19 @@ finance: LISTEN</pre>
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/security/package-summary.html">Infinispan Security API</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/security/package-summary.html">Infinispan Security API</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/security/PrincipalRoleMapper.html">org.infinispan.security.PrincipalRoleMapper</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/security/PrincipalRoleMapper.html">org.infinispan.security.PrincipalRoleMapper</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/security/RolePermissionMapper.html">org.infinispan.security.RolePermissionMapper</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/security/RolePermissionMapper.html">org.infinispan.security.RolePermissionMapper</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/security/mappers/IdentityRoleMapper.html">org.infinispan.security.mappers.IdentityRoleMapper</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/security/mappers/IdentityRoleMapper.html">org.infinispan.security.mappers.IdentityRoleMapper</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/security/mappers/CommonNameRoleMapper.html">org.infinispan.security.mappers.CommonNameRoleMapper</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/security/mappers/CommonNameRoleMapper.html">org.infinispan.security.mappers.CommonNameRoleMapper</a></p>
 </li>
 </ul>
 </div>
@@ -1066,9 +1113,279 @@ To use a different implementation for role mapping, you must configure the role 
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/configdocs/">Infinispan configuration schema reference</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/configdocs/">Infinispan configuration schema reference</a></p>
 </li>
 </ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="configuring-cluster-role-mapper_security-authorization"><a class="anchor" href="#configuring-cluster-role-mapper_security-authorization"></a>2.1.4. Configuring the cluster role and permission mappers</h4>
+<div class="paragraph">
+<p>The cluster role mapper maintains a dynamic mapping between principals and roles.
+The cluster permission mapper maintains a dynamic set of role definitions.
+In both cases, the mappings are stored in the cluster registry and can be manipulated at runtime using either the CLI or the REST API.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Have <code>ADMIN</code> permissions for Infinispan.</p>
+</li>
+<li>
+<p>Start the Infinispan CLI.</p>
+</li>
+<li>
+<p>Connect to a running Infinispan cluster.</p>
+</li>
+</ul>
+</div>
+<div class="sect4">
+<h5 id="creating-roles_security-authorization"><a class="anchor" href="#creating-roles_security-authorization"></a>Creating new roles</h5>
+<div class="paragraph">
+<p>Create new roles and set the permissions.</p>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Create roles with the <code class="command">user roles create</code> command, for example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>user roles create --permissions=ALL_READ,ALL_WRITE simple</code></pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<div class="title">Verification</div>
+<p>List roles that you grant to users with the <code class="command">user roles ls</code> command.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>user roles ls
+["observer","application","admin","monitor","simple","deployer"]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Describe roles with the <code class="command">user roles describe</code> command.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>user roles describe simple
+{
+  "name" : "simple",
+  "permissions" : [ "ALL_READ","ALL_WRITE" ]
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="granting-roles-to-users_security-authorization"><a class="anchor" href="#granting-roles-to-users_security-authorization"></a>Granting roles to users</h5>
+<div class="paragraph">
+<p>Assign roles to users and grant them permissions to perform cache operations and interact with Infinispan resources.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Grant roles to groups instead of users if you want to assign the same role to multiple users and centrally maintain their permissions.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Have <code>ADMIN</code> permissions for Infinispan.</p>
+</li>
+<li>
+<p>Create Infinispan users.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Create a CLI connection to Infinispan.</p>
+</li>
+<li>
+<p>Assign roles to users with the <code class="command">user roles grant</code> command, for example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>user roles grant --roles=deployer katie</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<div class="title">Verification</div>
+<p>List roles that you grant to users with the <code class="command">user roles ls</code> command.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>user roles ls katie
+["deployer"]</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="cluster_role_mapper_name_rewriters"><a class="anchor" href="#cluster_role_mapper_name_rewriters"></a>Cluster role mapper name rewriters</h5>
+<div class="paragraph">
+<p>By default, the mapping is performed using a strict string equivalence between principal names and roles.
+It is possible to configure the cluster role mapper to apply transformation to the principal name before performing a lookup.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Open your Infinispan configuration for editing.</p>
+</li>
+<li>
+<p>Specify a name rewriter for the cluster role mapper as part of the security authorization in the Cache Manager configuration.</p>
+</li>
+<li>
+<p>Save the changes to your configuration.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Principal names may have different forms, depending on the security realm type:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Properties and Token realms may return simple strings</p>
+</li>
+<li>
+<p>Trust and LDAP realms may return X.500-style distinguished names</p>
+</li>
+<li>
+<p>Kerberos realms may return <code>user@domain</code>-style names</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Names can be normalized to a common form using one of the following transformers:</p>
+</div>
+<div class="sect5">
+<h6 id="case_principal_transformer"><a class="anchor" href="#case_principal_transformer"></a>Case Principal Transformer</h6>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;cache-container&gt;
+   &lt;security&gt;
+      &lt;authorization&gt;
+         &lt;cluster-role-mapper&gt;
+            &lt;name-rewriter&gt;
+               &lt;case-principal-transformer uppercase="false"/&gt;
+            &lt;/name-rewriter&gt;
+         &lt;/cluster-role-mapper&gt;
+      &lt;/authorization&gt;
+   &lt;/security&gt;
+&lt;/cache-container&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "cache-container": {
+    "security": {
+      "authorization": {
+        "cluster-role-mapper": {
+          "name-rewriter": {
+            "case-principal-transformer": {}
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">cacheContainer:
+  security:
+    authorization:
+      clusterRoleMapper:
+        nameRewriter:
+          casePrincipalTransformer:
+            uppercase: false</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="regex_principal_transformer"><a class="anchor" href="#regex_principal_transformer"></a>Regex Principal Transformer</h6>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;cache-container&gt;
+   &lt;security&gt;
+      &lt;authorization&gt;
+         &lt;cluster-role-mapper&gt;
+            &lt;name-rewriter&gt;
+               &lt;regex-principal-transformer pattern="cn=([^,]+),.*" replacement="$1"/&gt;
+            &lt;/name-rewriter&gt;
+         &lt;/cluster-role-mapper&gt;
+      &lt;/authorization&gt;
+   &lt;/security&gt;
+&lt;/cache-container&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "cache-container": {
+    "security": {
+      "authorization": {
+        "cluster-role-mapper": {
+          "name-rewriter": {
+            "regex-principal-transformer": {
+              "pattern": "cn=([^,]+),.*",
+              "replacement": "$1"
+            }
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">cacheContainer:
+  security:
+    authorization:
+      clusterRoleMapper:
+        nameRewriter:
+          regexPrincipalTransformer:
+            pattern: "cn=([^,]+),.*"
+            replacement: "$1"</code></pre>
+</div>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/15.0/configdocs/">Infinispan configuration schema reference</a></p>
+</li>
+</ul>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1333,7 +1650,7 @@ You must manually synchronize credentials in a properties realm to each node in 
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="application-realm"&gt;
@@ -1511,7 +1828,7 @@ ktab -k http.keytab -a HTTP/datagrid@INFINISPAN.ORG</code></pre>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="kerberos-realm"&gt;
@@ -1641,22 +1958,6 @@ Passwords can be pre-digested with the <code>DIGEST-MD5</code> and <code>DIGEST<
 </li>
 </ul>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>You can avoid authentication issues that relate to a property file by using the Infinispan CLI to enter the correct security realm name to the file.
-You can find the correct security realm name of your Infinispan Server by opening the <code>infinispan.xml</code> file and navigating to the <code>&lt;security-realm name&gt;</code> property.
-When you copy a property file from one Infinispan Server to another, make sure that the security realm name appropriates to the correct authentication mechanism for the target endpoint.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
 <div class="listingblock">
 <div class="title">users.properties</div>
 <div class="content">
@@ -1675,7 +1976,7 @@ user2=supervisor</code></pre>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="default"&gt;
@@ -1739,6 +2040,45 @@ user2=supervisor</code></pre>
           groupProperties:
             path: "groups.properties"
             relative-to: 'infinispan.server.config.path'</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="property_realm_file_structure"><a class="anchor" href="#property_realm_file_structure"></a>3.3.1. Property realm file structure</h4>
+<div class="paragraph">
+<p>User properties files are structured as follows:</p>
+</div>
+<div class="listingblock">
+<div class="title">users.properties structure</div>
+<div class="content">
+<pre class="highlight nowrap"><code>#$REALM_NAME=default$
+#$ALGORITHM=encrypted$
+#Wed Jul 31 08:32:08 CEST 2024
+admin=algorithm-1\:hash-1;algorithm-2\:hash-2;...</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The first three lines are special comments that define the name of the realm (<code>$REALM_NAME</code>), whether the passwords are
+stored in <code>clear</code> or <code>encrypted</code> format (<code>$ALGORITHM</code>) and the timestamp of the last update.</p>
+</div>
+<div class="paragraph">
+<p>User credentials are stored in traditional key/value format: the key corresponds to the username and the value
+corresponds to the password. Encrypted passwords are represented as semi-colon-separated algorithm/hash pairs, with the
+hash encoded in Base64.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Credentials are encrypted using the realm name. Changing a realm&#8217;s name requires re-encrypting all the passwords.
+Use the Infinispan CLI to enter the correct security realm name to the file.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 </div>
 </div>
@@ -1915,7 +2255,7 @@ You can specify a different filter using the <code>filter-name</code> attribute.
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="ldap-realm"&gt;
@@ -2052,11 +2392,11 @@ regex-principal-transformer
 </div>
 <div class="sect4">
 <h5 id="ldap_principal_rewriting_configuration_reference"><a class="anchor" href="#ldap_principal_rewriting_configuration_reference"></a>LDAP principal rewriting configuration reference</h5>
-<h5 id="case_principal_transformer" class="discrete">Case principal transformer</h5>
+<h5 id="case_principal_transformer_2" class="discrete">Case principal transformer</h5>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="ldap-realm"&gt;
@@ -2120,7 +2460,7 @@ regex-principal-transformer
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="ldap-realm"&gt;
@@ -2177,11 +2517,11 @@ regex-principal-transformer
           # further configuration omitted</code></pre>
 </div>
 </div>
-<h5 id="regex_principal_transformer" class="discrete">Regex principal transformer</h5>
+<h5 id="regex_principal_transformer_2" class="discrete">Regex principal transformer</h5>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="ldap-realm"&gt;
@@ -2336,7 +2676,7 @@ KeyCloak.</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="token-realm"&gt;
@@ -2417,7 +2757,7 @@ KeyCloak.</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="trust-store-realm"&gt;
@@ -2504,7 +2844,7 @@ When users attempt to access the Hot Rod or REST endpoints, Infinispan Server us
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="distributed-realm"&gt;
@@ -2606,6 +2946,356 @@ When users attempt to access the Hot Rod or REST endpoints, Infinispan Server us
           groupProperties:
             path: "groups.properties"
         distributedRealm: ~</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="aggregate-security-realms_security-realms"><a class="anchor" href="#aggregate-security-realms_security-realms"></a>3.8. Aggregate security realms</h3>
+<div class="paragraph">
+<p>Aggregate realms combine multiple realms: the first one for the authentication steps and the others for loading the identity for the authorization steps.
+For example, this can be used to authenticate users via a client certificate, and retrieve identity from a properties or LDAP realm.</p>
+</div>
+<h4 id="aggregate_realm_configuration" class="discrete">Aggregate realm configuration</h4>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
+   &lt;security&gt;
+      &lt;security-realms&gt;
+         &lt;security-realm name="default" default-realm="aggregate"&gt;
+            &lt;server-identities&gt;
+               &lt;ssl&gt;
+                  &lt;keystore path="server.pfx" password="secret" alias="server"/&gt;
+                  &lt;truststore path="trust.pfx" password="secret"/&gt;
+               &lt;/ssl&gt;
+            &lt;/server-identities&gt;
+            &lt;properties-realm name="properties" groups-attribute="Roles"&gt;
+               &lt;user-properties path="users.properties" relative-to="infinispan.server.config.path"/&gt;
+               &lt;group-properties path="groups.properties" relative-to="infinispan.server.config.path"/&gt;
+            &lt;/properties-realm&gt;
+            &lt;truststore-realm name="trust"/&gt;
+            &lt;aggregate-realm authentication-realm="trust" authorization-realms="properties"&gt;
+               &lt;name-rewriter&gt;
+                  &lt;common-name-principal-transformer/&gt;
+               &lt;/name-rewriter&gt;
+            &lt;/aggregate-realm&gt;
+         &lt;/security-realm&gt;
+      &lt;/security-realms&gt;
+   &lt;/security&gt;
+&lt;/server&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "server": {
+    "security": {
+      "security-realms": [
+        {
+          "name": "aggregate-realm",
+          "default-realm": "aggregate",
+          "server-identities": {
+            "ssl": {
+              "keystore": {
+                "path": "server.p12",
+                "relative-to": "infinispan.server.config.path",
+                "keystore-password": "secret",
+                "alias": "server"
+              },
+              "truststore": {
+                "path": "trust.p12",
+                "relative-to": "infinispan.server.config.path",
+                "password": "secret"
+              }
+            }
+          },
+          "properties-realm": {
+            "name": "properties",
+            "groups-attribute": "Roles",
+            "user-properties": {
+              "digest-realm-name": "distributed-realm",
+              "path": "users.properties"
+            },
+            "group-properties": {
+              "path": "groups.properties"
+            }
+          },
+          "truststore-realm": {
+            "name": "trust"
+          },
+          "aggregate-realm": {
+            "authentication-realm": "trust",
+            "authorization-realms": ["properties"],
+            "name-rewriter": {
+              "common-name-principal-transformer": {}
+            }
+          }
+        }
+      ]
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">server:
+  security:
+    securityRealms:
+      - name: "aggregate-realm"
+        defaultRealm: "aggregate"
+        serverIdentities:
+          ssl:
+            keystore:
+              path: "server.p12"
+              relative-to: "infinispan.server.config.path"
+              keystore-password: "secret"
+              alias: "server"
+            truststore:
+              path: "trust.p12"
+              relative-to: "infinispan.server.config.path"
+              password: "secret"
+        truststoreRealm:
+          name: "trust"
+        propertiesRealm:
+          name: "properties"
+          groupsAttribute: "Roles"
+          userProperties:
+            digestRealmName: "distributed-realm"
+            path: "users.properties"
+          groupProperties:
+            path: "groups.properties"
+        aggregateRealm:
+          authenticationRealm: "trust"
+          authorizationRealms:
+            - "properties"
+          nameRewriter:
+            common-name-principal-transformer: ~</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="name_rewriters"><a class="anchor" href="#name_rewriters"></a>3.8.1. Name rewriters</h4>
+<div class="paragraph">
+<p>Principal names may have different forms, depending on the security realm type:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Properties and Token realms may return simple strings</p>
+</li>
+<li>
+<p>Trust and LDAP realms may return X.500-style distinguished names</p>
+</li>
+<li>
+<p>Kerberos realms may return <code>user@domain</code>-style names</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Names must be normalized to a common form when using the aggregate realm using one of the following transformers.</p>
+</div>
+<div class="sect4">
+<h5 id="case_principal_transformer_3"><a class="anchor" href="#case_principal_transformer_3"></a>Case Principal Transformer</h5>
+<div class="paragraph">
+<p>The <code>case-principal-transformer</code> transforms a name to all uppercase or all lowercase letters.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;aggregate-realm authentication-realm="trust" authorization-realms="properties"&gt;
+   &lt;name-rewriter&gt;
+      &lt;case-principal-transformer uppercase="false"/&gt;
+   &lt;/name-rewriter&gt;
+&lt;/aggregate-realm&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "aggregate-realm": {
+    "authentication-realm": "trust",
+    "authorization-realms": [
+      "properties"
+    ],
+    "name-rewriter": {
+      "case-principal-transformer": {
+        "uppercase": "false"
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">aggregateRealm:
+  authenticationRealm: "trust"
+  authorizationRealms:
+    - "properties"
+  nameRewriter:
+    casePrincipalTransformer:
+      uppercase: false</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="common_name_principal_transformer_2"><a class="anchor" href="#common_name_principal_transformer_2"></a>Common Name Principal Transformer</h5>
+<div class="paragraph">
+<p>The <code>common-name-principal-transformer</code> extracts the first <code>CN</code> element from a <code>DN</code> used by LDAP or Certificates.
+For example, given a principal in the form <code>CN=app1,CN=serviceA,OU=applications,DC=infinispan,DC=org</code>, the following
+configuration will extract <code>app1</code> as the principal.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;aggregate-realm authentication-realm="trust" authorization-realms="properties"&gt;
+   &lt;name-rewriter&gt;
+      &lt;common-name-principal-transformer/&gt;
+   &lt;/name-rewriter&gt;
+&lt;/aggregate-realm&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "aggregate-realm": {
+    "authentication-realm": "trust",
+    "authorization-realms": [
+      "properties"
+    ],
+    "name-rewriter": {
+      "common-name-principal-transformer": {}
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">aggregateRealm:
+  authenticationRealm: "trust"
+  authorizationRealms:
+    - "properties"
+  nameRewriter:
+    commonNamePrincipalTransformer: ~</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="regex_principal_transformer_3"><a class="anchor" href="#regex_principal_transformer_3"></a>Regex Principal Transformer</h5>
+<div class="paragraph">
+<p>The <code>regex-principal-transformer</code> can perform find and replace using a regular expression.
+The example shows how to extract the local-part from a <code>user@domain.com</code> identifier.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;aggregate-realm authentication-realm="trust" authorization-realms="properties"&gt;
+   &lt;name-rewriter&gt;
+      &lt;regex-principal-transformer pattern="([^@]+)@.*" replacement="$1" replace-all="false"/&gt;
+   &lt;/name-rewriter&gt;
+&lt;/aggregate-realm&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "aggregate-realm": {
+    "authentication-realm": "trust",
+    "authorization-realms": [
+      "properties"
+    ],
+    "name-rewriter": {
+      "regex-principal-transformer": {
+        "pattern" : "([^@]+)@.*",
+        "replacement": "$1",
+        "replace-all": false
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">aggregateRealm:
+  authenticationRealm: "trust"
+  authorizationRealms:
+    - "properties"
+  nameRewriter:
+    regexPrincipalTransformer:
+      pattern: "([^@]+)@.*"
+      replacement: "$1"
+      replaceAll: false</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="caching-security-realms_security-realms"><a class="anchor" href="#caching-security-realms_security-realms"></a>3.9. Security realm caching</h3>
+<div class="paragraph">
+<p>Security realms implement caching to avoid having to repeatedly retrieve data which usually changes very infrequently.
+By default</p>
+</div>
+<h4 id="realm_caching_realm_configuration" class="discrete">Realm caching realm configuration</h4>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
+    &lt;security&gt;
+        &lt;security-realms&gt;
+            &lt;security-realm name="default" cache-max-size="1024" cache-lifespan="120000"&gt;
+            &lt;/security-realm&gt;
+        &lt;/security-realms&gt;
+    &lt;/security&gt;
+&lt;/server&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "server": {
+    "security": {
+      "security-realms": [{
+        "name": "default",
+        "cache-max-size": 1024,
+        "cache-lifespan": 120000
+      }]
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">server:
+  security:
+    securityRealms:
+      - name: "default"
+        cache-max-size: 1024
+        cache-lifespan: 120000</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="flushing_realm_caches"><a class="anchor" href="#flushing_realm_caches"></a>3.9.1. Flushing realm caches</h4>
+<div class="paragraph">
+<p>Use the CLI to flush security realm caches across the whole cluster.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>[node-1@mycluster//containers/default]&gt; server aclcache flush</code></pre>
+</div>
 </div>
 </div>
 </div>
@@ -2725,7 +3415,7 @@ For example, if you explicitly declare a <code>hotrod-connector</code> you must 
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;endpoints&gt;
     &lt;endpoint socket-binding="default"
               security-realm="my-realm"&gt;
@@ -2837,7 +3527,7 @@ When you disable user authentication you should also disable authorization in yo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;endpoints socket-binding="default"/&gt;
 &lt;/server&gt;</code></pre>
 </div>
@@ -2905,23 +3595,23 @@ For example, if you add a Kerberos security realm then Infinispan Server enables
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Property realms and LDAP realms</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SCRAM-*, DIGEST-*, <code>SCRAM-*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SCRAM</code>, <code>DIGEST</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Token realms</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OAUTHBEARER</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OAUTHBEARER</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Trust realms</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">EXTERNAL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EXTERNAL</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Kerberos identities</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GSSAPI, GS2-KRB5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GSSAPI</code>, <code>GS2-KRB5</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SSL/TLS identities</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PLAIN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLAIN</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -2943,30 +3633,143 @@ For example, if you add a Kerberos security realm then Infinispan Server enables
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Property realms and LDAP realms</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DIGEST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DIGEST</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Token realms</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BEARER_TOKEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BEARER_TOKEN</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Trust realms</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CLIENT_CERT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CLIENT_CERT</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Kerberos identities</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPNEGO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPNEGO</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SSL/TLS identities</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASIC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BASIC</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<div class="title">Memcached endpoints</div>
+<p>Infinispan Server enables the following SASL authentication mechanisms for Memcached binary protocol endpoints when your configuration includes the corresponding security realm:</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Security realm</th>
+<th class="tableblock halign-left valign-top">SASL authentication mechanism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Property realms and LDAP realms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SCRAM</code>, <code>DIGEST</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Token realms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OAUTHBEARER</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Trust realms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EXTERNAL</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Kerberos identities</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GSSAPI, GS2-KRB5</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SSL/TLS identities</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLAIN</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Infinispan Server enables authentication on Memcached text protocol endpoints only with security realms which support password-based authentication:</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Security realm</th>
+<th class="tableblock halign-left valign-top">Memcached text authentication</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Property realms and LDAP realms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Token realms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Trust realms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Kerberos identities</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SSL/TLS identities</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<div class="title">RESP endpoints</div>
+<p>Infinispan Server enables authentication on RESP endpoints only with security realms which support password-based authentication:</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Security realm</th>
+<th class="tableblock halign-left valign-top">RESP authentication</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Property realms and LDAP realms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Token realms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Trust realms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Kerberos identities</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SSL/TLS identities</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No</p></td>
 </tr>
 </tbody>
 </table>
 <div class="sect3">
 <h4 id="sasl-authentication-mechanisms_endpoint-authentication"><a class="anchor" href="#sasl-authentication-mechanisms_endpoint-authentication"></a>4.3.1. SASL authentication mechanisms</h4>
 <div class="paragraph">
-<p>Infinispan Server supports the following SASL authentications mechanisms with Hot Rod endpoints:</p>
+<p>Infinispan Server supports the following SASL authentications mechanisms with Hot Rod and Memcached binary protocol endpoints:</p>
 </div>
 <table class="tableblock frame-all grid-all stripes-even fit-content">
 <colgroup>
@@ -3032,7 +3835,7 @@ For example, if you add a Kerberos security realm then Infinispan Server enables
 <div class="sect3">
 <h4 id="sasl-quality-of-protection_endpoint-authentication"><a class="anchor" href="#sasl-quality-of-protection_endpoint-authentication"></a>4.3.2. SASL quality of protection (QoP)</h4>
 <div class="paragraph">
-<p>If SASL mechanisms support integrity and privacy protection (QoP) settings, you can add them to your Hot Rod endpoint configuration with the <code>qop</code> attribute.</p>
+<p>If SASL mechanisms support integrity and privacy protection (QoP) settings, you can add them to your Hot Rod and Memcached endpoint configuration with the <code>qop</code> attribute.</p>
 </div>
 <table class="tableblock frame-all grid-all stripes-even fit-content">
 <colgroup>
@@ -3064,7 +3867,7 @@ For example, if you add a Kerberos security realm then Infinispan Server enables
 <div class="sect3">
 <h4 id="sasl-policies-hot-rod-authentication_endpoint-authentication"><a class="anchor" href="#sasl-policies-hot-rod-authentication_endpoint-authentication"></a>4.3.3. SASL policies</h4>
 <div class="paragraph">
-<p>SASL policies provide fine-grain control over Hot Rod authentication mechanisms.</p>
+<p>SASL policies provide fine-grain control over Hot Rod and Memcached authentication mechanisms.</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -3135,7 +3938,7 @@ Configure cache authorization and then set <code>&lt;no-anonymous value=false /&
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;endpoints&gt;
     &lt;endpoint socket-binding="default"
               security-realm="default"&gt;
@@ -3285,8 +4088,12 @@ If a security realm contains TLS/SSL identities, it encrypts any connections to 
 </div>
 <div class="paragraph">
 <p>Infinispan Server supports the following keystore formats: JKS, JCEKS, PKCS12/PFX and PEM.
-BKS, BCFKS, and UBER are also supported if the <a href="https://www.bouncycastle.org/">Bouncy Castle</a> library is present.
-When using client hostname validation, according to the rules defined by the <a href="https://datatracker.ietf.org/doc/html/rfc2818">RFC 2818</a> specification, server certificates should include the <code>subjectAltName</code> extension of type <code>dNSName</code> and/or <code>iPAddress</code>.</p>
+BKS, BCFKS, and UBER are also supported if the <a href="https://www.bouncycastle.org/">Bouncy Castle</a> library is present.</p>
+</div>
+<div class="paragraph">
+<p>Certificates should include the <code>subjectAltName</code> extension of type <code>dNSName</code> and/or <code>iPAddress</code> so that clients can correctly perform
+hostname validation, according to the rules defined by the <a href="https://datatracker.ietf.org/doc/html/rfc2818">RFC 2818</a> specification.
+The server will issue a warning if it is started with a certificate which does not include such an extension.</p>
 </div>
 <div class="admonitionblock important">
 <table>
@@ -3360,7 +4167,7 @@ When using client hostname validation, according to the rules defined by the <a 
 <div class="listingblock">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="default"&gt;
@@ -3417,6 +4224,28 @@ When using client hostname validation, according to the rules defined by the <a 
               password: "secret"</code></pre>
 </div>
 </div>
+<div class="sect3">
+<h4 id="ssltls_certificate_rotation"><a class="anchor" href="#ssltls_certificate_rotation"></a>5.1.1. SSL/TLS Certificate rotation</h4>
+<div class="paragraph">
+<p>SSL/TLS certificates have an expiration date, after which they are no longer valid.
+The process of renewing a certificate is also known as "rotation".
+Infinispan monitors the keystore files for changes and automatically reloads them without requiring a server or client
+restart.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+To ensure seamless operations during certificate rotation, use certificates signed by a Certificate Authority (CA) and
+configure both server and client trust stores with the CA certificate. Using self-signed certificates will cause
+temporary handshake failures until all clients and servers have been updated.
+</td>
+</tr>
+</table>
+</div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
 <ul>
@@ -3425,8 +4254,9 @@ When using client hostname validation, according to the rules defined by the <a 
 </li>
 </ul>
 </div>
+</div>
 <div class="sect3">
-<h4 id="generating-server-keystores_endpoint-security"><a class="anchor" href="#generating-server-keystores_endpoint-security"></a>5.1.1. Generating Infinispan Server keystores</h4>
+<h4 id="generating-server-keystores_endpoint-security"><a class="anchor" href="#generating-server-keystores_endpoint-security"></a>5.1.2. Generating Infinispan Server keystores</h4>
 <div class="paragraph">
 <p>Configure Infinispan Server to automatically generate keystores at startup.</p>
 </div>
@@ -3478,7 +4308,7 @@ When using client hostname validation, according to the rules defined by the <a 
 <div class="listingblock">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="generated-keystore"&gt;
@@ -3540,7 +4370,7 @@ When using client hostname validation, according to the rules defined by the <a 
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-ssl-engine_endpoint-security"><a class="anchor" href="#configuring-ssl-engine_endpoint-security"></a>5.1.2. Configuring TLS versions and cipher suites</h4>
+<h4 id="configuring-ssl-engine_endpoint-security"><a class="anchor" href="#configuring-ssl-engine_endpoint-security"></a>5.1.3. Configuring TLS versions and cipher suites</h4>
 <div class="paragraph">
 <p>When using SSL/TLS encryption to secure your deployment, you can configure Infinispan Server to use specific versions of the TLS protocol as well as specific cipher suites within the protocol.</p>
 </div>
@@ -3597,7 +4427,7 @@ Omitting the <code>enabled-protocols</code> attribute allows any TLS version.</p
 <div class="listingblock">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="default"&gt;
@@ -3712,22 +4542,6 @@ You can configure your Infinispan Server to use encryption ciphers that adhere t
 </li>
 </ul>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>The OpenSSL provider requires a private key, but you cannot retrieve a private key from the PKCS#11 store.
-FIPS blocks the export of unencrypted keys from a FIPS-compliant cryptographic module, so you cannot use the OpenSSL provider for TLS when in FIPS mode.
-You can disable the OpenSSL provider at startup with the <code>-Dorg.infinispan.openssl=false</code> argument.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
 <ol class="arabic">
@@ -3749,7 +4563,7 @@ You can disable the OpenSSL provider at startup with the <code>-Dorg.infinispan.
 <div class="listingblock">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
    &lt;security&gt;
       &lt;security-realms&gt;
          &lt;security-realm name="default"&gt;
@@ -3850,7 +4664,7 @@ You can disable the OpenSSL provider at startup with the <code>-Dorg.infinispan.
 <div class="listingblock">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
    &lt;security&gt;
       &lt;security-realms&gt;
          &lt;security-realm name="default"&gt;
@@ -4006,7 +4820,7 @@ These trust stores should be configured with an empty password: <code>password="
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="trust-store-realm"&gt;
@@ -4186,6 +5000,20 @@ These trust stores should be configured with an empty password: <code>password="
 </li>
 </ol>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Infinispan creates the identity of the client by extracting the certificate principal. Any other Subject
+Alternative Names (SANs) which may be present in the certificate are currently ignored. For this reason, the
+<code>authorization.group-only-mapping</code> attribute below must be set to <code>false</code>.
+</td>
+</tr>
+</table>
+</div>
 <h4 id="client_certificate_authorization_configuration" class="discrete">Client certificate authorization configuration</h4>
 <div class="listingblock primary">
 <div class="title">XML</div>
@@ -4193,7 +5021,7 @@ These trust stores should be configured with an empty password: <code>password="
 <pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container name="certificate-authentication" statistics="true"&gt;
     &lt;security&gt;
-      &lt;authorization&gt;
+      &lt;authorization group-only-mapping="false"&gt;
         &lt;!-- Declare a role mapper that associates the common name (CN) field in client certificate trust stores with authorization roles. --&gt;
         &lt;common-name-role-mapper/&gt;
         &lt;!-- In this example, if a client certificate contains `CN=Client1` then clients with matching certificates get ALL permissions. --&gt;
@@ -4213,6 +5041,7 @@ These trust stores should be configured with an empty password: <code>password="
       "name": "certificate-authentication",
       "security": {
         "authorization": {
+          "group-only-mapping": false,
           "common-name-role-mapper": null,
           "roles": {
             "Client1": {
@@ -4236,6 +5065,7 @@ These trust stores should be configured with an empty password: <code>password="
     name: "certificate-authentication"
     security:
       authorization:
+        groupOnlyMapping: false
         commonNameRoleMapper: ~
         roles:
           Client1:
@@ -4494,7 +5324,7 @@ If the command requires parameters, provide them as a space-separated list of st
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;credential-stores&gt;
       &lt;credential-store name="credentials" path="credentials.pfx"&gt;
@@ -4539,7 +5369,7 @@ If the command requires parameters, provide them as a space-separated list of st
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;credential-stores&gt;
       &lt;credential-store name="credentials"
@@ -4585,7 +5415,7 @@ If the command requires parameters, provide them as a space-separated list of st
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;credential-stores&gt;
       &lt;credential-store name="credentials"
@@ -4637,7 +5467,7 @@ If the command requires parameters, provide them as a space-separated list of st
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;credential-stores&gt;
       &lt;credential-store name="credentials"
@@ -4725,7 +5555,7 @@ If the command requires parameters, provide them as a space-separated list of st
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;credential-stores&gt;
       &lt;credential-store name="credentials"
@@ -4868,7 +5698,7 @@ Nodes in the Infinispan Server cluster then exchange SSL/TLS certificates to enc
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:14.0"&gt;
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="cluster-transport"&gt;
@@ -5084,7 +5914,7 @@ Otherwise the following message is written to Infinispan logs:</p>
 <p><a href="http://www.jgroups.org/manual4/index.html">JGroups 4 Manual</a></p>
 </li>
 <li>
-<p><a href="http://www.jgroups.org/schema/jgroups-5.2.xsd">JGroups 4.2 Schema</a></p>
+<p><a href="http://www.jgroups.org/schema/jgroups-5.3.xsd">JGroups 4.2 Schema</a></p>
 </li>
 </ul>
 </div>
@@ -5162,7 +5992,7 @@ Otherwise the following message is written to Infinispan logs:</p>
 <p><a href="http://www.jgroups.org/manual4/index.html">JGroups 4 Manual</a></p>
 </li>
 <li>
-<p><a href="http://www.jgroups.org/schema/jgroups-5.2.xsd">JGroups 4.2 Schema</a></p>
+<p><a href="http://www.jgroups.org/schema/jgroups-5.3.xsd">JGroups 4.2 Schema</a></p>
 </li>
 </ul>
 </div>
@@ -5233,21 +6063,6 @@ Client applications can then send the <code>Upgrade: protocol</code> header fiel
 <div class="title">Application-Layer Protocol Negotiation (ALPN)/Transport Layer Security (TLS)</div>
 <p>Client requests include Server Name Indication (SNI) mappings for Infinispan Server endpoints to negotiate protocols over a TLS connection.</p>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Applications must use a TLS library that supports the ALPN extension.
-Infinispan uses WildFly OpenSSL bindings for Java.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
 <div class="paragraph">
 <div class="title">Automatic Hot Rod detection</div>
 <p>Client requests that include Hot Rod headers automatically route to Hot Rod endpoints.</p>
@@ -5305,6 +6120,11 @@ nftables utility.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UDP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">JGroups multicast</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>57800</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Failure detection is provided by <code>FD_SOCK2</code>.</p></td>
+</tr>
 </tbody>
 </table>
 <h4 id="cross_site_replication" class="discrete">Cross-site replication</h4>
@@ -5317,13 +6137,9 @@ nftables utility.</p>
 <dd>
 <p>For Infinispan clusters running on Kubernetes.</p>
 </dd>
-<dt class="hdlist1"><code>7800</code></dt>
-<dd>
-<p>If using UDP for traffic between nodes and TCP for traffic between clusters.</p>
-</dd>
 <dt class="hdlist1"><code>7801</code></dt>
 <dd>
-<p>If using TCP for traffic between nodes and TCP for traffic between clusters.</p>
+<p>For other deployments.</p>
 </dd>
 </dl>
 </div>
@@ -5333,7 +6149,7 @@ nftables utility.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-01-30 11:39:53 UTC
+Last updated 2025-01-30 12:10:07 UTC
 </div>
 </div>
 <script type="text/x-mathjax-config">
