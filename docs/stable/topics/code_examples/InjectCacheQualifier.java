@@ -2,7 +2,7 @@
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.cdi.ConfigureCache;
-import jakarta.transaction.inject.Produces;
+import javax.enterprise.inject.Produces;
 
 public class Config {
 

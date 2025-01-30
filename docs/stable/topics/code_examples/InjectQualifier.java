@@ -1,5 +1,5 @@
 ...
-import jakarta.inject.Qualifier;
+import javax.inject.Qualifier;
 
 @Qualifier
 @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD})
