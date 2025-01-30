@@ -574,6 +574,7 @@ $(addBlockSwitches);
 <ul class="sectlevel4">
 <li><a href="#project_cache_entry_version">Project cache entry version</a></li>
 <li><a href="#project_cache_entry_value">Project cache entry value</a></li>
+<li><a href="#score_projection">Project the score</a></li>
 </ul>
 </li>
 <li><a href="#grouping_and_aggregation">2.2.5. Grouping and aggregation</a></li>
@@ -591,6 +592,20 @@ $(addBlockSwitches);
 <li><a href="#boosting_queries">2.3.7. Boosting queries</a></li>
 </ul>
 </li>
+<li><a href="#vector-search_ickle-query-language">2.4. Vector search queries</a>
+<ul class="sectlevel3">
+<li><a href="#vector_search_parameters">2.4.1. Vector search parameters</a></li>
+<li><a href="#score_projection_with_vector_search">2.4.2. Score projection with vector search</a></li>
+<li><a href="#filtering_entities">2.4.3. Filtering entities</a></li>
+<li><a href="#vector_field_attributes">2.4.4. Vector field attributes</a>
+<ul class="sectlevel4">
+<li><a href="#similarity">Similarity</a></li>
+<li><a href="#beanwidth">Beanwidth</a></li>
+<li><a href="#max_connections">Max Connections</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#query-remote">3. Querying remote caches</a>
@@ -602,6 +617,12 @@ $(addBlockSwitches);
 <ul class="sectlevel3">
 <li><a href="#default-analyzers_query-remote">3.4.1. Default analyzer definitions</a></li>
 <li><a href="#creating-analyzers_query-remote">3.4.2. Creating custom analyzer definitions</a></li>
+</ul>
+</li>
+<li><a href="#queries_by_keys_query-remote">3.5. Queries by keys</a>
+<ul class="sectlevel3">
+<li><a href="#key_property_name">3.5.1. Key property name</a></li>
+<li><a href="#key_include_depth">3.5.2. Key include depth</a></li>
 </ul>
 </li>
 </ul>
@@ -799,7 +820,7 @@ config.indexing().enable().storage(FILESYSTEM).path("/some/folder").addIndexedEn
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/configuration/cache/IndexingConfigurationBuilder.html"><code>org.infinispan.configuration.cache.IndexingConfigurationBuilder</code></a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/configuration/cache/IndexingConfigurationBuilder.html"><code>org.infinispan.configuration.cache.IndexingConfigurationBuilder</code></a></p>
 </li>
 </ul>
 </div>
@@ -929,6 +950,34 @@ By default no indexing operation takes place when a cache starts but you can con
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
+<h5 id="indexing_mode" class="discrete">Indexing mode</h5>
+<div class="paragraph">
+<p><code>indexing-mode</code> controls how cache operations are propagated to the indexes.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>auto</code></dt>
+<dd>
+<p>Infinispan immediately applies any changes to the cache to the indexes. This is the default mode.</p>
+</dd>
+<dt class="hdlist1"><code>manual</code></dt>
+<dd>
+<p>Infinispan updates indexes only when the reindex operation is explicitly invoked. Configure <code>manual</code> mode, for example, when you want to perform batch updates to the indexes.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>Set the <code>indexing-mode</code> to <code>manual</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;distributed-cache&gt;
+  &lt;indexing indexing-mode="manual"&gt;
+    &lt;!-- Additional indexing configuration goes here. --&gt;
+  &lt;/indexing&gt;
+&lt;/distributed-cache&gt;</code></pre>
+</div>
+</div>
 <h5 id="index_reader" class="discrete">Index reader</h5>
 <div class="paragraph">
 <p>The index reader is an internal component that provides access to the indexes to perform queries. As the index content changes, Infinispan needs to refresh the reader so that search results are up to date.
@@ -1020,15 +1069,15 @@ The defaults should work for most cases and custom configurations should only be
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>thread-pool-size</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of threads that execute write operations to the index.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">This configuration is ignored since Infinispan 15.0. The indexing engine now uses the Infinispan thread pools.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>queue-count</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of internal queues to use for each indexed type. Each queue holds a batch of modifications that is applied to the index and queues are processed in parallel. Increasing the number of queues will lead to an increase of indexing throughput, but only if the bottleneck is CPU. For optimum results, do not set a value for <code>queue-count</code> that is larger than the value for <code>thread-pool-size</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default 4. Number of internal queues to use for each indexed type. Each queue holds a batch of modifications that is applied to the index and queues are processed in parallel. Increasing the number of queues will lead to an increase of indexing throughput, but only if the bottleneck is CPU.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>queue-size</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of elements each queue can hold. Increasing the <code>queue-size</code> value increases the amount of memory that is used during indexing operations. Setting a value that is too small can block indexing operations.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default 4000. Maximum number of elements each queue can hold. Increasing the <code>queue-size</code> value increases the amount of memory that is used during indexing operations. Setting a value that is too small can lead to <code>CacheBackpressureFullException</code> or <code>RejectedExecutionExceptionOperationSubmitter</code> since index operation requests are never blocked. In this case to solve the issue increase the <code>queue-size</code> or set the <code>queue-count</code> to 1.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>low-level-trace</code></p></td>
@@ -1082,9 +1131,28 @@ The defaults should work for most cases and custom configurations should only be
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/configdocs/">Infinispan configuration schema reference</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/configdocs/">Infinispan configuration schema reference</a></p>
 </li>
 </ul>
+</div>
+<h5 id="index_sharding" class="discrete">Index sharding</h5>
+<div class="paragraph">
+<p>When you have a large amount of data, you can configure Infinispan to split index data into multiple indexes called shards.
+Enabling data distribution among shards improves performance.
+By default, sharding is disabled.</p>
+</div>
+<div class="paragraph">
+<p>Use the <code>shards</code> attribute to configure the number of indexes.
+The number of shards must be greater then <code>1</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;distributed-cache&gt;
+  &lt;indexing&gt;
+    &lt;index-sharding shards="6" /&gt;
+  &lt;/indexing&gt;
+&lt;/distributed-cache&gt;</code></pre>
+</div>
 </div>
 </div>
 </div>
@@ -1127,6 +1195,10 @@ Keyword fields are not analyzed or tokenized during indexing.</p>
 <dd>
 <p>Use this annotation for fields that contain textual data and are intended for full-text search capabilities. You can use the analyzer to process the text and to generate individual tokens.</p>
 </dd>
+<dt class="hdlist1">@Vector</dt>
+<dd>
+<p>Use this annotation to mark vector fields representing embeddings, on which can be defined kNN-predicates.</p>
+</dd>
 <dt class="hdlist1">@Embedded</dt>
 <dd>
 <p>Use this annotation to mark a field as an embedded object within the parent entity.
@@ -1153,19 +1225,23 @@ The default structure used by <code>@Embedded</code> is <code>NESTED</code>.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">@Basic</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Searchable, sortable, projectable, aggregable, indexNullAs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">searchable, sortable, projectable, aggregable, indexNullAs</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">@Decimal</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Searchable, sortable, projectable, aggregable, indexNullAs, decimalScale</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">searchable, sortable, projectable, aggregable, indexNullAs, decimalScale</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">@Keyword</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Searchable, sortable, projectable, aggregable, indexNullAs, normalizer, norms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">searchable, sortable, projectable, aggregable, indexNullAs, normalizer, norms</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">@Text</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Searchable, projectable, norms, analyzer, searchAnalyzer, termVector</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">searchable, projectable, norms, analyzer, searchAnalyzer, termVector</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">@Vector</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">searchable, projectable, dimension, similarity, beamWidth, maxConnections</p></td>
 </tr>
 </tbody>
 </table>
@@ -1188,8 +1264,8 @@ You then upload your Protobuf schema to Infinispan Server.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code class="language-java" data-lang="java">/**
-   * @Text(projectable = true)
-   */
+  * @Text(projectable = true)
+  */
 required string street = 1;</code></pre>
 </div>
 </div>
@@ -1310,7 +1386,7 @@ When you change index field definitions or when you delete fields, you must rebu
 </td>
 <td class="content">
 <div class="paragraph">
-<p>For remote caches, you can update index schema using the <a href="../rest/rest.html#rest_v2_query_updateIndexSchema">REST API</a>.</p>
+<p>For remote caches, you can update index schema from the Infinispan Console or using the <a href="../rest/rest.html#rest_v2_query_updateIndexSchema">REST API</a>.</p>
 </div>
 </td>
 </tr>
@@ -1359,21 +1435,18 @@ However you can query caches that are non-indexed.</p>
 <div class="sect2">
 <h3 id="ickle-queries_ickle-query-language"><a class="anchor" href="#ickle-queries_ickle-query-language"></a>2.1. Ickle queries</h3>
 <div class="paragraph">
-<p>To use the API, first obtain a QueryFactory to the cache and then call the <code>.create()</code> method, passing in the string to use in the query.
-Each <code>QueryFactory</code> instance is bound to the same <code>Cache</code> instance as the <code>Search</code>, but it is otherwise a stateless and thread-safe object that can be used for creating multiple queries in parallel.</p>
+<p>To use the API, call the cache <code>.query()</code> method and provide the query string.</p>
 </div>
 <div class="paragraph">
 <p>For instance:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">// Remote Query, using protobuf
-QueryFactory qf = org.infinispan.client.hotrod.Search.getQueryFactory(remoteCache);
-Query&lt;Transaction&gt; q = qf.create("from sample_bank_account.Transaction where amount &gt; 20");
+<pre class="highlight"><code class="language-java" data-lang="java">// Remote Query using protobuf
+Query&lt;Transaction&gt; q = remoteCache.query("from sample_bank_account.Transaction where amount &gt; 20");
 
 // Embedded Query using Java Objects
-QueryFactory qf = org.infinispan.query.Search.getQueryFactory(cache);
-Query&lt;Transaction&gt; q = qf.create("from org.infinispan.sample.Book where price &gt; 20");
+Query&lt;Transaction&gt; q = cache.query("from org.infinispan.sample.Book where price &gt; 20");
 
 // Execute the query
 QueryResult&lt;Book&gt; queryResult = q.execute();</code></pre>
@@ -1407,7 +1480,7 @@ conjunction with <code>Query.startOffset(long startOffset)</code> to achieve pag
 <div class="content">
 <pre class="highlight"><code class="language-java" data-lang="java">// sorted by year and match all books that have "clustering" in their title
 // and return the third page of 10 results
-Query&lt;Book&gt; query = queryFactory.create("FROM org.infinispan.sample.Book WHERE title like '%clustering%' ORDER BY year").startOffset(20).maxResults(10)</code></pre>
+Query&lt;Book&gt; query = cache.query("FROM org.infinispan.sample.Book WHERE title like '%clustering%' ORDER BY year").startOffset(20).maxResults(10)</code></pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -1429,24 +1502,32 @@ You can change the default limit by setting the <code>query.default-max-results<
 <div class="sect3">
 <h4 id="number_of_hits"><a class="anchor" href="#number_of_hits"></a>2.1.2. Number of hits</h4>
 <div class="paragraph">
-<p>The <code>QueryResult</code> object includes the <code>.hitCount()</code> method, which returns a hit count value that represents the total number of results from a query, regardless of any pagination parameter.
+<p>The <code>QueryResult</code> object includes the <code>.hitCount()</code> method, which returns a hit count value that represents the total number of results from a query, regardless of any pagination parameter.</p>
+</div>
+<div class="paragraph">
+<p>Additionally, <code>QueryResult</code> object contains a boolean value returned by the <code>.isExact()</code> method which indicates whether the hit count number is exact or a lower bound.
 The hit count is only available for indexed queries for performance reasons.</p>
 </div>
 <div class="sect4">
 <h5 id="hit_count_accuracy"><a class="anchor" href="#hit_count_accuracy"></a>Hit count accuracy</h5>
 <div class="paragraph">
-<p>To optimize performance, the default accuracy of the hit count is set to <code>10000</code>.
-You can limit the required accuracy of hit counts by setting <code>query.hit-count-accuracy</code> cache property.
-Alternatively, you can set the limit on each query instance.</p>
+<p>You can limit the required accuracy of hit counts by setting <code>hit-count-accuracy</code> attribute.
+When dealing with large data sets, precise hit counts can impact performance.
+Setting a limit to the hit count accuracy, lets you achieve faster query responses while ensuring that the provided hit counts remain sufficiently accurate for your application&#8217;s needs.</p>
 </div>
 <div class="paragraph">
-<p>When the hit count exceeds the specified limit, Infinispan does not return any value for the hit count.
-When using the HotRod client or embedded query API, Infinispan returns <code>null</code>, and when using the REST query API, Infinispan respons with <code>-1L</code>.
-While setting the hit count accuracy to <code>Integer.MAX</code> would return accurate results for any query, it would negatively impact query performance.</p>
+<p>The default accuracy of the <code>hit-count-accuracy</code> attribute is limited to <code>10000</code>.
+This means that for any query, Infinispan provides exact hit count up to maximum of 10,000.
+If the effective hit count is higher than 10,000, Infinispan returns a lower bound estimate of the count.
+You can change the default limit by setting the <code>query.hit-count-accuracy</code> cache property.
+Alternatively, it can be set on each query instance.</p>
 </div>
 <div class="paragraph">
-<p>For optimal performance, set the property value slightly above the expected hit count.
-If you do not require precise hit counts, set it to a low value.</p>
+<p>When the actual hit count exceeds the limit set by the <code>hit-count-accuracy</code>, the <code>.isExact()</code> method or the <code>hit_count_exact</code> JSON field will be <code>false</code>, indicating that the returned hit count is an estimation.
+Setting this value to <code>Integer.MAX</code> would return accurate results for any query, but this can severely impact query performance.</p>
+</div>
+<div class="paragraph">
+<p>For optimal performance set the property value slightly above the expected hit count. If you do not require accurate hit counts, set it to a low value.</p>
 </div>
 </div>
 </div>
@@ -1484,9 +1565,8 @@ the operator instead of the usual constant value. Once the parameters have been 
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">QueryFactory queryFactory = Search.getQueryFactory(cache);
-// Defining a query to search for various authors and publication years
-Query&lt;Book&gt; query = queryFactory.create("SELECT title FROM org.infinispan.sample.Book WHERE author = :authorName AND publicationYear = :publicationYear").build();
+<pre class="highlight"><code class="language-java" data-lang="java">// Defining a query to search for various authors and publication years
+Query&lt;Book&gt; query = cache.query("SELECT title FROM org.infinispan.sample.Book WHERE author = :authorName AND publicationYear = :publicationYear").build();
 
 // Set actual parameter values
 query.setParameter("authorName", "Doe");
@@ -1560,10 +1640,10 @@ performance compared to a similar query using constant values instead of query p
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/query/dsl/Query.html#execute()">org.infinispan.query.dsl.Query.execute()</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/query/dsl/Query.html#execute()">org.infinispan.query.dsl.Query.execute()</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/query/dsl/Query.html#executeStatement()">org.infinispan.query.dsl.Query.executeStatement()</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/query/dsl/Query.html#executeStatement()">org.infinispan.query.dsl.Query.executeStatement()</a></p>
 </li>
 </ul>
 </div>
@@ -1758,6 +1838,20 @@ in the same <code>Object[]</code> returned hit.</p>
 SELECT b, version(b) FROM org.infinispan.sample.Book b WHERE b.title like '%Data Grid%'</code></pre>
 </div>
 </div>
+</div>
+<div class="sect4">
+<h5 id="score_projection"><a class="anchor" href="#score_projection"></a>Project the score</h5>
+<div class="paragraph">
+<p>If the query is indexed, it is possible to project the score obtained by each matching together with other projections.
+It can be used for instance to project the cache entry value together with the score
+in the same <code>Object[]</code> returned hit.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sql" data-lang="sql"># return the cache entry value and the the score of the matching
+SELECT b, score(b) FROM org.infinispan.sample.Book b WHERE b.title like '%Data Grid%'</code></pre>
+</div>
+</div>
 <h4 id="sorting" class="discrete">Sorting</h4>
 <div class="paragraph">
 <p>Ordering the results based on one or more attributes or attribute paths is done with the <code>ORDER BY</code> clause. If multiple sorting criteria
@@ -1950,7 +2044,7 @@ fields.</p>
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/query/dsl/Query.html#executeStatement()">org.infinispan.query.dsl.Query.executeStatement()</a></p>
+<p><a href="https://docs.jboss.org/infinispan/15.0/apidocs/org/infinispan/query/dsl/Query.html#executeStatement()">org.infinispan.query.dsl.Query.executeStatement()</a></p>
 </li>
 </ul>
 </div>
@@ -2049,6 +2143,195 @@ For instance, the following example will find the words canceling and fee provid
 </div>
 </div>
 </div>
+<div class="sect2">
+<h3 id="vector-search_ickle-query-language"><a class="anchor" href="#vector-search_ickle-query-language"></a>2.4. Vector search queries</h3>
+<div class="paragraph">
+<p>You can perform vector kNN searches with the Ickle query language using the special operator <code>&lt;-&gt;</code> to define predicates.</p>
+</div>
+<div class="paragraph">
+<p>This is an example of kNN query:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-sql" data-lang="sql">from play.Item i where i.myVector &lt;-&gt; [7,7,7]~3</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This query will find the items that have the <code>myVector</code> fields that are within <code>3</code> nearest neighbourhood from the vector <code>[7,7,7]</code>.</p>
+</div>
+<div class="paragraph">
+<p>Notice that in order to use this kind of search the entity, in our example <code>play.Item</code>, has to be <code>@Indexed</code> and
+the field, in our example <code>myVector</code>, should be annotated with <code>@Vector</code>.</p>
+</div>
+<div class="paragraph">
+<p>We support two kinds of vector field types:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>byte</code> / <code>Byte</code> (to work with byte vectors)</p>
+</li>
+<li>
+<p><code>float</code> / <code>Float</code> (to work with float vectors)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>You can have different vector fields on the same entity, but in any case you can have only one vector predicate on your queries.</p>
+</div>
+<div class="sect3">
+<h4 id="vector_search_parameters"><a class="anchor" href="#vector_search_parameters"></a>2.4.1. Vector search parameters</h4>
+<div class="paragraph">
+<p>Both the k-value and the vector can be passed as query parameter.
+The k-value scalar can be expressed with the usual placeholder <code>:k</code> in the Ickle text.
+For the vector we can use either a placeholder for each term of the vector:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">Query&lt;Item&gt; query = cache.query("from play.Item i where i.floatVector &lt;-&gt; [:a,:b,:c]~:k");
+query.setParameter("a", 1);
+query.setParameter("b", 4.3);
+query.setParameter("c", 3.3);
+query.setParameter("k", 4);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or a placeholder can be used for the entire vector:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">Query&lt;Item&gt; query = cache.query("from play.Item i where i.floatVector &lt;-&gt; [:a]~:k");
+query.setParameter("a", new float[]{7.1f, 7.0f, 3.1f});
+query.setParameter("k", 3);</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="score_projection_with_vector_search"><a class="anchor" href="#score_projection_with_vector_search"></a>2.4.2. Score projection with vector search</h4>
+<div class="paragraph">
+<p>Is very common also to return the score of the computation, using the <a href="../query/query.html#score_projection">score projection</a>.
+In the case of vector search the query will be like the following:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">Query&lt;Object[]&gt; query = cache.query("select i, score(i) from play.Item i where i.floatVector &lt;-&gt; [:a]~:k");
+query.setParameter("a", new float[]{7.1f, 7.0f, 3.1f});
+query.setParameter("k", 3);
+
+List&lt;Object[]&gt; resultList = query.list();</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this case the first element of each array will contain the entity,
+and the second element will contain the score of the matching.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="filtering_entities"><a class="anchor" href="#filtering_entities"></a>2.4.3. Filtering entities</h4>
+<div class="paragraph">
+<p>Instead of applying the kNN search to the entire population of entities of a given type,
+you can limiting the searching set applying classic predicates (match, full-text-search, range, &#8230;&#8203;) to the kNN queries,
+defining what we call a filtering clause.</p>
+</div>
+<div class="paragraph">
+<p>A filtering clause can contain any kind of predicates with the only exception of kNN predicates that cannot be included.</p>
+</div>
+<div class="paragraph">
+<p>For instance the following query:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">Query&lt;Object[]&gt; query = remoteCache.query(
+   "select score(i), i from Item i where i.floatVector &lt;-&gt; [:a]~:k filtering (i.buggy : 'cat' or i.text : 'code')");
+query.setParameter("a", new float[]{7, 7, 7});
+query.setParameter("k", 3);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Will return the nearest 3 items from the point <code>[7,7,7]</code> selecting only the items that have a text containing the term <code>cat</code> or <code>code</code>.</p>
+</div>
+<div class="paragraph">
+<p>The filtering queries is a way to apply the classic indexed search to the new vector search.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="vector_field_attributes"><a class="anchor" href="#vector_field_attributes"></a>2.4.4. Vector field attributes</h4>
+<div class="paragraph">
+<p>It is always required to specify the <strong>dimension</strong> of the vector field.</p>
+</div>
+<div class="paragraph">
+<p>The other mapping attributes are optional, since Infinispan will have a default for each of them.
+You can configure them, for instance, to tune the desired accuracy / performance.</p>
+</div>
+<div class="sect4">
+<h5 id="similarity"><a class="anchor" href="#similarity"></a>Similarity</h5>
+<div class="paragraph">
+<p>Different <code>VectorSimilarity</code> algorithms are supported</p>
+</div>
+<table class="tableblock frame-all grid-all fit-content">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Distance</th>
+<th class="tableblock halign-left valign-top">Score</th>
+<th class="tableblock halign-left valign-top">Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>L2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">\(d(x,y) = \sqrt{\sum_{i=1}^{n} (x_i - y_i)^2 } \)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">\(s = \frac{1}{1+d^2}\)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">This is the Infinispan default</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INNER_PRODUCT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">\(d(x,y) = \sum_{i=1}^{n} x_i \cdot y_i \)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">\(s = \frac{1}{1+d}\)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">To use this similarity efficiently, both index and search vectors must be normalized</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_INNER_PRODUCT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">\(d(x,y) = \sum_{i=1}^{n} x_i \cdot y_i \)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">s = \begin{cases}
+\frac{1}{1-d} &amp; \text{if d &lt; 0}\\
+d+1 &amp; \text{otherwise}
+\end{cases}</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">This similarity does not require vector normalization</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>COSINE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">\(d(x,y) = \frac{1 - \sum_{i=1} ^{n} x_i \cdot y_i }{ \sqrt{ \sum_{i=1} ^{n} x_i^2 } \sqrt{ \sum_{i=1} ^{n} y_i^2 }} \)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">\(s = \frac{1}{1+d}\)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">This similarity cannot be of <code>zero magnitude</code>, e.g. when a vector is all zeroes: <code>[0,0,0,&#8230;&#8203; 0,0]</code>, the cosine is not defined and will result in an error.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="beanwidth"><a class="anchor" href="#beanwidth"></a>Beanwidth</h5>
+<div class="paragraph">
+<p>Changing the <code>beamWidth</code> you can modify the the size of the dynamic list used during k-NN graph creation.
+It affects how vectors are stored. Higher values lead to a more accurate graph but slower indexing speed.
+The Infinispan default is 512.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="max_connections"><a class="anchor" href="#max_connections"></a>Max Connections</h5>
+<div class="paragraph">
+<p>The number of neighbors each node will be connected to in the HNSW graph.
+Modifying this value will have an impact on memory consumption. It is recommended to keep this value between 2 and 100.
+The Infinispan default is 16.</p>
+</div>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -2137,7 +2420,7 @@ public class Book {
 </div>
 </li>
 <li>
-<p>Implement the <code>SerializationContextInitializer</code> interface in a new class and then add the <code>@AutoProtoSchemaBuilder</code> annotation.</p>
+<p>Implement the <code>SerializationContextInitializer</code> interface in a new class and then add the <code>@ProtoSchema</code> annotation.</p>
 <div class="olist loweralpha">
 <ol class="loweralpha" type="a">
 <li>
@@ -2152,9 +2435,9 @@ public class Book {
 <div class="title">RemoteQueryInitializer.java</div>
 <div class="content">
 <pre class="highlight"><code class="language-java" data-lang="java">import org.infinispan.protostream.SerializationContextInitializer;
-import org.infinispan.protostream.annotations.AutoProtoSchemaBuilder;
+import org.infinispan.protostream.annotations.ProtoSchema;
 
-@AutoProtoSchemaBuilder(
+@ProtoSchema(
       includeClasses = {
             Book.class
       },
@@ -2258,8 +2541,7 @@ public class RemoteQuery {
       remoteCache.put(2, book2);
 
       // Execute a full-text query
-      QueryFactory queryFactory = Search.getQueryFactory(remoteCache);
-      Query&lt;Book&gt; query = queryFactory.create("FROM book_sample.Book WHERE title:'java'");
+      Query&lt;Book&gt; query = remoteCache.query("FROM book_sample.Book WHERE title:'java'");
 
       List&lt;Book&gt; list = query.execute().list(); // Voila! We have our book back from the cache!
    }
@@ -2311,7 +2593,7 @@ public class CalculusIndexed {
 <p>Set the <code>dependsOn</code> attribute to <code>CommonTypes.class</code> to indicate that the generated Protobuf schema can reference and use <code>CommonTypes</code> types such as <code>BigInteger</code> and <code>BigDecimal</code>:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">@AutoProtoSchemaBuilder(includeClasses = CalculusIndexed.class, dependsOn = CommonTypes.class,
+<pre class="highlight"><code class="language-java" data-lang="java">@ProtoSchema(includeClasses = CalculusIndexed.class, dependsOn = CommonTypes.class,
      schemaFilePath = "/protostream", schemaFileName = "calculus-indexed.proto",
      schemaPackageName = "lab.indexed")
 public interface CalculusIndexedSchema extends GeneratedSchema {
@@ -2323,11 +2605,11 @@ public interface CalculusIndexedSchema extends GeneratedSchema {
 <p>Perform queries:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code>Query&lt;Product&gt; query = queryFactory.create("from lab.indexed.CalculusIndexed c where c.purchases &gt; 9");
+<pre class="highlight"><code>Query&lt;Product&gt; query = cache.query("from lab.indexed.CalculusIndexed c where c.purchases &gt; 9");
 QueryResult&lt;Product&gt; result = query.execute();
 // play with the result
 
-query = queryFactory.create("from lab.indexed.CalculusIndexed c where c.prospect = 2.2");
+query = cache.query("from lab.indexed.CalculusIndexed c where c.prospect = 2.2");
 result = query.execute();
 // play with the result</code></pre>
 </div>
@@ -2687,6 +2969,147 @@ public final class MyAnalyzerProvider implements ProgrammaticSearchMappingProvid
 </div>
 </div>
 </div>
+<div class="sect2">
+<h3 id="queries_by_keys_query-remote"><a class="anchor" href="#queries_by_keys_query-remote"></a>3.5. Queries by keys</h3>
+<div class="paragraph">
+<p>You can define the key of a cache entry as <code>Indexed</code> type to index the key fields as well the value fields allowing the keys to be used in Ickle queries.</p>
+</div>
+<div class="paragraph">
+<p>To define an <code>Indexed</code> key, specify the fully qualified name of the ProtocolBuffer message type to use as the key type in the <code>keyEntity</code> attribute of the <code>@Indexed</code> annotation.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This feature is available only with indexed remote queries.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="title">Specify the <code>keyEntity</code> of an indexed entity</div>
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">import org.infinispan.api.annotations.indexing.Basic;
+import org.infinispan.api.annotations.indexing.Indexed;
+import org.infinispan.api.annotations.indexing.Text;
+import org.infinispan.protostream.GeneratedSchema;
+import org.infinispan.protostream.annotations.ProtoFactory;
+import org.infinispan.protostream.annotations.ProtoField;
+import org.infinispan.protostream.annotations.ProtoSchema;
+
+@Indexed(keyEntity = "model.StructureKey")
+public class Structure {
+
+   private final String code;
+   private final String description;
+   private final Integer value;
+
+   @ProtoFactory
+   public Structure(String code, String description, Integer value) {
+      this.code = code;
+      this.description = description;
+      this.value = value;
+   }
+
+   @ProtoField(1)
+   @Basic
+   public String getCode() {
+      return code;
+   }
+
+   @ProtoField(2)
+   @Text
+   public String getDescription() {
+      return description;
+   }
+
+   @ProtoField(3)
+   @Basic
+   public Integer getValue() {
+      return value;
+   }
+
+   @ProtoSchema(includeClasses = { Structure.class, StructureKey.class }, schemaPackageName = "model")
+   public interface StructureSchema extends GeneratedSchema {
+      StructureSchema INSTANCE = new StructureSchemaImpl();
+   }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Define the key entity and its indexed fields</div>
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">import org.infinispan.api.annotations.indexing.Basic;
+import org.infinispan.api.annotations.indexing.Indexed;
+import org.infinispan.api.annotations.indexing.Keyword;
+import org.infinispan.protostream.annotations.ProtoFactory;
+import org.infinispan.protostream.annotations.ProtoField;
+
+@Indexed
+public class StructureKey {
+
+   private String zone;
+   private Integer row;
+   private Integer column;
+
+   @ProtoFactory
+   public StructureKey(String zone, Integer row, Integer column) {
+      this.zone = zone;
+      this.row = row;
+      this.column = column;
+   }
+
+   @Keyword(projectable = true, sortable = true)
+   @ProtoField(1)
+   public String getZone() {
+      return zone;
+   }
+
+   @Basic(projectable = true, sortable = true)
+   @ProtoField(2)
+   public Integer getRow() {
+      return row;
+   }
+
+   @Basic(projectable = true, sortable = true)
+   @ProtoField(3)
+   public Integer getColumn() {
+      return column;
+   }
+}</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="key_property_name"><a class="anchor" href="#key_property_name"></a>3.5.1. Key property name</h4>
+<div class="paragraph">
+<p>By default, the key fields will be targeted using the property named <code>key</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">Use key properties in the Ickle queries</div>
+<div class="content">
+<pre class="highlight"><code class="language-slq" data-lang="slq">select s.key.column from model.Structure s where s.key.zone = 'z7'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If the value already has a property named <code>key</code>, the definition of the key entity could create a naming conflict
+with the properties.
+For this reason, and also in general,
+it is possible to change the name to assign as a prefix for the property keys changing the attribute <code>keyPropertyName</code>
+of the <code>@Indexed</code> annotation.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="key_include_depth"><a class="anchor" href="#key_include_depth"></a>3.5.2. Key include depth</h4>
+<div class="paragraph">
+<p>An entity key can have embedded entities. You can limit the depth for the embedded entity fields that are indexed by changing the attribute <code>keyIncludeDepth</code>, which defaults to <code>3</code>.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -2789,19 +3212,16 @@ Cache&lt;String, Book&gt; cache = manager.getCache("books");</code></pre>
 <p>Perform queries for fields in the <code>Book</code> instances that are stored in the Infinispan cache, as in the following example:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-java" data-lang="java">// Get the query factory from the cache
-QueryFactory queryFactory = org.infinispan.query.Search.getQueryFactory(cache);
-
-// Create an Ickle query that performs a full-text search using the ':' operator on the 'title' and 'authors.name' fields
+<pre class="highlight"><code class="language-java" data-lang="java">// Create an Ickle query that performs a full-text search using the ':' operator on the 'title' and 'authors.name' fields
 // You can perform full-text search only on indexed caches
-Query&lt;Book&gt; fullTextQuery = queryFactory.create("FROM org.infinispan.sample.Book b WHERE b.title:'infinispan' AND b.authors.name:'sanne'");
+Query&lt;Book&gt; fullTextQuery = cache.query("FROM org.infinispan.sample.Book b WHERE b.title:'infinispan' AND b.authors.name:'sanne'");
 
 // Use the '=' operator to query fields in caches that are indexed or not
 // Non full-text operators apply only to fields that are not analyzed
-Query&lt;Book&gt; exactMatchQuery=queryFactory.create("FROM org.infinispan.sample.Book b WHERE b.isbn = '12345678' AND b.authors.name : 'sanne'");
+Query&lt;Book&gt; exactMatchQuery= cache.query("FROM org.infinispan.sample.Book b WHERE b.isbn = '12345678' AND b.authors.name : 'sanne'");
 
 // You can use full-text and non-full text operators in the same query
-Query&lt;Book&gt; query=queryFactory.create("FROM org.infinispan.sample.Book b where b.authors.name : 'Stephen' and b.description : (+'dark' -'tower')");
+Query&lt;Book&gt; query= cache.query("FROM org.infinispan.sample.Book b where b.authors.name : 'Stephen' and b.description : (+'dark' -'tower')");
 
 // Get the results
 List&lt;Book&gt; found=query.execute().list();</code></pre>
@@ -2869,7 +3289,7 @@ public class CustomTransformer implements Transformer {
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;replicated-cache name="test"&gt;
-  &lt;indexing auto-config="true"&gt;
+  &lt;indexing&gt;
     &lt;key-transformers&gt;
       &lt;key-transformer key="com.mycompany.CustomKey"
                        transformer="com.mycompany.CustomTransformer"/&gt;
@@ -3080,8 +3500,7 @@ ContinuousQuery&lt;Integer, Person&gt; continuousQuery = Search.getContinuousQue
 
 // Define a query.
 // In this example, we search for Person instances under 21 years of age.
-QueryFactory queryFactory = Search.getQueryFactory(cache);
-Query query = queryFactory.create("FROM Person p WHERE p.age &lt; 21");
+Query query = cache.query("FROM Person p WHERE p.age &lt; 21");
 
 final Map&lt;Integer, Person&gt; matches = new ConcurrentHashMap&lt;Integer, Person&gt;();
 
@@ -3124,7 +3543,8 @@ continuousQuery.removeContinuousQueryListener(listener);</code></pre>
 <div class="sect2">
 <h3 id="getting-query-statistics_query-monitoring-tuning"><a class="anchor" href="#getting-query-statistics_query-monitoring-tuning"></a>6.1. Getting query statistics</h3>
 <div class="paragraph">
-<p>Collect statistics to gather information about performance of your indexes and queries, including information such as the types of indexes and average time for queries to complete.</p>
+<p>Collect statistics to gather information about performance of your indexes and queries, including information such as the types of indexes, average time for queries to complete
+and the number of possible failures on indexing operations.</p>
 </div>
 <div class="paragraph">
 <div class="title">Procedure</div>
@@ -3196,7 +3616,7 @@ If you do not need data returned in queries as soon as it is written, you should
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-01-28 17:27:15 UTC
+Last updated 2025-01-30 07:42:05 UTC
 </div>
 </div>
 <script type="text/x-mathjax-config">
