@@ -21,14 +21,15 @@ update_version ()
    .$1.release_date = \"$RELEASE_DATE\" |
    .$1.maven_latest = \"$LATEST_VERSION\" |
    .$1.fixed_issues = \"$URL\" |
-   .$1.download.server = \"https://downloads.jboss.org/infinispan/$LATEST_VERSION/infinispan-server-$LATEST_VERSION.zip\" |
+   .$1.download.server = \"https://github.com/infinispan/infinispan/releases/download/$LATEST_VERSION/infinispan-server-$LATEST_VERSION.zip\" |
    .$1.download.docker_native = \"quay.io/infinispan/server-native:$LATEST_VERSION-1\" |
-   .$1.download.docker_cli = \"quay.io/infinispan/cli:$LATEST_VERSION-1\"
+   .$1.download.docker_cli = \"quay.io/infinispan/cli:$LATEST_VERSION-1\" |
+   .docs.infinispan.\"$2\".core.html = \"org.infinispan:infinispan-docs:$LATEST_VERSION:zip:html\"
   " "$CONFIG_FILE"
 }
 
-update_version "stable"
-#update_version "unstable"
-update_version "old.\"15.0\""
-update_version "old.\"14.0\""
+update_version "stable" "15.1.x"
+#update_version "unstable" "15.2.x"
+update_version "old.\"15.0\"" "15.0.x"
+update_version "old.\"14.0\"" "14.0.x"
 
