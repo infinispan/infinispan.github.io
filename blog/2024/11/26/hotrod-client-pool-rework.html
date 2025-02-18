@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPD7V946LB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-GPD7V946LB');
+  </script>
+  <title>Infinispan Java Hot Rod client pool rework</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.css">
+  <link rel="stylesheet" href="/assets/css/cookieconsent.css">
+  <link rel="alternate" type="application/rss+xml"
+        title="Infinispan's RSS Feed"
+        href="/feed.xml" />
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> Infinispan Java Hot Rod client pool rework
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Infinispan Java Hot Rod client pool rework</h1>
+    <div class="post-date">November 26, 2024
+      Tags: <a href="/blog/tag/client">client</a> <a href="/blog/tag/hotrod">hotrod</a> <a href="/blog/tag/performance">performance</a> 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/wburns.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By William Burns</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div class="paragraph">
+<p>Infinispan 15.1 will be shipping a new default Hot Rod client implementation.
+This implementation completely overhauls the "pool" implementation and adds many
+internal code optimizations and reductions.</p>
+</div>
+<div class="sect1">
+<h2 id="an-overview-of-the-changes">An overview of the changes</h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>Remove <code>ChannelPool</code> implementation, replaced with single pipelined <code>Channel</code>-per-server</p>
+</li>
+<li>
+<p>Reduce per-operation allocation rate</p>
+</li>
+<li>
+<p>Remove unnecessary allocations during response processing</p>
+</li>
+<li>
+<p>New protocol (HR 4.1) supporting streaming API in a connection stateless way</p>
+</li>
+<li>
+<p>Internal refactoring to simplify adding additional commands</p>
+</li>
+<li>
+<p>Multiple fixes for client bloom filters</p>
+</li>
+<li>
+<p>Rework client flags to be more consistent and not tied to thread locals</p>
+</li>
+<li>
+<p>Drop client support for HR protocol versions older than 3.0</p>
+</li>
+<li>
+<p>New <code>hotrod-client-legacy</code> jar for the old client</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="how-fast-is-it-though">How fast is it though?</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>As you can see this is quite an extensive rework and I am guessing many of you want to know just
+"How fast is it?". Lets test it and find out.</p>
+</div>
+<div class="paragraph">
+<p>Using the following <a href="https://github.com/infinispan/infinispan-benchmarks/tree/main/getputremovetest">JMH benchmark</a>
+we found that in each case the new client has better performance.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Clients</th>
+<th class="tableblock halign-left valign-top">Servers</th>
+<th class="tableblock halign-left valign-top">Concurrency</th>
+<th class="tableblock halign-left valign-top">Performance Difference</th>
+<th class="tableblock halign-left valign-top"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">single</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">+11.5%</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">high</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">+7%</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">single</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">+2.5%</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">high</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">+10%</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>From this table you should expect a performance benefit in the majority of cases while also reaping the other benefits
+listed below.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="what-does-pipelined-channel-mean-though">What does <strong>pipelined</strong> <code>Channel</code> mean though?</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In the previous client, we would keep a pool of connections and, for each concurrent operation, we would allocate the
+operations required and then submit the bytes to the server in a single socket and wait until the bytes were flushed
+to the socket. During that period another thread could not use the same socket, thus it would use another.</p>
+</div>
+<div class="paragraph">
+<p>The new client, however, uses pipelined requests so that multiple requests can be sent on the same socket without flsuhing immediately.
+Flushing is only performed after the concurrent requests are sent. This means, if multiple threads all send an
+operation, we can keep those requests possibly in a single packet when being sent to the server instead of one per-request.</p>
+</div>
+<div class="paragraph">
+<p>This has the possibility of a loss in performance in a very specific case: a single client instance and a single
+server on hardware with a lot of cores. This is due to the use of an event loop in both the client and the server: operations
+to a server from the same client are always sent on a dedicated thread and the server proceses responses on a dedicated thread per
+client as well. As the number of clients and servers are scaled up, though, this concern dissolves very quickly and, depending on your
+hardware, may not be a concern at all as given the numbers we have above.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="file-descriptors">File Descriptors</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>What about resource usage during the test? As mentioned above the client now only uses a single connection
+per server instead of a pool per server.</p>
+</div>
+<div class="paragraph">
+<p>Using a single server, after everything has been initialized, we can see we are using 35 file descriptors.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">perf@perf:~$ lsof -p &lt;pid&gt; -i | wc -l
+35</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>While running with the legacy client we see the following (note this is filtering only on the HR port)</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">perf@perf:~$ lsof -p &lt;pid&gt; -i | grep 11222 | wc -l
+45</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>So in this case we have 45 files opened when running the test, which is more than the server just idle!
+This makes sense though given we have 1 file for the LISTEN for connections on the server and 22 each for the
+client and server (as our test is running 22 concurrent threads).</p>
+</div>
+<div class="paragraph">
+<p>In comparison, when using the new client we only have 3 file descriptors! (note this filtering only on the HR port)</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">perf@perf:~$ lsof -p &lt;pid&gt; -i | grep 11222 | wc -l
+3</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>That is one for the LISTEN for the server and the single connection between the client to the server.</p>
+</div>
+<div class="paragraph">
+<p>In this run we <em>also</em> saw a 5.8% increase from the new client, pretty great!</p>
+</div>
+<div class="paragraph">
+<p>This should help out all users, as we have had some cases in the past where users were using hundreds of clients
+and dozens of servers, causing for almost 100K+ connections. With this change in place the most number of client
+connections will be capped at the number of clients times the number of servers, completely eliminating the
+effect of concurrency on the number of client connections.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="client-memory-usage">Client memory usage</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The per operation allocation rates have been reduced as well, thus not requiring client applications to have
+as much resource dedicated to the GC there.</p>
+</div>
+<div class="paragraph">
+<p>In the above test the legacy client allocation rate was around 660 MB/s whereas the new client was only 350 MB/s:
+almost half the allocation rate!
+As expected, in test we saw half the number of GC runs between the legacy and new client.</p>
+</div>
+<div class="paragraph">
+<p>The biggest reason for this is because of our simplified internal operations and other miscellaneous per operation things.
+Just as a simple measure, you can see how much fewer objects are required in the constructor for our operations.</p>
+</div>
+<div class="paragraph">
+<p>Legacy PutOperation</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public PutOperation(Codec codec, ChannelFactory channelFactory,
+                       Object key, byte[] keyBytes, byte[] cacheName, AtomicReference&lt;ClientTopology&gt; clientTopology,
+                       int flags, Configuration cfg, byte[] value, long lifespan, TimeUnit lifespanTimeUnit,
+                       long maxIdle, TimeUnit maxIdleTimeUnit, DataFormat dataFormat, ClientStatistics clientStatistics,
+                       TelemetryService telemetryService) {
+      super(PUT_REQUEST, PUT_RESPONSE, codec, channelFactory, key, keyBytes, cacheName, clientTopology,
+            flags, cfg, value, lifespan, lifespanTimeUnit, maxIdle, maxIdleTimeUnit, dataFormat, clientStatistics,
+            telemetryService);
+   }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>New PutOperation</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public PutOperation(InternalRemoteCache&lt;?, ?&gt; cache, byte[] keyBytes, byte[] valueBytes, long lifespan,
+                       TimeUnit lifespanTimeUnit, long maxIdle, TimeUnit maxIdleTimeUnit) {
+      super(cache, keyBytes, valueBytes, lifespan, lifespanTimeUnit, maxIdle, maxIdleTimeUnit);
+   }</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="new-hot-rod-protocol-4-1-and-streaming-commands">New Hot Rod protocol 4.1 and Streaming commands</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Some of you may have been using the <a href="https://docs.jboss.org/infinispan/15.1/apidocs/org/infinispan/client/hotrod/StreamingRemoteCache.html">streaming remote API</a>.
+Don&#8217;t worry this API has not changed. Instead, the underlying operations were needed to be updated. For those of you not familiar this is a way
+to use a streamed based approach to read and write byte[] values to the remote cache, allowing the client to only have to have a portion of value in
+memory at a given time.</p>
+</div>
+<div class="paragraph">
+<p>The problem is the underlying operations were implemented in a way where it would reserve a connection while the read or write operation was performed.
+This is problematic with our current single connection per server approach in the client. Instead, Hot Rod protocol 4.1 implements new "stateless" commands
+that send/receive chunks of the value bytes as they are read/received with a non-blocking operation underneath. The <code>OutputStream|InputStream</code> instances
+will still block waiting for the underlying socket to complete its operations, but with the change to the protocol it no longer requires reserving the
+socket to the server.</p>
+</div>
+<div class="paragraph">
+<p>Initial performance tests show a small to no change in performance which is well within what we would hope for. Please test it out if you are using it
+and let us know!</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="client-hot-rod-flags">Client Hot Rod flags</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Many of you may not be aware, but when you applied a <code>Flag</code> to an operation on the <code>RemoteCache</code> instance, you would have to set for
+<em>every</em> operation and if you shared the <code>RemoteCache</code> instance between threads they were independent. This embedded <code>Cache</code> instance
+behaved in a different fashion saving the Flag between operations and was the same between threads if using the same instance.</p>
+</div>
+<div class="paragraph">
+<p>The RemoteCache behavior while being error-prone due to above was also detrimental to performance as you would need additional allocations
+per operation. As such in 15.1.0 the Flag instances are now stored in the RemoteCache instance and only need to be set once. If applied
+more than once the same instance is returned to the user to reduce allocation rates.</p>
+</div>
+<div class="paragraph">
+<p>Note this change is for both the new client and the legacy client referred to in the next section.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="legacy-client">Legacy Client</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The new client, due to how it works, cannot support older Hot Rod protocols and as such it does not support anything older than
+protocol 3.0. The 3.0 protocol was introduced in Infinispan 10.0, which was released over 5 years ago.
+The protocol definitions can be found <a href="https://infinispan.org/docs/dev/titles/hotrod_protocol/hotrod_protocol.html">here</a> for reference.</p>
+</div>
+<div class="paragraph">
+<p>Due to this, and the complete overhaul of the internals we are providing a <em>legacy</em> module available which will use the previous client
+which supports back to HotRod 2.0. This can be used by just changing the module dependency from <code>hotrod-client</code> to <code>hotrod-client-legacy</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="conclusions">Conclusions</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>We hope you all get a chance to try out the client changes and see what benefits or issues you find with the new client.
+If you want to discuss this please feel free to reach out to us as can be seen at <a href="https://infinispan.org/community/" class="bare">https://infinispan.org/community/</a>.</p>
+</div>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://github.com/infinispan/infinispan/issues" target="_blank">GitHub issues tracker</a>.
+        If you don’t find any, <a href="https://github.com/infinispan/infinispan/issues" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://github.com/infinispan/infinispan/discussions/"
+                       target="_blank">GitHub discussions</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+      <div class="width-12-12 callout orange margin-tb-xs">
+    <div class="grid-wrapper">
+        <div class="width-4-12 width-12-12-m block-image">
+            <img src="/assets/images/blog/authors/wburns.jpg" class="author-img">
+        </div>
+        <div class="width-8-12 width-12-12-m block-content">
+            <h5>William Burns</h5>
+            <p>Will is a core Infinispan engineer working for Red Hat since 2013. He enjoys streaming data and writing reactive code.</p>
+            <div class="width-3-12 width-6-12-m bio-block">
+                <a href="http://github.com/wburns"><img src="/assets/images/community/icon-github.png"></a>
+                
+                <a href="https://twitter.com/mudokonman"><img src="/assets/images/community/icon-twitter.png"></a>
+                
+            </div>
+        </div>
+    </div>
+</div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo" alt="Infinispan"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="/" >Home</a></li>
+          
+            
+            <li><a href="/features" >Features</a></li>
+          
+            
+            <li><a href="/documentation" >Docs</a></li>
+          
+            
+            <li><a href="/tutorials" >Tutorials</a></li>
+          
+            
+            <li><a href="/videos" >Videos</a></li>
+          
+            
+            <li><a href="/use-cases" >Use Cases</a></li>
+          
+            
+            <li><a href="/community" >Community</a></li>
+          
+            
+            <li><a href="/download" >Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="https://issues.jboss.org/browse/ISPN" target="_blank">Submit a Bug</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan" target="_blank">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="/blog" >Blog</a></li>
+          
+            
+            <li><a href="https://twitter.com/infinispan" target="_blank">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="https://www.commonhaus.org/" target="_blank"><img src="/assets/images/CF_logo_horizontal.svg" title="Commonhaus Foundation"></a><br/>
+        </div>
+        <div class="width-6-12">
+          <b>Thanks to</b><br/>
+          <a href="https://zulip.com" target="_blank"><img src="/assets/images/footer/zulip.png" title="Zulip" alt="Zulip"></a>
+          <a href="https://weblate.org" target="_blank"><img src="/assets/images/footer/weblate.png" title="Weblate" alt="Weblate"></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="cookie-preferences">
+      <a href="#" data-cc="show-preferencesModal">Manage cookie preferences</a>
+    </span>
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+  <script src="/assets/javascript/clipboard.min.js" type="text/javascript"></script>
+  <script src="/assets/javascript/copy.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>

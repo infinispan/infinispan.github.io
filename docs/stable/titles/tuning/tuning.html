@@ -1,0 +1,2703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.23">
+<title>Infinispan performance considerations and tuning guidelines</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
+<style>
+/*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
+/* Uncomment the following line when using as a custom stylesheet */
+/* @import "https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700"; */
+html{font-family:sans-serif;-webkit-text-size-adjust:100%}
+a{background:none}
+a:focus{outline:thin dotted}
+a:active,a:hover{outline:0}
+h1{font-size:2em;margin:.67em 0}
+b,strong{font-weight:bold}
+abbr{font-size:.9em}
+abbr[title]{cursor:help;border-bottom:1px dotted #dddddf;text-decoration:none}
+dfn{font-style:italic}
+hr{height:0}
+mark{background:#ff0;color:#000}
+code,kbd,pre,samp{font-family:monospace;font-size:1em}
+pre{white-space:pre-wrap}
+q{quotes:"\201C" "\201D" "\2018" "\2019"}
+small{font-size:80%}
+sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}
+sup{top:-.5em}
+sub{bottom:-.25em}
+img{border:0}
+svg:not(:root){overflow:hidden}
+figure{margin:0}
+audio,video{display:inline-block}
+audio:not([controls]){display:none;height:0}
+fieldset{border:1px solid silver;margin:0 2px;padding:.35em .625em .75em}
+legend{border:0;padding:0}
+button,input,select,textarea{font-family:inherit;font-size:100%;margin:0}
+button,input{line-height:normal}
+button,select{text-transform:none}
+button,html input[type=button],input[type=reset],input[type=submit]{-webkit-appearance:button;cursor:pointer}
+button[disabled],html input[disabled]{cursor:default}
+input[type=checkbox],input[type=radio]{padding:0}
+button::-moz-focus-inner,input::-moz-focus-inner{border:0;padding:0}
+textarea{overflow:auto;vertical-align:top}
+table{border-collapse:collapse;border-spacing:0}
+*,::before,::after{box-sizing:border-box}
+html,body{font-size:100%}
+body{background:#fff;color:rgba(0,0,0,.8);padding:0;margin:0;font-family:"Noto Serif","DejaVu Serif",serif;line-height:1;position:relative;cursor:auto;-moz-tab-size:4;-o-tab-size:4;tab-size:4;word-wrap:anywhere;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased}
+a:hover{cursor:pointer}
+img,object,embed{max-width:100%;height:auto}
+object,embed{height:100%}
+img{-ms-interpolation-mode:bicubic}
+.left{float:left!important}
+.right{float:right!important}
+.text-left{text-align:left!important}
+.text-right{text-align:right!important}
+.text-center{text-align:center!important}
+.text-justify{text-align:justify!important}
+.hide{display:none}
+img,object,svg{display:inline-block;vertical-align:middle}
+textarea{height:auto;min-height:50px}
+select{width:100%}
+.subheader,.admonitionblock td.content>.title,.audioblock>.title,.exampleblock>.title,.imageblock>.title,.listingblock>.title,.literalblock>.title,.stemblock>.title,.openblock>.title,.paragraph>.title,.quoteblock>.title,table.tableblock>.title,.verseblock>.title,.videoblock>.title,.dlist>.title,.olist>.title,.ulist>.title,.qlist>.title,.hdlist>.title{line-height:1.45;color:#7a2518;font-weight:400;margin-top:0;margin-bottom:.25em}
+div,dl,dt,dd,ul,ol,li,h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6,pre,form,p,blockquote,th,td{margin:0;padding:0}
+a{color:#2156a5;text-decoration:underline;line-height:inherit}
+a:hover,a:focus{color:#1d4b8f}
+a img{border:0}
+p{line-height:1.6;margin-bottom:1.25em;text-rendering:optimizeLegibility}
+p aside{font-size:.875em;line-height:1.35;font-style:italic}
+h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6{font-family:"Open Sans","DejaVu Sans",sans-serif;font-weight:300;font-style:normal;color:#ba3925;text-rendering:optimizeLegibility;margin-top:1em;margin-bottom:.5em;line-height:1.0125em}
+h1 small,h2 small,h3 small,#toctitle small,.sidebarblock>.content>.title small,h4 small,h5 small,h6 small{font-size:60%;color:#e99b8f;line-height:0}
+h1{font-size:2.125em}
+h2{font-size:1.6875em}
+h3,#toctitle,.sidebarblock>.content>.title{font-size:1.375em}
+h4,h5{font-size:1.125em}
+h6{font-size:1em}
+hr{border:solid #dddddf;border-width:1px 0 0;clear:both;margin:1.25em 0 1.1875em}
+em,i{font-style:italic;line-height:inherit}
+strong,b{font-weight:bold;line-height:inherit}
+small{font-size:60%;line-height:inherit}
+code{font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;font-weight:400;color:rgba(0,0,0,.9)}
+ul,ol,dl{line-height:1.6;margin-bottom:1.25em;list-style-position:outside;font-family:inherit}
+ul,ol{margin-left:1.5em}
+ul li ul,ul li ol{margin-left:1.25em;margin-bottom:0}
+ul.circle{list-style-type:circle}
+ul.disc{list-style-type:disc}
+ul.square{list-style-type:square}
+ul.circle ul:not([class]),ul.disc ul:not([class]),ul.square ul:not([class]){list-style:inherit}
+ol li ul,ol li ol{margin-left:1.25em;margin-bottom:0}
+dl dt{margin-bottom:.3125em;font-weight:bold}
+dl dd{margin-bottom:1.25em}
+blockquote{margin:0 0 1.25em;padding:.5625em 1.25em 0 1.1875em;border-left:1px solid #ddd}
+blockquote,blockquote p{line-height:1.6;color:rgba(0,0,0,.85)}
+@media screen and (min-width:768px){h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6{line-height:1.2}
+h1{font-size:2.75em}
+h2{font-size:2.3125em}
+h3,#toctitle,.sidebarblock>.content>.title{font-size:1.6875em}
+h4{font-size:1.4375em}}
+table{background:#fff;margin-bottom:1.25em;border:1px solid #dedede;word-wrap:normal}
+table thead,table tfoot{background:#f7f8f7}
+table thead tr th,table thead tr td,table tfoot tr th,table tfoot tr td{padding:.5em .625em .625em;font-size:inherit;color:rgba(0,0,0,.8);text-align:left}
+table tr th,table tr td{padding:.5625em .625em;font-size:inherit;color:rgba(0,0,0,.8)}
+table tr.even,table tr.alt{background:#f8f8f7}
+table thead tr th,table tfoot tr th,table tbody tr td,table tr td,table tfoot tr td{line-height:1.6}
+h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6{line-height:1.2;word-spacing:-.05em}
+h1 strong,h2 strong,h3 strong,#toctitle strong,.sidebarblock>.content>.title strong,h4 strong,h5 strong,h6 strong{font-weight:400}
+.center{margin-left:auto;margin-right:auto}
+.stretch{width:100%}
+.clearfix::before,.clearfix::after,.float-group::before,.float-group::after{content:" ";display:table}
+.clearfix::after,.float-group::after{clear:both}
+:not(pre).nobreak{word-wrap:normal}
+:not(pre).nowrap{white-space:nowrap}
+:not(pre).pre-wrap{white-space:pre-wrap}
+:not(pre):not([class^=L])>code{font-size:.9375em;font-style:normal!important;letter-spacing:0;padding:.1em .5ex;word-spacing:-.15em;background:#f7f7f8;border-radius:4px;line-height:1.45;text-rendering:optimizeSpeed}
+pre{color:rgba(0,0,0,.9);font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;line-height:1.45;text-rendering:optimizeSpeed}
+pre code,pre pre{color:inherit;font-size:inherit;line-height:inherit}
+pre>code{display:block}
+pre.nowrap,pre.nowrap pre{white-space:pre;word-wrap:normal}
+em em{font-style:normal}
+strong strong{font-weight:400}
+.keyseq{color:rgba(51,51,51,.8)}
+kbd{font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;display:inline-block;color:rgba(0,0,0,.8);font-size:.65em;line-height:1.45;background:#f7f7f7;border:1px solid #ccc;border-radius:3px;box-shadow:0 1px 0 rgba(0,0,0,.2),inset 0 0 0 .1em #fff;margin:0 .15em;padding:.2em .5em;vertical-align:middle;position:relative;top:-.1em;white-space:nowrap}
+.keyseq kbd:first-child{margin-left:0}
+.keyseq kbd:last-child{margin-right:0}
+.menuseq,.menuref{color:#000}
+.menuseq b:not(.caret),.menuref{font-weight:inherit}
+.menuseq{word-spacing:-.02em}
+.menuseq b.caret{font-size:1.25em;line-height:.8}
+.menuseq i.caret{font-weight:bold;text-align:center;width:.45em}
+b.button::before,b.button::after{position:relative;top:-1px;font-weight:400}
+b.button::before{content:"[";padding:0 3px 0 2px}
+b.button::after{content:"]";padding:0 2px 0 3px}
+p a>code:hover{color:rgba(0,0,0,.9)}
+#header,#content,#footnotes,#footer{width:100%;margin:0 auto;max-width:62.5em;*zoom:1;position:relative;padding-left:.9375em;padding-right:.9375em}
+#header::before,#header::after,#content::before,#content::after,#footnotes::before,#footnotes::after,#footer::before,#footer::after{content:" ";display:table}
+#header::after,#content::after,#footnotes::after,#footer::after{clear:both}
+#content{margin-top:1.25em}
+#content::before{content:none}
+#header>h1:first-child{color:rgba(0,0,0,.85);margin-top:2.25rem;margin-bottom:0}
+#header>h1:first-child+#toc{margin-top:8px;border-top:1px solid #dddddf}
+#header>h1:only-child{border-bottom:1px solid #dddddf;padding-bottom:8px}
+#header .details{border-bottom:1px solid #dddddf;line-height:1.45;padding-top:.25em;padding-bottom:.25em;padding-left:.25em;color:rgba(0,0,0,.6);display:flex;flex-flow:row wrap}
+#header .details span:first-child{margin-left:-.125em}
+#header .details span.email a{color:rgba(0,0,0,.85)}
+#header .details br{display:none}
+#header .details br+span::before{content:"\00a0\2013\00a0"}
+#header .details br+span.author::before{content:"\00a0\22c5\00a0";color:rgba(0,0,0,.85)}
+#header .details br+span#revremark::before{content:"\00a0|\00a0"}
+#header #revnumber{text-transform:capitalize}
+#header #revnumber::after{content:"\00a0"}
+#content>h1:first-child:not([class]){color:rgba(0,0,0,.85);border-bottom:1px solid #dddddf;padding-bottom:8px;margin-top:0;padding-top:1rem;margin-bottom:1.25rem}
+#toc{border-bottom:1px solid #e7e7e9;padding-bottom:.5em}
+#toc>ul{margin-left:.125em}
+#toc ul.sectlevel0>li>a{font-style:italic}
+#toc ul.sectlevel0 ul.sectlevel1{margin:.5em 0}
+#toc ul{font-family:"Open Sans","DejaVu Sans",sans-serif;list-style-type:none}
+#toc li{line-height:1.3334;margin-top:.3334em}
+#toc a{text-decoration:none}
+#toc a:active{text-decoration:underline}
+#toctitle{color:#7a2518;font-size:1.2em}
+@media screen and (min-width:768px){#toctitle{font-size:1.375em}
+body.toc2{padding-left:15em;padding-right:0}
+body.toc2 #header>h1:nth-last-child(2){border-bottom:1px solid #dddddf;padding-bottom:8px}
+#toc.toc2{margin-top:0!important;background:#f8f8f7;position:fixed;width:15em;left:0;top:0;border-right:1px solid #e7e7e9;border-top-width:0!important;border-bottom-width:0!important;z-index:1000;padding:1.25em 1em;height:100%;overflow:auto}
+#toc.toc2 #toctitle{margin-top:0;margin-bottom:.8rem;font-size:1.2em}
+#toc.toc2>ul{font-size:.9em;margin-bottom:0}
+#toc.toc2 ul ul{margin-left:0;padding-left:1em}
+#toc.toc2 ul.sectlevel0 ul.sectlevel1{padding-left:0;margin-top:.5em;margin-bottom:.5em}
+body.toc2.toc-right{padding-left:0;padding-right:15em}
+body.toc2.toc-right #toc.toc2{border-right-width:0;border-left:1px solid #e7e7e9;left:auto;right:0}}
+@media screen and (min-width:1280px){body.toc2{padding-left:20em;padding-right:0}
+#toc.toc2{width:20em}
+#toc.toc2 #toctitle{font-size:1.375em}
+#toc.toc2>ul{font-size:.95em}
+#toc.toc2 ul ul{padding-left:1.25em}
+body.toc2.toc-right{padding-left:0;padding-right:20em}}
+#content #toc{border:1px solid #e0e0dc;margin-bottom:1.25em;padding:1.25em;background:#f8f8f7;border-radius:4px}
+#content #toc>:first-child{margin-top:0}
+#content #toc>:last-child{margin-bottom:0}
+#footer{max-width:none;background:rgba(0,0,0,.8);padding:1.25em}
+#footer-text{color:hsla(0,0%,100%,.8);line-height:1.44}
+#content{margin-bottom:.625em}
+.sect1{padding-bottom:.625em}
+@media screen and (min-width:768px){#content{margin-bottom:1.25em}
+.sect1{padding-bottom:1.25em}}
+.sect1:last-child{padding-bottom:0}
+.sect1+.sect1{border-top:1px solid #e7e7e9}
+#content h1>a.anchor,h2>a.anchor,h3>a.anchor,#toctitle>a.anchor,.sidebarblock>.content>.title>a.anchor,h4>a.anchor,h5>a.anchor,h6>a.anchor{position:absolute;z-index:1001;width:1.5ex;margin-left:-1.5ex;display:block;text-decoration:none!important;visibility:hidden;text-align:center;font-weight:400}
+#content h1>a.anchor::before,h2>a.anchor::before,h3>a.anchor::before,#toctitle>a.anchor::before,.sidebarblock>.content>.title>a.anchor::before,h4>a.anchor::before,h5>a.anchor::before,h6>a.anchor::before{content:"\00A7";font-size:.85em;display:block;padding-top:.1em}
+#content h1:hover>a.anchor,#content h1>a.anchor:hover,h2:hover>a.anchor,h2>a.anchor:hover,h3:hover>a.anchor,#toctitle:hover>a.anchor,.sidebarblock>.content>.title:hover>a.anchor,h3>a.anchor:hover,#toctitle>a.anchor:hover,.sidebarblock>.content>.title>a.anchor:hover,h4:hover>a.anchor,h4>a.anchor:hover,h5:hover>a.anchor,h5>a.anchor:hover,h6:hover>a.anchor,h6>a.anchor:hover{visibility:visible}
+#content h1>a.link,h2>a.link,h3>a.link,#toctitle>a.link,.sidebarblock>.content>.title>a.link,h4>a.link,h5>a.link,h6>a.link{color:#ba3925;text-decoration:none}
+#content h1>a.link:hover,h2>a.link:hover,h3>a.link:hover,#toctitle>a.link:hover,.sidebarblock>.content>.title>a.link:hover,h4>a.link:hover,h5>a.link:hover,h6>a.link:hover{color:#a53221}
+details,.audioblock,.imageblock,.literalblock,.listingblock,.stemblock,.videoblock{margin-bottom:1.25em}
+details{margin-left:1.25rem}
+details>summary{cursor:pointer;display:block;position:relative;line-height:1.6;margin-bottom:.625rem;outline:none;-webkit-tap-highlight-color:transparent}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";border:solid transparent;border-left:solid;border-width:.3em 0 .3em .5em;position:absolute;top:.5em;left:-1.25rem;transform:translateX(15%)}
+details[open]>summary::before{border:solid transparent;border-top:solid;border-width:.5em .3em 0;transform:translateY(15%)}
+details>summary::after{content:"";width:1.25rem;height:1em;position:absolute;top:.3em;left:-1.25rem}
+.admonitionblock td.content>.title,.audioblock>.title,.exampleblock>.title,.imageblock>.title,.listingblock>.title,.literalblock>.title,.stemblock>.title,.openblock>.title,.paragraph>.title,.quoteblock>.title,table.tableblock>.title,.verseblock>.title,.videoblock>.title,.dlist>.title,.olist>.title,.ulist>.title,.qlist>.title,.hdlist>.title{text-rendering:optimizeLegibility;text-align:left;font-family:"Noto Serif","DejaVu Serif",serif;font-size:1rem;font-style:italic}
+table.tableblock.fit-content>caption.title{white-space:nowrap;width:0}
+.paragraph.lead>p,#preamble>.sectionbody>[class=paragraph]:first-of-type p{font-size:1.21875em;line-height:1.6;color:rgba(0,0,0,.85)}
+.admonitionblock>table{border-collapse:separate;border:0;background:none;width:100%}
+.admonitionblock>table td.icon{text-align:center;width:80px}
+.admonitionblock>table td.icon img{max-width:none}
+.admonitionblock>table td.icon .title{font-weight:bold;font-family:"Open Sans","DejaVu Sans",sans-serif;text-transform:uppercase}
+.admonitionblock>table td.content{padding-left:1.125em;padding-right:1.25em;border-left:1px solid #dddddf;color:rgba(0,0,0,.6);word-wrap:anywhere}
+.admonitionblock>table td.content>:last-child>:last-child{margin-bottom:0}
+.exampleblock>.content{border:1px solid #e6e6e6;margin-bottom:1.25em;padding:1.25em;background:#fff;border-radius:4px}
+.sidebarblock{border:1px solid #dbdbd6;margin-bottom:1.25em;padding:1.25em;background:#f3f3f2;border-radius:4px}
+.sidebarblock>.content>.title{color:#7a2518;margin-top:0;text-align:center}
+.exampleblock>.content>:first-child,.sidebarblock>.content>:first-child{margin-top:0}
+.exampleblock>.content>:last-child,.exampleblock>.content>:last-child>:last-child,.exampleblock>.content .olist>ol>li:last-child>:last-child,.exampleblock>.content .ulist>ul>li:last-child>:last-child,.exampleblock>.content .qlist>ol>li:last-child>:last-child,.sidebarblock>.content>:last-child,.sidebarblock>.content>:last-child>:last-child,.sidebarblock>.content .olist>ol>li:last-child>:last-child,.sidebarblock>.content .ulist>ul>li:last-child>:last-child,.sidebarblock>.content .qlist>ol>li:last-child>:last-child{margin-bottom:0}
+.literalblock pre,.listingblock>.content>pre{border-radius:4px;overflow-x:auto;padding:1em;font-size:.8125em}
+@media screen and (min-width:768px){.literalblock pre,.listingblock>.content>pre{font-size:.90625em}}
+@media screen and (min-width:1280px){.literalblock pre,.listingblock>.content>pre{font-size:1em}}
+.literalblock pre,.listingblock>.content>pre:not(.highlight),.listingblock>.content>pre[class=highlight],.listingblock>.content>pre[class^="highlight "]{background:#f7f7f8}
+.literalblock.output pre{color:#f7f7f8;background:rgba(0,0,0,.9)}
+.listingblock>.content{position:relative}
+.listingblock code[data-lang]::before{display:none;content:attr(data-lang);position:absolute;font-size:.75em;top:.425rem;right:.5rem;line-height:1;text-transform:uppercase;color:inherit;opacity:.5}
+.listingblock:hover code[data-lang]::before{display:block}
+.listingblock.terminal pre .command::before{content:attr(data-prompt);padding-right:.5em;color:inherit;opacity:.5}
+.listingblock.terminal pre .command:not([data-prompt])::before{content:"$"}
+.listingblock pre.highlightjs{padding:0}
+.listingblock pre.highlightjs>code{padding:1em;border-radius:4px}
+.listingblock pre.prettyprint{border-width:0}
+.prettyprint{background:#f7f7f8}
+pre.prettyprint .linenums{line-height:1.45;margin-left:2em}
+pre.prettyprint li{background:none;list-style-type:inherit;padding-left:0}
+pre.prettyprint li code[data-lang]::before{opacity:1}
+pre.prettyprint li:not(:first-child) code[data-lang]::before{display:none}
+table.linenotable{border-collapse:separate;border:0;margin-bottom:0;background:none}
+table.linenotable td[class]{color:inherit;vertical-align:top;padding:0;line-height:inherit;white-space:normal}
+table.linenotable td.code{padding-left:.75em}
+table.linenotable td.linenos,pre.pygments .linenos{border-right:1px solid;opacity:.35;padding-right:.5em;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}
+pre.pygments span.linenos{display:inline-block;margin-right:.75em}
+.quoteblock{margin:0 1em 1.25em 1.5em;display:table}
+.quoteblock:not(.excerpt)>.title{margin-left:-1.5em;margin-bottom:.75em}
+.quoteblock blockquote,.quoteblock p{color:rgba(0,0,0,.85);font-size:1.15rem;line-height:1.75;word-spacing:.1em;letter-spacing:0;font-style:italic;text-align:justify}
+.quoteblock blockquote{margin:0;padding:0;border:0}
+.quoteblock blockquote::before{content:"\201c";float:left;font-size:2.75em;font-weight:bold;line-height:.6em;margin-left:-.6em;color:#7a2518;text-shadow:0 1px 2px rgba(0,0,0,.1)}
+.quoteblock blockquote>.paragraph:last-child p{margin-bottom:0}
+.quoteblock .attribution{margin-top:.75em;margin-right:.5ex;text-align:right}
+.verseblock{margin:0 1em 1.25em}
+.verseblock pre{font-family:"Open Sans","DejaVu Sans",sans-serif;font-size:1.15rem;color:rgba(0,0,0,.85);font-weight:300;text-rendering:optimizeLegibility}
+.verseblock pre strong{font-weight:400}
+.verseblock .attribution{margin-top:1.25rem;margin-left:.5ex}
+.quoteblock .attribution,.verseblock .attribution{font-size:.9375em;line-height:1.45;font-style:italic}
+.quoteblock .attribution br,.verseblock .attribution br{display:none}
+.quoteblock .attribution cite,.verseblock .attribution cite{display:block;letter-spacing:-.025em;color:rgba(0,0,0,.6)}
+.quoteblock.abstract blockquote::before,.quoteblock.excerpt blockquote::before,.quoteblock .quoteblock blockquote::before{display:none}
+.quoteblock.abstract blockquote,.quoteblock.abstract p,.quoteblock.excerpt blockquote,.quoteblock.excerpt p,.quoteblock .quoteblock blockquote,.quoteblock .quoteblock p{line-height:1.6;word-spacing:0}
+.quoteblock.abstract{margin:0 1em 1.25em;display:block}
+.quoteblock.abstract>.title{margin:0 0 .375em;font-size:1.15em;text-align:center}
+.quoteblock.excerpt>blockquote,.quoteblock .quoteblock{padding:0 0 .25em 1em;border-left:.25em solid #dddddf}
+.quoteblock.excerpt,.quoteblock .quoteblock{margin-left:0}
+.quoteblock.excerpt blockquote,.quoteblock.excerpt p,.quoteblock .quoteblock blockquote,.quoteblock .quoteblock p{color:inherit;font-size:1.0625rem}
+.quoteblock.excerpt .attribution,.quoteblock .quoteblock .attribution{color:inherit;font-size:.85rem;text-align:left;margin-right:0}
+p.tableblock:last-child{margin-bottom:0}
+td.tableblock>.content{margin-bottom:1.25em;word-wrap:anywhere}
+td.tableblock>.content>:last-child{margin-bottom:-1.25em}
+table.tableblock,th.tableblock,td.tableblock{border:0 solid #dedede}
+table.grid-all>*>tr>*{border-width:1px}
+table.grid-cols>*>tr>*{border-width:0 1px}
+table.grid-rows>*>tr>*{border-width:1px 0}
+table.frame-all{border-width:1px}
+table.frame-ends{border-width:1px 0}
+table.frame-sides{border-width:0 1px}
+table.frame-none>colgroup+*>:first-child>*,table.frame-sides>colgroup+*>:first-child>*{border-top-width:0}
+table.frame-none>:last-child>:last-child>*,table.frame-sides>:last-child>:last-child>*{border-bottom-width:0}
+table.frame-none>*>tr>:first-child,table.frame-ends>*>tr>:first-child{border-left-width:0}
+table.frame-none>*>tr>:last-child,table.frame-ends>*>tr>:last-child{border-right-width:0}
+table.stripes-all>*>tr,table.stripes-odd>*>tr:nth-of-type(odd),table.stripes-even>*>tr:nth-of-type(even),table.stripes-hover>*>tr:hover{background:#f8f8f7}
+th.halign-left,td.halign-left{text-align:left}
+th.halign-right,td.halign-right{text-align:right}
+th.halign-center,td.halign-center{text-align:center}
+th.valign-top,td.valign-top{vertical-align:top}
+th.valign-bottom,td.valign-bottom{vertical-align:bottom}
+th.valign-middle,td.valign-middle{vertical-align:middle}
+table thead th,table tfoot th{font-weight:bold}
+tbody tr th{background:#f7f8f7}
+tbody tr th,tbody tr th p,tfoot tr th,tfoot tr th p{color:rgba(0,0,0,.8);font-weight:bold}
+p.tableblock>code:only-child{background:none;padding:0}
+p.tableblock{font-size:1em}
+ol{margin-left:1.75em}
+ul li ol{margin-left:1.5em}
+dl dd{margin-left:1.125em}
+dl dd:last-child,dl dd:last-child>:last-child{margin-bottom:0}
+li p,ul dd,ol dd,.olist .olist,.ulist .ulist,.ulist .olist,.olist .ulist{margin-bottom:.625em}
+ul.checklist,ul.none,ol.none,ul.no-bullet,ol.no-bullet,ol.unnumbered,ul.unstyled,ol.unstyled{list-style-type:none}
+ul.no-bullet,ol.no-bullet,ol.unnumbered{margin-left:.625em}
+ul.unstyled,ol.unstyled{margin-left:0}
+li>p:empty:only-child::before{content:"";display:inline-block}
+ul.checklist>li>p:first-child{margin-left:-1em}
+ul.checklist>li>p:first-child>.fa-square-o:first-child,ul.checklist>li>p:first-child>.fa-check-square-o:first-child{width:1.25em;font-size:.8em;position:relative;bottom:.125em}
+ul.checklist>li>p:first-child>input[type=checkbox]:first-child{margin-right:.25em}
+ul.inline{display:flex;flex-flow:row wrap;list-style:none;margin:0 0 .625em -1.25em}
+ul.inline>li{margin-left:1.25em}
+.unstyled dl dt{font-weight:400;font-style:normal}
+ol.arabic{list-style-type:decimal}
+ol.decimal{list-style-type:decimal-leading-zero}
+ol.loweralpha{list-style-type:lower-alpha}
+ol.upperalpha{list-style-type:upper-alpha}
+ol.lowerroman{list-style-type:lower-roman}
+ol.upperroman{list-style-type:upper-roman}
+ol.lowergreek{list-style-type:lower-greek}
+.hdlist>table,.colist>table{border:0;background:none}
+.hdlist>table>tbody>tr,.colist>table>tbody>tr{background:none}
+td.hdlist1,td.hdlist2{vertical-align:top;padding:0 .625em}
+td.hdlist1{font-weight:bold;padding-bottom:1.25em}
+td.hdlist2{word-wrap:anywhere}
+.literalblock+.colist,.listingblock+.colist{margin-top:-.5em}
+.colist td:not([class]):first-child{padding:.4em .75em 0;line-height:1;vertical-align:top}
+.colist td:not([class]):first-child img{max-width:none}
+.colist td:not([class]):last-child{padding:.25em 0}
+.thumb,.th{line-height:0;display:inline-block;border:4px solid #fff;box-shadow:0 0 0 1px #ddd}
+.imageblock.left{margin:.25em .625em 1.25em 0}
+.imageblock.right{margin:.25em 0 1.25em .625em}
+.imageblock>.title{margin-bottom:0}
+.imageblock.thumb,.imageblock.th{border-width:6px}
+.imageblock.thumb>.title,.imageblock.th>.title{padding:0 .125em}
+.image.left,.image.right{margin-top:.25em;margin-bottom:.25em;display:inline-block;line-height:0}
+.image.left{margin-right:.625em}
+.image.right{margin-left:.625em}
+a.image{text-decoration:none;display:inline-block}
+a.image object{pointer-events:none}
+sup.footnote,sup.footnoteref{font-size:.875em;position:static;vertical-align:super}
+sup.footnote a,sup.footnoteref a{text-decoration:none}
+sup.footnote a:active,sup.footnoteref a:active,#footnotes .footnote a:first-of-type:active{text-decoration:underline}
+#footnotes{padding-top:.75em;padding-bottom:.75em;margin-bottom:.625em}
+#footnotes hr{width:20%;min-width:6.25em;margin:-.25em 0 .75em;border-width:1px 0 0}
+#footnotes .footnote{padding:0 .375em 0 .225em;line-height:1.3334;font-size:.875em;margin-left:1.2em;margin-bottom:.2em}
+#footnotes .footnote a:first-of-type{font-weight:bold;text-decoration:none;margin-left:-1.05em}
+#footnotes .footnote:last-of-type{margin-bottom:0}
+#content #footnotes{margin-top:-.625em;margin-bottom:0;padding:.75em 0}
+div.unbreakable{page-break-inside:avoid}
+.big{font-size:larger}
+.small{font-size:smaller}
+.underline{text-decoration:underline}
+.overline{text-decoration:overline}
+.line-through{text-decoration:line-through}
+.aqua{color:#00bfbf}
+.aqua-background{background:#00fafa}
+.black{color:#000}
+.black-background{background:#000}
+.blue{color:#0000bf}
+.blue-background{background:#0000fa}
+.fuchsia{color:#bf00bf}
+.fuchsia-background{background:#fa00fa}
+.gray{color:#606060}
+.gray-background{background:#7d7d7d}
+.green{color:#006000}
+.green-background{background:#007d00}
+.lime{color:#00bf00}
+.lime-background{background:#00fa00}
+.maroon{color:#600000}
+.maroon-background{background:#7d0000}
+.navy{color:#000060}
+.navy-background{background:#00007d}
+.olive{color:#606000}
+.olive-background{background:#7d7d00}
+.purple{color:#600060}
+.purple-background{background:#7d007d}
+.red{color:#bf0000}
+.red-background{background:#fa0000}
+.silver{color:#909090}
+.silver-background{background:#bcbcbc}
+.teal{color:#006060}
+.teal-background{background:#007d7d}
+.white{color:#bfbfbf}
+.white-background{background:#fafafa}
+.yellow{color:#bfbf00}
+.yellow-background{background:#fafa00}
+span.icon>.fa{cursor:default}
+a span.icon>.fa{cursor:inherit}
+.admonitionblock td.icon [class^="fa icon-"]{font-size:2.5em;text-shadow:1px 1px 2px rgba(0,0,0,.5);cursor:default}
+.admonitionblock td.icon .icon-note::before{content:"\f05a";color:#19407c}
+.admonitionblock td.icon .icon-tip::before{content:"\f0eb";text-shadow:1px 1px 2px rgba(155,155,0,.8);color:#111}
+.admonitionblock td.icon .icon-warning::before{content:"\f071";color:#bf6900}
+.admonitionblock td.icon .icon-caution::before{content:"\f06d";color:#bf3400}
+.admonitionblock td.icon .icon-important::before{content:"\f06a";color:#bf0000}
+.conum[data-value]{display:inline-block;color:#fff!important;background:rgba(0,0,0,.8);border-radius:50%;text-align:center;font-size:.75em;width:1.67em;height:1.67em;line-height:1.67em;font-family:"Open Sans","DejaVu Sans",sans-serif;font-style:normal;font-weight:bold}
+.conum[data-value] *{color:#fff!important}
+.conum[data-value]+b{display:none}
+.conum[data-value]::after{content:attr(data-value)}
+pre .conum[data-value]{position:relative;top:-.125em}
+b.conum *{color:inherit!important}
+.conum:not([data-value]):empty{display:none}
+dt,th.tableblock,td.content,div.footnote{text-rendering:optimizeLegibility}
+h1,h2,p,td.content,span.alt,summary{letter-spacing:-.01em}
+p strong,td.content strong,div.footnote strong{letter-spacing:-.005em}
+p,blockquote,dt,td.content,td.hdlist1,span.alt,summary{font-size:1.0625rem}
+p{margin-bottom:1.25rem}
+.sidebarblock p,.sidebarblock dt,.sidebarblock td.content,p.tableblock{font-size:1em}
+.exampleblock>.content{background:#fffef7;border-color:#e0e0dc;box-shadow:0 1px 4px #e0e0dc}
+.print-only{display:none!important}
+@page{margin:1.25cm .75cm}
+@media print{*{box-shadow:none!important;text-shadow:none!important}
+html{font-size:80%}
+a{color:inherit!important;text-decoration:underline!important}
+a.bare,a[href^="#"],a[href^="mailto:"]{text-decoration:none!important}
+a[href^="http:"]:not(.bare)::after,a[href^="https:"]:not(.bare)::after{content:"(" attr(href) ")";display:inline-block;font-size:.875em;padding-left:.25em}
+abbr[title]{border-bottom:1px dotted}
+abbr[title]::after{content:" (" attr(title) ")"}
+pre,blockquote,tr,img,object,svg{page-break-inside:avoid}
+thead{display:table-header-group}
+svg{max-width:100%}
+p,blockquote,dt,td.content{font-size:1em;orphans:3;widows:3}
+h2,h3,#toctitle,.sidebarblock>.content>.title{page-break-after:avoid}
+#header,#content,#footnotes,#footer{max-width:none}
+#toc,.sidebarblock,.exampleblock>.content{background:none!important}
+#toc{border-bottom:1px solid #dddddf!important;padding-bottom:0!important}
+body.book #header{text-align:center}
+body.book #header>h1:first-child{border:0!important;margin:2.5em 0 1em}
+body.book #header .details{border:0!important;display:block;padding:0!important}
+body.book #header .details span:first-child{margin-left:0!important}
+body.book #header .details br{display:block}
+body.book #header .details br+span::before{content:none!important}
+body.book #toc{border:0!important;text-align:left!important;padding:0!important;margin:0!important}
+body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-break-before:always}
+.listingblock code[data-lang]::before{display:block}
+#footer{padding:0 .9375em}
+.hide-on-print{display:none!important}
+.print-only{display:block!important}
+.hide-for-print{display:none!important}
+.show-for-print{display:inherit!important}}
+@media amzn-kf8,print{#header>h1:first-child{margin-top:1.25rem}
+.sect1{padding:0!important}
+.sect1+.sect1{border:0}
+#footer{background:none}
+#footer-text{color:rgba(0,0,0,.6);font-size:.9em}}
+@media amzn-kf8{#header,#content,#footnotes,#footer{padding:0}}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-GPD7V946LB"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-GPD7V946LB');
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/themes/default/style.min.css">
+<link rel="stylesheet" href="../../css/css.css">
+<link rel="stylesheet" href="/assets/css/clipboard.css">
+<link rel="stylesheet" href="/assets/css/cookieconsent.css">
+<link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
+<script src="/assets/javascript/clipboard.min.js" type="text/javascript"></script>
+<script src="/assets/javascript/copy.js" type="text/javascript"></script>
+<script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
+<script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
+<script src="../../js/js.js"></script>
+<link rel="canonical" href="https://infinispan.org/docs/stable/titles/tuning/tuning.html">
+<style>
+.hidden {
+    display: none;
+}
+
+.switch {
+    border-width: 1px 1px 0 1px;
+    border-style: solid;
+    border-color: #7a2518;
+    display: inline-block;
+}
+
+.switch--item {
+    padding: 10px;
+    background-color: #ffffff;
+    color: #7a2518;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.switch--item.selected {
+    background-color: #7a2519;
+    color: #ffffff;
+}
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script type="text/javascript">
+function addBlockSwitches() {
+    $('.primary').each(function() {
+        primary = $(this);
+        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
+        primary.children('.title').remove();
+    });
+    $('.secondary').each(function(idx, node) {
+        secondary = $(node);
+        primary = findPrimary(secondary);
+        switchItem = createSwitchItem(secondary, primary.children('.switch'));
+        switchItem.content.addClass('hidden');
+        findPrimary(secondary).append(switchItem.content);
+        secondary.remove();
+    });
+}
+
+function createBlockSwitch(primary) {
+    blockSwitch = $('<div class="switch"></div>');
+    primary.prepend(blockSwitch);
+    return blockSwitch;
+}
+
+function findPrimary(secondary) {
+    candidate = secondary.prev();
+    while (!candidate.is('.primary')) {
+        candidate = candidate.prev();
+    }
+    return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+    blockName = block.children('.title').text();
+    content = block.children('.content').first().append(block.next('.colist'));
+    item = $('<div class="switch--item">' + blockName + '</div>');
+    item.on('click', '', content, function(e) {
+        $(this).addClass('selected');
+        $(this).siblings().removeClass('selected');
+        e.data.siblings('.content').addClass('hidden');
+        e.data.removeClass('hidden');
+    });
+    blockSwitch.append(item);
+    return {'item': item, 'content': content};
+}
+
+$(addBlockSwitches);
+
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<h1>Infinispan performance considerations and tuning guidelines</h1>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#use-cases">1. Infinispan deployment models and use cases</a>
+<ul class="sectlevel2">
+<li><a href="#deployment-models_use-cases">1.1. Infinispan deployment models</a>
+<ul class="sectlevel3">
+<li><a href="#platform-automation_use-cases">1.1.1. Platforms and automation tooling</a></li>
+</ul>
+</li>
+<li><a href="#in-line-caching_use-cases">1.2. In-line caching</a></li>
+<li><a href="#side-caching_use-cases">1.3. Side caching</a></li>
+<li><a href="#distributed-memory_use-cases">1.4. Distributed memory</a></li>
+<li><a href="#session-externalization_use-cases">1.5. Session externalization</a></li>
+<li><a href="#cross-site-replication_use-cases">1.6. Cross-site replication</a></li>
+</ul>
+</li>
+<li><a href="#deployment-planning">2. Infinispan deployment planning</a>
+<ul class="sectlevel2">
+<li><a href="#performance-metric-considerations_deployment-planning">2.1. Performance metric considerations</a></li>
+<li><a href="#data-set-size_deployment-planning">2.2. How to calculate the size of your data set</a>
+<ul class="sectlevel3">
+<li><a href="#memory-overhead_deployment-planning">2.2.1. Memory overhead</a></li>
+<li><a href="#jvm-heap-memory-allocation_deployment-planning">2.2.2. JVM heap space allocation</a></li>
+</ul>
+</li>
+<li><a href="#performance-clustered-cache-modes_deployment-planning">2.3. Clustered cache modes</a></li>
+<li><a href="#performance-avoiding-stale-caches_deployment-planning">2.4. Strategies to manage stale data</a></li>
+<li><a href="#managing-jvm-memory_deployment-planning">2.5. JVM memory management with eviction</a></li>
+<li><a href="#off-heap-memory_deployment-planning">2.6. JVM heap and off-heap memory</a>
+<ul class="sectlevel3">
+<li><a href="#off-heap-storage_deployment-planning">2.6.1. Off-heap data storage</a></li>
+</ul>
+</li>
+<li><a href="#performance-persistence_deployment-planning">2.7. Persistent storage</a></li>
+<li><a href="#performance-security_deployment-planning">2.8. Cluster security</a></li>
+<li><a href="#performance-client-listeners_deployment-planning">2.9. Client listeners</a></li>
+<li><a href="#performance-indexing-querying_deployment-planning">2.10. Indexing and querying caches</a>
+<ul class="sectlevel3">
+<li><a href="#continuous-query-performance_deployment-planning">2.10.1. Continuous queries and Infinispan performance</a></li>
+</ul>
+</li>
+<li><a href="#performance-data-consistency_deployment-planning">2.11. Data consistency</a></li>
+<li><a href="#performance-partition-handling_deployment-planning">2.12. Network partitions and degraded clusters</a>
+<ul class="sectlevel3">
+<li><a href="#partition-handling-garbage-collection_deployment-planning">2.12.1. Garbage collection and partition handling</a></li>
+</ul>
+</li>
+<li><a href="#performance-cross-site-replication_deployment-planning">2.13. Cluster backups and disaster recovery</a></li>
+<li><a href="#performance-clustered-execution_deployment-planning">2.14. Code execution and data processing</a></li>
+<li><a href="#performance-client-traffic_deployment-planning">2.15. Client traffic</a></li>
+</ul>
+</li>
+<li><a href="#tuning">3. Performance tuning guidelines</a>
+<ul class="sectlevel2">
+<li><a href="#tuning-jvm_tuning">3.1. Java Virtual Machine settings</a></li>
+<li><a href="#tuning-network_tuning">3.2. Network configuration</a>
+<ul class="sectlevel3">
+<li><a href="#adjusting_sendreceive_window_settings">3.2.1. Adjusting Send/Receive Window Settings</a></li>
+<li><a href="#flow_control">3.2.2. Flow Control</a>
+<ul class="sectlevel4">
+<li><a href="#tcp_connections">TCP Connections</a></li>
+<li><a href="#udp_connections">UDP Connections</a></li>
+</ul>
+</li>
+<li><a href="#failure_detector">3.2.3. Failure Detector</a></li>
+<li><a href="#member_discovery">3.2.4. Member Discovery</a></li>
+<li><a href="#jumbo_frames">3.2.5. Jumbo Frames</a></li>
+<li><a href="#transmit_queue_length">3.2.6. Transmit Queue Length</a></li>
+<li><a href="#network_bonding">3.2.7. Network Bonding</a></li>
+</ul>
+</li>
+<li><a href="#tuning-extra_tuning">3.3. SSL provider</a></li>
+<li><a href="#cache_store_performance">3.4. Cache store performance</a></li>
+<li><a href="#hints_for_program_developers">3.5. Hints for program developers</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Deploying an in-memory, distributed data store requires careful planning.
+It also requires you to measure performance over time to learn where boundaries exist and then adjust and tune your deployment.
+The details in this guide help you calculate the size of your data set, figure out what type of clustered cache best suits your requirements, and understand performance trade-offs for various Infinispan capabilities.
+This guide also includes some practical tuning recommendations to optimize Infinispan performance.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="use-cases"><a class="anchor" href="#use-cases"></a>1. Infinispan deployment models and use cases</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan offers flexible deployment models that support a variety of use cases.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Drastically improve performance of Quarkus, WildFly, and Spring applications.</p>
+</li>
+<li>
+<p>Ensure service availability and continuity.</p>
+</li>
+<li>
+<p>Lower operational costs.</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="deployment-models_use-cases"><a class="anchor" href="#deployment-models_use-cases"></a>1.1. Infinispan deployment models</h3>
+<div class="paragraph">
+<p>Infinispan has two deployment models for caches, remote and embedded.
+Both deployment models allow applications to access data with significantly lower latency for read operations and higher throughput for write operations in comparison with traditional database systems.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Remote caches</dt>
+<dd>
+<p>Infinispan Server nodes run in a dedicated Java Virtual Machine (JVM). Clients access remote caches using either Hot Rod, a binary TCP protocol, or REST over HTTP.</p>
+</dd>
+<dt class="hdlist1">Embedded caches</dt>
+<dd>
+<p>Infinispan runs in the same JVM as your Java application, meaning that data is stored in the memory space where code is executed.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<div class="title">Near-caching</div>
+<p>Near-caching capabilities allow remote clients to store data locally, which means read-intensive applications do not need to traverse the network with each call.
+Near-caching significantly increases speed of read operations and achieves the same performance as an embedded cache.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/remote-caches.svg" alt="A Infinispan cluster of four server nodes with remote caches that allow applications to perform read and write operations through remote clients.">
+</div>
+<div class="title">Figure 1. Remote cache deployment model</div>
+</div>
+<div class="sect3">
+<h4 id="platform-automation_use-cases"><a class="anchor" href="#platform-automation_use-cases"></a>1.1.1. Platforms and automation tooling</h4>
+<div class="paragraph">
+<p>Achieving the desired quality of service means providing Infinispan with optimal CPU and RAM resources.
+Too few resources downgrades Infinispan performance while using excessive amounts of host resources can quickly increase costs.</p>
+</div>
+<div class="paragraph">
+<p>While you benchmark and tune Infinispan clusters to find the right allocation of CPU or RAM, you should also consider which host platform provides the right kind of automation tooling to scale clusters and manage resources efficiently.</p>
+</div>
+<div class="paragraph">
+<div class="title">Bare metal or virtual machine</div>
+<p>Couple a Linux, Unix-like, or Microsoft Windows host system with Ansible to manage Infinispan configuration and poll services to ensure availability and achieve optimal resource usage.</p>
+</div>
+<div class="paragraph">
+<p>The <a href="https://github.com/ansible-middleware/infinispan">Ansible collection for Infinispan</a>, available from Ansible Galaxy, automates cluster installation and includes options for Keycloak integration and cross-site replication.</p>
+</div>
+<div class="paragraph">
+<div class="title">Kubernetes</div>
+<p>Take advantage of Kubernetes orchestration to automatically provision pods, impose limits on resources, and automatically scale Infinispan clusters to meet workload demands.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="in-line-caching_use-cases"><a class="anchor" href="#in-line-caching_use-cases"></a>1.2. In-line caching</h3>
+<div class="paragraph">
+<p>Infinispan handles all application requests for data that resides in persistent storage.</p>
+</div>
+<div class="paragraph">
+<p>With in-line caches, Infinispan uses cache loaders and cache stores to operate on data in persistent storage.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Cache loaders provide read-only access to persistent storage.</p>
+</li>
+<li>
+<p>Cache stores provide read and write access to persistent storage.</p>
+</li>
+</ul>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/in-line-cache.svg" alt="Infinispan clusters that use cache loaders and cache stores to handle all application requests for data in persistent storage.">
+</div>
+<div class="title">Figure 2. In-line caches</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="side-caching_use-cases"><a class="anchor" href="#side-caching_use-cases"></a>1.3. Side caching</h3>
+<div class="paragraph">
+<p>Infinispan stores data that applications retrieve from persistent storage, which reduces the number of read operations to persistent storage and increases response times for subsequent reads.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/side-cache.svg" alt="Infinispan side cache to which applications write to avoid repeatedly reading the same entries from persistent storage.">
+</div>
+<div class="title">Figure 3. Side caches</div>
+</div>
+<div class="paragraph">
+<p>With side caches, applications control how data is added to Infinispan clusters from persistent storage.
+When an application requests an entry, the following occurs:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The read request goes to Infinispan.</p>
+</li>
+<li>
+<p>If the entry is not in the cache, the application requests it from persistent storage.</p>
+</li>
+<li>
+<p>The application puts the entry in the cache.</p>
+</li>
+<li>
+<p>The application retrieves the entry from Infinispan on the next read.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="distributed-memory_use-cases"><a class="anchor" href="#distributed-memory_use-cases"></a>1.4. Distributed memory</h3>
+<div class="paragraph">
+<p>Infinispan uses consistent hashing techniques to store a fixed number of copies of each entry in the cache across the cluster.
+Distributed caches allow you to scale the data layer linearly, increasing capacity as nodes join.</p>
+</div>
+<div class="paragraph">
+<p>Distributed caches add redundancy to Infinispan clusters to provide fault tolerance and durability guarantees.
+Infinispan deployments typically configure integration with persistent storage to preserve cluster state for graceful shutdowns and restore from backup.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/distributed-cache.svg" alt="Infinispan cluster of three nodes that replicates entries across nodes in a distributed way.">
+</div>
+<div class="title">Figure 4. Distributed caches</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="session-externalization_use-cases"><a class="anchor" href="#session-externalization_use-cases"></a>1.5. Session externalization</h3>
+<div class="paragraph">
+<p>Infinispan can provide external caches for applications built on Quarkus, WildFly, Apache Tomcat, and Spring.
+These external caches store HTTP sessions and other data independently of the application layer.</p>
+</div>
+<div class="paragraph">
+<p>Externalizing sessions to Infinispan gives you the following benefits:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Elasticity</dt>
+<dd>
+<p>Eliminate the need for rebalancing operations when scaling applications.</p>
+</dd>
+<dt class="hdlist1">Smaller memory footprints</dt>
+<dd>
+<p>Storing session data in external caches reduces overall memory requirements for applications.</p>
+</dd>
+</dl>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/session-externalization.svg" alt="Infinispan cluster that offloads session data from applications.">
+</div>
+<div class="title">Figure 5. Session externalization</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cross-site-replication_use-cases"><a class="anchor" href="#cross-site-replication_use-cases"></a>1.6. Cross-site replication</h3>
+<div class="paragraph">
+<p>Infinispan can back up data between clusters running in geographically dispersed data centers and across different cloud providers.
+Cross-site replication provides Infinispan with a global cluster view and:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Guarantees service continuity in the event of outages or disasters.</p>
+</li>
+<li>
+<p>Presents client applications with a single point of access to data in globally distributed caches.</p>
+</li>
+</ul>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/cross-site-replication.svg" alt="Cross-site replication with a Infinispan deployment.">
+</div>
+<div class="title">Figure 6. Cross-site replication</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="deployment-planning"><a class="anchor" href="#deployment-planning"></a>2. Infinispan deployment planning</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>To get the best performance for your Infinispan deployment, you should do the following things:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Calculate the size of your data set.</p>
+</li>
+<li>
+<p>Determine what type of clustered cache mode best suits your use case and requirements.</p>
+</li>
+<li>
+<p>Understand performance trade-offs and considerations for Infinispan capabilities that provide fault tolerance and consistency guarantees.</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="performance-metric-considerations_deployment-planning"><a class="anchor" href="#performance-metric-considerations_deployment-planning"></a>2.1. Performance metric considerations</h3>
+<div class="paragraph">
+<p>Infinispan includes so many configurable combinations that determining a single formula for performance metrics that covers all use cases is not possible.</p>
+</div>
+<div class="paragraph">
+<p>The purpose of the <em>Infinispan performance considerations and tuning guidelines</em> document is to provide details about use cases and architectures that can help you determine requirements for your Infinispan deployment.</p>
+</div>
+<div class="paragraph">
+<p>Additionally, consider the following inter-related factors that apply to Infinispan:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Available CPU and memory resources in cloud environments</p>
+</li>
+<li>
+<p>Caches used in parallel</p>
+</li>
+<li>
+<p>Get, put, query balancing</p>
+</li>
+<li>
+<p>Peak load and throughput limitations</p>
+</li>
+<li>
+<p>Querying limitations with data set</p>
+</li>
+<li>
+<p>Number of entries per cache</p>
+</li>
+<li>
+<p>Size of cache entries</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Given the number of different combinations and unknown external factors, providing a performance calculation that meets all Infinispan use cases is not possible.
+You cannot compare one performance test to another test if any of the previously listed factors are different.</p>
+</div>
+<div class="paragraph">
+<p>You can run basic performance tests with the Infinispan CLI that collects limited performance metrics.
+You can customize the performance test so that the test outputs results that might meet your needs.
+Test results provide baseline metrics that can help you determine settings and resources for your Infinispan caching requirements.</p>
+</div>
+<div class="paragraph">
+<p>Measure the performance of your current settings and check if they meet your requirements.
+If your needs are not met, optimize the settings and then re-measure their performance.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="data-set-size_deployment-planning"><a class="anchor" href="#data-set-size_deployment-planning"></a>2.2. How to calculate the size of your data set</h3>
+<div class="paragraph">
+<p>Planning a Infinispan deployment involves calculating the size of your data set then figuring out the correct number of nodes and amount of RAM to hold the data set.</p>
+</div>
+<div class="paragraph">
+<p>You can roughly estimate the total size of your data set with this formula:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>Data set size = Number of entries * (Average key size + Average value size + Memory overhead)</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>With remote caches you need to calculate key sizes and value sizes in their marshalled forms.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<h4 id="data_set_size_in_distributed_caches" class="discrete">Data set size in distributed caches</h4>
+<div class="paragraph">
+<p>Distributed caches require some additional calculation to determine the data set size.</p>
+</div>
+<div class="paragraph">
+<p>In normal operating conditions, distributed caches store a number of copies for each key/value entry that is equal to the <code>Number of owners</code> that you configure.
+During cluster rebalancing operations, some entries have an extra copy, so you should calculate <code>Number of owners + 1</code> to allow for that scenario.</p>
+</div>
+<div class="paragraph">
+<p>You can use the following formula to adjust the estimate of your data set size for distributed caches:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>Distributed data set size = Data set size * (Number of owners + 1)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<div class="title">Calculating available memory for distributed caches</div>
+<p>Distributed caches allow you to increase the data set size either by adding more nodes or by increasing the amount of available memory per node.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>Distributed data set size &lt;= Available memory per node * Minimum number of nodes</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<div class="title">Adjusting for node loss tolerance</div>
+<p>Even if you plan to have a fixed number of nodes in the cluster, you should take into account the fact that not all nodes will be in the cluster all the time.
+Distributed caches tolerate the loss of <code>Number of owners - 1</code> nodes without losing data so you can allocate that many extra node in addition to the minimum number of nodes that you need to fit your data set.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>Planned nodes = Minimum number of nodes + Number of owners - 1
+
+Distributed data set size &lt;= Available memory per node * (Planned nodes - Number of owners + 1)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For example, you plan to store one million entries that are 10KB each in size and configure three owners per entry for availability.
+If you plan to allocate 4GB of RAM for each node in the cluster, you can then use the following formula to determine the number of nodes that you need for your data set:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>Data set size = 1_000_000 * 10KB = 10GB
+Distributed data set size = (3 + 1) * 10GB = 40GB
+40GB &lt;= 4GB * Minimum number of nodes
+Minimum number of nodes &gt;= 40GB / 4GB = 10
+Planned nodes = 10 + 3 - 1 = 12</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="memory-overhead_deployment-planning"><a class="anchor" href="#memory-overhead_deployment-planning"></a>2.2.1. Memory overhead</h4>
+<div class="paragraph">
+<p>Memory overhead is additional memory that Infinispan uses to store entries.
+An approximate estimate for memory overhead is 200 bytes per entry in JVM heap memory or 60 bytes per entry in off-heap memory.
+It is impossible to determine a precise amount of memory overhead upfront, however, because the overhead that Infinispan adds per entry depends on several factors.
+For example, bounding the data container with eviction results in Infinispan using additional memory to keep track of entries.
+Likewise configuring expiration adds timestamps metadata to each entry.</p>
+</div>
+<div class="paragraph">
+<p>The only way to find any kind of exact amount of memory overhead involves JVM heap dump analysis.
+Of course JVM heap dumps provide no information for entries that you store in off-heap memory but memory overhead is much lower for off-heap memory than JVM heap memory.</p>
+</div>
+<div class="paragraph">
+<div class="title">Additional memory usage</div>
+<p>In addition to the memory overhead that Infinispan imposes per entry, processes such as rebalancing and indexing can increase overall memory usage.
+Rebalancing operations for clusters when nodes join and leave also temporarily require some extra capacity to prevent data loss while replicating entries between cluster members.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="jvm-heap-memory-allocation_deployment-planning"><a class="anchor" href="#jvm-heap-memory-allocation_deployment-planning"></a>2.2.2. JVM heap space allocation</h4>
+<div class="paragraph">
+<p>Determine the volume of memory that you require for your Infinispan deployment, so that you have enough data storage capacity to meet your needs.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Allocating a large memory heap size in combination with setting garbage collection (GC) times might impact the performance of your Infinispan deployment in the following ways:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>If a JVM handles only one thread, the GC might block the thread and reduce the JVM&#8217;s performance. The GC might operate ahead of the deployment. This asynchronous behavior might cause large GC pauses.</p>
+</li>
+<li>
+<p>If CPU resources are low and GC operates synchronously with the deployment, GC might require more frequent runs that can degrade your deployment&#8217;s performance.</p>
+</li>
+</ul>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The following table outlines two examples of allocating JVM heap space for data storage.
+These examples represent safe estimates for deploying a cluster.</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cache operations only, such as read, write, and delete operations.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Allocate <strong>50%</strong> of JVM heap space for data storage.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cache operations and data processing, such as queries and cache event listeners.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Allocate <strong>33%</strong> of JVM heap space for data storage.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Depending on pattern changes and usage for data storage, you might consider setting a different percentage for JVM heap space than any of the suggested safe estimates.</p>
+</div>
+<div class="paragraph">
+<p>Consider setting a safe estimate before you start your Infinispan deployment.
+After you start your deployment, check the performance of your JVM and the occupancy of heap space.
+You might need to re-adjust JVM heap space when data usage and throughput for your JVM significantly increases.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The safe estimates were calculated on the assumption that the following common operations were running inside a JVM.
+The list is not exhaustive, and you might set one of these safe estimates with the purpose of performing additional operations.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Infinispan converts objects in serialized form to key-value pairs. Infinispan adds the pairs to caches and persistent storage.</p>
+</li>
+<li>
+<p>Infinispan encrypts and decrypts caches from remote connections to clients.</p>
+</li>
+<li>
+<p>Infinispan performs regular querying of caches to collect data.</p>
+</li>
+<li>
+<p>Infinispan strategically divides data into segments to ensure efficient distribution of data among clusters, even during a state transfer operation.</p>
+</li>
+<li>
+<p>GC performs more frequent garbage collections, because the JVM allocated large volumes of memory for GC operations.</p>
+</li>
+<li>
+<p>GC dynamically manages and monitors data objects in JVM heap space to ensure safe removal of unused objects.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Consider the following factors when allocating JVM heap space for data storage, and when determining the volume of memory and CPU requirements for your Infinispan deployment:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Clustered cache mode.</p>
+</li>
+<li>
+<p>Number of segments.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>For example, a low number of segments might affect how a server distributes data among nodes.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Read or write operations.</p>
+</li>
+<li>
+<p>Rebalancing requirements.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>For example, a high number of threads might quickly run in parallel during a state transfer, but each thread operation might use more memory.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Scaling clusters.</p>
+</li>
+<li>
+<p>Synchronous or asynchronous replication.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Most notable Infinispan operations that require high CPU resources include rebalancing nodes after pod restarts, running indexing queries on data, and performing GC operations.</p>
+</div>
+<div class="paragraph">
+<div class="title">Off-heap storage</div>
+<p>Infinispan uses JVM heap representations of objects to process read and write operations on caches or perform other operations, such as a state transfer operation.
+You must always allocate some JVM heap space to Infinispan, even if you store entries in off-heap memory.</p>
+</div>
+<div class="paragraph">
+<p>The volume of JVM heap memory that Infinispan uses with off-heap storage is much smaller when compared with storing data in the JVM heap space.
+The JVM heap memory requirements for off-heap storage scales with the number of concurrent operations as against the number of stored entries.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan uses topology caches to provide clients with a cluster view.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>If you receive any <code>OutOfMemoryError</code> exceptions from your Infinispan cluster, consider the options:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Disable the state transfer operation, which might results in data loss if a node joins or leaves a cluster.</p>
+</li>
+<li>
+<p>Recalculate the JVM heap space by factoring in the key size and the number of nodes and segments.</p>
+</li>
+<li>
+<p>Use more nodes to better manage memory consumption for your cluster.</p>
+</li>
+<li>
+<p>Use a single node, because this might use less memory. However, consider the impact if you want to scale your cluster to its original size.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="performance-clustered-cache-modes_deployment-planning"><a class="anchor" href="#performance-clustered-cache-modes_deployment-planning"></a>2.3. Clustered cache modes</h3>
+<div class="paragraph">
+<p>You can configure clustered Infinispan caches as replicated or distributed.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Distributed caches</dt>
+<dd>
+<p>Maximize capacity by creating fewer copies of each entry across the cluster.</p>
+</dd>
+<dt class="hdlist1">Replicated caches</dt>
+<dd>
+<p>Provide redundancy by creating a copy of all entries on each node in the cluster.</p>
+</dd>
+</dl>
+</div>
+<h4 id="readswrites" class="discrete">Reads:Writes</h4>
+<div class="paragraph">
+<p>Consider whether your applications perform more write operations or more read operations.
+In general, distributed caches offer the best performance for writes while replicated caches offer the best performance for reads.</p>
+</div>
+<div class="paragraph">
+<p>To put <code>k1</code> in a distributed cache on a cluster of three nodes with two owners, Infinispan writes <code>k1</code> twice.
+The same operation in a replicated cache means Infinispan writes <code>k1</code> three times.
+The amount of additional network traffic for each write to a replicated cache is equal to the number of nodes in the cluster.
+A replicated cache on a cluster of ten nodes results in a tenfold increase in traffic for writes and so on. You can minimize traffic by using a UDP stack with multicasting for cluster transport.</p>
+</div>
+<div class="paragraph">
+<p>To get <code>k1</code> from a replicated cache, each node can perform the read operation locally.
+Whereas, to get <code>k1</code> from a distributed cache, the node that handles the operation might need to retrieve the key from a different node in the cluster, which results in an extra network hop and increases the time for the read operation to complete.</p>
+</div>
+<div class="paragraph">
+<div class="title">Client intelligence and near-caching</div>
+<p>Infinispan uses consistent hashing techniques to make Hot Rod clients topology-aware and avoid extra network hops, which means read operations have the same performance for distributed caches as they do for replicated caches.</p>
+</div>
+<div class="paragraph">
+<p>Hot Rod clients can also use near-caching capabilities to keep frequently accessed entries in local memory and avoid repeated reads.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Distributed caches are the best choice for most Infinispan Server deployments.
+You get the best possible performance for read and write operations along with elasticity for cluster scaling.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<h4 id="data_guarantees" class="discrete">Data guarantees</h4>
+<div class="paragraph">
+<p>Because each node contains all entries, replicated caches provide more protection against data loss than distributed caches.
+On a cluster of three nodes, two nodes can crash and you do not lose data from a replicated cache.</p>
+</div>
+<div class="paragraph">
+<p>In that same scenario, a distributed cache with two owners would lose data.
+To avoid data loss with distributed caches, you can increase the number of replicas across the cluster by configuring more owners for each entry with either the <code>owners</code> attribute declaratively or the <code>numOwners()</code> method programmatically.</p>
+</div>
+<div class="paragraph">
+<div class="title">Rebalancing operations when node failure occurs</div>
+<p>Rebalancing operations after node failure can impact performance and capacity.
+When a node leaves the cluster, Infinispan replicates cache entries among the remaining members to restore the configured number of owners.
+This rebalancing operation is temporary, but the increased cluster traffic has a negative impact on performance.
+Performance degradation is greater the more nodes leave.
+The nodes left in the cluster might not have enough capacity to keep all data in memory when too many nodes leave.</p>
+</div>
+<h4 id="cluster_scaling" class="discrete">Cluster scaling</h4>
+<div class="paragraph">
+<p>Infinispan clusters scale horizontally as your workloads demand to more efficiently use compute resources like CPU and memory.
+To take the most advantage of this elasticity, you should consider how scaling the number of nodes up or down affects cache capacity.</p>
+</div>
+<div class="paragraph">
+<p>For replicated caches, each time a node joins the cluster, it receives a complete copy of the data set.
+Replicating all entries to each node increases the time it takes for nodes to join and imposes a limit on overall capacity.
+Replicated caches can never exceed the amount of memory available to the host.
+For example, if the size of your data set is 10 GB, each node must have at least 10 GB of available memory.</p>
+</div>
+<div class="paragraph">
+<p>For distributed caches, adding more nodes increases capacity because each member of the cluster stores only a subset of the data.
+To store 10 GB of data, you can have eight nodes each with 5 GB of available memory if the number of owners is two, without taking memory overhead into consideration.
+Each additional node that joins the cluster increases the capacity of the distributed cache by 5 GB.</p>
+</div>
+<div class="paragraph">
+<p>The capacity of a distributed cache is not bound by the amount of memory available to underlying hosts.</p>
+</div>
+<h4 id="synchronous_or_asynchronous_replication" class="discrete">Synchronous or asynchronous replication</h4>
+<div class="paragraph">
+<p>Infinispan can communicate synchronously or asynchronously when primary owners send replication requests to backup nodes.</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Replication mode</th>
+<th class="tableblock halign-left valign-top">Effect on performance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Synchronous</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronous replication helps to keep your data consistent but adds latency to cluster traffic that reduces throughput for cache writes.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Asynchronous</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Asynchronous replication reduces latency and increases the speed of write operations but leads to data inconsistency and provides a lower guarantee against data loss.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>With synchronous replication, Infinispan notifies the originating node when replication requests complete on backup nodes.
+Infinispan retries the operation if a replication request fails due to a change to the cluster topology.
+When replication requests fail due to other errors, Infinispan throws exceptions for client applications.</p>
+</div>
+<div class="paragraph">
+<p>With asynchronous replication, Infinispan does not provide any confirmation for replication requests.
+This has the same effect for applications as all requests being successful.
+On the Infinispan cluster, however, the primary owner has the correct entry and Infinispan replicates it to backup nodes at some point in the future.
+In the case that the primary owner crashes then backup nodes might not have a copy of the entry or they might have an out of date copy.</p>
+</div>
+<div class="paragraph">
+<p>Cluster topology changes can also lead to data inconsistency with asynchronous replication.
+For example, consider a Infinispan cluster that has multiple primary owners.
+Due to a network error or some other issue, one or more of the primary owners leaves the cluster unexpectedly so Infinispan updates which nodes are the primary owners for which segments.
+When this occurs, it is theoretically possible for some nodes to use the old cluster topology and some nodes to use the updated topology.
+With asynchronous communication, this might lead to a short time where Infinispan processes replication requests from the previous topology and applies older values from write operations.
+However, Infinispan can detect node crashes and update cluster topology changes quickly enough that this scenario is not likely to affect many write operations.</p>
+</div>
+<div class="paragraph">
+<p>Using asynchronous replication does not guarantee improved throughput for writes, because asynchronous replication limits the number of backup writes that a node can handle at any time to the number of possible senders (via JGroups per-sender ordering).
+Synchronous replication allows nodes to handle more incoming write operations at the same time, which in certain configurations might compensate for the fact that individual operations take longer to complete, giving you a higher total throughput.</p>
+</div>
+<div class="paragraph">
+<p>When a node sends multiple requests to replicate entries, JGroups sends the messages to the rest of the nodes in the cluster one at a time, which results in there being only one replication request per originating node.
+This means that Infinispan nodes can process, in parallel with other write operations, one write from each other node in the cluster.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan uses a JGroups flow control protocol in the cluster transport layer to handle replication requests to backup nodes.
+If the number of unconfirmed replication requests exceeds the flow control threshold, set with the <code>max_credits</code> attribute (4MB by default), write operations are blocked on the originator node.
+This applies to both synchronous and asynchronous replication.</p>
+</div>
+<h4 id="number_of_segments" class="discrete">Number of segments</h4>
+<div class="paragraph">
+<p>Infinispan divides data into segments to distribute data evenly across clusters.
+Even distribution of segments avoids overloading individual nodes and makes cluster re-balancing operations more efficient.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan creates 256 hash space segments per cluster by default.
+For deployments with up to 20 nodes per cluster, this number of segments is ideal and should not change.</p>
+</div>
+<div class="paragraph">
+<p>For deployments with greater than 20 nodes per cluster, increasing the number of segments increases the granularity of your data so Infinispan can distribute it across the cluster more efficiently.
+Use the following formula to calculate approximately how many segments you should configure:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Number of segments = 20 * Number of nodes</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For example, with a cluster of 30 nodes you should configure 600 segments.
+Adding more segments for larger clusters is generally a good idea, though, and this formula should provide you with a rough idea of the number that is right for your deployment.</p>
+</div>
+<div class="paragraph">
+<p>Changing the number of segments Infinispan creates requires a full cluster restart.
+If you use persistent storage you might also need to use the <code>StoreMigrator</code> utility to change the number of segments, depending on the cache store implementation.</p>
+</div>
+<div class="paragraph">
+<p>Changing the number of segments can also lead to data corruption so you should do so with caution and based on metrics that you gather from benchmarking and performance monitoring.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan always segments data that it stores in memory.
+When you configure cache stores, Infinispan does not always segment data in persistent storage.</p>
+</div>
+<div class="paragraph">
+<p>It depends on the cache store implementation but, whenever possible you should enable segmentation for a cache store.
+Segmented cache stores improve Infinispan performance when iterating over data in persistent storage.
+For example, with RocksDB and JDBC-string based cache stores, segmentation reduces the number of objects that Infinispan needs to retrieve from the database.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="performance-avoiding-stale-caches_deployment-planning"><a class="anchor" href="#performance-avoiding-stale-caches_deployment-planning"></a>2.4. Strategies to manage stale data</h3>
+<div class="paragraph">
+<p>If Infinispan is not the primary source of data, embedded and remote caches are stale by nature.
+While planning, benchmarking, and tuning your Infinispan deployment, choose the appropriate level of cache staleness for your applications.</p>
+</div>
+<div class="paragraph">
+<p>Choose a level that allows you to make the best use of available RAM and avoid cache misses.
+If Infinispan does not have the entry in memory, then calls go to the primary store when applications send read and write requests.</p>
+</div>
+<div class="paragraph">
+<p>Cache misses increase the latency of reads and writes but, in many cases, calls to the primary store are more costly than the performance penalty to Infinispan. One example of this is offloading relational database management systems (RDBMS) to Infinispan clusters.
+Deploying Infinispan in this way greatly reduces the financial cost of operating traditional databases so tolerating a higher degree of stale entries in caches makes sense.</p>
+</div>
+<div class="paragraph">
+<p>With Infinispan you can configure maximum idle and lifespan values for entries to maintain an acceptable level of cache staleness.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Expiration</dt>
+<dd>
+<p>Controls how long Infinispan keeps entries in a cache and takes effect across clusters.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>Higher expiration values mean that entries remain in memory for longer, which increases the likelihood that read operations return stale values.
+Lower expiration values mean that there are less stale values in the cache but the likelihood of cache misses is greater.</p>
+</div>
+<div class="paragraph">
+<p>To carry out expiration, Infinispan creates a reaper from the existing thread pool.
+The main performance consideration with the thread is configuring the right interval between expiration runs.
+Shorter intervals perform more frequent expiration but use more threads.</p>
+</div>
+<div class="paragraph">
+<p>Additionally, with maximum idle expiration, you can control how Infinispan updates timestamp metadata across clusters.
+Infinispan sends touch commands to coordinate maximum idle expiration across nodes synchronously or asynchronously.
+With synchronous replication, you can choose either "sync" or "async" touch commands depending on whether you prefer consistency or speed.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="managing-jvm-memory_deployment-planning"><a class="anchor" href="#managing-jvm-memory_deployment-planning"></a>2.5. JVM memory management with eviction</h3>
+<div class="paragraph">
+<p>RAM is a costly resource and usually limited in availability.
+Infinispan lets you manage memory usage to give priority to frequently used data by removing entries from memory.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Eviction</dt>
+<dd>
+<p>Controls the amount of data that Infinispan keeps in memory and takes effect for each node.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>Eviction bounds Infinispan caches by:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Total number of entries, a maximum count.</p>
+</li>
+<li>
+<p>Amount of JVM memory, a maximum size.</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan evicts entries on a per-node basis.
+Because not all nodes evict the same entries you should use eviction with persistent storage to avoid data inconsistency.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The impact to performance from eviction comes from the additional processing that Infinispan needs to calculate when the size of a cache reaches the configured threshold.</p>
+</div>
+<div class="paragraph">
+<p>Eviction can also slow down read operations.
+For example, if a read operation retrieves an entry from a cache store, Infinispan brings that entry into memory and then evicts another entry.
+This eviction process can include writing the newly evicted entry to the cache store, if using passivation.
+When this happens, the read operation does not return the value until the eviction process is complete.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="off-heap-memory_deployment-planning"><a class="anchor" href="#off-heap-memory_deployment-planning"></a>2.6. JVM heap and off-heap memory</h3>
+<div class="paragraph">
+<p>Infinispan stores cache entries in JVM heap memory by default.
+You can configure Infinispan to use off-heap storage, which means that your data occupies native memory outside the managed JVM memory space.</p>
+</div>
+<div class="paragraph">
+<p>The following diagram is a simplified illustration of the memory space for a JVM process where Infinispan is running:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/jvm_memory_space.png" alt="This diagram depicts the JVM memory space divided into heap and off-heap memory.">
+</div>
+<div class="title">Figure 7. JVM memory space</div>
+</div>
+<h4 id="jvm_heap_memory" class="discrete">JVM heap memory</h4>
+<div class="paragraph">
+<p>The heap is divided into young and old generations that help keep referenced Java objects and other application data in memory.
+The GC process reclaims space from unreachable objects, running more frequently on the young generation memory pool.</p>
+</div>
+<div class="paragraph">
+<p>When Infinispan stores cache entries in JVM heap memory, GC runs can take longer to complete as you start adding data to your caches.
+Because GC is an intensive process, longer and more frequent runs can degrade application performance.</p>
+</div>
+<h4 id="off_heap_memory" class="discrete">Off-heap memory</h4>
+<div class="paragraph">
+<p>Off-heap memory is native available system memory outside JVM memory management.
+The <em>JVM memory space</em> diagram shows the <code>Metaspace</code> memory pool that holds class metadata and is allocated from native memory.
+The diagram also represents a section of native memory that holds Infinispan cache entries.</p>
+</div>
+<div class="paragraph">
+<p>Off-heap memory:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Uses less memory per entry.</p>
+</li>
+<li>
+<p>Improves overall JVM performance by avoiding Garbage Collector (GC) runs.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>One disadvantage, however, is that JVM heap dumps do not show entries stored in off-heap memory.</p>
+</div>
+<div class="sect3">
+<h4 id="off-heap-storage_deployment-planning"><a class="anchor" href="#off-heap-storage_deployment-planning"></a>2.6.1. Off-heap data storage</h4>
+<div class="paragraph">
+<p>When you add entries to off-heap caches, Infinispan dynamically allocates native memory to your data.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan hashes the serialized <code>byte[]</code> for each key into buckets that are similar to a standard Java <code>HashMap</code>.
+Buckets include address pointers that Infinispan uses to locate entries that you store in off-heap memory.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Even though Infinispan stores cache entries in native memory, run-time operations require JVM heap representations of those objects.
+For instance, <code>cache.get()</code> operations read objects into heap memory before returning.
+Likewise, state transfer operations hold subsets of objects in heap memory while they take place.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<div class="title">Object equality</div>
+<p>Infinispan determines equality of Java objects in off-heap storage using the serialized byte[] representation of each object instead of the object instance.</p>
+</div>
+<div class="paragraph">
+<div class="title">Data consistency</div>
+<p>Infinispan uses an array of locks to protect off-heap address spaces.
+The number of locks is twice the number of cores and then rounded to the nearest power of two.
+This ensures that there is an even distribution of <code>ReadWriteLock</code> instances to prevent write operations from blocking read operations.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="performance-persistence_deployment-planning"><a class="anchor" href="#performance-persistence_deployment-planning"></a>2.7. Persistent storage</h3>
+<div class="paragraph">
+<p>Configuring Infinispan to interact with a persistent data source greatly impacts performance.
+This performance penalty comes from the fact that more traditional data sources are inherently slower than in-memory caches.
+Read and write operations will always take longer when the call goes outside the JVM.
+Depending on how you use cache stores, though, the reduction of Infinispan performance is offset by the performance boost that in-memory data provides over accessing data in persistent storage.</p>
+</div>
+<div class="paragraph">
+<p>Configuring Infinispan deployments with persistent storage also gives other benefits, such as allowing you to preserve state for graceful cluster shutdowns.
+You can also overflow data from your caches to persistent storage and gain capacity beyond what is available in memory only.
+For example, you can have ten million entries in total while keeping only two million of them in memory.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan adds key/value pairs to caches and persistent storage in either write-through mode or write-behind mode.
+Because these writing modes have different impacts on performance, you must consider them when planning a Infinispan deployment.</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Writing mode</th>
+<th class="tableblock halign-left valign-top">Effect on performance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Write-through</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Infinispan writes data to the cache and persistent storage simultaneously, which increases consistency and avoids data loss that can result from node failure.</p>
+<p class="tableblock">The downside to write-through mode is that synchronous writes add latency and decrease throughput.
+<code>Cache.put()</code> calls result in application threads waiting until writes to persistent storage complete.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Write-behind</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Infinispan synchronously writes data to the cache but then adds the modification to a queue so that the write to persistent storage happens asynchronously, which decreases consistency but reduces latency of write operations.</p>
+<p class="tableblock">When the cache store cannot handle the number of write operations, Infinispan delays new writes until the number of pending write operations goes below the configured modification queue size, in a similar way to write-through.
+If the store is normally fast enough but latency spikes occur during bursts of cache writes, you can increase the modification queue size to contain the bursts and reduce the latency.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<div class="title">Passivation</div>
+<p>Enabling passivation configures Infinispan to write entries to persistent storage only when it evicts them from memory.
+Passivation also implies activation.
+Performing a read or write on a key brings that key back into memory and removes it from persistent storage.
+Removing keys from persistent storage during activation does not block the read or write operation, but it does increase load on the external store.</p>
+</div>
+<div class="paragraph">
+<p>Passivation and activation can potentially result in Infinispan performing multiple calls to persistent storage for a given entry in the cache.
+For example, if an entry is not available in memory, Infinispan brings it back into memory which is one read operation and a delete operation to remove it from persistent storage.
+Additionally, if the cache has reached the size limit, then Infinispan performs another write operation to passivate a newly evicted entry.</p>
+</div>
+<div class="paragraph">
+<div class="title">Pre-loading caches with data</div>
+<p>Another aspect of persistent storage that can affect Infinispan cluster performance is pre-loading caches.
+This capability populates your caches with data when Infinispan clusters start so they are "warm" and can handle reads and writes straight away.
+Pre-loading caches can slow down Infinispan cluster start times and result in out of memory exceptions if the amount of data in persistent storage is greater than the amount of available RAM.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="performance-security_deployment-planning"><a class="anchor" href="#performance-security_deployment-planning"></a>2.8. Cluster security</h3>
+<div class="paragraph">
+<p>Protecting your data and preventing network intrusion is one of the most important aspect of deployment planning.
+Sensitive customer details leaking to the open internet or data breaches that allow hackers to publicly expose confidential information have devastating impacts on business reputation.</p>
+</div>
+<div class="paragraph">
+<p>With this in mind you need a robust security strategy to authenticate users and encrypt network communication.
+But what are the costs to the performance of your Infinispan deployment?
+How should you approach these considerations during planning?</p>
+</div>
+<h4 id="authentication" class="discrete">Authentication</h4>
+<div class="paragraph">
+<p>The performance cost of validating user credentials depends on the mechanism and protocol.
+Infinispan validates credentials once per user over Hot Rod while potentially for every request over HTTP.</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<caption class="title">Table 1. Authentication mechanisms</caption>
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">SASL mechanism</th>
+<th class="tableblock halign-left valign-top">HTTP mechanism</th>
+<th class="tableblock halign-left valign-top">Performance impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PLAIN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BASIC</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">While <code>PLAIN</code> and <code>BASIC</code> are the fastest authentication mechanisms, they are also the least secure.
+You should only ever use <code>PLAIN</code> or <code>BASIC</code> in combination with TLS/SSL encryption.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DIGEST</code> and <code>SCRAM</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DIGEST</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">For both Hot Rod and HTTP requests, the <code>DIGEST</code> scheme uses MD5 hashing algorithms to hash credentials so they are not transmitted in plain text. If you do not enable TLS/SSL encryption then using <code>DIGEST</code> is overall less resource intensive than <code>PLAIN</code> or <code>BASIC</code> with encryption but not as secure because <code>DIGEST</code> is vulnerable to monkey-in-the-middle (MITM) attacks and other intrusions.</p>
+<p class="tableblock">For Hot Rod endpoints, the <code>SCRAM</code> scheme is similar to <code>DIGEST</code> with extra levels of protection that increase security but require additional processing that take longer to complete.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GSSAPI</code> / <code>GS2-KRB5</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPNEGO</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A Kerberos server, Key Distribution Center (KDC), handles authentication and issues tokens to users. Infinispan performance benefits from the fact that a separate system handles user authentication operations.
+However these mechanisms can lead to network bottlenecks depending on the performance of the KDC service itself.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OAUTHBEARER</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BEARER_TOKEN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Federated identity providers that implement the OAuth standard for issuing temporary access tokens to Infinispan users. Users authenticate with an identity service instead of directly authenticating to Infinispan, passing the access token as a request header instead. Compared to handling authentication directly, there is a lower performance penalty for Infinispan to validate user access tokens. Similarly to a KDC, actual performance implications depend on the quality of service for the identity provider itself.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EXTERNAL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CLIENT_CERT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">You can provide trust stores to Infinispan Server so that it authenticates inbound connections by comparing certificates that clients present against the trust stores.</p>
+<p class="tableblock">If the trust store contains only the signing certificate, which is typically a Certificate Authority (CA), any client that presents a certificate signed by the CA can connect to Infinispan. This offers lower security and is vulnerable to MITM attacks but is faster than authenticating the public certificate of each client.</p>
+<p class="tableblock">If the trust store contains all client certificates in addition to the signing certificate, only those clients that present a signed certificate that is present in the trust store can connect to Infinispan. In this case Infinispan compares the common Common Name (CN) from the certificate that the client presents with the trust store in addition to verifying that the certificate is signed, adding more overhead.</p></td>
+</tr>
+</tbody>
+</table>
+<h4 id="encryption" class="discrete">Encryption</h4>
+<div class="paragraph">
+<p>Encrypting cluster transport secures data as it passes between nodes and protects your Infinispan deployment from MITM attacks.
+Nodes perform TLS/SSL handshakes when joining the cluster which carries a slight performance penalty and increased latency with additional round trips.
+However, once each node establishes a connection it stays up forever assuming connections never go idle.</p>
+</div>
+<div class="paragraph">
+<p>For remote caches, Infinispan Server can also encrypt network communication with clients.
+In terms of performance the effect of TLS/SSL connections between clients and remote caches is the same.
+Negotiating secure connections takes longer and requires some additional work but, once the connections are established latency from encryption is not a concern for Infinispan performance.</p>
+</div>
+<div class="paragraph">
+<p>Apart from using TLSv1.3, the only means of offsetting performance loss from encryption are to configure the JVM on which Infinispan runs.
+Java 17&#8217;s TLS performance is now on-par with that of native implementations.</p>
+</div>
+<h4 id="authorization" class="discrete">Authorization</h4>
+<div class="paragraph">
+<p>Role-based access control (RBAC) lets you restrict operations on data, offering additional security to your deployments.
+RBAC is the best way to implement a policy of least privilege for user access to data distributed across Infinispan clusters.
+Infinispan users must have a sufficient level of authorization to read, create, modify, or remove data from caches.</p>
+</div>
+<div class="paragraph">
+<p>Adding another layer of security to protect your data will always carry a performance cost.
+Authorization adds some latency to operations because Infinispan validates each one against an Access Control List (ACL) before allowing users to manipulate data.
+However the overall impact to performance from authorization is much lower than encryption so the cost to benefit generally balances out.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="performance-client-listeners_deployment-planning"><a class="anchor" href="#performance-client-listeners_deployment-planning"></a>2.9. Client listeners</h3>
+<div class="paragraph">
+<p>Client listeners provide notifications whenever data is added, removed, or modified on your Infinispan cluster.</p>
+</div>
+<div class="paragraph">
+<p>As an example, the following implementation triggers an event whenever temperatures change at a given location:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-java" data-lang="java">@ClientListener
+public class TemperatureChangesListener {
+   private String location;
+
+   TemperatureChangesListener(String location) {
+      this.location = location;
+   }
+
+   @ClientCacheEntryCreated
+   public void created(ClientCacheEntryCreatedEvent event) {
+      if(event.getKey().equals(location)) {
+         cache.getAsync(location)
+               .whenComplete((temperature, ex) -&gt;
+                     System.out.printf("&gt;&gt; Location %s Temperature %s", location, temperature));
+      }
+   }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Adding listeners to Infinispan clusters adds performance considerations for your deployment.</p>
+</div>
+<div class="paragraph">
+<p>For embedded caches, listeners use the same CPU cores as Infinispan.
+Listeners that receive many events and use a lot of CPU to process those events reduce the CPU available to Infinispan and slow down all other operations.</p>
+</div>
+<div class="paragraph">
+<p>For remote caches, Infinispan Server uses an internal process to trigger client notifications.
+Infinispan Server sends the event from the primary owner node to the node where the listener is registered before sending it to the client.
+Infinispan Server also includes a backpressure mechanism that delays write operations to caches if client listeners process events too slowly.</p>
+</div>
+<div class="paragraph">
+<div class="title">Filtering listener events</div>
+<p>If listeners are invoked on every write operation, Infinispan can generate a high number of events, creating network traffic both inside the cluster and to external clients.
+It all depends on how many clients are registered with each listener, the type of events they trigger, and how data changes on your Infinispan cluster.</p>
+</div>
+<div class="paragraph">
+<p>As an example with remote caches, if you have ten clients registered with a listener that emits 10 events, Infinispan Server sends 100 events in total across the network.</p>
+</div>
+<div class="paragraph">
+<p>You can provide Infinispan Server with custom filters to reduce traffic to clients.
+Filters allow Infinispan Server to first process events and determine whether to forward them to clients.</p>
+</div>
+<div class="paragraph">
+<div class="title">Continuous queries and listeners</div>
+<p>Continuous queries allow you to receive events for matching entries and offers an alternative to deploying client listeners and filtering listener events.
+Of course queries have additional processing costs that you need to take into account but, if you already index caches and perform queries, using a continuous query instead of a client listener could be worthwhile.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="performance-indexing-querying_deployment-planning"><a class="anchor" href="#performance-indexing-querying_deployment-planning"></a>2.10. Indexing and querying caches</h3>
+<div class="paragraph">
+<p>Querying Infinispan caches lets you analyze and filter data to gain real-time insights.
+As an example, consider an online game where players compete against each other in some way to score points.
+If you wanted to implement a leaderboard with the top ten players at any one time, you could create a query to find out which players have the most points at any one time and limit the result to a maximum of ten as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-java" data-lang="java">Query topTenQuery = playersScores
+  .create("from com.redhat.PlayerScore ORDER BY p.score DESC, p.timestamp ASC")
+  .maxResults(10);
+List&lt;PlayerScore&gt; topTen = topTenQuery.execute().list();</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The preceding example illustrates the benefit of using queries because it lets you find ten entries that match a criteria out of potentially millions of cache entries.</p>
+</div>
+<div class="paragraph">
+<p>In terms of performance impact, though, you should consider the tradeoffs that come with indexing operations versus query operations.
+Configuring Infinispan to index caches results in much faster queries.
+Without indexes, queries must scroll through all data in the cache, slowing down results by orders of magnitude depending on the type and amount of data.</p>
+</div>
+<div class="paragraph">
+<p>There is a measurable loss of performance for writes when indexing is enabled.
+However, with some careful planning and a good understanding of what you want to index, you can avoid the worst effects.</p>
+</div>
+<div class="paragraph">
+<p>The most effective approach is to configure Infinispan to index only the fields that you need.
+Whether you store Plain Old Java Objects (POJOs) or use Protobuf schema, the more fields that you annotate, the longer it takes Infinispan to build the index.
+If you have a POJO with five fields but you only need to query two of those fields, do not configure Infinispan to index the three fields you don&#8217;t need.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan gives you several options to tune indexing operations.
+For instance Infinispan stores indexes differently to data, saving indexes to disk instead of memory.
+Infinispan keeps the index synchronized with the cache using an index writer, whenever an entry is added, modified or deleted.
+If you enable indexing and then observe slower writes, and think indexing causes the loss of performance, you can keep indexes in a memory buffer for longer periods of time before writing to disk.
+This results in faster indexing operations, and helps mitigate degradation of write throughput, but consumes more memory.
+For most deployments, though, the default indexing configuration is suitable and does not slow down writes too much.</p>
+</div>
+<div class="paragraph">
+<p>In some scenarios it might be sensible not to index your caches, such as for write-heavy caches that you need to query infrequently and don&#8217;t need results in milliseconds.
+It all depends on what you want to achieve.
+Faster queries means faster reads but comes at the expense of slower writes that come with indexing.</p>
+</div>
+<div class="paragraph">
+<p>You can improve performance of indexed queries by setting properly the <code>maxResults</code> and the <code>hit-count-accuracy</code> values.</p>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="../query/query.html">Querying Infinispan caches</a></p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="continuous-query-performance_deployment-planning"><a class="anchor" href="#continuous-query-performance_deployment-planning"></a>2.10.1. Continuous queries and Infinispan performance</h4>
+<div class="paragraph">
+<p>Continuous queries provide a constant stream of updates to applications, which can generate a significant number of events.
+Infinispan temporarily allocates memory for each event it generates, which can result in memory pressure and potentially lead to <code>OutOfMemoryError</code> exceptions, especially for remote caches.
+For this reason, you should carefully design your continuous queries to avoid any performance impact.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan strongly recommends that you limit the scope of your continuous queries to the smallest amount of information that you need.
+To achieve this, you can use projections and predicates.
+For example, the following statement provides results about only a subset of fields that match the criteria rather than the entire entry:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-sql" data-lang="sql">SELECT field1, field2 FROM Entity WHERE x AND y</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It is also important to ensure that each <code>ContinuousQueryListener</code> you create can quickly process all received events without blocking threads.
+To achieve this, you should avoid any cache operations that generate events unnecessarily.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="performance-data-consistency_deployment-planning"><a class="anchor" href="#performance-data-consistency_deployment-planning"></a>2.11. Data consistency</h3>
+<div class="paragraph">
+<p>Data that resides on a distributed system is vulnerable to errors that can arise from temporary network outages, system failures, or just simple human error.
+These external factors are uncontrollable but can have serious consequences for quality of your data.
+The effects of data corruption range from lower customer satisfaction to costly system reconciliation that results in service unavailability.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan can carry out ACID (atomic, consistent, isolated, durable) transactions to ensure the cache state is consistent.</p>
+</div>
+<div class="paragraph">
+<p>Transactions are a sequence of operations that Infinispan caries out as a single operation.
+Either all write operations in a transaction complete successfully or they all fail.
+In this way, the transaction either modifies the cache state in a consistent way, providing a history of reads and writes, or it does not modify cache state at all.</p>
+</div>
+<div class="paragraph">
+<p>The main performance concern for enabling transactions is finding the balance between having a more consistent data set and increasing latency that degrades write throughput.</p>
+</div>
+<div class="paragraph">
+<div class="title">Write locks with transactions</div>
+<p>Configuring the wrong locking mode can negatively affect the performance of your transactions.
+The right locking mode depends on whether your Infinispan deployment has a high or low rate of contention for keys.</p>
+</div>
+<div class="paragraph">
+<p>For workloads with low rates of contention, where two or more transactions are not likely to write to the same key simultaneously, optimistic locking offers the best performance.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan acquires write locks on keys before transactions commit.
+If there is contention for keys, the time it takes to acquire locks can delay commits.
+Additionally, if Infinispan detects conflicting writes, then it rolls the transaction back and the application must retry it, increasing latency.</p>
+</div>
+<div class="paragraph">
+<p>For workloads with high rates of contention, pessimistic locking provides the best performance.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan acquires write locks on keys when applications access them to ensure no other transaction can modify the keys.
+Transaction commits complete in a single phase because keys are already locked.
+Pessimistic locking with multiple key transactions results in Infinispan locking keys for longer periods of time, which can decrease write throughput.</p>
+</div>
+<div class="paragraph">
+<div class="title">Read isolation</div>
+<p>Isolation levels do not impact Infinispan performance considerations except for optimistic locking with <code>REPEATABLE_READ</code>.
+With this combination, Infinispan checks for write skews to detect conflicts, which can result in longer transaction commit phases.
+Infinispan also uses version metadata to detect conflicting write operations, which can increase the amount of memory per entry and generate additional network traffic for the cluster.</p>
+</div>
+<div class="paragraph">
+<div class="title">Transaction recovery and partition handling</div>
+<p>If networks become unstable due to partitions or other issues, Infinispan can mark transactions as "in-doubt".
+When this happens Infinispan retains write locks that it acquires until the network stabilizes and the cluster returns to a healthy operational state.
+In some cases it might be necessary for a system administrator to manually complete any "in-doubt" transactions.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="performance-partition-handling_deployment-planning"><a class="anchor" href="#performance-partition-handling_deployment-planning"></a>2.12. Network partitions and degraded clusters</h3>
+<div class="paragraph">
+<p>Infinispan clusters can encounter split brain scenarios where subsets of nodes in the cluster become isolated from each other and communication between nodes becomes disjointed.
+When this happens, Infinispan caches in minority partitions enter <strong>DEGRADED</strong> mode while caches in majority partitions remain available.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Garbage collection (GC) pauses are the most common cause of network partitions.
+When GC pauses result in nodes becoming unresponsive, Infinispan clusters can start operating in a split brain network.</p>
+</div>
+<div class="paragraph">
+<p>Rather than dealing with network partitions, try to avoid GC pauses by controlling JVM heap usage and by monitoring and tuning the GC. The default G1GC is appropriate for most use cases but needs tuning according to the usage pattern. A different GC implementation, such as Shenandoah, could be beneficial but might not work well if there are many short living objects. For information about the Shenandoah GC, see <a href="https://docs.redhat.com/en/documentation/red_hat_build_of_openjdk/21/html-single/using_shenandoah_garbage_collector_with_red_hat_build_of_openjdk_21/index#shenandoah-gc-overview">Shenandoah garbage collector</a>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<div class="title">CAP theorem and partition handling strategies</div>
+<p>CAP theorem expresses a limitation of distributed, key/value data stores, such as Infinispan.
+When network partition events happen, you must choose between consistency or availability while Infinispan heals the partition and resolves any conflicting entries.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Availability</dt>
+<dd>
+<p>Allow read and write operations.</p>
+</dd>
+<dt class="hdlist1">Consistency</dt>
+<dd>
+<p>Deny read and write operations.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>Infinispan can also allow reads only while joining clusters back together.
+This strategy is a more balanced option of consistency by denying writes to entries and availability by allowing applications to access (potentially stale) data.</p>
+</div>
+<div class="paragraph">
+<div class="title">Removing partitions</div>
+<p>As part of the process of joining the cluster back together and returning to normal operations, Infinispan resolves conflicting entries according to a merge policy.</p>
+</div>
+<div class="paragraph">
+<p>By default Infinispan does not attempt to resolve conflicts on merge which means clusters return to a healthy state sooner and there is no performance penalty beyond normal cluster rebalancing.
+However, in this case, data in the cache is much more likely to be inconsistent.</p>
+</div>
+<div class="paragraph">
+<p>If you configure a merge policy then it takes much longer for Infinispan to heal partitions.
+Configuring a merge policy results in Infinispan retrieving every version of an entry from each cache and then resolving any conflicts as follows:</p>
+</div>
+<table class="tableblock frame-all grid-all stripes-even fit-content">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PREFERRED_ALWAYS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Infinispan finds the value that exists on the majority of nodes in the cluster and applies it, which can restore out of date values.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PREFERRED_NON_NULL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Infinispan applies the first non-null value that it finds on the cluster, which can restore out of date values.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>REMOVE_ALL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Infinispan removes any entries that have conflicting values.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect3">
+<h4 id="partition-handling-garbage-collection_deployment-planning"><a class="anchor" href="#partition-handling-garbage-collection_deployment-planning"></a>2.12.1. Garbage collection and partition handling</h4>
+<div class="paragraph">
+<p>Long garbage collection (GC) times can increase the amount of time it takes Infinispan to detect network partitions.
+In some cases, GC can cause Infinispan to exceed the maximum time to detect a split.</p>
+</div>
+<div class="paragraph">
+<p>Additionally, when merging partitions after a split, Infinispan attempts to confirm all nodes are present in the cluster.
+Because no timeout or upper bound applies to the response time from nodes, the operation to merge the cluster view can be delayed.
+This can result from network issues as well as long GC times.</p>
+</div>
+<div class="paragraph">
+<p>Another scenario in which GC can impact performance through partition handling is when GC suspends the JVM, causing one or more nodes to leave the cluster.
+When this occurs, and suspended nodes resume after GC completes, the nodes can have out of date or conflicting cluster topologies.</p>
+</div>
+<div class="paragraph">
+<p>If a merge policy is configured, Infinispan attempts to resolve conflicts before merging the nodes.
+However, the merge policy is used only if the nodes have incompatible consistent hashes.
+Two consistent hashes are compatible if they have at least one common owner for each segment or incompatible if they have no common owner for at least one segment.</p>
+</div>
+<div class="paragraph">
+<p>When nodes have old, but compatible, consistent hashes, Infinispan ignores the out of date cluster topology and does not attempt to resolve conflicts.
+For example, if one node in the cluster is suspended due to garbage collection (GC), other nodes in the cluster remove it from the consistent hash and replace it with new owner nodes.
+If <code>numOwners &gt; 1</code>, the old consistent hash and the new consistent hash have a common owner for every key, which makes them compatible and allows Infinispan to skip the conflict resolution process.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="performance-cross-site-replication_deployment-planning"><a class="anchor" href="#performance-cross-site-replication_deployment-planning"></a>2.13. Cluster backups and disaster recovery</h3>
+<div class="paragraph">
+<p>Infinispan clusters that perform cross-site replication are typically "symmetrical" in terms of overall CPU and memory allocation.
+When you take cross-site replication into account for sizing, the primary concern is the impact of state transfer operations between clusters.</p>
+</div>
+<div class="paragraph">
+<p>For example, a Infinispan cluster in NYC goes offline and clients switch to a Infinispan cluster in LON.
+When the cluster in NYC comes back online, state transfer occurs from LON to NYC.
+This operation prevents stale reads from clients but has a performance penalty for the cluster that receives state transfer.</p>
+</div>
+<div class="paragraph">
+<p>You can distribute the increase in processing that state transfer operations require across the cluster.
+However the performance impact from state transfer operations depends entirely on the environment and factors such as the type and size of the data set.</p>
+</div>
+<h4 id="conflict_resolution_for_activeactive_deployments" class="discrete">Conflict resolution for Active/Active deployments</h4>
+<div class="paragraph">
+<p>Infinispan detects conflicts with concurrent write operations when multiple sites handle client requests, known as an Active/Active site configuration.</p>
+</div>
+<div class="paragraph">
+<p>The following example illustrates how concurrent writes result in a conflicting entry for Infinispan clusters running in the <strong>LON</strong> and <strong>NYC</strong> data centers:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>            LON       NYC
+
+k1=(n/a)    0,0       0,0
+
+k1=2        1,0  --&gt;  1,0   k1=2
+
+k1=3        1,1  &lt;--  1,1   k1=3
+
+k1=5        2,1       1,2   k1=8
+
+                 --&gt;  2,1 (conflict)
+(conflict)  1,2  &lt;--</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In an Active/Active site configuration, you should never use the synchronous backup strategy because concurrent writes result in deadlocks and you lose data.
+With the asynchronous backup strategy (<code>strategy=async</code>), Infinispan gives you a choice cross-site merge policies for handling concurrent writes.</p>
+</div>
+<div class="paragraph">
+<p>In terms of performance, merge policies that Infinispan uses to resolve conflicts do require additional computation but generally do not incur a significant penalty.
+For instance the default cross-site merge policy uses a lexicographic comparison, or "string comparison", that only takes a couple of nanoseconds to complete.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan also provides a <code>XSiteEntryMergePolicy</code> SPI for cross-site merge policies.
+If you do configure Infinispan to resolve conflicts with a custom implementation you should always monitor performance to gauge any adverse effects.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The <code>XSiteEntryMergePolicy</code> SPI invokes all merge policies in the non-blocking thread pool.
+If you implement a blocking custom merge policy, it can exhaust the thread pool.</p>
+</div>
+<div class="paragraph">
+<p>You should delegate complex or blocking policies to a different thread and your implementation should return a <code>CompletionStage</code> that completes when the merge policy is done in the other thread.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="performance-clustered-execution_deployment-planning"><a class="anchor" href="#performance-clustered-execution_deployment-planning"></a>2.14. Code execution and data processing</h3>
+<div class="paragraph">
+<p>One of the benefits of distributed caching is that you can leverage compute resources from each host to perform large scale data processing more efficiently.
+By executing your processing logic directly on Infinispan you spread the workload across multiple JVM instances.
+Your code also runs in the same memory space where Infinispan stores your data, meaning that you can iterate over entries much faster.</p>
+</div>
+<div class="paragraph">
+<p>In terms of performance impact to your Infinispan deployment, that entirely depends on your code execution.
+More complex processing operations have higher performance penalties so you should approach running any code on Infinispan clusters with careful planning.
+Start out by testing your code and performing multiple execution runs on a smaller, sample data set.
+After you gather some metrics you can start identifying optimizations and understanding what performance implications of the code you&#8217;re running.</p>
+</div>
+<div class="paragraph">
+<p>One definite consideration is that long running processes can start having a negative impact on normal read and write operations.
+So it is imperative that you monitor your deployment over time and continually assess performance.</p>
+</div>
+<h4 id="embedded_caches" class="discrete">Embedded caches</h4>
+<div class="paragraph">
+<p>With embedded caches, Infinispan provides two APIs that let you execute code in the same memory space as your data.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1"><code>ClusterExecutor</code> API</dt>
+<dd>
+<p>Lets you perform any operation with the Cache Manager, including iterating over the entries of one or more caches, and gives you processing based on Infinispan nodes.</p>
+</dd>
+<dt class="hdlist1"><code>CacheStream</code> API</dt>
+<dd>
+<p>Lets you perform operations on collections and gives you processing based on data.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>If you want to run an operation on a single node, a group of nodes, or all nodes in a certain geographic region, then you should use clustered execution.
+If you want to run an operation that guarantees a correct result for your entire data set, then using distributed streams is a more effective option.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Cluster execution</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-java" data-lang="java">ClusterExecutor clusterExecutor = cacheManager.executor();
+clusterExecutor.singleNodeSubmission().filterTargets(policy);
+for (int i = 0; i &lt; invocations; ++i) {
+   clusterExecutor.submitConsumer((cacheManager) -&gt; {
+      TransportConfiguration tc =
+      cacheManager.getCacheManagerConfiguration().transport();
+      return tc.siteId() + tc.rackId() + tc.machineId();
+   }, triConsumer).get(10, TimeUnit.SECONDS);
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">CacheStream</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-java" data-lang="java">Map&lt;Object, String&gt; jbossValues =
+cache.entrySet().stream()
+     .filter(e -&gt; e.getValue().contains("JBoss"))
+     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));</code></pre>
+</div>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/15.1/apidocs/org/infinispan/manager/ClusterExecutor.html">org.infinispan.manager.ClusterExecutor</a></p>
+</li>
+<li>
+<p><a href="https://docs.jboss.org/infinispan/15.1/apidocs/org/infinispan/CacheStream.html">org.infinispan.CacheStream</a></p>
+</li>
+</ul>
+</div>
+<h4 id="remote_caches" class="discrete">Remote caches</h4>
+<div class="paragraph">
+<p>For remote caches, Infinispan provides a <code>ServerTask</code> API that lets you register custom Java implementations with Infinispan Server and execute tasks programmatically by calling the <code>execute()</code> method over Hot Rod or by using the Infinispan Command Line Interface (CLI).
+You can execute tasks on one Infinispan Server instance only or all server instances in the cluster.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="performance-client-traffic_deployment-planning"><a class="anchor" href="#performance-client-traffic_deployment-planning"></a>2.15. Client traffic</h3>
+<div class="paragraph">
+<p>When sizing remote Infinispan clusters, you need to calculate the number and size of entries but also the amount of client traffic.
+Infinispan needs enough RAM to store your data and enough CPU to handle client read and write requests in a timely manner.</p>
+</div>
+<div class="paragraph">
+<p>There are many different factors that affect latency and determine response times.
+For example, the size of the key/value pair affects the response time for remote caches.
+Other factors that affect remote cache performance include the number of requests per second that the cluster receives, the number of clients, as well as the ratio of read operations to write operations.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="tuning"><a class="anchor" href="#tuning"></a>3. Performance tuning guidelines</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This topic gives you information and tweaks for tuning Infinispan performance.</p>
+</div>
+<div class="sect2">
+<h3 id="tuning-jvm_tuning"><a class="anchor" href="#tuning-jvm_tuning"></a>3.1. Java Virtual Machine settings</h3>
+<div class="paragraph">
+<p>Java Virtual Machine tuning can be divided into sections like memory or GC.
+Below is a list of helpful configuration parameters and a guide how to adjust them.</p>
+</div>
+<h4 id="memory_settings" class="discrete">Memory settings</h4>
+<div class="paragraph">
+<p>Adjusting memory size is one of the most crucial steps in Infinispan tuning.
+Utilizing the largest heap is not always the answer, there is a trade-off between size and time for garbage collection.
+Additionally, be mindful of the host&#8217;s physical memory when configuring the JVM heap.
+The most commonly used JVM flags are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>-Xms</code> - Defines the minimum heap size allowed.</p>
+</li>
+<li>
+<p><code>-Xmx</code> - Defines the maximum heap size allowed.</p>
+</li>
+<li>
+<p><code>-Xmn</code> - Defines the minimum and maximum value for the young generation.</p>
+</li>
+<li>
+<p><code>-XX:NewRatio</code> - Define the ratio between young and old generations. Should not be used if -Xmn is enabled.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Using <code>Xms</code> equal to <code>Xmx</code> will prevent JVM from dynamically sizing memory and might yield slightly better performance.
+It is a good practice to specify <code>Xmn</code> parameter when <code>Xms</code> and <code>Xmx</code> have the same value.
+This configuration might help during load peak (in such case Infinispan generates lots of small, short-living objects).
+A larger young generation increases the time for collecting the young generation but will collect less time with fewer objects going to the old generation.
+Additionally, since the old generation is smaller, it might fill more quickly and generate more full pauses.
+This property requires a fine balance.</p>
+</div>
+<h4 id="garbage_collection" class="discrete">Garbage collection</h4>
+<div class="paragraph">
+<p>The main goal is to minimize the amount of time when JVM is paused.
+The JVM ergonomics usually makes good choices for configuring the garbage collection algorithm and moving the knobs.
+These configurations are highly dependent on the hardware available (number of cores, heap configuration) and the workload applied.
+Therefore, GC logs should be enabled, and garbage collection should be verified to see if it is causing any performance problems before making changes.</p>
+</div>
+<div class="paragraph">
+<p>The most frequently used JVM flags are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>-XX:MaxGCPauseMillis</code> - Sets a target for the maximum GC pause time. Should be tuned to meet the SLA.</p>
+</li>
+<li>
+<p><code>-XX:+DisableExplicitGC</code> - Prevent explicit garbage collections.</p>
+</li>
+<li>
+<p><code>-XX:+UseG1GC</code> - Turn on G1 Garbage Collector.</p>
+</li>
+<li>
+<p><code>-XX:+UseSerialGC</code> - Turn on Serial Garbage Collector.</p>
+</li>
+<li>
+<p><code>-XX:+UseZGC</code> - Turn on Z Garbage Collector.</p>
+</li>
+<li>
+<p><code>-XX:+UseShenandoahGC</code> - Turn on Shenandoah Garbage Collector.</p>
+</li>
+</ul>
+</div>
+<h4 id="other_settings" class="discrete">Other settings</h4>
+<div class="paragraph">
+<p>There are two additional parameters which are suggested to be used:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>-server</code> - Enables server mode for the JVM.</p>
+</li>
+<li>
+<p><code>-XX:+ UseLargePages</code> - Instructs the JVM to allocate memory in Large Pages. These pages must be configured at the OS level for this parameter to function successfully.</p>
+</li>
+</ul>
+</div>
+<h4 id="example_configuration" class="discrete">Example configuration</h4>
+<div class="paragraph">
+<p>Changing your garbage collection configuration should be followed by validation and benchmarking with production-like environments and loads to guarantee the changes do not harm.
+The <a href="../server/server.html#tshoot_server">troubleshooting guide</a> has more information about performance measurement.</p>
+</div>
+<div class="listingblock">
+<div class="title">32GB JVM using the generational ZGC</div>
+<div class="content">
+<pre>-server
+-Xmx32G
+-Xms32G
+-Xmn8G
+-XX:+UseLargePages
+-XX:+UseZGC
+-XX:+ZGenerational
+-XX:+DisableExplicitGC</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">32GB JVM with G1 Garbage Collector</div>
+<div class="content">
+<pre>-server
+-Xmx32G
+-Xms32G
+-Xmn8G
+-XX:+UseG1GC</pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="tuning-network_tuning"><a class="anchor" href="#tuning-network_tuning"></a>3.2. Network configuration</h3>
+<div class="paragraph">
+<p>As Infinispan is distributed over the network, adjusting the underlying network settings may improve performance.
+This chapter seeks to address the most common tunables used, and provide recommendations on their configuration.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>These recommendations only apply to Linux environments.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="adjusting_sendreceive_window_settings"><a class="anchor" href="#adjusting_sendreceive_window_settings"></a>3.2.1. Adjusting Send/Receive Window Settings</h4>
+<div class="paragraph">
+<p>In many environments packet loss may be caused by the buffer space not being large enough to receive all of the transmissions, resulting in packet loss and costly retransmissions.
+As with all tunables, it is important to test these settings with a workload that mirrors what is expected to determine an appropriate value for your environment.</p>
+</div>
+<div class="paragraph">
+<p>The kernel buffers may be increased by following the below steps:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Adjust Send and Receive Window Sizes.</p>
+<div class="openblock">
+<div class="content">
+<div class="paragraph">
+<p>The window sizes are set per socket, which affects both TCP and UDP.
+These may be adjusted by setting the size of the send and receive windows in /etc/sysctl.conf file as root:</p>
+</div>
+<div class="olist lowerroman">
+<ol class="lowerroman" type="i">
+<li>
+<p>Add the following line to set the send window size to a value of <code>640</code> KB:</p>
+<div class="listingblock">
+<div class="content">
+<pre>net.core.wmem_max=655360</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Add the following line to set the receive window size to a value of <code>25</code> MB:</p>
+<div class="listingblock">
+<div class="content">
+<pre>net.core.rmem_max=26214400</pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>Increase TCP Socket Sizes The TCP send and receive socket sizes are also controlled by a second set of tunables, which may be defined no larger than the system settings set previously.</p>
+<div class="openblock">
+<div class="content">
+<div class="olist lowerroman">
+<ol class="lowerroman" type="i">
+<li>
+<p>Increase the TCP send socket size by adjusting the <code>net.ipv4.tcp_wmem</code> tuple.
+This tuple consists of three values, representing the <code>minimum</code>, <code>default</code>, and <code>maximum</code> values for the send buffer.
+To set it to the same size as the send socket above we would add the following line to <em>/etc/sysctl.conf</em>:</p>
+<div class="listingblock">
+<div class="content">
+<pre>net.ipv4.tcp_wmem = 4096  16384  655360</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Increase the TCP receive socket by adjusting the <code>net.ipv4.tcp_rmem</code> tuple.
+This tuple consists of three values, representing the <code>minimum</code>, <code>default</code>, and <code>maximum</code> values for the receive buffer.
+To set it to the same size as the receive socket above we would add the following line to <em>/etc/sysctl.conf</em>:</p>
+<div class="listingblock">
+<div class="content">
+<pre>net.ipv4.tcp_rmem = 4096  87380  26214400</pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</li>
+<li>
+<p>Apply change immeditaly.</p>
+<div class="openblock">
+<div class="content">
+<div class="paragraph">
+<p>Optionally, to load the new values into a running kernel (without a reboot), enter the following command as root:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>sysctl -p</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If the user reboots after the second step, the final step is unnecessary.</p>
+</div>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect3">
+<h4 id="flow_control"><a class="anchor" href="#flow_control"></a>3.2.2. Flow Control</h4>
+<div class="paragraph">
+<p>JGroups utilizes flow control for TCP connections to prevent fast senders from overflowing slower receivers.
+This process prevents packet loss by controlling the network transmissions, ensuring that the targets do not receive more information than they can handle.</p>
+</div>
+<div class="paragraph">
+<p>Some network cards and switches also perform flow control automatically, resulting in a performance decrease due to duplicating flow control for TCP connections.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The following content will vary based on the network topology in the site.
+As with all performance adjustments, each time a change is made benchmark tests should be executed to determine any performance improvements or degradations.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="sect4">
+<h5 id="tcp_connections"><a class="anchor" href="#tcp_connections"></a>TCP Connections</h5>
+<div class="paragraph">
+<p>If the network card or switch performs flow control it is recommended to disable flow control at the ethernet level, allowing JGroups to prevent packet overflows.
+Any of the following will disable flow control:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Option 1:</strong> For managed switches, flow control may be disabled at the switch level, typically through a web or ssh interface.
+Full instructions on performing this task will vary depending on the switch, and will be found in the switch manufacturer’s documentation.</p>
+</li>
+<li>
+<p><strong>Option 2:</strong> In RHEL it is possible to disable this at the NIC level. This may be disabled by using the following command:</p>
+<div class="listingblock">
+<div class="content">
+<pre>/sbin/ethtool -A $NIC tx off rx off</pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="udp_connections"><a class="anchor" href="#udp_connections"></a>UDP Connections</h5>
+<div class="paragraph">
+<p>JGroups does not perform flow control for UDP connections, and due to this it is recommended to have flow control enabled.</p>
+</div>
+<div class="paragraph">
+<p>Flow control may be enabled using one of the following methods:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Option 1:</strong> For managed switches, flow control may be enabled at the switch level, typically through a web or ssh interface.
+Full instructions on performing this task will vary depending on the switch, and will be found in the switch manufacturer’s documentation.</p>
+</li>
+<li>
+<p><strong>Option 2:</strong> In RHEL it is possible to enable this at the NIC level. This may be enabled by using the following command:</p>
+<div class="listingblock">
+<div class="content">
+<pre>/sbin/ethtool -A $NIC tx on rx on</pre>
+</div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="failure_detector"><a class="anchor" href="#failure_detector"></a>3.2.3. Failure Detector</h4>
+<div class="paragraph">
+<p>JGroups has several protocols to identify whether the nodes in the cluster are alive.
+These components are known as <em>failure detectors</em>.
+The algorithms <code>FD_SOCK</code> and <code>FD_SOCK2</code> bind to an additional port on the host to probe other nodes in the cluster.</p>
+</div>
+<div class="paragraph">
+<p>In an environment where a firewall is configured, the ports for failure detection must be enabled.
+Otherwise, this may disrupt the system, as nodes might suspect each other.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="member_discovery"><a class="anchor" href="#member_discovery"></a>3.2.4. Member Discovery</h4>
+<div class="paragraph">
+<p>During initialization, JGroups will try to discover other members in the cluster. The algorithm for membership discovery varies with the environment the application is deployed. You must guarantee that protocols that require a static list of members (for example, <code>TCPPING</code>), do not include unavailable members. Otherwise, JGroups would waste resources trying to establish a connection with these members.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="jumbo_frames"><a class="anchor" href="#jumbo_frames"></a>3.2.5. Jumbo Frames</h4>
+<div class="paragraph">
+<p>By default the maximum transmission unit (MTU) is 1500 bytes.
+Jumbo frames should be enabled when the MTU is larger than the default, or when smaller messages are aggregated to be larger than 1500 bytes.
+By enabling jumbo frames, more data is sent per ethernet frame.
+The MTU may be increased to a value up to 9000 bytes.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>For jumbo frames to be effective every intermediate network device between the sender and receiver must support the defined MTU size.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>To enable jumbo frames add the following line to the configuration script of the network interface, such as <em>/etc/sysconfig/network-scripts/ifcfg-eth0</em>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>MTU=9000</pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="transmit_queue_length"><a class="anchor" href="#transmit_queue_length"></a>3.2.6. Transmit Queue Length</h4>
+<div class="paragraph">
+<p>The transmit queue determines how many frames are allowed to reside in the kernel transmission queue, with each device having its own queue.
+This value should be increased when a large number of writes will be expected over a short period of time, resulting in a potential overflow of the transmission queue.</p>
+</div>
+<div class="paragraph">
+<p>To determine if overruns have occurred the following command may be executed against the device.
+If the value for <code>overruns</code> is greater than 0 then the transmission queue length should be increased:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>ip -s link show $NIC</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This value may be set per device by using the following command:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>ip link set $NIC txqueuelen 5000</pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This value does not persist across system restarts, and as such it is recommended to include the command in a startup script, such as by adding it to <em>/etc/rc.local</em>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="network_bonding"><a class="anchor" href="#network_bonding"></a>3.2.7. Network Bonding</h4>
+<div class="paragraph">
+<p>Multiple interfaces may be bound together to create a single, bonded, channel.
+Bonding interfaces in this manner allows two or more network interfaces to function as one, simultaneously increasing the bandwidth and providing redundancy in the event that one interface should fail.
+It is strongly recommended to bond network interfaces should more than one exist on a given node.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="tuning-extra_tuning"><a class="anchor" href="#tuning-extra_tuning"></a>3.3. SSL provider</h3>
+<div class="paragraph">
+<p>Infinispan server uses the default JDK provider for TLS encryption.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cache_store_performance"><a class="anchor" href="#cache_store_performance"></a>3.4. Cache store performance</h3>
+<div class="paragraph">
+<p>In order to achieve the best performance, please follow the recommendations below when using cache stores:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Use async mode (write-behind) if possible</p>
+</li>
+<li>
+<p>Prevent cache misses by preloading data</p>
+</li>
+<li>
+<p>For JDBC Cache Store:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Use indexes on <code>id</code> column to prevent table scans</p>
+</li>
+<li>
+<p>Use PRIMARY_KEY on <code>id</code> column</p>
+</li>
+<li>
+<p>Configure batch-size, fetch-size, etc</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="hints_for_program_developers"><a class="anchor" href="#hints_for_program_developers"></a>3.5. Hints for program developers</h3>
+<div class="paragraph">
+<p>There are also several hints for developers which can be easily applied to the client application and will boost up the performance.</p>
+</div>
+<h4 id="ignore_return_values" class="discrete">Ignore return values</h4>
+<div class="paragraph">
+<p>When you&#8217;re not interested in returning value of the <code>#put(k, v)</code> or <code>#remove(k)</code> method, use <code>Flag.IGNORE_RETURN_VALUES</code> flag as shown below:</p>
+</div>
+<div class="listingblock">
+<div class="title">Using Flag.IGNORE_RETURN_VALUES</div>
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">Cache noPreviousValueCache = cache.getAdvancedCache().withFlags(Flag.IGNORE_RETURN_VALUES);
+noPreviousValueCache.put(k, v);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It is also possible to set this flag using ConfigurationBuilder</p>
+</div>
+<div class="listingblock">
+<div class="title">Using ConfigurationBuilder settings</div>
+<div class="content">
+<pre class="highlight"><code class="language-java" data-lang="java">ConfigurationBuilder cb = new ConfigurationBuilder();
+cb.unsafe().unreliableReturnValues(true);</code></pre>
+</div>
+</div>
+<h4 id="use_simple_cache_for_local_caches" class="discrete">Use simple cache for local caches</h4>
+<div class="paragraph">
+<p>When you don&#8217;t need the full feature set of caches, you can set local cache to "simple" mode and achieve non-trivial speedup while still using Infinispan API.</p>
+</div>
+<div class="paragraph">
+<p>This is an example comparison of the difference, randomly reading/writing into cache with 2048 entries as executed on 2x8-core Intel&#174; Xeon&#174; CPU E5-2640 v3 @ 2.60GHz:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Number of operations per second (± std. dev.)</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Cache type</th>
+<th class="tableblock halign-left valign-top">single-threaded cache.get(&#8230;&#8203;)</th>
+<th class="tableblock halign-left valign-top">single-threaded cache.put(&#8230;&#8203;)</th>
+<th class="tableblock halign-left valign-top">32 threads cache.get(&#8230;&#8203;)</th>
+<th class="tableblock halign-left valign-top">32 threads cache.put(&#8230;&#8203;)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local cache</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14,321,510 ± 260,807</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1,141,168 ±  6,079</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">236,644,227 ± 2,657,918</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2,287,708 ±   100,236</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Simple cache</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">38,144,468 ± 575,420</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11,706,053 ± 92,515</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">836,510,727 ± 3,176,794</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">47,971,836 ± 1,125,298</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">60,592,770 ± 924,368</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">23,533,141 ± 98,632</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1,369,521,754 ± 4,919,753</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">75,839,121 ± 3,319,835</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The CHM shows comparison for ConcurrentHashMap from JSR-166 with pluggable equality/hashCode function, which is used as the underlying storage in Infinispan.</p>
+</div>
+<div class="paragraph">
+<p>Even though we use <a href="http://openjdk.java.net/projects/code-tools/jmh/">JMH</a> to prevent some common pitfalls of microbenchmarking, consider these results only approximate. Your mileage may vary.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2025-01-30 06:22:59 -0500
+</div>
+</div>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  messageStyle: "none",
+  tex2jax: {
+    inlineMath: [["\\(", "\\)"]],
+    displayMath: [["\\[", "\\]"]],
+    ignoreClass: "nostem|nolatexmath"
+  },
+  asciimath2jax: {
+    delimiters: [["\\$", "\\$"]],
+    ignoreClass: "nostem|noasciimath"
+  },
+  TeX: { equationNumbers: { autoNumber: "none" } }
+})
+MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
+  MathJax.InputJax.AsciiMath.postfilterHooks.Add(function (data, node) {
+    if ((node = data.script.parentNode) && (node = node.parentNode) && node.classList.contains("stemblock")) {
+      data.math.root.display = "block"
+    }
+    return data
+  })
+})
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPD7V946LB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-GPD7V946LB');
+  </script>
+  <title>Infinispan 15 tracing news</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.css">
+  <link rel="stylesheet" href="/assets/css/cookieconsent.css">
+  <link rel="alternate" type="application/rss+xml"
+        title="Infinispan's RSS Feed"
+        href="/feed.xml" />
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> Infinispan 15 tracing news
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Infinispan 15 tracing news</h1>
+    <div class="post-date">April 05, 2024
+      Tags: <a href="/blog/tag/opentelemetry">opentelemetry</a> <a href="/blog/tag/tracing">tracing</a> 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/fax4ever.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By Fabio Massimo Ercoli</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>In the previous version of Infinispan <a href="https://infinispan.org/blog/2022/07/18/infinispan-14-opentelemetry-tracing">we introduced the OpenTelemetry Tracing capability</a>.
+With the new version we evolved the integration in order to:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>configure it both globally and per-cach using the standard Infinispan configuration.</p>
+</li>
+<li>
+<p>trace more event types: cluster, cross-site, cache-store and security.</p>
+</li>
+<li>
+<p>select and configure, even at runtime, the span types that we want to produce and send to the collector.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The source code featured in this blog post has been taken from <a href="https://github.com/fax4ever/infinispan-demo/tree/main/infinispan-15-tracing">this demo project</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="configure-tracing">Configure tracing</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="global-configuration">Global configuration</h3>
+<div class="paragraph">
+<p>We enable tracing globally by defining a <code>collector-endpoint</code> as usual. Instead of relying on a system property,
+we can now do it directly in the Infinispan Server Configuration:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;infinispan xmlns:server="urn:infinispan:server:15.0"&gt;
+   &lt;cache-container name="default"&gt;
+      &lt;tracing collector-endpoint="http://jaeger-collector.infinispan-15-tracing.svc.cluster.local:4318" security="true" service-name="infinispan-service-tracing" /&gt;
+   &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By default, we now support tracing using the OpenTelemetry Protocol (OTLP) with the default exporter protocol as <code>http/protobuf</code>, instead of <code>grpc</code>.
+The default Jaeger port using this combination is the <code>4318</code>.</p>
+</div>
+<div class="paragraph">
+<p>We&#8217;ve also activated tracing for security audits. This is a new tracing category introduced with Infinispan 15, and it&#8217;s defined at the cache manager level.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+ cacheContainer:
+   tracing:
+     collector-endpoint: "http://jaeger-collector.infinispan-15-tracing.svc.cluster.local:4318"
+     service-name: infinispan-service-tracing
+     security: true</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cache-configuration">Cache configuration</h3>
+<div class="paragraph">
+<p>Cache-scoped tracing categories must be configured in the cache configuration.
+Here&#8217;s an example of a cache configuration that enables tracing for additional categories:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">replicatedCache:
+  encoding:
+    key:
+      mediaType: "application/x-protostream"
+    value:
+      mediaType: "application/x-protostream"
+  indexing:
+    enabled: "true"
+    storage: "local-heap"
+    startupMode: "NONE"
+    indexedEntities:
+      - "fax.play.image"
+  tracing:
+    enabled: true
+    categories:
+      - "container"
+      - "persistence"
+      - "cluster"
+      - "x-site"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the above example, <code>container</code>, <code>persistence</code>, <code>cluster</code> and <code>x-site</code> (cross-site replication) are enabled.
+In the absence of category specification, <code>container</code> tracing is enabled by default.</p>
+</div>
+<div class="sect3">
+<h4 id="runtime-operations">Runtime operations</h4>
+<div class="paragraph">
+<p>Furthermore, it is possible to enable / disable tracing categories, or even the entire tracing subsystem at runtime, using either the Hot Rod client or the REST API.</p>
+</div>
+<div class="paragraph">
+<p>The following example enables tracing for the <code>container</code> and <code>persistence</code> categories while disabling any other previously enabled categories:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Set&lt;String&gt; enabledCategories = Set.of("container", "persistence");
+cacheManager.administration()
+   .updateConfigurationAttribute(cache.getName(), "tracing.categories", String.join(",", enabledCategories));</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="tracing-in-action">Tracing in action</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Now that we have the setup. Let&#8217;s see some example of tracing in action.
+If we open the Jaeger console we can see immediately some security audit events logged.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/tracing-15-01-security-audit.png"><img src="/assets/images/blog/tracing-15-01-security-audit.png" alt="Tracing output"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>At startup, only container tracing is enabled.
+After some interaction, we might see a log similar to the following:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/tracing-15-02-container.png"><img src="/assets/images/blog/tracing-15-02-container.png" alt="Tracing output"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>We have the client&#8217;s span and its matching container-level span on the server.</p>
+</div>
+<div class="paragraph">
+<p>Enable more span categories to gain further insights into Infinispan&#8217;s internal operations.</p>
+</div>
+<div class="paragraph">
+<p>In our demo we initially enable the persistence category at runtime. After some interactions from the client,
+we can observe the internal calls that Infinispan makes to interact with the configured cache store.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/tracing-15-03-persistence.png"><img src="/assets/images/blog/tracing-15-03-persistence.png" alt="Tracing output"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>Afterwards, we enable (also at runtime) the cluster category. After the first interaction,
+it&#8217;s possible to observe the call that the Infinispan Server makes to synchronize the cluster alignment.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/tracing-15-04-cluster.png"><img src="/assets/images/blog/tracing-15-04-cluster.png" alt="Tracing output"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>For more information, read the documentation guide:
+<a href="https://infinispan.org/docs/stable/titles/server/server.html#opentelemetry-tracing">Enabling and configuring Infinispan OpenTelemetry tracing</a>.</p>
+</div>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://github.com/infinispan/infinispan/issues" target="_blank">GitHub issues tracker</a>.
+        If you don’t find any, <a href="https://github.com/infinispan/infinispan/issues" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://github.com/infinispan/infinispan/discussions/"
+                       target="_blank">GitHub discussions</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+      <div class="width-12-12 callout orange margin-tb-xs">
+    <div class="grid-wrapper">
+        <div class="width-4-12 width-12-12-m block-image">
+            <img src="/assets/images/blog/authors/fax4ever.jpg" class="author-img">
+        </div>
+        <div class="width-8-12 width-12-12-m block-content">
+            <h5>Fabio Massimo Ercoli</h5>
+            <p>Member of the Infinispan @core team at Red Hat. Accountable for indexing, query, serialization, transcoding, metrics and tracing for the hybrid cloud. Former Hibernate @core team, working on NoSql & searching. Former Red Hat consultant, working on intense data applications and solutions. An open source enthusiast and continuous learner.</p>
+            <div class="width-3-12 width-6-12-m bio-block">
+                <a href="http://github.com/fax4ever"><img src="/assets/images/community/icon-github.png"></a>
+                
+                <a href="http://twitter.com/FabioMErcoli"><img src="/assets/images/community/icon-twitter.png"></a>
+                
+            </div>
+        </div>
+    </div>
+</div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo" alt="Infinispan"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="/" >Home</a></li>
+          
+            
+            <li><a href="/features" >Features</a></li>
+          
+            
+            <li><a href="/documentation" >Docs</a></li>
+          
+            
+            <li><a href="/tutorials" >Tutorials</a></li>
+          
+            
+            <li><a href="/videos" >Videos</a></li>
+          
+            
+            <li><a href="/use-cases" >Use Cases</a></li>
+          
+            
+            <li><a href="/community" >Community</a></li>
+          
+            
+            <li><a href="/download" >Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="https://issues.jboss.org/browse/ISPN" target="_blank">Submit a Bug</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan" target="_blank">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="/blog" >Blog</a></li>
+          
+            
+            <li><a href="https://twitter.com/infinispan" target="_blank">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="https://www.commonhaus.org/" target="_blank"><img src="/assets/images/CF_logo_horizontal.svg" title="Commonhaus Foundation"></a><br/>
+        </div>
+        <div class="width-6-12">
+          <b>Thanks to</b><br/>
+          <a href="https://zulip.com" target="_blank"><img src="/assets/images/footer/zulip.png" title="Zulip" alt="Zulip"></a>
+          <a href="https://weblate.org" target="_blank"><img src="/assets/images/footer/weblate.png" title="Weblate" alt="Weblate"></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="cookie-preferences">
+      <a href="#" data-cc="show-preferencesModal">Manage cookie preferences</a>
+    </span>
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+  <script src="/assets/javascript/clipboard.min.js" type="text/javascript"></script>
+  <script src="/assets/javascript/copy.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>

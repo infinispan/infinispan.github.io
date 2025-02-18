@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPD7V946LB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-GPD7V946LB');
+  </script>
+  <title>Infinispan Insights, security basics and secured caches</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css" integrity="sha384-lKuwvrZot6UHsBSfcMvOkWwlCMgc0TaWr+30HWe3a4ltaBwTZhyTEggF5tJv8tbt" crossorigin="anonymous">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.css">
+  <link rel="stylesheet" href="/assets/css/cookieconsent.css">
+  <link rel="alternate" type="application/rss+xml"
+        title="Infinispan's RSS Feed"
+        href="/feed.xml" />
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li>
+        <a href="/community/" class="">Community</a>
+      </li>
+      <li>
+        <a href="/blog/" class="active">Blog</a>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> Infinispan Insights, security basics and secured caches
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Infinispan Insights, security basics and secured caches</h1>
+    <div class="post-date">December 20, 2023
+      Tags: <a href="/blog/tag/tutorial">tutorial</a> <a href="/blog/tag/security">security</a> <a href="/blog/tag/rbac">rbac</a> <a href="/blog/tag/authentication">authentication</a> 
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/karesti.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By Katia Aresti</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div class="sect1">
+<h2 id="infinispan-insights-security-basics-and-secured-caches">Infinispan Insights: Security basics and secured caches</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This article shows you how to secure your Infinispan cluster, protecting both cluster management and data
+access in various Infinispan caches</p>
+</div>
+<div class="paragraph">
+<p><strong>Key Points:</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Learn how default authentication works in Infinispan</p>
+</li>
+<li>
+<p>Explore how authorization works in Infinispan.</p>
+</li>
+<li>
+<p>Understand the basics of creating secure caches in a straightforward way with Infinispan.</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="security-in-a-nutshell">Security in a nutshell</h3>
+<div class="paragraph">
+<p>When we talk about security, there are two main things to consider: proving who you are (authentication) and deciding
+what you&#8217;re allowed to do (authorization). These tasks are managed by one or more security realms.</p>
+</div>
+<div class="sect3">
+<h4 id="authentication">Authentication</h4>
+<div class="paragraph">
+<p>Authentication is the process of verifying the identity of an entity, such as a user, system, or device, to ensure
+that it is who or what it claims to be. It can be done through different methods such as password based authentication,
+token based authentication, certificate based… and more.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="authorization">Authorization</h4>
+<div class="paragraph">
+<p>Authorization is the process of granting or denying access permissions to authenticated users or entities.
+It defines what actions or resources users are allowed to access based on their verified identity.
+Authorization works alongside authentication to ensure that only authorized users can perform specific actions within a
+system. Infinispan uses Role-Based Access Control (RBAC) for authorization.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="security-realms">Security Realms</h4>
+<div class="paragraph">
+<p>A security realm is a set of policies and authentication methods governing access to a system or resource.
+It establishes rules for user authentication and authorization, such as using usernames/passwords or advanced methods
+like OAuth. Security realms integrate Infinispan Server deployments with the network protocols and infrastructure
+in your environment that control access and verify user identities.
+Infinispan integrates with Kerberos, LDAP, Trust stores… and token based authentication such as <a href="https://openid.net/">OpenID Connect</a>
+providers such as <a href="https://www.keycloak.org/">Keycloak</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="infinispan-server-security">Infinispan Server Security</h3>
+<div class="paragraph">
+<p>To truly grasp the basics, the best method is hands-on experience.
+Infinispan 15.0 simplifies understanding authentication and authorization through a visual interface.</p>
+</div>
+<div class="sect3">
+<h4 id="running-the-infinispan-server-with-a-single-user">Running the Infinispan Server with a single user</h4>
+<div class="paragraph">
+<p>Start by running the Infinispan Server with a Docker or Podman container.
+Make sure you have the latest version of the Infinispan Server 15.0 image by pulling it locally.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Podman
+podman run -it -p 11222:11222 -e USER="admin" -e PASS="password" --net=host quay.io/infinispan/server:15.0
+
+# Docker
+docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" quay.io/infinispan/server:15.0</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="infinispan-defaults">Infinispan defaults</h4>
+<div class="paragraph">
+<p>In Infinispan, the default security realm relies on properties.
+Users are established in a local properties file on the active server.
+By running the container and providing "USER" and "PASS" environment variables, the
+server generates a user capable of authenticating to Infinispan and is automatically granted
+the "admin" implicit role.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2023-12-19-secured-caches/browser-DIGEST.png"><img src="/assets/images/blog/2023-12-19-secured-caches/browser-DIGEST.png" alt="Browser authentication" width="800" height="547"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan doesn&#8217;t maintain user authentication through a session management system in the server for
+its REST API. The REST API operates in a stateless manner, and authentication, as well as role-based
+access control (RBAC), is facilitated through the AUTHENTICATION header when interacting
+with the REST API. The console is built using the REST API. DIGEST mechanism is part
+of the supported mechanism, so the browser will ask for user/password using the native browser
+authentication mechanism. For security reasons, BASIC authentication is not enabled by default
+unless TLS is also configured.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="implicit-rbac">Implicit RBAC</h4>
+<div class="paragraph">
+<p>Infinispan safeguards operations by specifying various permissions to operations such as creating caches,
+resetting statistics, uploading data schemas, and more. A role is a set of 1 or more permissions.
+Implicit authorization is enabled by default, providing predefined roles to which users can be assigned,
+granting them the ability to execute specific actions.</p>
+</div>
+<div class="paragraph">
+<p>Starting from Infinispan 15, a new feature in the console allows users to view these roles, their
+corresponding permissions, and descriptions. It is now also possible to create custom roles with
+specific permissions directly from the web console (previously, this capability was limited to the
+Command Line Tool). However, for the purpose of this article, we will focus on utilizing the pre-existing
+implicit roles.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2023-12-19-secured-caches/implicit-ROLES.png"><img src="/assets/images/blog/2023-12-19-secured-caches/implicit-ROLES.png" alt="Implicit roles" width="800" height="394"></a>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="running-the-server-with-multiple-users">Running the server with multiple users</h4>
+<div class="paragraph">
+<p>To start Infinispan locally with multiple users and distinct roles, we can employ a
+identities batch that is passed to the container during startup.</p>
+</div>
+<div class="paragraph">
+<p>1) Create a file called <strong>identities.batch</strong> with the following content.
+To simplify matters, we have established a straightforward one-to-one mapping between user
+names and roles.</p>
+</div>
+<div class="paragraph">
+<p><strong>identities.batch</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>user create "admin" -p "password" -g admin
+user create "observer" -p "password" -g observer
+user create "monitor" -p "password" -g monitor
+user create "deployer" -p "password" -g deployer
+user create "application" -p "password" -g application</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>2) Provide the file on run, by creating the user-config volume and passing the IDENTITIES_BATCH env variable.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Podman
+podman run -it -p 11222:11222 -v $(pwd):/user-config -e IDENTITIES_BATCH="/user-config/identities.batch" --net=host quay.io/infinispan/server:15.0
+
+# Docker
+docker run -it -p 11222:11222 -v $(pwd):/user-config -e IDENTITIES_BATCH="/user-config/identities.batch" quay.io/infinispan/server:15.0</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Those users are now available and listed in the Infinispan Web Console.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2023-12-19-secured-caches/users-BATCH.png"><img src="/assets/images/blog/2023-12-19-secured-caches/users-BATCH.png" alt="Implicit roles" width="724" height="453"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>When connecting with the "observer" user, which possesses the "observer" role,
+it becomes apparent that this user is unable to access certain actions in the console that
+necessitate "admin" role’s permissions. Examples include creating a cache, viewing connected clients,
+or accessing the access management functionalities.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2023-12-19-secured-caches/connect-OBSERVER.png"><img src="/assets/images/blog/2023-12-19-secured-caches/connect-OBSERVER.png" alt="connect observer" width="800" height="271"></a>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="secured-caches-in-infinispan">Secured Caches in Infinispan</h3>
+<div class="paragraph">
+<p>In Infinispan, it&#8217;s possible to create caches with data manipulation permissions restricted
+to specific roles.</p>
+</div>
+<div class="sect3">
+<h4 id="creating-a-secured-cache">Creating a secured cache</h4>
+<div class="paragraph">
+<p>For testing purposes, connect using the credentials admin/password and click on the
+“Create a cache” button in the Data Container page. In the cache creation wizard, after opting
+for all the default settings, select the "Authorization" capability, and the "admin" and "monitor"
+roles.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2023-12-19-secured-caches/create-CACHE.png"><img src="/assets/images/blog/2023-12-19-secured-caches/create-CACHE.png" alt="Create Secured Cache" width="800" height="408"></a>
+</div>
+</div>
+<div class="paragraph">
+<p>The final cache configuration will look like this:</p>
+</div>
+<div class="paragraph">
+<p><strong>config.yaml</strong></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>distributedCache:
+  owners: "2"
+  mode: "SYNC"
+  statistics: "true"
+  encoding:
+    mediaType: "application/x-protostream"
+  security:
+    authorization:
+      enabled: "true"
+      roles:
+        - "admin"
+        - "monitor"</pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="accessing-the-secured-cache">Accessing the Secured  Cache</h4>
+<div class="paragraph">
+<p>When using the "admin" user, the cache will have unrestricted access because the admin role has all the permissions. On the other hand, connecting with the "monitor" user, which is assigned the monitor role, the cache is visible. However, as the monitor role is designed solely for monitoring and not data creation, only data associated with the cache metrics will be accessible.</p>
+</div>
+<div class="paragraph">
+<p>For users lacking the admin or monitor role, accessing the cache from the console is not possible.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2023-12-19-secured-caches/secured-cache-MONITOR.png"><img src="/assets/images/blog/2023-12-19-secured-caches/secured-cache-MONITOR.png" alt="Console: monitor connects" width="800" height="310"></a>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="going-further">Going further</h3>
+<div class="paragraph">
+<p>In this article, you&#8217;ve explored the interplay of permissions, roles, Infinispan Security,
+and the fundamentals of secured caches. Beyond these, Infinispan Security management offers a
+range of additional capabilities. These include features like
+<a href="https://infinispan.org/docs/stable/titles/security/security.html#configuring-encryption">data encryption</a>
+and advanced security, such as providing access to an entire group of users managed by systems like LDAP.
+This is achieved through a Principal Role Mapper, which establishes a connection between all these
+users and a specific role.
+Infinispan supports many authentication mechanisms, such as token based authentication,
+which can be handled with Keycloak. Run the
+<a href="https://infinispan.org/tutorials/simple/simple_tutorials.html#secured_with_token_keycloak_remote-cache-tutorials">simple tutorial</a>
+to test it.</p>
+</div>
+</div>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://github.com/infinispan/infinispan/issues" target="_blank">GitHub issues tracker</a>.
+        If you don’t find any, <a href="https://github.com/infinispan/infinispan/issues" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://github.com/infinispan/infinispan/discussions/"
+                       target="_blank">GitHub discussions</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+      <div class="width-12-12 callout orange margin-tb-xs">
+    <div class="grid-wrapper">
+        <div class="width-4-12 width-12-12-m block-image">
+            <img src="/assets/images/blog/authors/karesti.jpg" class="author-img">
+        </div>
+        <div class="width-8-12 width-12-12-m block-content">
+            <h5>Katia Aresti</h5>
+            <p>Katia Aresti is a Senior Software Engineer working for Red Hat since 2017. She is part of the core Infinispan team, reponsible of the integration with other frameworks such as Spring-Boot, Vert.x or Quarkus, developing new features such as Clustered Counters, REST API endpoints and the new Server Web Console.</p>
+            <div class="width-3-12 width-6-12-m bio-block">
+                <a href="http://github.com/karesti"><img src="/assets/images/community/icon-github.png"></a>
+                
+                <a href="http://twitter.com/karesti"><img src="/assets/images/community/icon-twitter.png"></a>
+                
+            </div>
+        </div>
+    </div>
+</div>
+      
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo" alt="Infinispan"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="/" >Home</a></li>
+          
+            
+            <li><a href="/features" >Features</a></li>
+          
+            
+            <li><a href="/documentation" >Docs</a></li>
+          
+            
+            <li><a href="/tutorials" >Tutorials</a></li>
+          
+            
+            <li><a href="/videos" >Videos</a></li>
+          
+            
+            <li><a href="/use-cases" >Use Cases</a></li>
+          
+            
+            <li><a href="/community" >Community</a></li>
+          
+            
+            <li><a href="/download" >Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="https://issues.jboss.org/browse/ISPN" target="_blank">Submit a Bug</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan" target="_blank">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="/blog" >Blog</a></li>
+          
+            
+            <li><a href="https://twitter.com/infinispan" target="_blank">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="https://www.commonhaus.org/" target="_blank"><img src="/assets/images/CF_logo_horizontal.svg" title="Commonhaus Foundation"></a><br/>
+        </div>
+        <div class="width-6-12">
+          <b>Thanks to</b><br/>
+          <a href="https://zulip.com" target="_blank"><img src="/assets/images/footer/zulip.png" title="Zulip" alt="Zulip"></a>
+          <a href="https://weblate.org" target="_blank"><img src="/assets/images/footer/weblate.png" title="Weblate" alt="Weblate"></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="cookie-preferences">
+      <a href="#" data-cc="show-preferencesModal">Manage cookie preferences</a>
+    </span>
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+  <script src="/assets/javascript/clipboard.min.js" type="text/javascript"></script>
+  <script src="/assets/javascript/copy.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>
