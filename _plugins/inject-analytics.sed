@@ -1,0 +1,1 @@
+s/<head>/<head>\n<script async src="https:\/\/www.googletagmanager.com\/gtag\/js?id=G-GPD7V946LB"><\/script>\n<script>\nwindow.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-GPD7V946LB');\n<\/script>/

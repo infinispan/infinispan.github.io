@@ -68,22 +68,33 @@ def get_docs(tmp, name, repo, branch, loc, docroot, docbase, verbose, attr_heade
   end
 end
 
-def extract_maven_artifact(artifact, target)
-  puts "Downloading #{artifact} to #{target}"
-  %x( mvn org.apache.maven.plugins:maven-dependency-plugin:3.1.1:copy -DoutputDirectory=#{target} -DrepoUrl=https://search.maven.org/artifact/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
-  %x( unzip -qo #{target}/*.zip -d #{target} )
-  FileUtils.rm Dir.glob("#{target}/*.zip")
+def injectAnalytics(target)
+   cwd = File.expand_path File.dirname(__FILE__)
+   puts "Injecting analytics into #{target}"
+   %x( find #{target} -name "*.html" -exec sed -i -f #{cwd}/inject-analytics.sed '{}' '\;' )
 end
 
-def get_maven_docs(htmlArtifact, pdfArtifact, docroot, docbase, docalias)
+def extract_maven_artifact(artifact, target, ext)
+  puts "Downloading #{artifact} to #{target}"
+  %x( mvn org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy -DoutputDirectory=#{target} -DrepoUrl=https://search.maven.org/artifact/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
+  %x( unzip -qo #{target}/*#{ext} -d #{target} )
+  FileUtils.rm Dir.glob("#{target}/*#{ext}")
+end
+
+def get_maven_docs(htmlArtifact, javadocArtifact, pdfArtifact, docroot, docbase, docalias)
   target = File.expand_path("#{docroot}/#{docbase}")
   FileUtils.rm_rf target
   FileUtils.mkdir_p target
 
-  extract_maven_artifact(htmlArtifact, target)
-  if pdfArtifact != nil
-    extract_maven_artifact(pdfArtifact, target)
+  extract_maven_artifact(htmlArtifact, target, ".zip")
+  if javadocArtifact != nil
+    extract_maven_artifact(javadocArtifact, "#{target}/apidocs", ".jar")
+    injectAnalytics("#{target}/apidocs")
   end
+  if pdfArtifact != nil
+    extract_maven_artifact(pdfArtifact, target, ".zip")
+  end
+
   if docalias != nil
     aliastarget = File.expand_path("#{docroot}/#{docalias}")
     puts "    Alias #{docalias}"
@@ -133,7 +144,7 @@ else
       if type == "infinispan"
         core = vcfg["core"]
         valias = core["alias"]
-        get_maven_docs(core["html"], core["pdf"], "docs", "#{ver}", valias)
+        get_maven_docs(core["html"], core["javadoc"], core["pdf"], "docs", "#{ver}", valias)
         vname = if valias != nil then "#{ver} (#{valias})" else "#{ver}" end
         coreDocIndex.push "#{vname}!#{ver}"
       end
