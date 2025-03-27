@@ -542,10 +542,18 @@ $(addBlockSwitches);
 <ul class="sectlevel2">
 <li><a href="#indexing-caches_indexing-caches">1.1. Configuring Infinispan to index caches</a>
 <ul class="sectlevel3">
-<li><a href="#indexing-configuration_indexing-caches">1.1.1. Index configuration</a></li>
+<li><a href="#indexing-configuration_indexing-caches">1.1.1. Index configuration</a>
+<ul class="sectlevel4">
+<li><a href="#automatic_strategy_and_shared_cache_stores">Automatic strategy and shared cache stores</a></li>
 </ul>
 </li>
-<li><a href="#indexing-annotations_indexing-caches">1.2. Infinispan native indexing annotations</a></li>
+</ul>
+</li>
+<li><a href="#indexing-annotations_indexing-caches">1.2. Infinispan native indexing annotations</a>
+<ul class="sectlevel3">
+<li><a href="#'indexing-annotations-overview_indexing-caches`">1.2.1. Overview of the Infinispan indexing annotations</a></li>
+</ul>
+</li>
 <li><a href="#rebuilding-indexes_indexing-caches">1.3. Rebuilding indexes</a></li>
 <li><a href="#update-index-schema_indexing-caches">1.4. Updating index schema</a></li>
 <li><a href="#non-indexed-queries_indexing-caches">1.5. Non-indexed queries</a></li>
@@ -578,8 +586,13 @@ $(addBlockSwitches);
 <li><a href="#score_projection">Project the score</a></li>
 </ul>
 </li>
-<li><a href="#grouping_and_aggregation">2.2.5. Grouping and aggregation</a></li>
-<li><a href="#delete_statements">2.2.6. DELETE statements</a></li>
+<li><a href="#ickle-query-syntax-nested-objects_joins_ickle-query-language">2.2.5. Nested objects joins</a>
+<ul class="sectlevel4">
+<li><a href="#nested_objects_joins_example">Nested objects joins: example</a></li>
+</ul>
+</li>
+<li><a href="#grouping_and_aggregation">2.2.6. Grouping and aggregation</a></li>
+<li><a href="#delete_statements">2.2.7. DELETE statements</a></li>
 </ul>
 </li>
 <li><a href="#full-text-search_ickle-query-language">2.3. Full-text queries</a>
@@ -842,7 +855,7 @@ config.indexing().enable().storage(FILESYSTEM).path("/some/folder").addIndexedEn
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/15.1/apidocs/org/infinispan/configuration/cache/IndexingConfigurationBuilder.html"><code>org.infinispan.configuration.cache.IndexingConfigurationBuilder</code></a></p>
+<p><a href="../../apidocs/org/infinispan/configuration/cache/IndexingConfigurationBuilder.html"><code>org.infinispan.configuration.cache.IndexingConfigurationBuilder</code></a></p>
 </li>
 </ul>
 </div>
@@ -910,39 +923,19 @@ working directory when global state is disabled.</p>
 </tr>
 </table>
 </div>
-<h5 id="index_startup_mode" class="discrete">Index startup mode</h5>
+<h5 id="indexing-configuration_startup-mode" class="discrete">Index startup mode</h5>
 <div class="paragraph">
 <p>When Infinispan starts caches it can perform operations to ensure the index is consistent with data in the cache.
-By default no indexing operation takes place when a cache starts but you can configure Infinispan to:</p>
+By default it:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Clear the index when the cache starts.</p>
+<p>Automatically clear (purge) or reindex the cache.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Infinispan performs the clear (purge) operation synchronously. The cache becomes available only when the purge completes.</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Reindex the cache when it starts.</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Infinispan performs the reindex operation asynchronously. The reindex operation might take a longer time to complete, depending on the size of the cache.</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Automatically clear or reindex the cache.</p>
-<div class="ulist">
-<ul>
-<li>
-<p>If data is volatile and the index is persistent then Infinispan clears the cache when it starts.</p>
+<p>If data is volatile and the index is persistent then Infinispan performs the clear (purge) the indexes when it starts.</p>
 </li>
 <li>
 <p>If data is persistent and the index is volatile then Infinispan reindex the cache when it starts.</p>
@@ -951,6 +944,57 @@ By default no indexing operation takes place when a cache starts but you can con
 </div>
 </li>
 </ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The purge operation is performed synchronously, since it is usually very fast. So by the time the cache finishes to start, the operation will be completed.
+The cache becomes available only when the purge completes.</p>
+</div>
+<div class="paragraph">
+<p>The reindex operation is performed asynchronously, since it might take a longer time to complete, depending on the size of the cache.
+If an indexed query is performed during the reindex the result could be partial.
+It is always possible to check if a reindex is ongoing accessing to <a href="../query/query.html#getting-query-statistics_query-monitoring-tuning">the query statistics</a>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>But you can manually configure it to:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Purge the index when the cache starts.</p>
+</li>
+<li>
+<p>Reindex the cache when it starts.</p>
+</li>
+<li>
+<p>No indexing operation takes place when a cache starts</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>In the case of a manual configuration can lead to possible inconsistencies,
+a log message will be presented when the cache starts.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="listingblock">
 <div class="title">Clear the index when the cache starts</div>
@@ -962,8 +1006,11 @@ By default no indexing operation takes place when a cache starts but you can con
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<div class="title">Rebuild the index when the cachin this case</div>
+<p>a warning message will be logged when the cache is startede starts</p>
+</div>
 <div class="listingblock">
-<div class="title">Rebuild the index when the cache starts</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;indexing storage="local-heap" startup-mode="reindex"&gt;
@@ -971,6 +1018,49 @@ By default no indexing operation takes place when a cache starts but you can con
   &lt;/indexing&gt;
 &lt;/distributed-cache&gt;</code></pre>
 </div>
+</div>
+<div class="sect4">
+<h5 id="automatic_strategy_and_shared_cache_stores"><a class="anchor" href="#automatic_strategy_and_shared_cache_stores"></a>Automatic strategy and shared cache stores</h5>
+<div class="paragraph">
+<p>In case of:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>A shared storage is configured</p>
+</li>
+<li>
+<p>The indexes are persistent on file system</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The <code>AUTO</code> startup mode will apply the <code>REINDEX</code> strategy.
+This is done in order to not miss potential updates in case of crash and recovery of an indexed node.</p>
+</div>
+<div class="paragraph">
+<p>Thus <code>AUTO</code> in this case may penalize the average user using a shared cache store that does not do any eviction,
+since more reindex than necessary will be triggered.
+For this reason if:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>A shared storage is configured</p>
+</li>
+<li>
+<p>The indexes are persistent on file system</p>
+</li>
+<li>
+<p>Automatic evictions are not possible: cache memory <code>max-size</code> and <code>max-count</code> are not used</p>
+</li>
+<li>
+<p>Manual eviction using the embedded API <code>cache.eviction()</code> is not used</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>to use <code>NONE</code> in place of <code>AUTO</code> as the index startup strategy.</p>
 </div>
 <h5 id="indexing_mode" class="discrete">Indexing mode</h5>
 <div class="paragraph">
@@ -1170,7 +1260,7 @@ The defaults should work for most cases and custom configurations should only be
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/15.1/configdocs/">Infinispan configuration schema reference</a></p>
+<p><a href="../../configuration-schema/index.html">Infinispan configuration schema reference</a></p>
 </li>
 </ul>
 </div>
@@ -1195,13 +1285,15 @@ The number of shards must be greater then <code>1</code>.</p>
 </div>
 </div>
 </div>
+</div>
 <div class="sect2">
 <h3 id="indexing-annotations_indexing-caches"><a class="anchor" href="#indexing-annotations_indexing-caches"></a>1.2. Infinispan native indexing annotations</h3>
 <div class="paragraph">
 <p>When you enable indexing in caches, you configure Infinispan to create indexes.
 You also need to provide Infinispan with a structured representation of the entities in your caches so it can actually index them.</p>
 </div>
-<h4 id="overview_of_the_infinispan_indexing_annotations" class="discrete">Overview of the Infinispan indexing annotations</h4>
+<div class="sect3">
+<h4 id="'indexing-annotations-overview_indexing-caches`"><a class="anchor" href="#'indexing-annotations-overview_indexing-caches`"></a>1.2.1. Overview of the Infinispan indexing annotations</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1">@Indexed</dt>
@@ -1245,6 +1337,9 @@ The <code>NESTED</code> structure preserves the original object relationship str
 The default structure used by <code>@Embedded</code> is <code>NESTED</code>.</p>
 </dd>
 </dl>
+</div>
+<div class="paragraph">
+<p><code>NESTED</code> embedded can be used in <a href="../query/query.html#ickle-query-syntax-nested-objects_joins_ickle-query-language">nested objects joins</a>.</p>
 </div>
 <div class="paragraph">
 <p>Each of the annotations supports a set of attributes that you can use to further describe how the entity is indexed.</p>
@@ -1310,6 +1405,7 @@ required string street = 1;</code></pre>
 </div>
 </li>
 </ul>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -1679,10 +1775,10 @@ performance compared to a similar query using constant values instead of query p
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/15.1/apidocs/org/infinispan/query/dsl/Query.html#execute()">org.infinispan.query.dsl.Query.execute()</a></p>
+<p><a href="../../apidocs/org/infinispan/query/dsl/Query.html#execute()">org.infinispan.query.dsl.Query.execute()</a></p>
 </li>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/15.1/apidocs/org/infinispan/query/dsl/Query.html#executeStatement()">org.infinispan.query.dsl.Query.executeStatement()</a></p>
+<p><a href="../../apidocs/org/infinispan/query/dsl/Query.html#executeStatement()">org.infinispan.query.dsl.Query.executeStatement()</a></p>
 </li>
 </ul>
 </div>
@@ -1906,7 +2002,53 @@ FROM org.infinispan.sample.Book WHERE title like '%Data Grid%' ORDER BY publicat
 </div>
 </div>
 <div class="sect3">
-<h4 id="grouping_and_aggregation"><a class="anchor" href="#grouping_and_aggregation"></a>2.2.5. Grouping and aggregation</h4>
+<h4 id="ickle-query-syntax-nested-objects_joins_ickle-query-language"><a class="anchor" href="#ickle-query-syntax-nested-objects_joins_ickle-query-language"></a>2.2.5. Nested objects joins</h4>
+<div class="paragraph">
+<p>When multivalued <a href="../query/query.html#indexing-annotations-overview_indexing-caches"><code>NESTED</code> embedded entities</a> are defined on a parent entity,
+it is possible to treat the parent / embedded relation as a one to many relation.
+This means that the <code>join</code> operator can be used to select all the parent entities that contain an embedded
+entity satisfying some conditions.
+This is in general not possible if the embedded reference is marked as <code>FLATTENED</code>, because in this case the
+embedded fields will be treated as (multivalued) parent entity fields.</p>
+</div>
+<div class="sect4">
+<h5 id="nested_objects_joins_example"><a class="anchor" href="#nested_objects_joins_example"></a>Nested objects joins: example</h5>
+<div class="paragraph">
+<p>Suppose we have a parent entity <code>Team</code> having <code>Player</code> as a multivalued nested embedded entity:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
+@Indexed
+public record Team(@Basic String name, @Embedded(structure = Structure.NESTED) List&lt;Player&gt; firstTeam, @Embedded(structure = Structure.FLATTENED) List&lt;Player&gt; replacements) {
+
+   @ProtoSchema(includeClasses = {Team.class, Player.class}, schemaPackageName = "model")
+   public interface TeamSchema extends GeneratedSchema {
+      TeamSchema INSTANCE = new TeamSchemaImpl();
+   }
+}
+
+@Proto
+public record Player(@Basic String name, @Basic String color, @Basic Integer number) {
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Given this mapping, the following query:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sql hljs" data-lang="sql">select t.name from model.Team t join t.firstTeam p where (p.color ='red' AND p.number=7) or (p.color='blue' AND p.number=7)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>will return all the teams present on the system having at least one player in the first team group
+in turn having number 7 and color red or blue.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="grouping_and_aggregation"><a class="anchor" href="#grouping_and_aggregation"></a>2.2.6. Grouping and aggregation</h4>
 <div class="paragraph">
 <p>Infinispan has the ability to group query results according to a set of grouping fields and construct aggregations of
 the results from each group by applying an aggregation function to the set of values that fall into each group.
@@ -2030,7 +2172,7 @@ fields.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="delete_statements"><a class="anchor" href="#delete_statements"></a>2.2.6. DELETE statements</h4>
+<h4 id="delete_statements"><a class="anchor" href="#delete_statements"></a>2.2.7. DELETE statements</h4>
 <div class="paragraph">
 <p>You can delete entities from Infinispan caches with the following syntax:</p>
 </div>
@@ -2083,7 +2225,7 @@ fields.</p>
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://docs.jboss.org/infinispan/15.1/apidocs/org/infinispan/query/dsl/Query.html#executeStatement()">org.infinispan.query.dsl.Query.executeStatement()</a></p>
+<p><a href="../../apidocs/org/infinispan/query/dsl/Query.html#executeStatement()">org.infinispan.query.dsl.Query.executeStatement()</a></p>
 </li>
 </ul>
 </div>
@@ -4364,7 +4506,7 @@ If you do not need data returned in queries as soon as it is written, you should
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-01-30 06:22:59 -0500
+Last updated 2025-03-27 09:04:58 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>

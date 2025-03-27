@@ -542,8 +542,10 @@ $(addBlockSwitches);
 <ul class="sectlevel2">
 <li><a href="#resp-differences_resp-endpoint">1.1. Differences between Infinispan and Redis implementation</a>
 <ul class="sectlevel3">
-<li><a href="#isolation">1.1.1. Isolation</a></li>
-<li><a href="#transactions">1.1.2. Transactions</a></li>
+<li><a href="#protocol_version">1.1.1. Protocol version</a></li>
+<li><a href="#isolation">1.1.2. Isolation</a></li>
+<li><a href="#transactions">1.1.3. Transactions</a></li>
+<li><a href="#lua_scripts">1.1.4. Lua Scripts</a></li>
 </ul>
 </li>
 <li><a href="#redis-commands_resp-endpoint">1.2. Redis commands</a></li>
@@ -593,7 +595,13 @@ The default <code>respCache</code> is mapped to logical database <code>0</code>.
 This chapter summarizes the differences and, when possible, alternative configurations for a similar behavior.</p>
 </div>
 <div class="sect3">
-<h4 id="isolation"><a class="anchor" href="#isolation"></a>1.1.1. Isolation</h4>
+<h4 id="protocol_version"><a class="anchor" href="#protocol_version"></a>1.1.1. Protocol version</h4>
+<div class="paragraph">
+<p>Infinispan only supports RESP version 3. Attempting to use version 2, will result in an error.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="isolation"><a class="anchor" href="#isolation"></a>1.1.2. Isolation</h4>
 <div class="paragraph">
 <p>Redis utilizes a single thread to handle user requests, which provides serializable isolation and atomic behavior for multi-key requests.
 Infinispan provides a relaxed isolation level, which is configurable.
@@ -620,7 +628,7 @@ See the <a href="../configuring/configuring.html#transaction_manager">cache conf
 </div>
 </div>
 <div class="sect3">
-<h4 id="transactions"><a class="anchor" href="#transactions"></a>1.1.2. Transactions</h4>
+<h4 id="transactions"><a class="anchor" href="#transactions"></a>1.1.3. Transactions</h4>
 <div class="paragraph">
 <p>Applications utilizing the <code>MULTI…EXEC</code> commands should update the default cache configuration to enable transactional capabilities.
 Transactions in Redis do not have the concept of rollback to revert in case of failures.
@@ -641,6 +649,13 @@ See the <a href="../configuring/configuring.html#transaction_manager">cache conf
 </td>
 </tr>
 </table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="lua_scripts"><a class="anchor" href="#lua_scripts"></a>1.1.4. Lua Scripts</h4>
+<div class="paragraph">
+<p>Lua scripts executed by Infinispan serialize responses using the RESP3 protocol.
+This is equivalent to invoking <code>redis.setresp(3)</code> in every script.</p>
 </div>
 </div>
 </div>
@@ -733,6 +748,42 @@ This commands includes all required fields, but some fields are set to <code>0</
 <p><a href="https://redis.io/commands/echo">ECHO</a></p>
 </li>
 <li>
+<p><a href="https://redis.io/commands/eval">EVAL</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+unlike Redis, which maintains a bounded cache of ephemeral scripts, Infinispan discards the script immediately after execution.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/eval_ro">EVAL_RO</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+unlike Redis, which maintains a bounded cache of ephemeral scripts, Infinispan discards the script immediately after execution.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/evalsha">EVALSHA</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/evalsha_ro">EVALSHA_RO</a></p>
+</li>
+<li>
 <p><a href="https://redis.io/commands/exec">EXEC</a></p>
 <div class="paragraph">
 <p>See the <a href="#multi_command">MULTI</a> command.</p>
@@ -800,6 +851,18 @@ This command is deprecated. Use the <code>SET</code> command with the appropriat
 </li>
 <li>
 <p><a href="https://redis.io/commands/hello">HELLO</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Only protocol version 3 (RESP3) is supported.
+</td>
+</tr>
+</table>
+</div>
 </li>
 <li>
 <p><a href="https://redis.io/commands/hexists">HEXISTS</a></p>
@@ -865,6 +928,93 @@ This command is deprecated. Use the <code>SET</code> command with the appropriat
 </td>
 <td class="content">
 This implementation attempts to return all attributes that a real Redis server returns. However, in most cases, the values are set to <code>0</code> because they cannot be retrieved, or don&#8217;t apply to Infinispan.
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.arrappend">JSON.ARRAPPEND</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.arrindex">JSON.ARRINDEX</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.arrindex">JSON.ARRINSERT</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.arrlen">JSON.ARRLEN</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.arrtrim">JSON.ARRTRIM</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.clear">JSON.CLEAR</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.arrpop">JSON.ARRPOP</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.del">JSON.DEL</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.forget">JSON.FORGET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.get">JSON.GET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.mset">JSON.MSET</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This command is non atomic
+</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.mget">JSON.MGET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.numincrby">JSON.NUMINCRBY</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.nummultby">JSON.NUMMULTBY</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.objkeys">JSON.OBJKEYS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.objlen">JSON.OBJLEN</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.set">JSON.SET</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.strappend">JSON.STRAPPEND</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.strlen">JSON.STRLEN</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.toggle">JSON.TOGGLE</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/json.type">JSON.TYPE</a></p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The current implementation allows to add element at the end of an array, while Redis returns error.
 </td>
 </tr>
 </table>
@@ -1112,6 +1262,15 @@ Cursors are reaped in case they have not been used within a timeout. The timeout
 </tr>
 </table>
 </div>
+</li>
+<li>
+<p><a href="https://redis.io/commands/script-exists">SCRIPT EXISTS</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/script-flush">SCRIPT FLUSH</a></p>
+</li>
+<li>
+<p><a href="https://redis.io/commands/script-load">SCRIPT LOAD</a></p>
 </li>
 <li>
 <p><a href="https://redis.io/commands/sdiff">SDIFF</a></p>
@@ -1377,7 +1536,7 @@ This command is deprecated. Use the <code>GETRANGE</code> command instead.
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-01-30 06:50:50 -0500
+Last updated 2025-03-27 09:04:58 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
