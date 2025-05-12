@@ -5773,43 +5773,71 @@ Securing cross-site connections is optional if you use a <code>NodePort</code> o
 </tr>
 </table>
 </div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Have a PKCS12 keystore that Infinispan can use to encrypt and decrypt RELAY messages.</p>
-<div class="paragraph">
-<p>You must provide a keystore for relay pods and router pods to secure cross-site connections.<br>
-The keystore can be the same for relay pods and router pods or you can provide separate keystores for each.<br>
-You can also use the same keystore for each Infinispan cluster or a unique keystore for each cluster.</p>
-</div>
-</li>
-<li>
-<p>Have a PKCS12 trust store that contains part of the certificate chain or root CA certificate that verifies public certificates for Infinispan relay pods and router pods.</p>
-</li>
-</ul>
-</div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Create cross-site encryption secrets.</p>
+<p>Create the key store and trust store using Keytool (certificate management utility included with Java).</p>
 <div class="olist loweralpha">
 <ol class="loweralpha" type="a">
 <li>
-<p>Create keystore secrets.</p>
+<p>Generate a self-signed certificate.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">keytool -genkey -alias server -keyalg RSA -storetype PKCS12 -keystore ./keystore.p12 -validity &lt;days&gt; -storepass &lt;password&gt;</code></pre>
+</div>
+</div>
 </li>
 <li>
-<p>Create trust store secrets.</p>
+<p>Export the certificate from the key store, so that it can be present in the trust store</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">keytool -export -alias server -keystore ./keystore.p12 -storetype PKCS12 -rfc -file ~/server_cert.pem -storepass &lt;password&gt;</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Create the trust store and import the certificate</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">keytool -importcert -alias server -keystore ./truststore.p12 -storetype PKCS12 -file ~/server_cert.pem -storepass &lt;password&gt; -noprompt</code></pre>
+</div>
+</div>
 </li>
 </ol>
 </div>
 </li>
 <li>
-<p>Modify the <code>Infinispan</code> CR for each Infinispan cluster to specify the secret name for the <code>encryption.transportKeyStore.secretName</code> and <code>encryption.routerKeyStore.secretName</code> fields.</p>
+<p>Create cross-site encryption secret for each Infinispan cluster.</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Create keystore secrets.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">oc create secret generic keystore-tls-secret \
+--from-file=keystore.p12=./keystore.p12 \
+--from-literal=password=&lt;password&gt; \
+--from-literal=type=pkcs12</code></pre>
+</div>
+</div>
 </li>
 <li>
-<p>Configure any other fields to encrypt RELAY messages as required and then apply the changes.</p>
+<p>Create trust store secrets.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">oc create secret generic truststore-tls-secret \
+--from-file=truststore.p12=./truststore.p12 \
+--from-literal=password=&lt;password&gt; \
+--from-literal=type=pkcs12</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>Modify the Infinispan CR for each Infinispan cluster to specify the secret name for the <code>encryption.transportKeyStore.secretName</code> and <code>encryption.routerKeyStore.secretName</code> fields.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">apiVersion: infinispan.org/v1
@@ -5830,12 +5858,12 @@ spec:
         encryption:
           protocol: TLSv1.3
           transportKeyStore:
-            secretName: transport-tls-secret
-            alias: transport
+            secretName: keystore-tls-secret
+            alias: server
             filename: keystore.p12
           routerKeyStore:
-            secretName: router-tls-secret
-            alias: router
+            secretName: keystore-tls-secret
+            alias: server
             filename: keystore.p12
           trustStore:
             secretName: truststore-tls-secret
@@ -5846,6 +5874,22 @@ spec:
 </div>
 </li>
 </ol>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The procedure describes the easier way to encrypt the communication.
+More complex setups are possible in the CR, for example, by setting different certificates for Infinispan Pod and Gossip Router Pod.
+Ensure the truststore contains all the required certificate chain for mutual TLS authentication.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="sect3">
 <h4 id="cross-site-encryption-resources_cross-site"><a class="anchor" href="#cross-site-encryption-resources_cross-site"></a>13.7.1. Resources for configuring cross-site encryption</h4>
@@ -8745,7 +8789,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-04-23 11:39:30 UTC
+Last updated 2025-05-12 14:47:42 UTC
 </div>
 </div>
 <script>
