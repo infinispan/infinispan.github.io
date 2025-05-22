@@ -892,7 +892,8 @@ You can upgrade the version of your cluster between supported Infinispan version
 15.1.4
 15.1.5
 15.1.7
-15.2.1</p>
+15.2.1
+15.2.2</p>
 </div></div></td>
 </tr>
 <tr>
@@ -1581,7 +1582,7 @@ spec:
 <td class="content">
 <div class="paragraph">
 <p>Add the <code>--version</code> argument to control the Infinispan version of your cluster.
-For example, <code>--version=15.2.1</code>.
+For example, <code>--version=15.2.2</code>.
 If you don&#8217;t specify the version, Infinispan Operator creates cluster with the latest supported Infinispan version.</p>
 </div>
 </td>
@@ -2315,7 +2316,7 @@ This results in data loss if you do not configure a persistent cache store.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>spec:
-  version: 15.2.1
+  version: 15.2.2
   upgrades:
     type: Shutdown</code></pre>
 </div>
@@ -2355,7 +2356,7 @@ However, this upgrade type requires additional capacity and temporarily results 
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>spec:
-  version: 15.2.1
+  version: 15.2.2
   upgrades:
     type: HotRodRolling</code></pre>
 </div>
@@ -2502,7 +2503,7 @@ metadata:
     infinispan.org/monitoring: 'true'
 spec:
   replicas: 6
-  version: 15.2.1
+  version: 15.2.2
   upgrades:
     type: Shutdown
   service:
@@ -8095,7 +8096,7 @@ spec:
         claimName: datagrid-libs
   containers:
     - name: lib-pv-container
-      image: quay.io/infinispan/server:15.2.1
+      image: quay.io/infinispan/server:15.2.2
       volumeMounts:
         - mountPath: /tmp/libs
           name: lib-pv-storage</code></pre>
@@ -8778,7 +8779,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-05-22 12:59:02 UTC
+Last updated 2025-05-22 13:07:47 UTC
 </div>
 </div>
 <script>
