@@ -897,6 +897,41 @@ You can upgrade the version of your cluster between supported Infinispan version
 </div></div></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.14</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4</p>
+</div></div></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2.4.2</p></td>
 <td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
 <p>13.0.10
@@ -1582,7 +1617,7 @@ spec:
 <td class="content">
 <div class="paragraph">
 <p>Add the <code>--version</code> argument to control the Infinispan version of your cluster.
-For example, <code>--version=15.2.2</code>.
+For example, <code>--version=15.2.4</code>.
 If you don&#8217;t specify the version, Infinispan Operator creates cluster with the latest supported Infinispan version.</p>
 </div>
 </td>
@@ -2316,7 +2351,7 @@ This results in data loss if you do not configure a persistent cache store.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>spec:
-  version: 15.2.2
+  version: 15.2.4
   upgrades:
     type: Shutdown</code></pre>
 </div>
@@ -2356,7 +2391,7 @@ However, this upgrade type requires additional capacity and temporarily results 
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>spec:
-  version: 15.2.2
+  version: 15.2.4
   upgrades:
     type: HotRodRolling</code></pre>
 </div>
@@ -2503,7 +2538,7 @@ metadata:
     infinispan.org/monitoring: 'true'
 spec:
   replicas: 6
-  version: 15.2.2
+  version: 15.2.4
   upgrades:
     type: Shutdown
   service:
@@ -8096,7 +8131,7 @@ spec:
         claimName: datagrid-libs
   containers:
     - name: lib-pv-container
-      image: quay.io/infinispan/server:15.2.2
+      image: quay.io/infinispan/server:15.2.4
       volumeMounts:
         - mountPath: /tmp/libs
           name: lib-pv-storage</code></pre>
@@ -8779,7 +8814,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-06-10 16:49:16 UTC
+Last updated 2025-07-09 13:03:16 UTC
 </div>
 </div>
 <script>
