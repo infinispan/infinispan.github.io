@@ -537,22 +537,20 @@ $(addBlockSwitches);
 <h1>Using the RESP protocol with Infinispan</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#resp-logical-databases_resp-endpoint">1. Mapping caches to Redis logical databases</a>
 <ul class="sectlevel2">
-<li><a href="#enabling-resp-endpoint_resp-endpoint">1. Infinispan RESP endpoint</a>
+<li><a href="#resp-differences_resp-endpoint">1.1. Differences between Infinispan and Redis implementation</a>
 <ul class="sectlevel3">
-<li><a href="#configuring_caches_for_the_resp_endpoint">1.1. Configuring caches for the RESP endpoint</a></li>
+<li><a href="#protocol_version">1.1.1. Protocol version</a></li>
+<li><a href="#isolation">1.1.2. Isolation</a></li>
+<li><a href="#transactions">1.1.3. Transactions</a></li>
+<li><a href="#lua_scripts">1.1.4. Lua Scripts</a></li>
 </ul>
 </li>
-<li><a href="#resp-logical-databases_resp-endpoint">2. Mapping caches to Redis logical databases</a></li>
-<li><a href="#resp-differences_resp-endpoint">3. Differences between Infinispan and Redis implementation</a>
-<ul class="sectlevel3">
-<li><a href="#protocol_version">3.1. Protocol version</a></li>
-<li><a href="#isolation">3.2. Isolation</a></li>
-<li><a href="#transactions">3.3. Transactions</a></li>
-<li><a href="#lua_scripts">3.4. Lua Scripts</a></li>
+<li><a href="#redis-commands_resp-endpoint">1.2. Redis commands</a></li>
 </ul>
 </li>
-<li><a href="#redis-commands_resp-endpoint">4. Redis commands</a></li>
 </ul>
 </div>
 </div>
@@ -562,241 +560,15 @@ $(addBlockSwitches);
 <div class="paragraph">
 <p>Infinispan Server includes an endpoint that implements the <a href="https://github.com/redis/redis-specifications/blob/master/protocol/RESP3.md">RESP3 protocol</a> and allows you to interact with remote caches using Redis clients.</p>
 </div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="enabling-resp-endpoint_resp-endpoint"><a class="anchor" href="#enabling-resp-endpoint_resp-endpoint"></a>1. Infinispan RESP endpoint</h3>
-<div class="paragraph">
-<p>The RESP endpoint is enabled by default on the single-port endpoint. Redis client connections will automatically be detected and routed to the internal connector.
-The RESP endpoint works with:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Standalone Infinispan Server deployments, exactly like standalone Redis, where each server instance runs independently of each other.</p>
-</li>
-<li>
-<p>Clustered Infinispan Server deployments, where server instances replicate or distribute data between each other. Clustered deployments provides clients with failover capabilities.</p>
-</li>
-</ul>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Install Infinispan Server.</p>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p><a href="../server/server.html#creating-users_server-getting-started">Create a user</a></p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<div class="title">Verification</div>
-<p>When you start Infinispan Server check for the following log message:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">[org.infinispan.SERVER] ISPN080018: Started connector Resp (internal)</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>You can now connect to the RESP endpoint with a Redis client.
-For example, with the Redis CLI you can do the following to add an entry to the cache:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">redis-cli -p 11222 --user username --pass password</code></pre>
-</div>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">127.0.0.1:11222&gt; SET k v
-OK
-127.0.0.1:11222&gt; GET k
-"v"
-127.0.0.1:11222&gt; quit</code></pre>
-</div>
-</div>
-<div class="sect3">
-<h4 id="configuring_caches_for_the_resp_endpoint"><a class="anchor" href="#configuring_caches_for_the_resp_endpoint"></a>1.1. Configuring caches for the RESP endpoint</h4>
-<div class="paragraph">
-<p>The RESP endpoint automatically configures and starts a <code>respCache</code> cache. This cache has the following configuration:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>local-cache</code> or <code>distributed-cache</code> depending on the Infinispan Server clustering mode.</p>
-</li>
-<li>
-<p><code>application/octet-stream</code> encoding for both keys and values.</p>
-</li>
-<li>
-<p><code>RESPHashFunctionPartitioner</code> hash partitioner, which supports the CRC16 hashing used by Redis clients</p>
-</li>
-</ul>
-</div>
-<h5 id="explicit_configuration_for_cache" class="discrete">Explicit configuration for cache</h5>
-<div class="paragraph">
-<p>It is possible to supply a custom configuration for the cache, as long as it does not violate the requirements of the RESP connector, in which case the server will raise an exception and will not start.
-Main constraints are:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>hash partitioning function must be <code>org.infinispan.distribution.ch.impl.RESPHashFunctionPartitioner</code>.</p>
-</li>
-<li>
-<p>key encoding must be <code>application/octet-stream</code>.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Example of explicit cache configuration follows.</p>
-</div>
-<div class="listingblock primary">
-<div class="title">XML</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="respCache" aliases="0" owners="2"
-                   key-partitioner="org.infinispan.distribution.ch.impl.RESPHashFunctionPartitioner"
-                   mode="SYNC" remote-timeout="17500" statistics="true"&gt;
-	&lt;encoding media-type="application/octet-stream"/&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-   "respCache": {
-     "distributed-cache": {
-       "aliases": ["0"],
-       "owners": "2",
-       "key-partitioner": "org.infinispan.distribution.ch.impl.RESPHashFunctionPartitioner",
-       "mode": "SYNC",
-       "statistics": true,
-       "encoding": {
-         "media-type": "application/octet-stream"
-       }
-     }
-   }
- }</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">respCache:
-  distributedCache:
-    aliases:
-      - "0"
-    owners: "2"
-    keyPartitioner: "org.infinispan.distribution.ch.impl.RESPHashFunctionPartitioner"
-    mode: "SYNC"
-    statistics: "true"
-    encoding:
-      mediaType: "application/octet-stream"</code></pre>
-</div>
-</div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-tip" title="Tip"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Configure your cache value encoding with Protobuf encoding if you want to view cache entries in the Infinispan Console (<code>value media-type="application/x-protostream"</code>).</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<h5 id="explicit_resp_endpoint_configuration" class="discrete">Explicit RESP endpoint configuration</h5>
-<div class="paragraph">
-<p>If the implicit configuration used by the single-port endpoint does not fit your needs, explicit configuration is available.</p>
-</div>
-<div class="listingblock primary">
-<div class="title">XML</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;endpoints&gt;
-  &lt;endpoint socket-binding="default" security-realm="default"&gt;
-    &lt;resp-connector cache="mycache" /&gt;
-    &lt;hotrod-connector /&gt;
-    &lt;rest-connector/&gt;
-  &lt;/endpoint&gt;
-&lt;/endpoints&gt;</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "server": {
-    "endpoints": {
-      "endpoint": {
-        "socket-binding": "default",
-        "security-realm": "default",
-        "resp-connector": {
-          "cache": "mycache"
-        },
-        "hotrod-connector": {},
-        "rest-connector": {}
-      }
-    }
-  }
-}</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
-  endpoints:
-    endpoint:
-      socketBinding: "default"
-      securityRealm: "default"
-      respConnector:
-        cache: "mycache"
-      hotrodConnector: ~
-      restConnector: ~</code></pre>
-</div>
-</div>
-<h5 id="clustered_configuration" class="discrete">Clustered configuration</h5>
-<div class="paragraph">
-<p>Infinispan is a horizontally scalable Resp-compatible server with high availability capabilities.
-Infinispan provides clustering mechanisms with automatic failover detection and membership discovery by default.
-Topology changes are handled automatically, and adding or removing nodes to the cluster is a streamlined process that automatically redistributes entries between nodes without downtime.
-The cluster is homogeneous, where nodes are the primary and the backup owners of entries, guaranteeing that entries are available even in case of server failures.</p>
-</div>
-<div class="paragraph">
-<p>Backed by a consistent hash, compatible with the hash-slot algorithm in Resp clients, entries are distributed across cluster members.
-Infinispan automatically redirects requests to the proper entry owner.
-As a result, hash tags in keys and the <code>-MOVED</code> error response for requests are not required even for multi-key operations accessing keys with different owners.</p>
-</div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-tip" title="Tip"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Infinispan allows multiple logical databases with the SELECT command in clustering mode.</p>
-</div>
-</td>
-</tr>
-</table>
+<div id="resp-endpoint" class="paragraph">
+<p>include::../topics/proc_server_configuring_resp.adoc
+:leveloffset: +2</p>
 </div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="resp-logical-databases_resp-endpoint"><a class="anchor" href="#resp-logical-databases_resp-endpoint"></a>2. Mapping caches to Redis logical databases</h3>
+<div class="sect1">
+<h2 id="resp-logical-databases_resp-endpoint"><a class="anchor" href="#resp-logical-databases_resp-endpoint"></a>1. Mapping caches to Redis logical databases</h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Use the cache <code>aliases</code> configuration attributes to map caches to Redis logical databases.
 The default <code>respCache</code> is mapped to logical database <code>0</code>.</p>
@@ -816,21 +588,20 @@ The default <code>respCache</code> is mapped to logical database <code>0</code>.
 </tr>
 </table>
 </div>
-</div>
 <div class="sect2">
-<h3 id="resp-differences_resp-endpoint"><a class="anchor" href="#resp-differences_resp-endpoint"></a>3. Differences between Infinispan and Redis implementation</h3>
+<h3 id="resp-differences_resp-endpoint"><a class="anchor" href="#resp-differences_resp-endpoint"></a>1.1. Differences between Infinispan and Redis implementation</h3>
 <div class="paragraph">
 <p>Infinispan provides different guarantees compared to Redis for some functionalities.
 This chapter summarizes the differences and, when possible, alternative configurations for a similar behavior.</p>
 </div>
 <div class="sect3">
-<h4 id="protocol_version"><a class="anchor" href="#protocol_version"></a>3.1. Protocol version</h4>
+<h4 id="protocol_version"><a class="anchor" href="#protocol_version"></a>1.1.1. Protocol version</h4>
 <div class="paragraph">
 <p>Infinispan only supports RESP version 3. Attempting to use version 2, will result in an error.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="isolation"><a class="anchor" href="#isolation"></a>3.2. Isolation</h4>
+<h4 id="isolation"><a class="anchor" href="#isolation"></a>1.1.2. Isolation</h4>
 <div class="paragraph">
 <p>Redis utilizes a single thread to handle user requests, which provides serializable isolation and atomic behavior for multi-key requests.
 Infinispan provides a relaxed isolation level, which is configurable.
@@ -857,7 +628,7 @@ See the <a href="../configuring/configuring.html#transaction_manager">cache conf
 </div>
 </div>
 <div class="sect3">
-<h4 id="transactions"><a class="anchor" href="#transactions"></a>3.3. Transactions</h4>
+<h4 id="transactions"><a class="anchor" href="#transactions"></a>1.1.3. Transactions</h4>
 <div class="paragraph">
 <p>Applications utilizing the <code>MULTI…EXEC</code> commands should update the default cache configuration to enable transactional capabilities.
 Transactions in Redis do not have the concept of rollback to revert in case of failures.
@@ -881,7 +652,7 @@ See the <a href="../configuring/configuring.html#transaction_manager">cache conf
 </div>
 </div>
 <div class="sect3">
-<h4 id="lua_scripts"><a class="anchor" href="#lua_scripts"></a>3.4. Lua Scripts</h4>
+<h4 id="lua_scripts"><a class="anchor" href="#lua_scripts"></a>1.1.4. Lua Scripts</h4>
 <div class="paragraph">
 <p>Lua scripts executed by Infinispan serialize responses using the RESP3 protocol.
 This is equivalent to invoking <code>redis.setresp(3)</code> in every script.</p>
@@ -889,7 +660,7 @@ This is equivalent to invoking <code>redis.setresp(3)</code> in every script.</p
 </div>
 </div>
 <div class="sect2">
-<h3 id="redis-commands_resp-endpoint"><a class="anchor" href="#redis-commands_resp-endpoint"></a>4. Redis commands</h3>
+<h3 id="redis-commands_resp-endpoint"><a class="anchor" href="#redis-commands_resp-endpoint"></a>1.2. Redis commands</h3>
 <div class="paragraph">
 <p>The Infinispan RESP endpoint implements the following Redis commands:</p>
 </div>
@@ -1761,9 +1532,11 @@ This command is deprecated. Use the <code>GETRANGE</code> command instead.
 </div>
 </div>
 </div>
+</div>
+</div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-06-12 09:29:11 UTC
+Last updated 2025-03-27 09:04:58 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
