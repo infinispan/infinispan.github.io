@@ -914,13 +914,13 @@ You can upgrade the version of your cluster between supported Infinispan version
 15.0.3
 15.0.4
 15.0.5
-15.0.6
 15.0.8
 15.0.10
 15.0.11
 15.0.13
 15.0.14
 15.0.15
+15.0.16
 15.1.0
 15.1.1
 15.1.3
@@ -8820,7 +8820,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-07-16 09:24:53 UTC
+Last updated 2025-07-16 10:28:55 UTC
 </div>
 </div>
 <script>
