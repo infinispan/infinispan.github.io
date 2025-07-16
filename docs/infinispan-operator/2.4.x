@@ -914,6 +914,7 @@ You can upgrade the version of your cluster between supported Infinispan version
 15.0.3
 15.0.4
 15.0.5
+15.0.6
 15.0.8
 15.0.10
 15.0.11
@@ -8819,7 +8820,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-07-14 15:30:34 UTC
+Last updated 2025-07-16 09:24:53 UTC
 </div>
 </div>
 <script>
