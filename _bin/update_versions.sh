@@ -7,7 +7,7 @@ update_version ()
 {
   echo -n "Processing $1: "
   BASE_VERSION=$(yq ".$1.minor_version" "$CONFIG_FILE")
-
+  echo $BASE_VERSION
   LATEST_VERSION=$(gh release list -R $REPO |cut -f1|grep "^$BASE_VERSION"|head -n1)
   VERSION_INFO=$(gh release view -R $REPO $LATEST_VERSION --json publishedAt,url|yq -r "[.publishedAt,.url]|@csv"|tr -d \")
 
@@ -28,8 +28,8 @@ update_version ()
   " "$CONFIG_FILE"
 }
 
-update_version "stable" "15.1.x"
-#update_version "unstable" "15.2.x"
+update_version "unstable" "16.0.x"
+update_version "stable" "15.2.x"
 update_version "old.\"15.0\"" "15.0.x"
 update_version "old.\"14.0\"" "14.0.x"
 
