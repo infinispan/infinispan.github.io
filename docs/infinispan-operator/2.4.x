@@ -523,16 +523,17 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#setting-jvm-options_services">7.5. Setting JVM options</a></li>
 <li><a href="#configuring-pod-probesservices">7.6. Configuring pod probes</a></li>
 <li><a href="#configuring-pod-priority_services">7.7. Configuring pod priority</a></li>
-<li><a href="#configuring-logging-pattern_services">7.8. Adjusting log pattern</a></li>
-<li><a href="#configuring-logging-levels_services">7.9. Adjusting log levels</a>
+<li><a href="#configuring-pod-termination-grace-periodservices">7.8. Configuring pod termination grace period</a></li>
+<li><a href="#configuring-logging-pattern_services">7.9. Adjusting log pattern</a></li>
+<li><a href="#configuring-logging-levels_services">7.10. Adjusting log levels</a>
 <ul class="sectlevel3">
-<li><a href="#logging-levels_services">7.9.1. Logging reference</a></li>
+<li><a href="#logging-levels_services">7.10.1. Logging reference</a></li>
 </ul>
 </li>
-<li><a href="#specifying-server-image_services">7.10. Specifying Infinispan Server images</a></li>
-<li><a href="#adding-custom-labels_services">7.11. Adding labels and annotations to Infinispan resources</a></li>
-<li><a href="#adding-labels-annotations-env_services">7.12. Adding labels and annotations with environment variables</a></li>
-<li><a href="#defining-environment-variables_services">7.13. Defining environment variables in the Infinispan Operator subscription</a></li>
+<li><a href="#specifying-server-image_services">7.11. Specifying Infinispan Server images</a></li>
+<li><a href="#adding-custom-labels_services">7.12. Adding labels and annotations to Infinispan resources</a></li>
+<li><a href="#adding-labels-annotations-env_services">7.13. Adding labels and annotations with environment variables</a></li>
+<li><a href="#defining-environment-variables_services">7.14. Defining environment variables in the Infinispan Operator subscription</a></li>
 </ul>
 </li>
 <li><a href="#configuring-authentication">8. Configuring authentication</a>
@@ -3079,7 +3080,39 @@ spec:
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-logging-pattern_services"><a class="anchor" href="#configuring-logging-pattern_services"></a>7.8. Adjusting log pattern</h3>
+<h3 id="configuring-pod-termination-grace-periodservices"><a class="anchor" href="#configuring-pod-termination-grace-periodservices"></a>7.8. Configuring pod termination grace period</h3>
+<div class="paragraph _abstract">
+<p>Optionally configure the <code>TerminationGracePeriodSeconds</code> of the Infinispan pods.</p>
+</div>
+<div class="paragraph">
+<p>The Infinispan Operator relies on the Kubernetes default <code>TerminationGracePeriodSeconds</code> unless a value is explicitly provided.
+We only recommend providing your own value once you have determined that the default value do not match your requirements.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Configure probe values using the <code>spec.service.container.terminationGracePeriodSeconds</code> field:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">spec:
+  service:
+    container:
+      terminationGracePeriodSeconds: 60</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Apply your <code>Infinispan</code> CR.</p>
+<div class="paragraph">
+<p>If your cluster is running, Infinispan Operator restarts the Infinispan pods in order for the changes to take effect.</p>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuring-logging-pattern_services"><a class="anchor" href="#configuring-logging-pattern_services"></a>7.9. Adjusting log pattern</h3>
 <div class="paragraph _abstract">
 <p>To customize the log display for Infinispan log traces, update the log pattern.
 If no custom pattern is set, the default format is:
@@ -3113,7 +3146,7 @@ If no custom pattern is set, the default format is:
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-logging-levels_services"><a class="anchor" href="#configuring-logging-levels_services"></a>7.9. Adjusting log levels</h3>
+<h3 id="configuring-logging-levels_services"><a class="anchor" href="#configuring-logging-levels_services"></a>7.10. Adjusting log levels</h3>
 <div class="paragraph _abstract">
 <p>Change levels for different Infinispan logging categories when you need to debug issues.
 You can also adjust log levels to reduce the number of messages for certain categories to minimize the use of container resources.</p>
@@ -3147,7 +3180,7 @@ You can also adjust log levels to reduce the number of messages for certain cate
 </ol>
 </div>
 <div class="sect3">
-<h4 id="logging-levels_services"><a class="anchor" href="#logging-levels_services"></a>7.9.1. Logging reference</h4>
+<h4 id="logging-levels_services"><a class="anchor" href="#logging-levels_services"></a>7.10.1. Logging reference</h4>
 <div class="paragraph _abstract">
 <p>Find information about log categories and levels.</p>
 </div>
@@ -3226,7 +3259,7 @@ You can direct GC messages to <code>stdout</code> with the following JVM options
 </div>
 </div>
 <div class="sect2">
-<h3 id="specifying-server-image_services"><a class="anchor" href="#specifying-server-image_services"></a>7.10. Specifying Infinispan Server images</h3>
+<h3 id="specifying-server-image_services"><a class="anchor" href="#specifying-server-image_services"></a>7.11. Specifying Infinispan Server images</h3>
 <div class="paragraph _abstract">
 <p>Specify which Infinispan Server image Infinispan Operator should use to create pods with the <code>spec.image</code> field.</p>
 </div>
@@ -3238,7 +3271,7 @@ You can direct GC messages to <code>stdout</code> with the following JVM options
 </div>
 </div>
 <div class="sect2">
-<h3 id="adding-custom-labels_services"><a class="anchor" href="#adding-custom-labels_services"></a>7.11. Adding labels and annotations to Infinispan resources</h3>
+<h3 id="adding-custom-labels_services"><a class="anchor" href="#adding-custom-labels_services"></a>7.12. Adding labels and annotations to Infinispan resources</h3>
 <div class="paragraph _abstract">
 <p>Attach key/value labels and annotations to pods and services that Infinispan Operator creates and manages.
 Labels help you identify relationships between objects to better organize and monitor Infinispan resources.
@@ -3308,7 +3341,7 @@ metadata:
 </div>
 </div>
 <div class="sect2">
-<h3 id="adding-labels-annotations-env_services"><a class="anchor" href="#adding-labels-annotations-env_services"></a>7.12. Adding labels and annotations with environment variables</h3>
+<h3 id="adding-labels-annotations-env_services"><a class="anchor" href="#adding-labels-annotations-env_services"></a>7.13. Adding labels and annotations with environment variables</h3>
 <div class="paragraph _abstract">
 <p>Set environment variables for Infinispan Operator to add labels and annotations that automatically propagate to all Infinispan pods and services.</p>
 </div>
@@ -3367,7 +3400,7 @@ metadata:
 </div>
 </div>
 <div class="sect2">
-<h3 id="defining-environment-variables_services"><a class="anchor" href="#defining-environment-variables_services"></a>7.13. Defining environment variables in the Infinispan Operator subscription</h3>
+<h3 id="defining-environment-variables_services"><a class="anchor" href="#defining-environment-variables_services"></a>7.14. Defining environment variables in the Infinispan Operator subscription</h3>
 <div class="paragraph _abstract">
 <p>You can define environment variables in your Infinispan Operator subscription either when you create or edit the subscription.</p>
 </div>
@@ -8858,7 +8891,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-08-13 11:10:21 UTC
+Last updated 2025-08-13 16:55:34 UTC
 </div>
 </div>
 <script>
