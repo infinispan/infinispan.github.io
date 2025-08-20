@@ -772,6 +772,184 @@ You can upgrade the version of your cluster between supported Infinispan version
 </div></div></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.2</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>13.0.10
+14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+15.0.0
+15.0.3
+15.0.4</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.3</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+15.0.0
+15.0.3
+15.0.4
+15.0.5</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.4</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.8</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.5</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.6</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.7</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.1.0</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.8</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.1.0
+15.1.1</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.9</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.1.0
+15.1.1
+15.1.3</p>
+</div></div></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2.4.10</p></td>
 <td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
 <p>14.0.1
@@ -1008,184 +1186,6 @@ You can upgrade the version of your cluster between supported Infinispan version
 15.2.2
 15.2.4
 15.2.5</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.2</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>13.0.10
-14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-15.0.0
-15.0.3
-15.0.4</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.3</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-15.0.0
-15.0.3
-15.0.4
-15.0.5</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.4</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-14.0.32
-15.0.0
-15.0.3
-15.0.4
-15.0.8</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.5</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-14.0.32
-15.0.0
-15.0.3
-15.0.4
-15.0.5
-15.0.8
-15.0.10</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.6</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-14.0.32
-15.0.0
-15.0.3
-15.0.4
-15.0.5
-15.0.8
-15.0.10
-15.0.11</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.7</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-14.0.32
-15.0.0
-15.0.3
-15.0.4
-15.0.5
-15.0.8
-15.0.10
-15.0.11
-15.1.0</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.8</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-14.0.32
-15.0.0
-15.0.3
-15.0.4
-15.0.5
-15.0.8
-15.0.10
-15.0.11
-15.1.0
-15.1.1</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.9</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-14.0.32
-15.0.0
-15.0.3
-15.0.4
-15.0.5
-15.0.8
-15.0.10
-15.0.11
-15.1.0
-15.1.1
-15.1.3</p>
 </div></div></td>
 </tr>
 </tbody>
@@ -8930,7 +8930,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-08-19 15:07:12 UTC
+Last updated 2025-08-20 11:15:43 UTC
 </div>
 </div>
 <script>
