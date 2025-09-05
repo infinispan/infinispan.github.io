@@ -8930,7 +8930,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-09-04 14:25:54 UTC
+Last updated 2025-09-05 07:28:44 UTC
 </div>
 </div>
 <script>
