@@ -1188,6 +1188,90 @@ You can upgrade the version of your cluster between supported Infinispan version
 15.2.5</p>
 </div></div></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.17</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.0.16
+15.0.18
+15.0.19
+15.0.20
+15.0.21
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4
+15.2.5
+15.2.6</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.18</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.0.16
+15.0.18
+15.0.19
+15.0.20
+15.0.21
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4
+15.2.5
+15.2.6</p>
+</div></div></td>
+</tr>
 </tbody>
 </table>
 <div class="admonitionblock important">
@@ -8930,7 +9014,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-09-08 08:14:34 UTC
+Last updated 2025-09-12 11:12:18 UTC
 </div>
 </div>
 <script>
