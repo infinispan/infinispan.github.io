@@ -555,9 +555,10 @@ $(addBlockSwitches);
 </ul>
 </li>
 <li><a href="#spring-boot-serialization_remote">2.3. Configuring Marshalling</a></li>
-<li><a href="#remote-custom-beans_remote">2.4. Cache Manager Configuration Beans</a></li>
-<li><a href="#enabling-spring-cache_remote">2.5. Enabling Spring Cache Support</a></li>
-<li><a href="#exposing-statistics-actuator_remote">2.6. Exposing Infinispan Statistics</a></li>
+<li><a href="#configuring-remote-cache-config-remote_remote">2.4. Configuring and creating caches on startup from the client</a></li>
+<li><a href="#remote-custom-beans_remote">2.5. Cache Manager Configuration Beans</a></li>
+<li><a href="#enabling-spring-cache_remote">2.6. Enabling Spring Cache Support</a></li>
+<li><a href="#exposing-statistics-actuator_remote">2.7. Exposing Infinispan Statistics</a></li>
 </ul>
 </li>
 <li><a href="#using-spring-session">3. Using Spring Session</a>
@@ -918,7 +919,79 @@ You can specify a comma-separated list of fully qualified class names or a regul
 </div>
 </div>
 <div class="sect2">
-<h3 id="remote-custom-beans_remote"><a class="anchor" href="#remote-custom-beans_remote"></a>2.4. Cache Manager Configuration Beans</h3>
+<h3 id="configuring-remote-cache-config-remote_remote"><a class="anchor" href="#configuring-remote-cache-config-remote_remote"></a>2.4. Configuring and creating caches on startup from the client</h3>
+<div class="paragraph">
+<p>Configure Infinispan to create caches on first access from the client.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Open <code>hotrod-client.properties</code> or <code>application.properties</code> or  <code>application.yaml</code> for editing.</p>
+</li>
+<li>
+<p>Do one of the following:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-properties hljs" data-lang="properties">infinispan.client.hotrod.cache.mycache.template_name=mytemplate1
+infinispan.client.hotrod.cache.mycache.force_return_values=true
+infinispan.client.hotrod.cache.mycache.marshaller=org.infinispan.commons.marshall.JavaSerializationMarshaller
+infinispan.client.hotrod.cache.[com.myproject.mycache].template_name=mytemplate1
+infinispan.client.hotrod.cache.[com.myproject.mycache].marshaller=org.infinispan.commons.marshall.UTF8StringMarshaller
+infinispan.client.hotrod.cache.[com.myproject.mycache].near_cache.mode=INVALIDATED
+infinispan.client.hotrod.cache.[com.myproject.*].template_name=mytemplate2
+infinispan.client.hotrod.cache.[com.myproject.*].transaction.transaction_mode=NON_XA</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-properties hljs" data-lang="properties">infinispan.remote.cache.example.configuration=&lt;distributed-cache/&gt;
+infinispan.remote.cache.example.force-return-values=true
+infinispan.remote.cache.mycache.template-name=myTemplate
+infinispan.remote.cache.mycache.marshaller=org.infinispan.commons.marshall.JavaSerializationMarshaller
+infinispan.remote.cache.[com.myproject.mycache].template-name=myCustomTemplate
+infinispan.remote.cache.[com.myproject.mycache].marshaller=org.infinispan.commons.marshall.UTF8StringMarshaller
+infinispan.remote.cache.[com.myproject.mycache].near-cache.mode=INVALIDATED
+infinispan.remote.cache.[com.myproject.*].template-name=myCustomTemplate
+infinispan.remote.cache.[com.myproject.*].transaction.transaction-mode=NON_XA</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml"># Infinispan Configuration
+infinispan:
+  remote:
+    # Basic Connection Settings
+    server-list: "180.567.112.333:6668"
+
+    # Cache Configurations
+    cache:
+      example:
+        configuration: "&lt;distributed-cache/&gt;"
+        force-return-values: true
+      mycache:
+        template-name: "myTemplate"
+        marshaller: "org.infinispan.commons.marshall.JavaSerializationMarshaller"
+      "[com.mycompany.mycache]":
+        template-name: "mytemplate2"
+        marshaller: "org.infinispan.commons.marshall.UTF8StringMarshaller"
+        near-cache:
+          mode: "INVALIDATED"
+      "[com.mycompany.*]":
+        template-name: "mytemplate2"
+        transaction:
+          transaction-mode: "NON_XA"</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Save and close your properties or yaml file.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="remote-custom-beans_remote"><a class="anchor" href="#remote-custom-beans_remote"></a>2.5. Cache Manager Configuration Beans</h3>
 <div class="paragraph">
 <p>Customize the Cache Manager with the following configuration beans:</p>
 </div>
@@ -1000,7 +1073,7 @@ public InfinispanRemoteCacheCustomizer customizer() {
 </div>
 </div>
 <div class="sect2">
-<h3 id="enabling-spring-cache_remote"><a class="anchor" href="#enabling-spring-cache_remote"></a>2.5. Enabling Spring Cache Support</h3>
+<h3 id="enabling-spring-cache_remote"><a class="anchor" href="#enabling-spring-cache_remote"></a>2.6. Enabling Spring Cache Support</h3>
 <div class="paragraph">
 <p>With both embedded and remote caches, Infinispan provides an implementation of Spring Cache that you can enable.</p>
 </div>
@@ -1031,7 +1104,7 @@ public InfinispanRemoteCacheCustomizer customizer() {
 </div>
 </div>
 <div class="sect2">
-<h3 id="exposing-statistics-actuator_remote"><a class="anchor" href="#exposing-statistics-actuator_remote"></a>2.6. Exposing Infinispan Statistics</h3>
+<h3 id="exposing-statistics-actuator_remote"><a class="anchor" href="#exposing-statistics-actuator_remote"></a>2.7. Exposing Infinispan Statistics</h3>
 <div class="paragraph">
 <p>Infinispan supports the Spring Boot Actuator to expose cache statistics as metrics.</p>
 </div>
@@ -1221,7 +1294,7 @@ To use Spring Session, you must first create a Infinispan cache.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-09-30 17:43:07 UTC
+Last updated 2025-10-02 09:13:03 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
