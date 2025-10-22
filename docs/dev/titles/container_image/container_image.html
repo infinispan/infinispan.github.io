@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.23">
-<title>Infinispan Developer Guide</title>
+<title>Guide to Infinispan Server Container Images</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -454,7 +454,6 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
 <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
 <script src="../../js/js.js"></script>
-<link rel="canonical" href="https://infinispan.org/docs/stable/titles/developing/developing.html">
 <style>
 .hidden {
     display: none;
@@ -532,16 +531,318 @@ $(addBlockSwitches);
 </script>
 
 </head>
-<body class="book">
+<body class="book toc2 toc-left">
 <div id="header">
-<h1>Infinispan Developer Guide</h1>
+<h1>Guide to Infinispan Server Container Images</h1>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#getting_started_with_infinispan_server_container_images">1. Getting started with Infinispan Server Container Images</a>
+<ul class="sectlevel2">
+<li><a href="#hot_rod_clients">1.1. Hot Rod Clients</a></li>
+<li><a href="#identities_batch">1.2. Identities Batch</a></li>
+<li><a href="#server_configuration">1.3. Server Configuration</a>
+<ul class="sectlevel3">
+<li><a href="#kubernetesopenshift_clustering">1.3.1. Kubernetes/OpenShift Clustering</a></li>
+<li><a href="#java_properties">1.3.2. Java Properties</a></li>
+<li><a href="#deploying_artifacts_to_the_server_lib_directory">1.3.3. Deploying artifacts to the server lib directory</a></li>
+</ul>
+</li>
+<li><a href="#kubernetes">1.4. Kubernetes</a>
+<ul class="sectlevel3">
+<li><a href="#liveness_and_readiness_probes">1.4.1. Liveness and Readiness Probes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#troubleshooting_infinispan_container_images">2. Troubleshooting Infinispan container images</a>
+<ul class="sectlevel2">
+<li><a href="#image_configuration">2.1. Image Configuration</a></li>
+<li><a href="#infinispan_server">2.2. Infinispan Server</a></li>
+<li><a href="#image_tools">2.3. Image Tools</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 <div id="content">
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>This guide is no longer maintained.
-Please visit the <a href="../../index.html">Infinispan documentation index</a>.</p>
+<p>The Infinispan Server container images runs in a dedicated Java Virtual Machine (JVM) and provides client access to remote caches through Hot Rod or REST endpoints.
+Infinispan Server speeds time to deployment by separating caches from application logic and offers built-in capabilities for monitoring and administration.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="getting_started_with_infinispan_server_container_images"><a class="anchor" href="#getting_started_with_infinispan_server_container_images"></a>1. Getting started with Infinispan Server Container Images</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>To get started with Infinispan Server container images on your local machine simply execute:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker run -p 11222:11222 infinispan/server</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>or</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">podman run --net=host -p 11222:11222 infinispan/server</code></pre>
+</div>
+</div>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>When utilising [podman](<a href="https://podman.io/" class="bare">https://podman.io/</a>) it&#8217;s necessary for the <code>--net=host</code> to be passed when not executing as <code>sudo</code>.</p>
+</div>
+</blockquote>
+</div>
+<div class="paragraph">
+<p>By default, the image has authentication enabled on all exposed endpoints. When executing the above command the image automatically generates a username/password combo with the <code>admin</code> role, prints the values to stdout and then starts the Infinispan server with the authenticated Hotrod and Rest endpoints exposed on port <code>11222</code>. Therefore, it&#8217;s necessary to utilise the printed credentials when accessing the exposed endpoints via clients.</p>
+</div>
+<div class="paragraph">
+<p>It is also possible to provide an admin username/password combination via environment variables:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker run -p 11222:11222 -e USER="admin" -e PASS="changeme" infinispan/server</code></pre>
+</div>
+</div>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>We recommend utilising the auto-generated credentials or USER &amp; PASS env variables for initial development only. Providing authentication and authorization configuration via an [Identities Batch file](#identities-batch) allows for much greater control.</p>
+</div>
+</blockquote>
+</div>
+<div class="sect2">
+<h3 id="hot_rod_clients"><a class="anchor" href="#hot_rod_clients"></a>1.1. Hot Rod Clients</h3>
+<div class="paragraph">
+<p>When connecting a Hot Rod client to the image, the following SASL properties must be configured on your client (with the username and password properties changed as required):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-properties hljs" data-lang="properties">infinispan.client.hotrod.auth_username=admin
+infinispan.client.hotrod.auth_password=changme
+infinispan.client.hotrod.sasl_mechanism=DIGEST-MD5</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="identities_batch"><a class="anchor" href="#identities_batch"></a>1.2. Identities Batch</h3>
+<div class="paragraph">
+<p>User identities and roles can be defined by providing a cli batch file via the <code>IDENTITIES_BATCH</code> env variable.
+All the cli commands defined in this file are executed before the server is started, therefore it iss only possible to execute offline commands otherwise the container will fail. For example, including <code>create cache &#8230;&#8203;</code> in the batch would fail as it requires a connection to an Infinispan server.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan provides implicit roles for some users.</p>
+</div>
+<div class="paragraph">
+<p>[TIP] Check Infinispan [documentation](<a href="https://infinispan.org/docs/stable/titles/configuring/configuring.html#default-user-roles_security-authorization" class="bare">https://infinispan.org/docs/stable/titles/configuring/configuring.html#default-user-roles_security-authorization</a>)
+to know more about implicit roles and authorization</p>
+</div>
+<div class="paragraph">
+<p>Below is an example Identities batch CLI file <code>identities.batch</code>, that defines four users and their role:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">user create "Alan Shearer" -p "striker9" -g admin
+user create "observer" -p "secret1"
+user create "deployer" -p "secret2"
+user create "Rigoberta Baldini" -p "secret3" -g monitor</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To run the image using a local <code>identities.batch</code>, execute:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker run -v $(pwd):/user-config -e IDENTITIES_BATCH="/user-config/identities.batch" -p 11222:11222 infinispan/server</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="server_configuration"><a class="anchor" href="#server_configuration"></a>1.3. Server Configuration</h3>
+<div class="paragraph">
+<p>The Infinispan image passes all container arguments to the created server, therefore it is possible to configure the server in the same manner as a non-containerised deployment.</p>
+</div>
+<div class="paragraph">
+<p>Below shows how a [docker volume](<a href="https://docs.docker.com/storage/volumes/" class="bare">https://docs.docker.com/storage/volumes/</a>) can be created and mounted in order to run the Infinispan image with the local configuration file <code>my-infinispan-config.xml</code> located in the users current working directory.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker run -v $(pwd):/user-config -e IDENTITIES_BATCH="/user-config/identities.batch" -p 11222:11222 infinispan/server -c /user-config/my-infinispan-config.xml</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="kubernetesopenshift_clustering"><a class="anchor" href="#kubernetesopenshift_clustering"></a>1.3.1. Kubernetes/OpenShift Clustering</h4>
+<div class="paragraph">
+<p>When running in a managed environment such as Kubernetes, it is not possible to utilise multicasting for initial node discovery, therefore we must utilise the JGroups [DNS_PING](<a href="http://jgroups.org/manual4/index.html#_dns_ping" class="bare">http://jgroups.org/manual4/index.html#_dns_ping</a>) protocol to discover cluster members. To enable this, we must provide the <code>jgroups.dnsPing.query</code> property and configure the <code>kubernetes</code> stack.</p>
+</div>
+<div class="paragraph">
+<p>To utilise the tcp stack with DNS_PING, execute the following config:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker run -v $(pwd):/user-config infinispan/server --bind-address=0.0.0.0  -Dinfinispan.cluster.stack=kubernetes -Djgroups.dns.query="infinispan-dns-ping.myproject.svc.cluster.local"</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="java_properties"><a class="anchor" href="#java_properties"></a>1.3.2. Java Properties</h4>
+<div class="paragraph">
+<p>It is possible to provide additional Java properties and JVM options to the server images via the <code>JAVA_OPTIONS</code> env variable.
+For example, to quickly configure CORS without providing a server.yaml file, do the following:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker run -e JAVA_OPTIONS="-Dinfinispan.cors.enableAll=https://host.domain:port" infinispan/server</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="deploying_artifacts_to_the_server_lib_directory"><a class="anchor" href="#deploying_artifacts_to_the_server_lib_directory"></a>1.3.3. Deploying artifacts to the server lib directory</h4>
+<div class="paragraph">
+<p>Deploy artifacts to the server lib directory using the <code>SERVER_LIBS</code> env variable.
+For example, to add the PostgreSQL JDBC driver to the server:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker run -e SERVER_LIBS="org.postgresql:postgresql:42.3.1" infinispan/server</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>SERVER_LIBS</code> variable supports multiple, space-separated artifacts represented as URLs or as Maven coordinates. Archive artifacts in <code>.tar</code>, <code>.tar.gz</code> or <code>.zip</code> formats will be extracted. Refer to the [CLI](<a href="https://infinispan.org/docs/stable/titles/cli/cli.html#install1" class="bare">https://infinispan.org/docs/stable/titles/cli/cli.html#install1</a>) <code>install</code> command help to learn about all possible arguments and options.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="kubernetes"><a class="anchor" href="#kubernetes"></a>1.4. Kubernetes</h3>
+<div class="sect3">
+<h4 id="liveness_and_readiness_probes"><a class="anchor" href="#liveness_and_readiness_probes"></a>1.4.1. Liveness and Readiness Probes</h4>
+<div class="paragraph">
+<p>It is recommended to utilise Infinispan&#8217;s REST endpoint in order to determine if the server is ready/live. To do this, you can utilise the Kubernetes [httpGet probes](<a href="https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/" class="bare">https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/</a>) as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">livenessProbe:
+  httpGet:
+    path: /rest/v2/container/health/status
+    port: 11222
+  failureThreshold: 5
+  initialDelaySeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 10
+readinessProbe:
+  httpGet:
+    path: /rest/v2/container/health/status
+    port: 11222
+  failureThreshold: 5
+  initialDelaySeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 10</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="troubleshooting_infinispan_container_images"><a class="anchor" href="#troubleshooting_infinispan_container_images"></a>2. Troubleshooting Infinispan container images</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="image_configuration"><a class="anchor" href="#image_configuration"></a>2.1. Image Configuration</h3>
+<div class="paragraph">
+<p>The image scripts that are used to configure and launch the executables can be debugged by setting the environment variable <code>DEBUG=TRUE</code> as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"> docker run -e DEBUG=true infinispan/&lt;image-name&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="infinispan_server"><a class="anchor" href="#infinispan_server"></a>2.2. Infinispan Server</h3>
+<div class="paragraph">
+<p>It&#8217;s also possible to debug the Infinispan Server in the image by setting the <code>DEBUG_PORT</code> environment variable as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker run -e DEBUG_PORT="*:8787" -p 8787:8787 infinispan/server</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="image_tools"><a class="anchor" href="#image_tools"></a>2.3. Image Tools</h3>
+<div class="paragraph">
+<p>In order to keep the image size as small as possible, we include a minimal set of tools and utilities to help debug issues with the container.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Task</th>
+<th class="tableblock halign-left valign-top">Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Text editor</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>vi</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Get the PID of the Java process</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ps -fC java</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Get socket/file information</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsof</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">List all open files excluding network sockets</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsof | grep -v 'IP|IPv4|IPv6|TCP|UDP|sock|FIFO|STRM|unix'</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">List all TCP sockets</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsof -i TCP</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">List all UDP sockets</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsof -i UDP</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Network configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ip</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Show unicast routes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ip route</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Show multicast routes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ip maddress</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>| Task                                          | Command                 |
+|-----------------------------------------------|-------------------------|
+| Text editor                                   | vi                      |
+| Get the PID of the java process               | ps -fC java             |
+| Get socket/file information                   | lsof                    |
+| List all open files excluding network sockets | lsof\|grep -v "IPv[46]" |
+| List all TCP sockets                          | ss -t -a                |
+| List all UDP sockets                          | ss -u -a                |
+| Network configuration                         | ip                      |
+| Show unicast routes                           | ip route                |
+| Show multicast routes                         | ip maddress             |</p>
+</div>
 </div>
 </div>
 </div>
