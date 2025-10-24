@@ -499,9 +499,10 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#cluster-upgrades_upgrading-clusters">6.1. Infinispan cluster upgrades</a></li>
 <li><a href="#upgrading-clusters-downtime_upgrading-clusters">6.2. Upgrading Infinispan clusters with downtime</a></li>
-<li><a href="#upgrading-clusters-rolling_upgrading-clusters">6.3. Performing Hot Rod rolling upgrades for Infinispan clusters</a>
+<li><a href="#upgrading-clusters-inplace_upgrading-clusters">6.3. Upgrading Infinispan clusters using InPlace rolling strategy</a></li>
+<li><a href="#upgrading-clusters-rolling_upgrading-clusters">6.4. Performing Hot Rod rolling upgrades for Infinispan clusters</a>
 <ul class="sectlevel3">
-<li><a href="#recovering_rolling_upgrades_upgrading-clusters">6.3.1. Recovering from a failed Hot Rod rolling upgrade</a></li>
+<li><a href="#recovering_rolling_upgrades_upgrading-clusters">6.4.1. Recovering from a failed Hot Rod rolling upgrade</a></li>
 </ul>
 </li>
 </ul>
@@ -2462,17 +2463,35 @@ data:
 <h3 id="cluster-upgrades_upgrading-clusters"><a class="anchor" href="#cluster-upgrades_upgrading-clusters"></a>6.1. Infinispan cluster upgrades</h3>
 <div class="paragraph _abstract">
 <p>The <code>spec.upgrades.type</code> field controls how Infinispan Operator upgrades your Infinispan cluster when new versions become available.
-There are two types of cluster upgrade:</p>
+There are three types of cluster upgrade:</p>
 </div>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><code>Shutdown</code></dt>
 <dd>
-<p>Upgrades Infinispan clusters with service downtime. This is the default upgrade type.</p>
+<p>Upgrades Infinispan clusters, with service downtime, by bringing down the original cluster and bringing up a new one in its place. This is the default upgrade type.</p>
+</dd>
+<dt class="hdlist1"><code>InPlaceRolling</code></dt>
+<dd>
+<p>Upgrades Infinispan cluster pods to new patch releases individually, using a StatefulSet RollingUpdate.</p>
 </dd>
 <dt class="hdlist1"><code>HotRodRolling</code></dt>
 <dd>
-<p>Upgrades Infinispan clusters without service downtime.</p>
+<p>Upgrades Infinispan versions, without service downtime, by deploying a new cluster in parallel to the original and transitioning all traffic to it.</p>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The Operator does not automatically upgrade clusters to a new Infinispan server version. In order to trigger an upgrade, you must explicitly change the <code>spec.version</code> element to a new version.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </dd>
 </dl>
 </div>
@@ -2493,7 +2512,38 @@ There are two types of cluster upgrade:</p>
 </li>
 </ol>
 </div>
-<h4 id="_hot_rod_rolling_upgrades" class="discrete">Hot Rod rolling upgrades</h4>
+<h4 id="_inplacerolling_upgrades" class="discrete">InPlaceRolling upgrades</h4>
+<div class="paragraph">
+<p>To perform a rolling upgrade, Infinispan Operator does the following:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Checks if the Infinispan version supports rolling upgrades.</p>
+</li>
+<li>
+<p>Checks whether the current version and target version have matching major and minor versions.</p>
+</li>
+<li>
+<p>If the conditions above are met, the Operator will upgrade server pods one by one using a StatefulSet RollingUpdate.</p>
+</li>
+</ol>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+===
+When upgrading between different major or minor versions of the server, the "Shutdown" or "HotRodRolling" upgrade type is required. This must be configured in the CR spec at the the same time as the new version.
+===
+</td>
+</tr>
+</table>
+</div>
+<h4 id="_hotrodrolling_upgrades" class="discrete">HotRodRolling upgrades</h4>
 <div class="paragraph">
 <p>To perform a Hot Rod rolling upgrade, Infinispan Operator does the following:</p>
 </div>
@@ -2541,9 +2591,6 @@ In the event that the upgrade does not complete successfully, passivation can re
 <div class="title">Prerequisites</div>
 <ul>
 <li>
-<p>The Infinispan Operator version you have installed supports the Infinispan target version.</p>
-</li>
-<li>
 <p>If required, configure a persistent cache store to preserve your data during the upgrade.</p>
 <div class="admonitionblock important">
 <table>
@@ -2585,12 +2632,45 @@ This results in data loss if you do not configure a persistent cache store.</p>
 </li>
 </ol>
 </div>
-<div class="paragraph">
-<p>When new Infinispan version becomes available, you must manually change the value in the <code>spec.version</code> field to trigger the upgrade.</p>
+</div>
+<div class="sect2">
+<h3 id="upgrading-clusters-inplace_upgrading-clusters"><a class="anchor" href="#upgrading-clusters-inplace_upgrading-clusters"></a>6.3. Upgrading Infinispan clusters using InPlace rolling strategy</h3>
+<div class="paragraph _abstract">
+<p>Upgrading Infinispan clusters using InPlace rolling strategy with no service downtime.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Upgrading to a new Infinispan server patch release</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Specify the Infinispan version number in the <code>spec.version</code> field.</p>
+</li>
+<li>
+<p>Ensure that <code>InPlaceRolling</code> is set as the value for the <code>spec.upgrades.type</code> field.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>spec:
+  version: 16.0.0
+  upgrades:
+    type: InPlaceRolling</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Apply your changes, if necessary.</p>
+</li>
+</ol>
 </div>
 </div>
 <div class="sect2">
-<h3 id="upgrading-clusters-rolling_upgrading-clusters"><a class="anchor" href="#upgrading-clusters-rolling_upgrading-clusters"></a>6.3. Performing Hot Rod rolling upgrades for Infinispan clusters</h3>
+<h3 id="upgrading-clusters-rolling_upgrading-clusters"><a class="anchor" href="#upgrading-clusters-rolling_upgrading-clusters"></a>6.4. Performing Hot Rod rolling upgrades for Infinispan clusters</h3>
 <div class="paragraph _abstract">
 <p>Performing Hot Rod rolling upgrades lets you move to a new Infinispan version without service disruption.
 However, this upgrade type requires additional capacity and temporarily results in two Infinispan clusters with different versions running concurrently.</p>
@@ -2625,11 +2705,8 @@ However, this upgrade type requires additional capacity and temporarily results 
 </li>
 </ol>
 </div>
-<div class="paragraph">
-<p>When new Infinispan version becomes available, you must manually change the value in the <code>spec.version</code> field to trigger the upgrade.</p>
-</div>
 <div class="sect3">
-<h4 id="recovering_rolling_upgrades_upgrading-clusters"><a class="anchor" href="#recovering_rolling_upgrades_upgrading-clusters"></a>6.3.1. Recovering from a failed Hot Rod rolling upgrade</h4>
+<h4 id="recovering_rolling_upgrades_upgrading-clusters"><a class="anchor" href="#recovering_rolling_upgrades_upgrading-clusters"></a>6.4.1. Recovering from a failed Hot Rod rolling upgrade</h4>
 <div class="paragraph _abstract">
 <p>You can roll back a failed Hot Rod rolling upgrade to the previous version if the original cluster is still present.</p>
 </div>
@@ -3451,6 +3528,20 @@ You can direct GC messages to <code>stdout</code> with the following JVM options
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">spec:
   image: quay.io/infinispan/server:latest</code></pre>
 </div>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+===
+When using custom image, specify <code>spec.version</code> of the server within the image as well. Different declared and deployed versions may result in unpredictable behavior.
+===
+</td>
+</tr>
+</table>
 </div>
 </div>
 <div class="sect2">
@@ -9118,7 +9209,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-23 20:56:39 UTC
+Last updated 2025-10-24 11:29:01 UTC
 </div>
 </div>
 <script>
