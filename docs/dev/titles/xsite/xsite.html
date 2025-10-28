@@ -546,7 +546,7 @@ $(addBlockSwitches);
 <li><a href="#cross-site-backup-strategies_cross-site-replication">1.4. Backup strategies</a></li>
 <li><a href="#cross-site-automatic-offline_cross-site-replication">1.5. Automatic offline parameters for backup locations</a></li>
 <li><a href="#cross-site-state-transfer_cross-site-replication">1.6. State transfer</a></li>
-<li><a href="#cross-site-client-connections_cross-site-replication">1.7. Client connections across sites</a>
+<li><a href="#cross-site-client-connections_cross-site-replication">1.7. Client connections across clusters</a>
 <ul class="sectlevel3">
 <li><a href="#concurrent-writes-conflicting-entries_cross-site-replication">1.7.1. Concurrent writes and conflicting entries</a></li>
 </ul>
@@ -556,11 +556,7 @@ $(addBlockSwitches);
 </li>
 <li><a href="#configuring-cross-site-replication">2. Configuring Infinispan cross-site replication</a>
 <ul class="sectlevel2">
-<li><a href="#configuring-cluster-transport-cross-site_configuring-cross-site-replication">2.1. Configuring cluster transport for cross-site replication</a>
-<ul class="sectlevel3">
-<li><a href="#custom-jgroups-relay-stacks_configuring-cross-site-replication">2.1.1. Custom JGroups RELAY2 stacks</a></li>
-</ul>
-</li>
+<li><a href="#configuring-cluster-transport-cross-site_configuring-cross-site-replication">2.1. Configuring cluster transport for cross-site replication</a></li>
 <li><a href="#adding-backup-locations-caches_configuring-cross-site-replication">2.2. Adding backup locations to caches</a></li>
 <li><a href="#backing-up-caches-different-names_configuring-cross-site-replication">2.3. Backing up to caches with different names</a></li>
 <li><a href="#configuring-state-transfer_configuring-cross-site-replication">2.4. Configuring cross-site state transfer</a></li>
@@ -589,11 +585,11 @@ $(addBlockSwitches);
 <li><a href="#rest_v2_xsite_clear_transfer_status_cross-site-operations-rest">4.8. Clearing state transfer status</a></li>
 <li><a href="#rest_v2_xsite_tuning_takeoffline_cross-site-operations-rest">4.9. Modifying take offline conditions</a></li>
 <li><a href="#rest_v2_xsite_cancel_receive_state_cross-site-operations-rest">4.10. Canceling state transfer from receiving sites</a></li>
-<li><a href="#rest_v2_cache_manager_site_status_cross-site-operations-rest">4.11. Getting status of backup locations</a></li>
-<li><a href="#rest_v2_cache_manager_take_offline_cross-site-operations-rest">4.12. Taking backup locations offline</a></li>
-<li><a href="#rest_v2_cache_manager_bring_online_cross-site-operations-rest">4.13. Bringing backup locations online</a></li>
-<li><a href="#rest_v2_cache_manager_get_state_transfer_mode_cross-site-operations-rest">4.14. Retrieving the state transfer mode</a></li>
-<li><a href="#rest_v2_cache_manager_set_state_transfer_mode_cross-site-operations-rest">4.15. Setting the state transfer mode</a></li>
+<li><a href="#rest_v2_xsite_get_state_transfer_mode_cross-site-operations-rest">4.11. Retrieving the state transfer mode</a></li>
+<li><a href="#rest_v2_xsite_set_state_transfer_mode_cross-site-operations-rest">4.12. Setting the state transfer mode</a></li>
+<li><a href="#rest_v2_cache_manager_site_status_cross-site-operations-rest">4.13. Getting status of backup locations</a></li>
+<li><a href="#rest_v2_cache_manager_take_offline_cross-site-operations-rest">4.14. Taking backup locations offline</a></li>
+<li><a href="#rest_v2_cache_manager_bring_online_cross-site-operations-rest">4.15. Bringing backup locations online</a></li>
 <li><a href="#rest_v2_cache_manager_start_push_cross-site-operations-rest">4.16. Starting state transfer</a></li>
 <li><a href="#rest_v2_cache_manager_cancel_push_cross-site-operations-rest">4.17. Canceling state transfer</a></li>
 </ul>
@@ -648,15 +644,12 @@ Cross-site replication provides Infinispan with a global cluster view and:</p>
 <div class="sect2">
 <h3 id="cross-site-relay-nodes_cross-site-replication"><a class="anchor" href="#cross-site-relay-nodes_cross-site-replication"></a>1.2. Relay nodes</h3>
 <div class="paragraph">
-<p>Relay nodes are the nodes in Infinispan clusters that are responsible for sending and receiving requests from backup locations.</p>
-</div>
-<div class="paragraph">
-<p>If a node is not a relay node, it must forward backup requests to a local relay node.
-Only relay nodes can send requests to backup locations.</p>
+<p>Relay nodes are the nodes in Infinispan clusters that are responsible for sending and receiving requests from backup locations.
+If a node is not a relay node, it must forward backup requests to a local relay node.</p>
 </div>
 <div class="paragraph">
 <p>For optimal performance, you should configure all nodes as relay nodes.
-This increases the speed of backup requests because each node in the cluster can backup to remote sites directly without having to forward backup requests to local relay nodes.</p>
+This increases the speed of backup requests because each node in the cluster can backup to remote clusters directly without having to forward backup requests to local relay nodes.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -731,26 +724,39 @@ For example, if a client writes "k1" to <strong>LON</strong>, Infinispan backs u
 With the synchronous strategy, Infinispan waits for both write operations to complete before returning.</p>
 </div>
 <div class="paragraph">
-<p>You can control how Infinispan handles writes to the cache on the local cluster if backup operations fail.
-Infinispan can do the following:</p>
+<p>You can control how Infinispan handles writes to the local cluster&#8217;s cache if backup operations fail.
+Infinispan can take the following actions:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Ignore the failed backup and silently continue the write to the local cluster.</p>
+<p>Ignore the failed backup and silently continue the write to the local cache.</p>
 </li>
 <li>
-<p>Log a warning message or throw an exception and continue the write to the local cluster.</p>
+<p>Log a warning or throw an exception and continue the write to the local cache.</p>
 </li>
 <li>
 <p>Handle failed backup operations with custom logic.</p>
 </li>
 </ul>
 </div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
 <div class="paragraph">
-<p>Synchronous backups also support two-phase commits with caches that participate in optimistic transactions.
-The first phase of the backup acquires a lock.
-The second phase commits the modification.</p>
+<p>Due to the concurrent acquisition of write locks, a deadlock may occur if the same key is written to concurrently across multiple clusters.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Synchronous backups also support two-phase commits for caches that participate in optimistic transactions.
+The first phase acquires the locks, and the second phase commits the modifications.</p>
 </div>
 <div class="admonitionblock important">
 <table>
@@ -760,7 +766,8 @@ The second phase commits the modification.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Two-phase commit with cross-site replication has a significant performance impact because it requires two round-trips across the network.</p>
+<p>Two-phase commit with cross-site replication has a significant performance impact because it requires two round-trips across the network.
+It also requires exactly one relay node per cluster.</p>
 </div>
 </td>
 </tr>
@@ -768,16 +775,16 @@ The second phase commits the modification.</p>
 </div>
 <h4 id="asynchronous_strategy" class="discrete">Asynchronous strategy</h4>
 <div class="paragraph">
-<p>When Infinispan replicates data to backup locations, it does not wait until the operation completes before writing to the local cache.</p>
+<p>When Infinispan replicates data to backup locations, it does not wait for the write operation to complete before writing to the local cache.</p>
 </div>
 <div class="paragraph">
-<p>Asynchronous backup operations and writes to the local cache are independent of each other.
-If backup operations fail, write operations to the local cache continue and no exceptions occur.
-When this happens Infinispan also retries the write operation until the remote cluster disconnects from the cross-site view.</p>
+<p>Asynchronous backup write operations to the local cache are independent of each other.
+If a backup write operation fails, the local cache continue and no exceptions are thrown.
+When this happens, Infinispan also retries the failed backup operation until the remote cluster disconnects from the cross-site view.</p>
 </div>
 <h4 id="synchronous_vs_asynchronous_backups" class="discrete">Synchronous vs asynchronous backups</h4>
 <div class="paragraph">
-<p>Synchronous backups offer the strongest guarantee of data consistency across sites.
+<p>Synchronous backups offer the strongest guarantee of data consistency across clusters.
 If <code>strategy=sync</code>, when <code>cache.put()</code> calls return you know the value is up to date in the local cache and in the backup locations.</p>
 </div>
 <div class="paragraph">
@@ -785,19 +792,18 @@ If <code>strategy=sync</code>, when <code>cache.put()</code> calls return you kn
 Synchronous backups have much greater latency in comparison to asynchronous backups.</p>
 </div>
 <div class="paragraph">
-<p>Asynchronous backups, on the other hand, do not add latency to client requests so they have no performance impact.
+<p>Asynchronous backups, on the other hand, do not add latency to client requests, so they have no performance impact.
 However, if <code>strategy=async</code>, when <code>cache.put()</code> calls return you cannot be sure of that the value in the backup location is the same as in the local cache.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="cross-site-automatic-offline_cross-site-replication"><a class="anchor" href="#cross-site-automatic-offline_cross-site-replication"></a>1.5. Automatic offline parameters for backup locations</h3>
 <div class="paragraph">
-<p>Operations to replicate data across clusters are resource intensive, using excessive RAM and CPU.
-To avoid wasting resources Infinispan can take backup locations offline when they stop accepting requests after a specific period of time.</p>
+<p>To avoid wasting resources Infinispan can take backup locations offline when they stop accepting requests after a specific period of time.</p>
 </div>
 <div class="paragraph">
-<p>Infinispan takes remote sites offline based on the number of failed sequential requests and the time interval since the first failure.
-Requests are failed when the target cluster does not have any nodes in the cross-site view (JGroups bridge) or when a timeout expires before the target cluster acknowledges the request.</p>
+<p>Infinispan takes remote clusters offline based on the number of failed sequential requests and/or the time interval since the first failure.
+Requests fail when a response is not received or a connection between cluster is down.</p>
 </div>
 <h4 id="backup_timeouts" class="discrete">Backup timeouts</h4>
 <div class="paragraph">
@@ -810,25 +816,34 @@ If operations do not complete before the timeout expires, Infinispan records the
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;backups&gt;
-    &lt;backup site="NYC"
-            strategy="ASYNC"
-            timeout="10s" /&gt;
-  &lt;/backups&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
+   &lt;cache-container&gt;
+      &lt;distributed-cache name="customers"&gt;
+         &lt;backups&gt;
+            &lt;backup site="NYC"
+                    strategy="ASYNC"
+                    timeout="10s"/&gt;
+         &lt;/backups&gt;
+      &lt;/distributed-cache&gt;
+   &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">JSON</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "backups": {
-      "NYC" : {
-        "backup" : {
-          "strategy" : "ASYNC",
-          "timeout" : "10000"
+  "infinispan": {
+    "cache-container": {
+      "distributed-cache": {
+        "name": "customers",
+        "backups": {
+          "NYC": {
+            "backup": {
+              "strategy": "ASYNC",
+              "timeout": "10000"
+            }
+          }
         }
       }
     }
@@ -839,12 +854,15 @@ If operations do not complete before the timeout expires, Infinispan records the
 <div class="listingblock secondary">
 <div class="title">YAML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
-  backups:
-    NYC:
-      backup:
-        strategy: "ASYNC"
-        timeout: "10000"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  cacheContainer:
+    distributedCache:
+      name: "customers"
+      backups:
+        NYC:
+          backup:
+            strategy: "ASYNC"
+            timeout: "10000"</code></pre>
 </div>
 </div>
 <h4 id="number_of_failures" class="discrete">Number of failures</h4>
@@ -858,29 +876,38 @@ backup locations go offline.</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;backups&gt;
-    &lt;backup site="NYC"
-            strategy="ASYNC"
-            timeout="10s"&gt;
-      &lt;take-offline after-failures="5"/&gt;
-    &lt;/backup&gt;
-  &lt;/backups&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
+   &lt;cache-container&gt;
+      &lt;distributed-cache name="customers"&gt;
+         &lt;backups&gt;
+            &lt;backup site="NYC"
+                    strategy="ASYNC"
+                    timeout="10s"&gt;
+               &lt;take-offline after-failures="5"/&gt;
+            &lt;/backup&gt;
+         &lt;/backups&gt;
+      &lt;/distributed-cache&gt;
+   &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">JSON</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "backups": {
-      "NYC" : {
-        "backup" : {
-          "strategy" : "ASYNC",
-          "timeout" : "10000",
-          "take-offline" : {
-            "after-failures" : "5"
+  "infinispan": {
+    "cache-container": {
+      "distributed-cache": {
+        "name": "customers",
+        "backups": {
+          "NYC": {
+            "backup": {
+              "strategy": "ASYNC",
+              "timeout": "10000",
+              "take-offline": {
+                "after-failures": "5"
+              }
+            }
           }
         }
       }
@@ -892,66 +919,78 @@ backup locations go offline.</p>
 <div class="listingblock secondary">
 <div class="title">YAML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
-  backups:
-    NYC:
-      backup:
-        strategy: "ASYNC"
-        timeout: "10000"
-        takeOffline:
-          afterFailures: "5"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  cacheContainer:
+    distributedCache:
+      name: "customers"
+      backups:
+        NYC:
+          backup:
+            strategy: "ASYNC"
+            timeout: "10000"
+            takeOffline:
+              afterFailures: "5"</code></pre>
 </div>
 </div>
 <h4 id="time_to_wait" class="discrete">Time to wait</h4>
 <div class="paragraph">
-<p>You can also specify how long to wait before taking sites offline when backup operations fail.
-If a backup request succeeds before the wait time runs out, Infinispan does not take the site offline.</p>
+<p>You can also specify how long to wait before taking backup cluster offline following a failure.
+If a backup request succeeds before the wait time elapses, Infinispan does not take the backup location offline.
+The elapsed time is checked only after a write operation.
+Therefore, if the cluster has no load, the backup location will not transition to the offline state.</p>
 </div>
 <div class="paragraph">
-<p>One or two minutes is generally a suitable time to wait before automatically taking backup locations offline.
-If the wait period is too short then backup locations go offline too soon.
-You then need to bring clusters back online and perform state transfer operations to ensure data is in sync between the clusters.</p>
+<p>One to two minutes is generally a suitable wait time before automatically taking backup locations offline.
+If the wait period is too short, backup locations might go offline too soon.
+You then need to bring the clusters back online and perform state transfer operations to ensure data synchronization.</p>
 </div>
-<div class="paragraph">
-<p>A negative or zero value for the number of failures is equivalent to a value of <code>1</code>.
-Infinispan uses only a minimum time to wait to take backup locations offline after a failure occurs, for example:</p>
-</div>
-<div class="listingblock">
+<div class="exampleblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;take-offline after-failures="-1"
-              min-wait="10000"/&gt;</code></pre>
+<div class="paragraph">
+<p>If both <code>after-failures</code> and <code>min-wait</code> are configured, both conditions must be met.</p>
+</div>
 </div>
 </div>
 <div class="paragraph">
-<p>In the following example, if a cluster attempts to replicate data to NYC and there are more than five consecutive failures and 15 seconds elapse after the first failed operation, NYC automatically goes offline:</p>
+<p>In the following example, if a cluster attempts to replicate data to NYC and there are more than five consecutive failures and 15 seconds elapse after the initial failure, NYC automatically goes offline:</p>
 </div>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;backups&gt;
-    &lt;backup site="NYC"
-            strategy="ASYNC"
-            timeout="10s"&gt;
-      &lt;take-offline after-failures="5" min-wait="15000"/&gt;
-    &lt;/backup&gt;
-  &lt;/backups&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
+   &lt;cache-container&gt;
+      &lt;distributed-cache name="customers"&gt;
+         &lt;backups&gt;
+            &lt;backup site="NYC"
+                    strategy="ASYNC"
+                    timeout="10s"&gt;
+               &lt;take-offline after-failures="5"
+                             min-wait="15000"/&gt;
+            &lt;/backup&gt;
+         &lt;/backups&gt;
+      &lt;/distributed-cache&gt;
+   &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">JSON</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "backups": {
-      "NYC" : {
-        "backup" : {
-          "strategy" : "ASYNC",
-          "timeout" : "10000",
-          "take-offline" : {
-            "after-failures" : "5",
-            "min-wait" : "15000"
+  "infinispan": {
+    "cache-container": {
+      "distributed-cache": {
+        "name": "customers",
+        "backups": {
+          "NYC": {
+            "backup": {
+              "strategy": "ASYNC",
+              "timeout": "10000",
+              "take-offline": {
+                "after-failures": "5",
+                "min-wait": "15000"
+              }
+            }
           }
         }
       }
@@ -963,23 +1002,25 @@ Infinispan uses only a minimum time to wait to take backup locations offline aft
 <div class="listingblock secondary">
 <div class="title">YAML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
-  backups:
-    NYC:
-      backup:
-        strategy: "ASYNC"
-        timeout: "10000"
-        takeOffline:
-          afterFailures: "5"
-          minWait: "15000"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  cacheContainer:
+    distributedCache:
+      name: "customers"
+      backups:
+        NYC:
+          backup:
+            strategy: "ASYNC"
+            timeout: "10000"
+            takeOffline:
+              afterFailures: "5"
+              minWait: "15000"</code></pre>
 </div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="cross-site-state-transfer_cross-site-replication"><a class="anchor" href="#cross-site-state-transfer_cross-site-replication"></a>1.6. State transfer</h3>
 <div class="paragraph">
-<p>State transfer is an administrative operation that synchronizes data between
-sites.</p>
+<p>State transfer is an administrative operation that synchronizes data between clusters.</p>
 </div>
 <div class="paragraph">
 <p>For example, <strong>LON</strong> goes offline and <strong>NYC</strong> starts handling client requests.
@@ -993,19 +1034,19 @@ state from <strong>NYC</strong> to <strong>LON</strong>.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>State transfer is bidirectional. For example, you can push state from <strong>NYC</strong>
-to <strong>LON</strong> or from <strong>LON</strong> to <strong>NYC</strong>.</p>
+<p>State transfer is bidirectional.
+For example, you can push state from <strong>NYC</strong> to <strong>LON</strong> or from <strong>LON</strong> to <strong>NYC</strong>.</p>
 </li>
 <li>
-<p>Pushing state to offline sites brings them back online.</p>
+<p>Pushing state to offline clusters brings them back online.</p>
 </li>
 <li>
-<p>State transfer overwrites only data that exists on both sites, the originating site and the receiving site. Infinispan does not delete data.</p>
+<p>State transfer overwrites only data that exists on both cluster and does not delete data.</p>
 <div class="paragraph">
-<p>For example, "k2" exists on <strong>LON</strong> and <strong>NYC</strong>. "k2" is removed from <strong>NYC</strong>
-while <strong>LON</strong> is offline. When you bring <strong>LON</strong> back online, "k2" still exists
-at that location. If you push state from <strong>NYC</strong> to <strong>LON</strong>, the transfer does
-not affect "k2" on <strong>LON</strong>.</p>
+<p>For example, "k2" exists on <strong>LON</strong> and <strong>NYC</strong>.
+"k2" is removed from <strong>NYC</strong> while <strong>LON</strong> is offline.
+When you bring <strong>LON</strong> back online, "k2" still exists at that location.
+If you push state from <strong>NYC</strong> to <strong>LON</strong>, the transfer does not affect "k2" on <strong>LON</strong>.</p>
 </div>
 </li>
 </ul>
@@ -1018,8 +1059,7 @@ not affect "k2" on <strong>LON</strong>.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>To ensure contents of the cache are identical after state transfer, remove all
-data from the cache on the receiving site before pushing state.</p>
+<p>To ensure the contents of the cache are identical after state transfer, remove all data from the cache on the receiving cluster before pushing state.</p>
 </div>
 <div class="paragraph">
 <p>Use the <code>clear()</code> method or the <code class="command">clearcache</code> command from the CLI.</p>
@@ -1034,12 +1074,12 @@ data from the cache on the receiving site before pushing state.</p>
 <p>State transfer does not overwrite updates to data that occur after you
 initiate the push.</p>
 <div class="paragraph">
-<p>For example, "k1,v1" exists on <strong>LON</strong> and <strong>NYC</strong>. <strong>LON</strong> goes offline so you
-push state transfer to <strong>LON</strong> from <strong>NYC</strong>, which brings <strong>LON</strong> back online.
+<p>For example, "k1,v1" exists on <strong>LON</strong> and <strong>NYC</strong>.
+<strong>LON</strong> goes offline, so you push state transfer to <strong>LON</strong> from <strong>NYC</strong>, which brings <strong>LON</strong> back online.
 Before state transfer completes, a client puts "k1,v2" on <strong>LON</strong>.</p>
 </div>
 <div class="paragraph">
-<p>In this case the state transfer from <strong>NYC</strong> does not overwrite "k1,v2" because
+<p>In this scenario, the state transfer from <strong>NYC</strong> does not overwrite "k1,v2" because
 that modification happened after you initiated the push.</p>
 </div>
 </li>
@@ -1065,7 +1105,7 @@ For example, Infinispan simultaneously transfers state from <strong>LON</strong>
 <td class="content">
 <div class="paragraph">
 <p>To avoid temporary network disconnects triggering state transfer operations, there are two conditions that backup locations must meet to go offline.
-The status of a backup location must be offline and it must not be included in the cross-site view with JGroups RELAY2.</p>
+The status of a backup location must be offline and it must not be included in the cross-site view.</p>
 </div>
 </td>
 </tr>
@@ -1088,21 +1128,21 @@ Following this, <strong>NYC</strong> starts a unidirectional state transfer to <
 <p><a href="../cli/cli.html">Using the Infinispan Command Line Interface</a></p>
 </li>
 <li>
-<p><a href="../rest/rest.html">Infinispan REST API</a></p>
+<p><a href="../rest/rest.html">Using the Infinispan REST API</a></p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cross-site-client-connections_cross-site-replication"><a class="anchor" href="#cross-site-client-connections_cross-site-replication"></a>1.7. Client connections across sites</h3>
+<h3 id="cross-site-client-connections_cross-site-replication"><a class="anchor" href="#cross-site-client-connections_cross-site-replication"></a>1.7. Client connections across clusters</h3>
 <div class="paragraph">
-<p>Clients can write to Infinispan clusters in either an Active/Passive or
-Active/Active configuration.</p>
+<p>Clients can write to Infinispan clusters using either an Active/Passive or Active/Active configuration.
+Infinispan does not provide specific configuration for each mode.
+To achieve Active/Passive, the client, application, or load balancer must be configured to select a primary cluster.</p>
 </div>
 <h4 id="activepassive" class="discrete">Active/Passive</h4>
 <div class="paragraph">
-<p>The following diagram illustrates Active/Passive where Infinispan handles
-client requests from one site only:</p>
+<p>The following diagram illustrates Active/Passive where Infinispan handles client requests from one cluster only:</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -1126,15 +1166,13 @@ client requests from one site only:</p>
 </ol>
 </div>
 <div class="paragraph">
-<p>With Active/Passive, <strong>NYC</strong> provides data redundancy. If the Infinispan
-cluster at <strong>LON</strong> goes offline for any reason, clients can start sending
-requests to <strong>NYC</strong>. When you bring <strong>LON</strong> back online you can synchronize
-data with <strong>NYC</strong> and then switch clients back to <strong>LON</strong>.</p>
+<p>With Active/Passive, <strong>NYC</strong> provides data redundancy.
+If the Infinispan cluster at <strong>LON</strong> goes offline for any reason, clients can start sending requests to <strong>NYC</strong>.
+When you bring <strong>LON</strong> back online you can synchronize data with <strong>NYC</strong> and then switch clients back to <strong>LON</strong>.</p>
 </div>
 <h4 id="activeactive" class="discrete">Active/Active</h4>
 <div class="paragraph">
-<p>The following diagram illustrates Active/Active where Infinispan handles
-client requests at two sites:</p>
+<p>The following diagram illustrates Active/Active where Infinispan handles client requests at two sites:</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -1164,11 +1202,9 @@ client requests at two sites:</p>
 </ol>
 </div>
 <div class="paragraph">
-<p>With Active/Active both <strong>NYC</strong> and <strong>LON</strong> replicate data to remote caches
-while handling client requests. If either <strong>NYC</strong> or <strong>LON</strong> go offline,
-clients can start sending requests to the online site. You can then bring
-offline sites back online, push state to synchronize data, and switch clients
-as required.</p>
+<p>With Active/Active both <strong>NYC</strong> and <strong>LON</strong> replicate data to remote caches while handling client requests.
+If either <strong>NYC</strong> or <strong>LON</strong> go offline, clients can start sending requests to the online site.
+You can then bring offline sites back online, push state to synchronize data, and switch clients as required.</p>
 </div>
 <h4 id="backup_strategies_and_client_connections" class="discrete">Backup strategies and client connections</h4>
 <div class="admonitionblock important">
@@ -1187,23 +1223,21 @@ as required.</p>
 </div>
 <div class="paragraph">
 <p>If multiple clients attempt to write to the same entry concurrently, and the backup strategy is synchronous (<code>strategy=sync</code>), then deadlocks occur.
-However you can use the synchronous backup strategy with an Active/Passive configuration if both sites access different data sets, in which case there is no risk of deadlocks from concurrent writes.</p>
+However, you can use the synchronous backup strategy with an Active/Passive configuration if both sites access different data sets, in which case there is no risk of deadlocks from concurrent writes.</p>
 </div>
 <div class="sect3">
 <h4 id="concurrent-writes-conflicting-entries_cross-site-replication"><a class="anchor" href="#concurrent-writes-conflicting-entries_cross-site-replication"></a>1.7.1. Concurrent writes and conflicting entries</h4>
 <div class="paragraph">
-<p>Conflicting entries can occur with Active/Active site configurations if clients
-write to the same entries at the same time but at different sites.</p>
+<p>Conflicting entries can occur with Active/Active configurations if clients write to the same entries at the same time but at different clusters.</p>
 </div>
 <div class="paragraph">
-<p>For example, client A writes to "k1" in <strong>LON</strong> at the same time that client B
-writes to "k1" in <strong>NYC</strong>. In this case, "k1" has a different value in <strong>LON</strong>
-than in <strong>NYC</strong>. After replication occurs, there is no guarantee which value
-for "k1" exists at which site.</p>
+<p>For example, client A writes to "k1" in <strong>LON</strong> at the same time that client B writes to "k1" in <strong>NYC</strong>.
+In this case, "k1" has a different value in <strong>LON</strong>
+than in <strong>NYC</strong>.
+After replication occurs, there is no guarantee which value for "k1" exists at which cluster.</p>
 </div>
 <div class="paragraph">
-<p>To ensure data consistency, Infinispan uses a vector clock algorithm to detect
-conflicting entries during backup operations, as in the following illustration:</p>
+<p>To ensure data consistency, Infinispan uses a vector clock algorithm to detect conflicting entries during backup operations, as in the following illustration:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1222,32 +1256,27 @@ k1=5        2,1       1,2   k1=8
 </div>
 </div>
 <div class="paragraph">
-<p>Vector clocks are timestamp metadata that increment with each write to an
-entry. In the preceding example, <code>0,0</code> represents the initial value for the
-vector clock on "k1".</p>
+<p>Vector clocks are timestamp metadata that increment with each write to an entry.
+In the preceding example, <code>0,0</code> represents the initial value for the vector clock on "k1".</p>
 </div>
 <div class="paragraph">
 <p>A client puts "k1=2" in <strong>LON</strong> and the vector clock is <code>1,0</code>, which
-Infinispan replicates to <strong>NYC</strong>. A client then puts "k1=3" in <strong>NYC</strong> and the
-vector clock updates to <code>1,1</code>, which Infinispan replicates to <strong>LON</strong>.</p>
+Infinispan replicates to <strong>NYC</strong>.
+A client then puts "k1=3" in <strong>NYC</strong> and the vector clock updates to <code>1,1</code>, which Infinispan replicates to <strong>LON</strong>.</p>
 </div>
 <div class="paragraph">
-<p>However if a client puts "k1=5" in <strong>LON</strong> at the same time that a client puts
-"k1=8" in <strong>NYC</strong>, Infinispan detects a conflicting entry because the vector
-value for "k1" is not strictly greater or less between <strong>LON</strong> and <strong>NYC</strong>.</p>
+<p>However if a client puts "k1=5" in <strong>LON</strong> at the same time that a client puts "k1=8" in <strong>NYC</strong>, Infinispan detects a conflicting entry because the vector value for "k1" is not strictly greater or less between <strong>LON</strong> and <strong>NYC</strong>.</p>
 </div>
 <div class="paragraph">
-<p>When it finds conflicting entries, Infinispan uses the Java <code>compareTo(String
-anotherString)</code> method to compare site names. To determine which key takes
-priority, Infinispan selects the site name that is lexicographically less
-than the other. Keys from a site named <strong>AAA</strong> take priority over keys from a
-site named <strong>AAB</strong> and so on.</p>
+<p>When it finds conflicting entries, by default, Infinispan uses the Java <code>compareTo(String
+anotherString)</code> method to compare cluster names.
+To determine which key takes priority, Infinispan selects the cluster name that is lexicographically less than the other.
+Keys from a cluster named <strong>AAA</strong> take priority over keys from a cluster named <strong>AAB</strong> and so on.</p>
 </div>
 <div class="paragraph">
-<p>Following the same example, to resolve the conflict for "k1", Infinispan uses
-the value for "k1" that originates from <strong>LON</strong>. This results in "k1=5" in both
-<strong>LON</strong> and <strong>NYC</strong> after Infinispan resolves the conflict and replicates the
-value.</p>
+<p>Following the same example, to resolve the conflict for "k1", Infinispan uses the value for "k1" that originates from <strong>LON</strong>.
+This results in "k1=5" in both
+<strong>LON</strong> and <strong>NYC</strong> after Infinispan resolves the conflict and replicates the value.</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -1257,8 +1286,7 @@ value.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Prepend site names with numbers as a simple way to represent the order of
-priority for resolving conflicting entries; for example, <strong>1LON</strong> and <strong>2NYC</strong>.</p>
+<p>Prepend cluster names with numbers as a simple way to represent the order of priority for resolving conflicting entries; for example, <strong>1LON</strong> and <strong>2NYC</strong>.</p>
 </div>
 </td>
 </tr>
@@ -1269,24 +1297,26 @@ priority for resolving conflicting entries; for example, <strong>1LON</strong> a
 <p>Infinispan performs conflict resolution with the asynchronous backup strategy (<code>strategy=async</code>) only.</p>
 </div>
 <div class="paragraph">
-<p>You should never use the synchronous backup strategy with an Active/Active configuration.
-In this configuration concurrent writes result in deadlocks and you lose data.
-However you can use the synchronous backup strategy with an Active/Active configuration if both sites access different data sets, in which case there is no risk of deadlocks from concurrent writes.</p>
+<p>We do not recommend the use of synchronous backup strategy with an Active/Active configuration.
+In this configuration, concurrent writes result in deadlocks, and you may lose data consistency.
+However, you can use the synchronous backup strategy with an Active/Active configuration if both clusters access different data sets, in which case there is no risk of deadlocks from concurrent writes.</p>
 </div>
 <h5 id="cross_site_merge_policies" class="discrete">Cross-site merge policies</h5>
 <div class="paragraph">
-<p>Infinispan provides an <code>XSiteEntryMergePolicy</code> SPI in addition to cross-site merge policies that configure Infinispan to do the following:</p>
+<p>Infinispan provides an <code>XSiteEntryMergePolicy</code> SPI.
+This SPI allows you to create custom conflict resolution logic tailored to your business needs.
+In addition, the following built-in merge policies are available:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Always remove conflicting entries.</p>
+<p><code>ALWAYS_REMOVE</code>: Removes the entry from all clusters if a conflict occurs.</p>
 </li>
 <li>
-<p>Apply write operations when write/remove conflicts occur.</p>
+<p><code>PREFER_NON_NULL</code>: When a write (non-null) and a remove (null) conflict occurs, the write operation takes precedence.</p>
 </li>
 <li>
-<p>Remove entries when write/remove conflicts occur.</p>
+<p><code>PREFER_NULL</code>: When a write and a remove conflict occurs, the remove operation (setting the entry to 'null') takes precedence.</p>
 </li>
 </ul>
 </div>
@@ -1349,7 +1379,7 @@ You can then add backup locations to Infinispan caches.</p>
 <div class="sect2">
 <h3 id="configuring-cluster-transport-cross-site_configuring-cross-site-replication"><a class="anchor" href="#configuring-cluster-transport-cross-site_configuring-cross-site-replication"></a>2.1. Configuring cluster transport for cross-site replication</h3>
 <div class="paragraph">
-<p>Add JGroups RELAY2 to your transport layer so that Infinispan can replicate caches to backup locations.</p>
+<p>Add JGroups <code>RELAY2</code> protocol to your transport layer so that Infinispan can replicate caches to the backup locations.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -1358,7 +1388,7 @@ You can then add backup locations to Infinispan caches.</p>
 <p>Open your Infinispan configuration for editing.</p>
 </li>
 <li>
-<p>Add the RELAY2 protocol to a JGroups stack.</p>
+<p>Add the <code>RELAY2</code> protocol to a JGroups stack.</p>
 </li>
 <li>
 <p>Specify the stack name with the <code>stack</code> attribute for the transport configuration so the Infinispan cluster uses it.</p>
@@ -1391,25 +1421,134 @@ You can then add backup locations to Infinispan caches.</p>
 </li>
 </ul>
 </div>
-<div class="listingblock">
+<div class="listingblock primary">
+<div class="title">XML</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
-  &lt;jgroups&gt;
-    &lt;stack name="xsite" extends="udp"&gt;
-      &lt;relay.RELAY2 xmlns="urn:org:jgroups"
-                    site="LON"
-                    max_site_masters="1000"/&gt;
-      &lt;remote-sites default-stack="tcp"&gt;
-        &lt;remote-site name="LON"/&gt;
-        &lt;remote-site name="NYC"/&gt;
-      &lt;/remote-sites&gt;
-    &lt;/stack&gt;
-  &lt;/jgroups&gt;
-  &lt;cache-container&gt;
-    &lt;transport cluster="${cluster.name}" stack="xsite"/&gt;
-  &lt;/cache-container&gt;
+   &lt;jgroups&gt;
+      &lt;stack name="bridge" extends="tcp"&gt;
+         &lt;TCP bind_port="7900"/&gt; <i class="conum" data-value="1"></i><b>(1)</b>
+         &lt;TCPPING initial_hosts="127.0.0.1[7900]"
+                  stack.combine="REPLACE"
+                  stack.position="MPING"/&gt; <i class="conum" data-value="2"></i><b>(2)</b>
+      &lt;/stack&gt;
+      &lt;stack name="xsite" extends="udp"&gt;
+         &lt;relay.RELAY2 site="LON"
+                       max_site_masters="1000"/&gt; <i class="conum" data-value="3"></i><b>(3)</b>
+         &lt;remote-sites default-stack="bridge"&gt; <i class="conum" data-value="4"></i><b>(4)</b>
+            &lt;remote-site name="LON"/&gt;
+            &lt;remote-site name="NYC"/&gt;
+         &lt;/remote-sites&gt;
+      &lt;/stack&gt;
+   &lt;/jgroups&gt;
+   &lt;cache-container&gt;
+      &lt;transport stack="xsite"/&gt; <i class="conum" data-value="5"></i><b>(5)</b>
+   &lt;/cache-container&gt;
 &lt;/infinispan&gt;</code></pre>
 </div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "infinispan": {
+    "jgroups": {
+      "stacks": {
+        "bridge": {
+          "stack": {
+            "extends": "tcp",
+            "TCP": {
+              "bind_port": "7900" <i class="conum" data-value="1"></i><b>(1)</b>
+            },
+            "TCPPING": {
+              "initial_hosts": "127.0.0.1[7900]", <i class="conum" data-value="2"></i><b>(2)</b>
+              "stack.position": "MPING",
+              "stack.combine": "REPLACE"
+            }
+          }
+        },
+        "xsite": {
+          "stack": {
+            "extends": "udp",
+            "relay.RELAY2": { <i class="conum" data-value="3"></i><b>(3)</b>
+              "site": "LON",
+              "max_site_masters": "1000"
+            },
+            "remote-sites": {
+              "default-stack": "bridge", <i class="conum" data-value="4"></i><b>(4)</b>
+              "cluster": "xsite",
+              "remote-site": {
+                "name": "LON"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cache-container": {
+      "transport": {
+        "stack": "xsite" <i class="conum" data-value="5"></i><b>(5)</b>
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  jgroups:
+    stacks:
+      bridge:
+        stack:
+          extends: "tcp"
+          TCP:
+            bindPort: "7900" <i class="conum" data-value="1"></i><b>(1)</b>
+          TCPPING:
+            initialHosts: "127.0.0.1[7900]" <i class="conum" data-value="2"></i><b>(2)</b>
+            stack.position: "MPING"
+            stack.combine: "REPLACE"
+      xsite:
+        stack:
+          extends: "udp"
+          relay.RELAY2: <i class="conum" data-value="3"></i><b>(3)</b>
+            site: "LON"
+            maxSiteMasters: "1000"
+          remoteSites:
+            defaultStack: "bridge" <i class="conum" data-value="4"></i><b>(4)</b>
+            remoteSite:
+              name: "LON"
+  cacheContainer:
+    transport:
+      stack: "xsite" <i class="conum" data-value="5"></i><b>(5)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Change the default port to 7900 to avoid conflict with the cluster communication.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Replaces discovery <code>MPING</code> (only works with IP multicast, not available between networks) with <code>TCPPING</code>.
+<code>TCPPING</code> requires a comma separated list of hosts using the format <code>ip[port]</code>.
+Other discovery protocols may be used depending on the architecture.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>In <code>RELAY2</code>, configure the local site name (<code>site</code> attribute) and the number of relay nodes (<code>max_site_masters</code> attribute).</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Sets the stack (<code>default-stack</code> attribute) to use for the cross-site communication.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Sets the stack to use by Infinispan (<code>stack</code> attribute).</td>
+</tr>
+</table>
 </div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
@@ -1421,46 +1560,6 @@ You can then add backup locations to Infinispan caches.</p>
 <p><a href="../../configuration-schema/index.html">Infinispan configuration schema reference</a></p>
 </li>
 </ul>
-</div>
-<div class="sect3">
-<h4 id="custom-jgroups-relay-stacks_configuring-cross-site-replication"><a class="anchor" href="#custom-jgroups-relay-stacks_configuring-cross-site-replication"></a>2.1.1. Custom JGroups RELAY2 stacks</h4>
-<div class="paragraph">
-<p>You can add custom JGroups RELAY2 stacks to Infinispan clusters to use different transport properties for cross-site replication.
-For example, the following configuration uses TCPPING instead of MPING for discovery and extends the default TCP stack:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
-  &lt;jgroups&gt;
-    &lt;stack name="relay-global" extends="tcp"&gt;
-      &lt;TCPPING initial_hosts="192.0.2.0[7800]"
-               stack.combine="REPLACE"
-               stack.position="MPING"/&gt;
-    &lt;/stack&gt;
-    &lt;stack name="xsite" extends="udp"&gt;
-      &lt;relay.RELAY2 site="LON" xmlns="urn:org:jgroups"
-                    max_site_masters="10"
-                    can_become_site_master="true"/&gt;
-      &lt;remote-sites default-stack="relay-global"&gt;
-        &lt;remote-site name="LON"/&gt;
-        &lt;remote-site name="NYC"/&gt;
-      &lt;/remote-sites&gt;
-    &lt;/stack&gt;
-  &lt;/jgroups&gt;
-&lt;/infinispan&gt;</code></pre>
-</div>
-</div>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p><a href="http://www.jgroups.org/manual5/index.html#RELAY2">JGroups RELAY2</a></p>
-</li>
-<li>
-<p><a href="http://www.jgroups.org/manual5/index.html#Relay2Advanced">Relaying between multiple sites (RELAY2)</a></p>
-</li>
-</ul>
-</div>
 </div>
 </div>
 <div class="sect2">
@@ -1497,24 +1596,85 @@ For example, if you add <strong>LON</strong> as a backup for <strong>NYC</strong
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;replicated-cache name="customers"&gt;
-  &lt;backups&gt;
-    &lt;backup site="NYC"
-            strategy="ASYNC" /&gt;
-  &lt;/backups&gt;
-&lt;/replicated-cache&gt;</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
+   &lt;jgroups&gt;
+      &lt;stack name="bridge" extends="tcp"&gt;
+         &lt;TCP bind_port="7900"/&gt;
+         &lt;TCPPING initial_hosts="127.0.0.1[7900]"
+                  stack.combine="REPLACE"
+                  stack.position="MPING"/&gt;
+      &lt;/stack&gt;
+      &lt;stack name="xsite" extends="udp"&gt;
+         &lt;relay.RELAY2 site="LON"
+                       max_site_masters="1000"/&gt;
+         &lt;remote-sites default-stack="bridge"&gt;
+            &lt;remote-site name="LON"/&gt;
+            &lt;remote-site name="NYC"/&gt;
+         &lt;/remote-sites&gt;
+      &lt;/stack&gt;
+   &lt;/jgroups&gt;
+   &lt;cache-container&gt;
+      &lt;transport stack="xsite"/&gt;
+      &lt;replicated-cache name="customers"&gt;
+         &lt;backups&gt;
+            &lt;backup site="NYC"
+                    strategy="ASYNC"/&gt;
+         &lt;/backups&gt;
+      &lt;/replicated-cache&gt;
+   &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">JSON</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "replicated-cache": {
-    "name": "customers",
-    "backups": {
-      "NYC": {
-        "backup" : {
-          "strategy" : "ASYNC"
+  "infinispan": {
+    "jgroups": {
+      "stacks": {
+        "bridge": {
+          "stack": {
+            "extends": "tcp",
+            "TCP": {
+              "bind_port": "7900"
+            },
+            "TCPPING": {
+              "initial_hosts": "127.0.0.1[7900]",
+              "stack.position": "MPING",
+              "stack.combine": "REPLACE"
+            }
+          }
+        },
+        "xsite": {
+          "stack": {
+            "extends": "udp",
+            "relay.RELAY2": {
+              "site": "LON",
+              "max_site_masters": "1000"
+            },
+            "remote-sites": {
+              "default-stack": "bridge",
+              "cluster": "xsite",
+              "remote-site": {
+                "name": "LON"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cache-container": {
+      "transport": {
+        "stack": "xsite"
+      },
+      "replicated-cache": {
+        "name": "customers",
+        "backups": {
+          "NYC": {
+            "backup": {
+              "strategy": "ASYNC"
+            }
+          }
         }
       }
     }
@@ -1525,12 +1685,37 @@ For example, if you add <strong>LON</strong> as a backup for <strong>NYC</strong
 <div class="listingblock secondary">
 <div class="title">YAML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">replicatedCache:
-  name: "customers"
-  backups:
-    NYC:
-      backup:
-        strategy: "ASYNC"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  jgroups:
+    stacks:
+      bridge:
+        stack:
+          extends: "tcp"
+          TCP:
+            bindPort: "7900"
+          TCPPING:
+            initialHosts: "127.0.0.1[7900]"
+            stack.position: "MPING"
+            stack.combine: "REPLACE"
+      xsite:
+        stack:
+          extends: "udp"
+          relay.RELAY2:
+            site: "LON"
+            maxSiteMasters: "1000"
+          remoteSites:
+            defaultStack: "bridge"
+            remoteSite:
+              name: "LON"
+  cacheContainer:
+    transport:
+      stack: "xsite"
+    distributedCache:
+      name: "customers"
+      backups:
+        NYC:
+          backup:
+            strategy: "ASYNC"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1539,24 +1724,85 @@ For example, if you add <strong>LON</strong> as a backup for <strong>NYC</strong
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="customers"&gt;
-  &lt;backups&gt;
-    &lt;backup site="LON"
-            strategy="ASYNC" /&gt;
-  &lt;/backups&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
+   &lt;jgroups&gt;
+      &lt;stack name="bridge" extends="tcp"&gt;
+         &lt;TCP bind_port="7900"/&gt;
+         &lt;TCPPING initial_hosts="127.0.0.1[7900]"
+                  stack.combine="REPLACE"
+                  stack.position="MPING"/&gt;
+      &lt;/stack&gt;
+      &lt;stack name="xsite" extends="udp"&gt;
+         &lt;relay.RELAY2 site="NYC"
+                       max_site_masters="1000"/&gt;
+         &lt;remote-sites default-stack="bridge"&gt;
+            &lt;remote-site name="LON"/&gt;
+            &lt;remote-site name="NYC"/&gt;
+         &lt;/remote-sites&gt;
+      &lt;/stack&gt;
+   &lt;/jgroups&gt;
+   &lt;cache-container&gt;
+      &lt;transport stack="xsite"/&gt;
+      &lt;replicated-cache name="customers"&gt;
+         &lt;backups&gt;
+            &lt;backup site="LON"
+                    strategy="ASYNC"/&gt;
+         &lt;/backups&gt;
+      &lt;/replicated-cache&gt;
+   &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">JSON</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "name": "customers",
-    "backups": {
-      "LON": {
-        "backup": {
-          "strategy": "ASYNC"
+  "infinispan": {
+    "jgroups": {
+      "stacks": {
+        "bridge": {
+          "stack": {
+            "extends": "tcp",
+            "TCP": {
+              "bind_port": "7900"
+            },
+            "TCPPING": {
+              "initial_hosts": "127.0.0.1[7900]",
+              "stack.position": "MPING",
+              "stack.combine": "REPLACE"
+            }
+          }
+        },
+        "xsite": {
+          "stack": {
+            "extends": "udp",
+            "relay.RELAY2": {
+              "site": "NYC",
+              "max_site_masters": "1000"
+            },
+            "remote-sites": {
+              "default-stack": "bridge",
+              "cluster": "xsite",
+              "remote-site": {
+                "name": "NYC"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cache-container": {
+      "transport": {
+        "stack": "xsite"
+      },
+      "replicated-cache": {
+        "name": "customers",
+        "backups": {
+          "LON": {
+            "backup": {
+              "strategy": "ASYNC"
+            }
+          }
         }
       }
     }
@@ -1567,12 +1813,37 @@ For example, if you add <strong>LON</strong> as a backup for <strong>NYC</strong
 <div class="listingblock secondary">
 <div class="title">YAML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
-  name: "customers"
-  backups:
-    LON:
-      backup:
-        strategy: "ASYNC"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  jgroups:
+    stacks:
+      bridge:
+        stack:
+          extends: "tcp"
+          TCP:
+            bindPort: "7900"
+          TCPPING:
+            initialHosts: "127.0.0.1[7900]"
+            stack.position: "MPING"
+            stack.combine: "REPLACE"
+      xsite:
+        stack:
+          extends: "udp"
+          relay.RELAY2:
+            site: "NYC"
+            maxSiteMasters: "1000"
+          remoteSites:
+            defaultStack: "bridge"
+            remoteSite:
+              name: "NYC"
+  cacheContainer:
+    transport:
+      stack: "xsite"
+    distributedCache:
+      name: "customers"
+      backups:
+        LON:
+          backup:
+            strategy: "ASYNC"</code></pre>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -1597,7 +1868,7 @@ If you want Infinispan to replicate between caches with different names, you can
 <p>Open your Infinispan configuration for editing.</p>
 </li>
 <li>
-<p>Use <code>backup-for</code> or <code>backupFor</code> to replicate data from a remote site into a cache with a different name on the local site.</p>
+<p>Use <code>backup-for</code> or <code>backupFor</code> to replicate data from another backup location into a cache with a different name on the local cluster.</p>
 </li>
 <li>
 <p>Save and close your Infinispan configuration.</p>
@@ -1611,32 +1882,93 @@ If you want Infinispan to replicate between caches with different names, you can
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="eu-customers"&gt;
-  &lt;backups&gt;
-    &lt;backup site="LON"
-            strategy="ASYNC" /&gt;
-  &lt;/backups&gt;
-  &lt;backup-for remote-cache="customers"
-              remote-site="LON" /&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
+   &lt;jgroups&gt;
+      &lt;stack name="bridge" extends="tcp"&gt;
+         &lt;TCP bind_port="7900"/&gt;
+         &lt;TCPPING initial_hosts="127.0.0.1[7900]"
+                  stack.combine="REPLACE"
+                  stack.position="MPING"/&gt;
+      &lt;/stack&gt;
+      &lt;stack name="xsite" extends="udp"&gt;
+         &lt;relay.RELAY2 site="NYC"
+                       max_site_masters="1000"/&gt;
+         &lt;remote-sites default-stack="bridge"&gt;
+            &lt;remote-site name="LON"/&gt;
+            &lt;remote-site name="NYC"/&gt;
+         &lt;/remote-sites&gt;
+      &lt;/stack&gt;
+   &lt;/jgroups&gt;
+   &lt;cache-container&gt;
+      &lt;transport stack="xsite"/&gt;
+      &lt;distributed-cache name="eu-customers"&gt;
+         &lt;backups&gt;
+            &lt;backup site="LON"
+                    strategy="ASYNC"/&gt;
+         &lt;/backups&gt;
+         &lt;backup-for remote-cache="customers"
+                     remote-site="LON"/&gt;
+      &lt;/distributed-cache&gt;
+   &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">JSON</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "name": "eu-customers",
-    "backups": {
-      "LON": {
-        "backup": {
-          "strategy": "ASYNC"
+  "infinispan": {
+    "jgroups": {
+      "stacks": {
+        "bridge": {
+          "stack": {
+            "extends": "tcp",
+            "TCP": {
+              "bind_port": "7900"
+            },
+            "TCPPING": {
+              "initial_hosts": "127.0.0.1[7900]",
+              "stack.position": "MPING",
+              "stack.combine": "REPLACE"
+            }
+          }
+        },
+        "xsite": {
+          "stack": {
+            "extends": "udp",
+            "relay.RELAY2": {
+              "site": "NYC",
+              "max_site_masters": "1000"
+            },
+            "remote-sites": {
+              "default-stack": "bridge",
+              "cluster": "xsite",
+              "remote-site": {
+                "name": "NYC"
+              }
+            }
+          }
         }
       }
     },
-    "backup-for" : {
-      "remote-cache" : "customers",
-      "remote-site" : "LON"
+    "cache-container": {
+      "transport": {
+        "stack": "xsite"
+      },
+      "distributed-cache": {
+        "name": "eu-customers",
+        "backups": {
+          "LON": {
+            "backup": {
+              "strategy": "ASYNC"
+            }
+          }
+        },
+        "backup-for": {
+          "remote-cache": "customers",
+          "remote-site": "LON"
+        }
+      }
     }
   }
 }</code></pre>
@@ -1645,15 +1977,40 @@ If you want Infinispan to replicate between caches with different names, you can
 <div class="listingblock secondary">
 <div class="title">YAML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
-  name: "eu-customers"
-  backups:
-    LON:
-      backup:
-        strategy: "ASYNC"
-  backupFor:
-    remoteCache: "customers"
-    remoteSite: "LON"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  jgroups:
+    stacks:
+      bridge:
+        stack:
+          extends: "tcp"
+          TCP:
+            bindPort: "7900"
+          TCPPING:
+            initialHosts: "127.0.0.1[7900]"
+            stack.position: "MPING"
+            stack.combine: "REPLACE"
+      xsite:
+        stack:
+          extends: "udp"
+          relay.RELAY2:
+            site: "NYC"
+            maxSiteMasters: "1000"
+          remoteSites:
+            defaultStack: "bridge"
+            remoteSite:
+              name: "NYC"
+  cacheContainer:
+    transport:
+      stack: "xsite"
+    distributedCache:
+      name: "eu-customers"
+      backups:
+        LON:
+          backup:
+            strategy: "ASYNC"
+      backupFor:
+        remoteCache: "customers"
+        remoteSite: "LON"</code></pre>
 </div>
 </div>
 </div>
@@ -1686,12 +2043,26 @@ If you want Infinispan to replicate between caches with different names, you can
 </li>
 <li>
 <p>Specify if state transfer operations happen automatically or manually with <code>mode</code>.</p>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Automatic state transfer between cluster only available for asynchronous backup strategy.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </li>
 </ol>
 </div>
 </li>
 <li>
-<p>Open your Infinispan configuration for editing.</p>
+<p>Save and close your Infinispan configuration for editing.</p>
 </li>
 </ol>
 </div>
@@ -1699,36 +2070,97 @@ If you want Infinispan to replicate between caches with different names, you can
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="eu-customers"&gt;
-  &lt;backups&gt;
-    &lt;backup site="LON"
-            strategy="ASYNC"&gt;
-      &lt;state-transfer chunk-size="600"
-                      timeout="40m"
-                      max-retries="30"
-                      wait-time="2s"
-                      mode="AUTO"/&gt;
-    &lt;/backup&gt;
-  &lt;/backups&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
+   &lt;jgroups&gt;
+      &lt;stack name="bridge" extends="tcp"&gt;
+         &lt;TCP bind_port="7900"/&gt;
+         &lt;TCPPING initial_hosts="127.0.0.1[7900]"
+                  stack.combine="REPLACE"
+                  stack.position="MPING"/&gt;
+      &lt;/stack&gt;
+      &lt;stack name="xsite" extends="udp"&gt;
+         &lt;relay.RELAY2 site="NYC"
+                       max_site_masters="1000"/&gt;
+         &lt;remote-sites default-stack="bridge"&gt;
+            &lt;remote-site name="LON"/&gt;
+            &lt;remote-site name="NYC"/&gt;
+         &lt;/remote-sites&gt;
+      &lt;/stack&gt;
+   &lt;/jgroups&gt;
+   &lt;cache-container&gt;
+      &lt;transport stack="xsite"/&gt;
+      &lt;distributed-cache name="eu-customers"&gt;
+         &lt;backups&gt;
+            &lt;backup site="LON"
+                    strategy="ASYNC"&gt;
+               &lt;state-transfer chunk-size="600"
+                               timeout="40m"
+                               max-retries="30"
+                               wait-time="2s"
+                               mode="AUTO"/&gt;
+            &lt;/backup&gt;
+         &lt;/backups&gt;
+      &lt;/distributed-cache&gt;
+   &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">JSON</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "name": "eu-customers",
-    "backups": {
-      "LON": {
-        "backup": {
-          "strategy": "ASYNC",
-          "state-transfer": {
-            "chunk-size": "600",
-            "timeout": "2400000",
-            "max-retries": "30",
-            "wait-time": "2000",
-            "mode": "AUTO"
+  "infinispan": {
+    "jgroups": {
+      "stacks": {
+        "bridge": {
+          "stack": {
+            "extends": "tcp",
+            "TCP": {
+              "bind_port": "7900"
+            },
+            "TCPPING": {
+              "initial_hosts": "127.0.0.1[7900]",
+              "stack.position": "MPING",
+              "stack.combine": "REPLACE"
+            }
+          }
+        },
+        "xsite": {
+          "stack": {
+            "extends": "udp",
+            "relay.RELAY2": {
+              "site": "NYC",
+              "max_site_masters": "1000"
+            },
+            "remote-sites": {
+              "default-stack": "bridge",
+              "cluster": "xsite",
+              "remote-site": {
+                "name": "NYC"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cache-container": {
+      "transport": {
+        "stack": "xsite"
+      },
+      "distributed-cache": {
+        "name": "eu-customers",
+        "backups": {
+          "LON": {
+            "backup": {
+              "strategy": "ASYNC",
+              "state-transfer": {
+                "chunk-size": "600",
+                "timeout": "2400000",
+                "max-retries": "30",
+                "wait-time": "2000",
+                "mode": "AUTO"
+              }
+            }
           }
         }
       }
@@ -1740,18 +2172,43 @@ If you want Infinispan to replicate between caches with different names, you can
 <div class="listingblock secondary">
 <div class="title">YAML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
-  name: "eu-customers"
-  backups:
-    LON:
-      backup:
-        strategy: "ASYNC"
-        stateTransfer:
-          chunkSize: "600"
-          timeout: "2400000"
-          maxRetries: "30"
-          waitTime: "2000"
-          mode: "AUTO"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  jgroups:
+    stacks:
+      bridge:
+        stack:
+          extends: "tcp"
+          TCP:
+            bindPort: "7900"
+          TCPPING:
+            initialHosts: "127.0.0.1[7900]"
+            stack.position: "MPING"
+            stack.combine: "REPLACE"
+      xsite:
+        stack:
+          extends: "udp"
+          relay.RELAY2:
+            site: "NYC"
+            maxSiteMasters: "1000"
+          remoteSites:
+            defaultStack: "bridge"
+            remoteSite:
+              name: "NYC"
+  cacheContainer:
+    transport:
+      stack: "xsite"
+    distributedCache:
+      name: "eu-customers"
+      backups:
+        LON:
+          backup:
+            strategy: "ASYNC"
+            stateTransfer:
+              chunkSize: "600"
+              timeout: "2400000"
+              maxRetries: "30"
+              waitTime: "2000"
+              mode: "AUTO"</code></pre>
 </div>
 </div>
 </div>
@@ -1795,23 +2252,85 @@ If you want Infinispan to replicate between caches with different names, you can
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-   &lt;backups merge-policy="ALWAYS_REMOVE"&gt;
-      &lt;backup site="LON" strategy="ASYNC"/&gt;
-   &lt;/backups&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
+   &lt;jgroups&gt;
+      &lt;stack name="bridge" extends="tcp"&gt;
+         &lt;TCP bind_port="7900"/&gt;
+         &lt;TCPPING initial_hosts="127.0.0.1[7900]"
+                  stack.combine="REPLACE"
+                  stack.position="MPING"/&gt;
+      &lt;/stack&gt;
+      &lt;stack name="xsite" extends="udp"&gt;
+         &lt;relay.RELAY2 site="NYC"
+                       max_site_masters="1000"/&gt;
+         &lt;remote-sites default-stack="bridge"&gt;
+            &lt;remote-site name="LON"/&gt;
+            &lt;remote-site name="NYC"/&gt;
+         &lt;/remote-sites&gt;
+      &lt;/stack&gt;
+   &lt;/jgroups&gt;
+   &lt;cache-container&gt;
+      &lt;transport stack="xsite"/&gt;
+      &lt;distributed-cache name="eu-customers"&gt;
+         &lt;backups merge-policy="ALWAYS_REMOVE"&gt;
+            &lt;backup site="LON" strategy="ASYNC"/&gt;
+         &lt;/backups&gt;
+      &lt;/distributed-cache&gt;
+   &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">JSON</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "backups": {
-      "merge-policy": "ALWAYS_REMOVE",
-      "LON": {
-        "backup": {
-          "strategy": "ASYNC"
+  "infinispan": {
+    "jgroups": {
+      "stacks": {
+        "bridge": {
+          "stack": {
+            "extends": "tcp",
+            "TCP": {
+              "bind_port": "7900"
+            },
+            "TCPPING": {
+              "initial_hosts": "127.0.0.1[7900]",
+              "stack.position": "MPING",
+              "stack.combine": "REPLACE"
+            }
+          }
+        },
+        "xsite": {
+          "stack": {
+            "extends": "udp",
+            "relay.RELAY2": {
+              "site": "NYC",
+              "max_site_masters": "1000"
+            },
+            "remote-sites": {
+              "default-stack": "bridge",
+              "cluster": "xsite",
+              "remote-site": {
+                "name": "NYC"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cache-container": {
+      "transport": {
+        "stack": "xsite"
+      },
+      "distributed-cache": {
+        "name": "eu-customers",
+        "backups": {
+          "merge-policy": "ALWAYS_REMOVE",
+          "LON": {
+            "backup": {
+              "strategy": "ASYNC"
+            }
+          }
         }
       }
     }
@@ -1822,12 +2341,38 @@ If you want Infinispan to replicate between caches with different names, you can
 <div class="listingblock secondary">
 <div class="title">YAML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
-  backups:
-    mergePolicy: "ALWAYS_REMOVE"
-    LON:
-      backup:
-        strategy: "ASYNC"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  jgroups:
+    stacks:
+      bridge:
+        stack:
+          extends: "tcp"
+          TCP:
+            bindPort: "7900"
+          TCPPING:
+            initialHosts: "127.0.0.1[7900]"
+            stack.position: "MPING"
+            stack.combine: "REPLACE"
+      xsite:
+        stack:
+          extends: "udp"
+          relay.RELAY2:
+            site: "NYC"
+            maxSiteMasters: "1000"
+          remoteSites:
+            defaultStack: "bridge"
+            remoteSite:
+              name: "NYC"
+  cacheContainer:
+    transport:
+      stack: "xsite"
+    distributedCache:
+      name: "eu-customers"
+      backups:
+        mergePolicy: "ALWAYS_REMOVE"
+        LON:
+          backup:
+            strategy: "ASYNC"</code></pre>
 </div>
 </div>
 <h4 id="custom_conflict_resolution_algorithms" class="discrete">Custom conflict resolution algorithms</h4>
@@ -1837,23 +2382,85 @@ If you want Infinispan to replicate between caches with different names, you can
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-   &lt;backups merge-policy="org.mycompany.MyCustomXSiteEntryMergePolicy"&gt;
-      &lt;backup site="LON" strategy="ASYNC"/&gt;
-   &lt;/backups&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
+   &lt;jgroups&gt;
+      &lt;stack name="bridge" extends="tcp"&gt;
+         &lt;TCP bind_port="7900"/&gt;
+         &lt;TCPPING initial_hosts="127.0.0.1[7900]"
+                  stack.combine="REPLACE"
+                  stack.position="MPING"/&gt;
+      &lt;/stack&gt;
+      &lt;stack name="xsite" extends="udp"&gt;
+         &lt;relay.RELAY2 site="NYC"
+                       max_site_masters="1000"/&gt;
+         &lt;remote-sites default-stack="bridge"&gt;
+            &lt;remote-site name="LON"/&gt;
+            &lt;remote-site name="NYC"/&gt;
+         &lt;/remote-sites&gt;
+      &lt;/stack&gt;
+   &lt;/jgroups&gt;
+   &lt;cache-container&gt;
+      &lt;transport stack="xsite"/&gt;
+      &lt;distributed-cache name="eu-customers"&gt;
+         &lt;backups merge-policy="org.mycompany.MyCustomXSiteEntryMergePolicy"&gt;
+            &lt;backup site="LON" strategy="ASYNC"/&gt;
+         &lt;/backups&gt;
+      &lt;/distributed-cache&gt;
+   &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">JSON</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "backups": {
-      "merge-policy": "org.mycompany.MyCustomXSiteEntryMergePolicy",
-      "LON": {
-        "backup": {
-          "strategy": "ASYNC"
+  "infinispan": {
+    "jgroups": {
+      "stacks": {
+        "bridge": {
+          "stack": {
+            "extends": "tcp",
+            "TCP": {
+              "bind_port": "7900"
+            },
+            "TCPPING": {
+              "initial_hosts": "127.0.0.1[7900]",
+              "stack.position": "MPING",
+              "stack.combine": "REPLACE"
+            }
+          }
+        },
+        "xsite": {
+          "stack": {
+            "extends": "udp",
+            "relay.RELAY2": {
+              "site": "NYC",
+              "max_site_masters": "1000"
+            },
+            "remote-sites": {
+              "default-stack": "bridge",
+              "cluster": "xsite",
+              "remote-site": {
+                "name": "NYC"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cache-container": {
+      "transport": {
+        "stack": "xsite"
+      },
+      "distributed-cache": {
+        "name": "eu-customers",
+        "backups": {
+          "merge-policy": "org.mycompany.MyCustomXSiteEntryMergePolicy",
+          "LON": {
+            "backup": {
+              "strategy": "ASYNC"
+            }
+          }
         }
       }
     }
@@ -1864,12 +2471,38 @@ If you want Infinispan to replicate between caches with different names, you can
 <div class="listingblock secondary">
 <div class="title">YAML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
-  backups:
-    mergePolicy: "org.mycompany.MyCustomXSiteEntryMergePolicy"
-    LON:
-      backup:
-        strategy: "ASYNC"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  jgroups:
+    stacks:
+      bridge:
+        stack:
+          extends: "tcp"
+          TCP:
+            bindPort: "7900"
+          TCPPING:
+            initialHosts: "127.0.0.1[7900]"
+            stack.position: "MPING"
+            stack.combine: "REPLACE"
+      xsite:
+        stack:
+          extends: "udp"
+          relay.RELAY2:
+            site: "NYC"
+            maxSiteMasters: "1000"
+          remoteSites:
+            defaultStack: "bridge"
+            remoteSite:
+              name: "NYC"
+  cacheContainer:
+    transport:
+      stack: "xsite"
+    distributedCache:
+      name: "eu-customers"
+      backups:
+        mergePolicy: "org.mycompany.MyCustomXSiteEntryMergePolicy"
+        LON:
+          backup:
+            strategy: "ASYNC"</code></pre>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -1911,7 +2544,7 @@ Likewise, if the number of tombstones is less than this number then Infinispan d
 </div>
 </li>
 <li>
-<p>Add the <code>max-cleanup-delay</code> attribute and specify the maximum delay, in milliseconds, between tombstone cleanup tasks.</p>
+<p>Add the <code>max-cleanup-delay</code> attribute and specify the maximum delay, in milliseconds, between the tombstone cleanup tasks.</p>
 </li>
 <li>
 <p>Save the changes to your configuration.</p>
@@ -1922,24 +2555,86 @@ Likewise, if the number of tombstones is less than this number then Infinispan d
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-   &lt;backups tombstone-map-size="512000" max-cleanup-delay="30000"&gt;
-      &lt;backup site="LON" strategy="ASYNC"/&gt;
-   &lt;/backups&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
+   &lt;jgroups&gt;
+      &lt;stack name="bridge" extends="tcp"&gt;
+         &lt;TCP bind_port="7900"/&gt;
+         &lt;TCPPING initial_hosts="127.0.0.1[7900]"
+                  stack.combine="REPLACE"
+                  stack.position="MPING"/&gt;
+      &lt;/stack&gt;
+      &lt;stack name="xsite" extends="udp"&gt;
+         &lt;relay.RELAY2 site="NYC"
+                       max_site_masters="1000"/&gt;
+         &lt;remote-sites default-stack="bridge"&gt;
+            &lt;remote-site name="LON"/&gt;
+            &lt;remote-site name="NYC"/&gt;
+         &lt;/remote-sites&gt;
+      &lt;/stack&gt;
+   &lt;/jgroups&gt;
+   &lt;cache-container&gt;
+      &lt;transport stack="xsite"/&gt;
+      &lt;distributed-cache name="eu-customers"&gt;
+         &lt;backups tombstone-map-size="512000" max-cleanup-delay="30000"&gt;
+            &lt;backup site="LON" strategy="ASYNC"/&gt;
+         &lt;/backups&gt;
+      &lt;/distributed-cache&gt;
+   &lt;/cache-container&gt;
+&lt;/infinispan&gt;</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">JSON</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "backups": {
-      "tombstone-map-size": 512000,
-      "max-cleanup-delay": 30000,
-      "LON": {
-        "backup": {
-          "strategy": "ASYNC"
+  "infinispan": {
+    "jgroups": {
+      "stacks": {
+        "bridge": {
+          "stack": {
+            "extends": "tcp",
+            "TCP": {
+              "bind_port": "7900"
+            },
+            "TCPPING": {
+              "initial_hosts": "127.0.0.1[7900]",
+              "stack.position": "MPING",
+              "stack.combine": "REPLACE"
+            }
+          }
+        },
+        "xsite": {
+          "stack": {
+            "extends": "udp",
+            "relay.RELAY2": {
+              "site": "NYC",
+              "max_site_masters": "1000"
+            },
+            "remote-sites": {
+              "default-stack": "bridge",
+              "cluster": "xsite",
+              "remote-site": {
+                "name": "NYC"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cache-container": {
+      "transport": {
+        "stack": "xsite"
+      },
+      "distributed-cache": {
+        "name": "eu-customers",
+        "backups": {
+          "tombstone-map-size": 512000,
+          "max-cleanup-delay": 30000,
+          "LON": {
+            "backup": {
+              "strategy": "ASYNC"
+            }
+          }
         }
       }
     }
@@ -1950,13 +2645,39 @@ Likewise, if the number of tombstones is less than this number then Infinispan d
 <div class="listingblock secondary">
 <div class="title">YAML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
-  backups:
-    tombstoneMapSize: 512000
-    maxCleanupDelay: 30000
-    LON:
-      backup:
-        strategy: "ASYNC"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  jgroups:
+    stacks:
+      bridge:
+        stack:
+          extends: "tcp"
+          TCP:
+            bindPort: "7900"
+          TCPPING:
+            initialHosts: "127.0.0.1[7900]"
+            stack.position: "MPING"
+            stack.combine: "REPLACE"
+      xsite:
+        stack:
+          extends: "udp"
+          relay.RELAY2:
+            site: "NYC"
+            maxSiteMasters: "1000"
+          remoteSites:
+            defaultStack: "bridge"
+            remoteSite:
+              name: "NYC"
+  cacheContainer:
+    transport:
+      stack: "xsite"
+    distributedCache:
+      name: "eu-customers"
+      backups:
+        tombstoneMapSize: 512000
+        maxCleanupDelay: 30000
+        LON:
+          backup:
+            strategy: "ASYNC"</code></pre>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -2034,7 +2755,7 @@ builder.addServers("LON_host1:11222;LON_host2:11222;LON_host3:11222")
 <p><code>RemoteCacheManager.switchToDefaultCluster()</code></p>
 </li>
 <li>
-<p><code>RemoteCacheManager.switchToCluster(${site.name})</code></p>
+<p><code>RemoteCacheManager.switchToCluster(clusterName)</code></p>
 </li>
 </ul>
 </div>
@@ -2063,8 +2784,7 @@ builder.addServers("LON_host1:11222;LON_host2:11222;LON_host3:11222")
 <h2 id="cross-site-operations-cli"><a class="anchor" href="#cross-site-operations-cli"></a>3. Performing cross-site operations with the CLI</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Use the Infinispan command line interface (CLI) to connect to Infinispan
-Server clusters, manage sites, and push state transfer to backup locations.</p>
+<p>Use the Infinispan command line interface (CLI) to connect to Infinispan Server clusters, manage clusters, and push state transfer to backup locations.</p>
 </div>
 <div class="sect2">
 <h3 id="bringing-backup-locations-offline-online_cross-site-operations-cli"><a class="anchor" href="#bringing-backup-locations-offline-online_cross-site-operations-cli"></a>3.1. Bringing backup locations offline and online</h3>
@@ -2086,7 +2806,7 @@ Server clusters, manage sites, and push state transfer to backup locations.</p>
 <p>Check if backup locations are online or offline with the <code class="command">site status</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site status --cache=cacheName --site=NYC</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site status --cache=&lt;cache-name-here&gt; --site=NYC</code></pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -2097,8 +2817,8 @@ Server clusters, manage sites, and push state transfer to backup locations.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p><code>--site</code> is an optional argument. If not set, the CLI returns all backup
-locations.</p>
+<p><code>--site</code> is an optional argument.
+If not set, the CLI returns all backup locations for that specific cache.</p>
 </div>
 </td>
 </tr>
@@ -2112,7 +2832,7 @@ locations.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Use the <code>--all-caches</code> option to get the backup location status for all caches.</p>
+<p>Replace <code>--cache=&lt;cache-name-here&gt;</code> with <code>--all-caches</code> option to get the backup location status for all caches.</p>
 </div>
 </td>
 </tr>
@@ -2127,7 +2847,7 @@ locations.</p>
 <p>Bring backup locations online with the <code class="command">bring-online</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site bring-online --cache=customers --site=NYC</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site bring-online --cache=&lt;cache-name-here&gt; --site=NYC</code></pre>
 </div>
 </div>
 </li>
@@ -2135,7 +2855,7 @@ locations.</p>
 <p>Take backup locations offline with the <code class="command">take-offline</code> command:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site take-offline --cache=customers --site=NYC</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site take-offline --cache=&lt;cache-name-here&gt; --site=NYC</code></pre>
 </div>
 </div>
 </li>
@@ -2152,7 +2872,7 @@ locations.</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Use the <code>--all-caches</code> option to bring a backup location online, or take a backup location offline, for all caches.</p>
+<p>Replace <code>--cache=&lt;cache-name-here&gt;</code> with <code>--all-caches</code> option to bring a backup location online, or take a backup location offline, for all caches.</p>
 </div>
 </td>
 </tr>
@@ -2166,7 +2886,7 @@ locations.</p>
 <h3 id="configuring-cross-site-state-transfer-modes_cross-site-operations-cli"><a class="anchor" href="#configuring-cross-site-state-transfer-modes_cross-site-operations-cli"></a>3.2. Configuring cross-site state transfer modes</h3>
 <div class="paragraph">
 <p>You can configure cross-site state transfer operations to happen automatically when Infinispan detects that backup locations come online.
-Alternatively you can use the default mode, which is to manually perform state transfer.</p>
+Alternatively, you can use the default mode, which is to manually perform state transfer.</p>
 </div>
 <div class="ulist">
 <div class="title">Prerequisites</div>
@@ -2187,7 +2907,7 @@ Alternatively you can use the default mode, which is to manually perform state t
 <p>Retrieve the current state transfer mode.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site state-transfer-mode get --cache=cacheName --site=NYC</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site state-transfer-mode get --cache=&lt;cache-name-here&gt; --site=NYC</code></pre>
 </div>
 </div>
 </li>
@@ -2195,7 +2915,7 @@ Alternatively you can use the default mode, which is to manually perform state t
 <p>Configure automatic state transfer operations for a cache and backup location.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site state-transfer-mode set --cache=cacheName --site=NYC --mode=AUTO</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site state-transfer-mode set --cache=&lt;cache-name-here&gt; --site=NYC --mode=AUTO</code></pre>
 </div>
 </div>
 </li>
@@ -2222,7 +2942,7 @@ Alternatively you can use the default mode, which is to manually perform state t
 <div class="sect2">
 <h3 id="pushing-cross-site-state-transfer_cross-site-operations-cli"><a class="anchor" href="#pushing-cross-site-state-transfer_cross-site-operations-cli"></a>3.3. Pushing state to backup locations</h3>
 <div class="paragraph">
-<p>Transfer cache state to backup locations.</p>
+<p>Transfer the cache state to backup locations.</p>
 </div>
 <div class="ulist">
 <div class="title">Prerequisites</div>
@@ -2239,7 +2959,7 @@ Alternatively you can use the default mode, which is to manually perform state t
 <p>Use the <code class="command">site push-site-state</code> command to push state transfer, as in the following example:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site push-site-state --cache=cacheName --site=NYC</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">site push-site-state --cache=&lt;cache-name-here&gt; --site=NYC</code></pre>
 </div>
 </div>
 </li>
@@ -2253,7 +2973,8 @@ Alternatively you can use the default mode, which is to manually perform state t
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Use the <code>--all-caches</code> option to push state transfer for all caches.</p>
+<p>Replace <code>--cache=&lt;cache-name-here&gt;</code> with <code>--all-caches</code> option to push state transfer for all caches.
+Pushing the state has an high resource demand, so use this option with caution.</p>
 </div>
 </td>
 </tr>
@@ -2282,8 +3003,7 @@ Alternatively you can use the default mode, which is to manually perform state t
 </div>
 </div>
 <div class="paragraph">
-<p>Infinispan responds with the status of each backup location in JSON format, as
-in the following example:</p>
+<p>Infinispan responds with the status of each backup location in JSON format, as in the following example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2318,15 +3038,16 @@ in the following example:</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have a cross-site view with the backup location.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have the backup location with <code>online</code> status.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No nodes in the local cluster have a cross-site view with the backup location.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have the backup location with <code>offline</code> status.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>mixed</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Some nodes in the local cluster have a cross-site view with the backup location, other nodes in the local cluster do not have a cross-site view. The response indicates status for each node.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Some nodes in the local cluster have the backup location with <code>online</code> status while others have the backup location with <code>offline</code> status.
+The response indicates status for each node.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2342,8 +3063,7 @@ in the following example:</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Infinispan responds with the status of each node in the site in JSON
-format, as in the following example:</p>
+<p>Infinispan responds with the status of each node in JSON format, as in the following example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2368,15 +3088,16 @@ format, as in the following example:</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The node is online.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The node has <code>{siteName}</code> with <code>online</code> status</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The node is offline.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The node has <code>{siteName}</code> with <code>offline</code> status</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>failed</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Not possible to retrieve status. The remote cache could be shutting down or a network error occurred during the request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not possible to retrieve status.
+The remote cache could be shutting down or a network error occurred during the request.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2439,8 +3160,7 @@ parameter.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Infinispan responds with the status of state transfer for each backup location
-in JSON format, as in the following example:</p>
+<p>Infinispan responds with the status of state transfer for each backup location in JSON format, as in the following example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2465,19 +3185,20 @@ in JSON format, as in the following example:</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SENDING</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">State transfer to the backup location is in progress.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The state transfer to the backup location is in progress.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OK</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">State transfer completed successfully.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The state transfer completed successfully.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERROR</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">An error occurred with state transfer. Check log files.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An error occurred with state transfer.
+Check the log files.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CANCELLING</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">State transfer cancellation is in progress.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The state transfer cancellation is in progress.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2485,8 +3206,9 @@ in JSON format, as in the following example:</p>
 <div class="sect2">
 <h3 id="rest_v2_xsite_clear_transfer_status_cross-site-operations-rest"><a class="anchor" href="#rest_v2_xsite_clear_transfer_status_cross-site-operations-rest"></a>4.8. Clearing state transfer status</h3>
 <div class="paragraph">
-<p>Clear state transfer status for sending sites with the
-<code>?action=clear-push-state-status</code> parameter.</p>
+<p>Clear the state transfer status in the sending cluster with the
+<code>?action=clear-push-state-status</code> parameter.
+It is recommended to clear it before starting the push for a new state transfer.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2497,8 +3219,8 @@ in JSON format, as in the following example:</p>
 <div class="sect2">
 <h3 id="rest_v2_xsite_tuning_takeoffline_cross-site-operations-rest"><a class="anchor" href="#rest_v2_xsite_tuning_takeoffline_cross-site-operations-rest"></a>4.9. Modifying take offline conditions</h3>
 <div class="paragraph">
-<p>Sites go offline if certain conditions are met. Modify the take offline
-parameters to control when backup locations automatically go offline.</p>
+<p>The backup location go offline when certain conditions are met.
+Modify the take offline parameters to control when backup locations automatically go offline.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -2512,8 +3234,7 @@ parameters to control when backup locations automatically go offline.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>The Infinispan response includes <code>after_failures</code> and <code>min_wait</code> fields as
-follows:</p>
+<p>The Infinispan response includes <code>after_failures</code> and <code>min_wait</code> fields as follows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2525,28 +3246,26 @@ follows:</p>
 </div>
 </li>
 <li>
-<p>Modify take offline parameters in the body of <code>PUT</code> requests.</p>
+<p>Modify the take offline parameters in the body of <code>PUT</code> requests.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-none hljs">PUT /rest/v2/caches/{cacheName}/x-site/backups/{siteName}/take-offline-config</code></pre>
 </div>
 </div>
-<div class="paragraph">
-<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
-</div>
 </li>
 </ol>
+</div>
+<div class="paragraph">
+<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="rest_v2_xsite_cancel_receive_state_cross-site-operations-rest"><a class="anchor" href="#rest_v2_xsite_cancel_receive_state_cross-site-operations-rest"></a>4.10. Canceling state transfer from receiving sites</h3>
 <div class="paragraph">
-<p>If the connection between two backup locations breaks, you can cancel state
-transfer on the site that is receiving the push.</p>
+<p>If the connection between two backup locations breaks, you can cancel state transfer on the backup location that is receiving the push.</p>
 </div>
 <div class="paragraph">
-<p>Cancel state transfer from a remote site and keep the current state of the
-local cache with the <code>?action=cancel-receive-state</code> parameter.</p>
+<p>Cancel state transfer from another location and keep the current state of the local cache with the <code>?action=cancel-receive-state</code> parameter.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -2555,7 +3274,29 @@ local cache with the <code>?action=cancel-receive-state</code> parameter.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="rest_v2_cache_manager_site_status_cross-site-operations-rest"><a class="anchor" href="#rest_v2_cache_manager_site_status_cross-site-operations-rest"></a>4.11. Getting status of backup locations</h3>
+<h3 id="rest_v2_xsite_get_state_transfer_mode_cross-site-operations-rest"><a class="anchor" href="#rest_v2_xsite_get_state_transfer_mode_cross-site-operations-rest"></a>4.11. Retrieving the state transfer mode</h3>
+<div class="paragraph">
+<p>Check the state transfer mode with <code>GET</code> requests.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">GET /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="rest_v2_xsite_set_state_transfer_mode_cross-site-operations-rest"><a class="anchor" href="#rest_v2_xsite_set_state_transfer_mode_cross-site-operations-rest"></a>4.12. Setting the state transfer mode</h3>
+<div class="paragraph">
+<p>Configure the state transfer mode with the <code>?action=set</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">POST /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode?action=set&amp;mode={mode}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="rest_v2_cache_manager_site_status_cross-site-operations-rest"><a class="anchor" href="#rest_v2_cache_manager_site_status_cross-site-operations-rest"></a>4.13. Getting status of backup locations</h3>
 <div class="paragraph">
 <p>Retrieve the status of all backup locations with <code>GET</code>
 requests.</p>
@@ -2590,7 +3331,7 @@ requests.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. Returned status</caption>
+<caption class="title">Table 4. Returned Status</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -2604,15 +3345,16 @@ requests.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have a cross-site view with the backup location.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All caches in the local cluster have the backup location with <code>online</code> status.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No nodes in the local cluster have a cross-site view with the backup location.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All caches in the local cluster have the backup location with <code>offline</code> status.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>mixed</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Some nodes in the local cluster have a cross-site view with the backup location, other nodes in the local cluster do not have a cross-site view. The response indicates status for each node.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Some caches in the local cluster have the backup location with <code>online</code> status while others have the backup location with <code>offline</code> status.
+The response indicates status for each cache.</p></td>
 </tr>
 </tbody>
 </table>
@@ -2626,7 +3368,7 @@ requests.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="rest_v2_cache_manager_take_offline_cross-site-operations-rest"><a class="anchor" href="#rest_v2_cache_manager_take_offline_cross-site-operations-rest"></a>4.12. Taking backup locations offline</h3>
+<h3 id="rest_v2_cache_manager_take_offline_cross-site-operations-rest"><a class="anchor" href="#rest_v2_cache_manager_take_offline_cross-site-operations-rest"></a>4.14. Taking backup locations offline</h3>
 <div class="paragraph">
 <p>Take backup locations offline with the <code>?action=take-offline</code> parameter.</p>
 </div>
@@ -2637,35 +3379,13 @@ requests.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="rest_v2_cache_manager_bring_online_cross-site-operations-rest"><a class="anchor" href="#rest_v2_cache_manager_bring_online_cross-site-operations-rest"></a>4.13. Bringing backup locations online</h3>
+<h3 id="rest_v2_cache_manager_bring_online_cross-site-operations-rest"><a class="anchor" href="#rest_v2_cache_manager_bring_online_cross-site-operations-rest"></a>4.15. Bringing backup locations online</h3>
 <div class="paragraph">
 <p>Bring backup locations online with the <code>?action=bring-online</code> parameter.</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-none hljs">POST /rest/v2/container/x-site/backups/{siteName}?action=bring-online</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="rest_v2_cache_manager_get_state_transfer_mode_cross-site-operations-rest"><a class="anchor" href="#rest_v2_cache_manager_get_state_transfer_mode_cross-site-operations-rest"></a>4.14. Retrieving the state transfer mode</h3>
-<div class="paragraph">
-<p>Check the state transfer mode with <code>GET</code> requests.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">GET /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="rest_v2_cache_manager_set_state_transfer_mode_cross-site-operations-rest"><a class="anchor" href="#rest_v2_cache_manager_set_state_transfer_mode_cross-site-operations-rest"></a>4.15. Setting the state transfer mode</h3>
-<div class="paragraph">
-<p>Configure the state transfer mode with the <code>?action=set</code> parameter.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">POST /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode?action=set&amp;mode={mode}</code></pre>
 </div>
 </div>
 </div>
@@ -2878,7 +3598,7 @@ and statistics, see the <em>Infinispan JMX Components</em> documentation.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-15 09:42:19 UTC
+Last updated 2025-10-28 14:52:02 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>

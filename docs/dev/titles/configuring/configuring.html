@@ -678,16 +678,16 @@ $(addBlockSwitches);
 </li>
 <li><a href="#persistence">6. Configuring persistent storage</a>
 <ul class="sectlevel2">
-<li><a href="#passivation_persistence">6.1. Passivation</a>
+<li><a href="#segmented-cache-stores_persistence">6.1. Segmented cache stores</a></li>
+<li><a href="#shared-cache-stores_persistence">6.2. Shared cache stores</a></li>
+<li><a href="#cache-loaders-transactional_persistence">6.3. Transactions with persistent cache stores</a></li>
+<li><a href="#write-through_persistence">6.4. Write-through cache stores</a></li>
+<li><a href="#write-behind_persistence">6.5. Write-behind cache stores</a></li>
+<li><a href="#passivation_persistence">6.6. Passivation</a>
 <ul class="sectlevel3">
-<li><a href="#how-passivation-works_persistence">6.1.1. How passivation works</a></li>
+<li><a href="#how-passivation-works_persistence">6.6.1. How passivation works</a></li>
 </ul>
 </li>
-<li><a href="#write-through_persistence">6.2. Write-through cache stores</a></li>
-<li><a href="#write-behind_persistence">6.3. Write-behind cache stores</a></li>
-<li><a href="#segmented-cache-stores_persistence">6.4. Segmented cache stores</a></li>
-<li><a href="#shared-cache-stores_persistence">6.5. Shared cache stores</a></li>
-<li><a href="#cache-loaders-transactional_persistence">6.6. Transactions with persistent cache stores</a></li>
 <li><a href="#global-persistent-location_persistence">6.7. Global persistent location</a>
 <ul class="sectlevel3">
 <li><a href="#configuring-global-persistent-location_persistence">6.7.1. Configuring the global persistent location</a></li>
@@ -5826,177 +5826,108 @@ frequently used data in-memory and writes older entries to persistent storage.</
 </dl>
 </div>
 <div class="sect2">
-<h3 id="passivation_persistence"><a class="anchor" href="#passivation_persistence"></a>6.1. Passivation</h3>
+<h3 id="segmented-cache-stores_persistence"><a class="anchor" href="#segmented-cache-stores_persistence"></a>6.1. Segmented cache stores</h3>
 <div class="paragraph">
-<p>Passivation configures Infinispan to write entries to cache stores when it
-evicts those entries from memory. In this way, passivation prevents unnecessary
-and potentially expensive writes to persistent storage.</p>
+<p>Cache stores can organize data into hash space segments to which keys map. Stores are segmented by default.</p>
 </div>
 <div class="paragraph">
-<p>Activation is the process of restoring entries to memory from the cache store
-when there is an attempt to access passivated entries. For this reason, when you
-enable passivation, you must configure cache stores that implement both
-<code>CacheWriter</code> and <code>CacheLoader</code> interfaces so they can write and load entries
-from persistent storage.</p>
+<p>Segmented stores increase read performance for bulk operations; for example,
+streaming over data (<code>Cache.size</code>, <code>Cache.entrySet.stream</code>), pre-loading the
+cache, and doing state transfer operations.</p>
 </div>
-<div class="paragraph">
-<p>When Infinispan evicts an entry from the cache, it notifies cache listeners
-that the entry is passivated then stores the entry in the cache store. When
-Infinispan gets an access request for an evicted entry, it lazily loads the
-entry from the cache store into memory and then notifies cache listeners that
-the entry is activated while keeping the value still in the store.</p>
-</div>
-<div class="admonitionblock note">
+<div class="admonitionblock important">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="ulist">
-<ul>
-<li>
-<p>Passivation uses the first cache loader in the Infinispan configuration and
-ignores all others.</p>
-</li>
-<li>
-<p>Passivation is not supported with:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Transactional stores. Passivation writes and removes entries from the store
-outside the scope of the actual Infinispan commit boundaries.</p>
-</li>
-<li>
-<p>Shared stores. Shared cache stores require entries to always exist in the
-store for other owners. For this reason, passivation is not supported because
-entries cannot be removed.</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>If you enable passivation with transactional stores or shared stores,
-Infinispan throws an exception.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="sect3">
-<h4 id="how-passivation-works_persistence"><a class="anchor" href="#how-passivation-works_persistence"></a>6.1.1. How passivation works</h4>
-<div class="paragraph">
-<div class="title">Passivation disabled</div>
-<p>Writes to data in memory result in writes to persistent storage.</p>
-</div>
-<div class="paragraph">
-<p>If Infinispan evicts data from memory, then data in persistent storage
-includes entries that are evicted from memory. In this way persistent storage
-is a superset of the in-memory cache.
-This is recommended when you require highest consistency as the store will be able to be read again after a crash.</p>
-</div>
-<div class="paragraph">
-<p>If you do not configure eviction, then data in persistent storage provides a
-copy of data in memory.</p>
-</div>
-<div class="paragraph">
-<div class="title">Passivation enabled</div>
-<p>Infinispan adds data to persistent storage only when it evicts data from
-memory, an entry is removed or upon shutting down the node.</p>
-</div>
-<div class="paragraph">
-<p>When Infinispan activates entries, it restores data in memory but keeps the data in the store still.
-This allows for writes to be just as fast as without a store, and still maintains consistency.
-When an entry is created or updated only the in memory will be updated and thus
-the store will be outdated for the time being.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
+<i class="fa icon-important" title="Important"></i>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Passivation is not supported when a store is also configured as shared.
-This is due to entries can become out of sync between nodes depending on when a write is evicted versus read.</p>
+<p>If you change the <code>numSegments</code> parameter in the configuration after you add a
+segmented cache store, Infinispan cannot read data from that cache store.</p>
 </div>
 </td>
 </tr>
-</table>
-</div>
-<div class="paragraph">
-<p>To gurantee data consistency any store that is not shared should always have <code>purgeOnStartup</code> enabled.
-This is true for both passivation enabled or disabled since a store could hold an outdated entry while down and resurrect it at a later point.</p>
-</div>
-<div class="paragraph">
-<p>The following table shows data in memory and in persistent storage after a
-series of operations:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 33.3333%;">
-<col style="width: 33.3334%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Operation</th>
-<th class="tableblock halign-left valign-top">Passivation disabled</th>
-<th class="tableblock halign-left valign-top">Passivation enabled</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Insert k1.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
-<strong>Disk:</strong> k1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
-<strong>Disk:</strong> -</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Insert k2.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1, k2<br>
-<strong>Disk:</strong> k1, k2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1, k2<br>
-<strong>Disk:</strong> -</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Eviction thread runs and evicts k1.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k2<br>
-<strong>Disk:</strong> k1, k2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k2<br>
-<strong>Disk:</strong> k1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read k1.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1, k2<br>
-<strong>Disk:</strong> k1, k2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1, k2<br>
-<strong>Disk:</strong> k1</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Eviction thread runs and evicts k2.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
-<strong>Disk:</strong> k1, k2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
-<strong>Disk:</strong> k1, k2</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Remove k2.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
-<strong>Disk:</strong> k1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
-<strong>Disk:</strong> k1</p></td>
-</tr>
-</tbody>
 </table>
 </div>
 </div>
 <div class="sect2">
-<h3 id="write-through_persistence"><a class="anchor" href="#write-through_persistence"></a>6.2. Write-through cache stores</h3>
+<h3 id="shared-cache-stores_persistence"><a class="anchor" href="#shared-cache-stores_persistence"></a>6.2. Shared cache stores</h3>
+<div class="paragraph">
+<p>Infinispan cache stores can be local to a given node or shared across all nodes in the cluster.
+By default, cache stores are local (<code>shared="false"</code>).</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Local cache stores are unique to each node; for example, a file-based cache store that persists data to the host filesystem.</p>
+<div class="paragraph">
+<p>Local cache stores should use "purge on startup" to avoid loading stale entries from persistent storage.</p>
+</div>
+</li>
+<li>
+<p>Shared cache stores allow multiple nodes to use the same persistent storage; for example, a JDBC cache store that allows multiple nodes to access the same database.</p>
+<div class="paragraph">
+<p>Shared cache stores ensure that only the primary owner write to persistent storage, instead of backup nodes performing write operations for every modification.</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Purging deletes data, which is not typically the desired behavior for persistent storage.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock primary">
+<div class="title">Local cache store</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;persistence&gt;
+  &lt;store shared="false"
+         purge="true"/&gt;
+&lt;/persistence&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Shared cache store</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;persistence&gt;
+  &lt;store shared="true"
+         purge="false"/&gt;
+&lt;/persistence&gt;</code></pre>
+</div>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="../../configuration-schema/index.html">Infinispan Configuration Schema</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cache-loaders-transactional_persistence"><a class="anchor" href="#cache-loaders-transactional_persistence"></a>6.3. Transactions with persistent cache stores</h3>
+<div class="paragraph">
+<p>Infinispan supports transactional operations with JDBC-based cache stores only.
+To configure caches as transactional, you set <code>transactional=true</code> to keep data in persistent storage synchronized with data in memory.</p>
+</div>
+<div class="paragraph">
+<p>For all other cache stores, Infinispan does not enlist cache loaders in transactional operations.
+This can result in data inconsistency if transactions succeed in modifying data in memory but do not completely apply changes to data in the cache store.
+In these cases manual recovery is not possible with cache stores.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="write-through_persistence"><a class="anchor" href="#write-through_persistence"></a>6.4. Write-through cache stores</h3>
 <div class="paragraph">
 <p>Write-through is a cache writing mode where writes to memory and writes to
 cache stores are synchronous. When a client application updates a cache entry,
@@ -6036,7 +5967,7 @@ There is no separate element or method for configuring write-through mode.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="write-behind_persistence"><a class="anchor" href="#write-behind_persistence"></a>6.3. Write-behind cache stores</h3>
+<h3 id="write-behind_persistence"><a class="anchor" href="#write-behind_persistence"></a>6.5. Write-behind cache stores</h3>
 <div class="paragraph">
 <p>Write-behind is a cache writing mode where writes to memory are synchronous
 and writes to cache stores are asynchronous.</p>
@@ -6172,118 +6103,173 @@ because they were not persisted.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="segmented-cache-stores_persistence"><a class="anchor" href="#segmented-cache-stores_persistence"></a>6.4. Segmented cache stores</h3>
+<h3 id="passivation_persistence"><a class="anchor" href="#passivation_persistence"></a>6.6. Passivation</h3>
 <div class="paragraph">
-<p>Cache stores can organize data into hash space segments to which keys map.</p>
+<p>Passivation configures Infinispan to write entries to cache stores when it
+evicts those entries from memory. In this way, passivation prevents unnecessary
+and potentially expensive writes to persistent storage.</p>
 </div>
 <div class="paragraph">
-<p>Segmented stores increase read performance for bulk operations; for example,
-streaming over data (<code>Cache.size</code>, <code>Cache.entrySet.stream</code>), pre-loading the
-cache, and doing state transfer operations.</p>
+<p>Activation is the process of restoring entries to memory from the cache store
+when there is an attempt to access passivated entries. For this reason, when you
+enable passivation, you must configure a cache store that implements the
+<code>NonBlockingStore</code> interface. The store&#8217;s <code>characteristics()</code> method must
+also indicate that it supports both read and write operations.</p>
 </div>
 <div class="paragraph">
-<p>However, segmented stores can also result in loss of performance for write
-operations. This performance loss applies particularly to batch write
-operations that can take place with transactions or write-behind stores. For
-this reason, you should evaluate the overhead for write operations before you
-enable segmented stores. The performance gain for bulk read operations might
-not be acceptable if there is a significant performance loss for write
-operations.</p>
+<p>When Infinispan evicts an entry from the cache, it notifies cache listeners
+that the entry is passivated then stores the entry in the cache store. When
+Infinispan gets an access request for an evicted entry, it lazily loads the
+entry from the cache store into memory and then notifies cache listeners that
+the entry is activated while keeping the value still in the store.</p>
 </div>
-<div class="admonitionblock important">
+<div class="admonitionblock note">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-important" title="Important"></i>
+<i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-<div class="paragraph">
-<p>The number of segments you configure for cache stores must match the number of
-segments you define in the Infinispan configuration with the
-<code>clustering.hash.numSegments</code> parameter.</p>
-</div>
-<div class="paragraph">
-<p>If you change the <code>numSegments</code> parameter in the configuration after you add a
-segmented cache store, Infinispan cannot read data from that cache store.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="shared-cache-stores_persistence"><a class="anchor" href="#shared-cache-stores_persistence"></a>6.5. Shared cache stores</h3>
-<div class="paragraph">
-<p>Infinispan cache stores can be local to a given node or shared across all nodes in the cluster.
-By default, cache stores are local (<code>shared="false"</code>).</p>
-</div>
 <div class="ulist">
 <ul>
 <li>
-<p>Local cache stores are unique to each node; for example, a file-based cache store that persists data to the host filesystem.</p>
-<div class="paragraph">
-<p>Local cache stores should use "purge on startup" to avoid loading stale entries from persistent storage.</p>
-</div>
+<p>Passivation uses the first cache loader in the Infinispan configuration and
+ignores all others.</p>
 </li>
 <li>
-<p>Shared cache stores allow multiple nodes to use the same persistent storage; for example, a JDBC cache store that allows multiple nodes to access the same database.</p>
-<div class="paragraph">
-<p>Shared cache stores ensure that only the primary owner write to persistent storage, instead of backup nodes performing write operations for every modification.</p>
+<p>Passivation is not supported with:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Transactional stores. Passivation writes and removes entries from the store
+outside the scope of the actual Infinispan commit boundaries.</p>
+</li>
+<li>
+<p>Shared stores. Shared cache stores require entries to always exist in the
+store for other owners. For this reason, passivation is not supported because
+entries cannot be removed.</p>
+</li>
+</ul>
 </div>
 </li>
 </ul>
 </div>
-<div class="admonitionblock important">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-important" title="Important"></i>
-</td>
-<td class="content">
 <div class="paragraph">
-<p>Purging deletes data, which is not typically the desired behavior for persistent storage.</p>
+<p>If you enable passivation with transactional stores or shared stores,
+Infinispan throws an exception.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
-<div class="listingblock primary">
-<div class="title">Local cache store</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;persistence&gt;
-  &lt;store shared="false"
-         purge="true"/&gt;
-&lt;/persistence&gt;</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">Shared cache store</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;persistence&gt;
-  &lt;store shared="true"
-         purge="false"/&gt;
-&lt;/persistence&gt;</code></pre>
-</div>
-</div>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p><a href="../../configuration-schema/index.html">Infinispan Configuration Schema</a></p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="cache-loaders-transactional_persistence"><a class="anchor" href="#cache-loaders-transactional_persistence"></a>6.6. Transactions with persistent cache stores</h3>
+<div class="sect3">
+<h4 id="how-passivation-works_persistence"><a class="anchor" href="#how-passivation-works_persistence"></a>6.6.1. How passivation works</h4>
 <div class="paragraph">
-<p>Infinispan supports transactional operations with JDBC-based cache stores only.
-To configure caches as transactional, you set <code>transactional=true</code> to keep data in persistent storage synchronized with data in memory.</p>
+<div class="title">Passivation disabled</div>
+<p>Writes to data in memory result in writes to persistent storage.</p>
 </div>
 <div class="paragraph">
-<p>For all other cache stores, Infinispan does not enlist cache loaders in transactional operations.
-This can result in data inconsistency if transactions succeed in modifying data in memory but do not completely apply changes to data in the cache store.
-In these cases manual recovery is not possible with cache stores.</p>
+<p>If Infinispan evicts data from memory, then data in persistent storage
+includes entries that are evicted from memory. In this way persistent storage
+is a superset of the in-memory cache.
+This is recommended when you require highest consistency as the store will be able to be read again after a crash.</p>
+</div>
+<div class="paragraph">
+<p>If you do not configure eviction, then data in persistent storage provides a
+copy of data in memory.</p>
+</div>
+<div class="paragraph">
+<div class="title">Passivation enabled</div>
+<p>Infinispan adds data to persistent storage only when it evicts data from
+memory, an entry is removed or upon shutting down the node.</p>
+</div>
+<div class="paragraph">
+<p>When Infinispan activates entries, it restores data in memory but keeps the data in the store still.
+This allows for writes to be just as fast as without a store, and still maintains consistency.
+When an entry is created or updated only the in memory will be updated and thus
+the store will be outdated for the time being.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Passivation is not supported when a store is also configured as shared.
+This is due to entries can become out of sync between nodes depending on when a write is evicted versus read.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>To gurantee data consistency any store that is not shared should always have <code>purgeOnStartup</code> enabled.
+This is true for both passivation enabled or disabled since a store could hold an outdated entry while down and resurrect it at a later point.</p>
+</div>
+<div class="paragraph">
+<p>The following table shows data in memory and in persistent storage after a
+series of operations:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Operation</th>
+<th class="tableblock halign-left valign-top">Passivation disabled</th>
+<th class="tableblock halign-left valign-top">Passivation enabled</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Insert k1.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
+<strong>Disk:</strong> k1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
+<strong>Disk:</strong> -</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Insert k2.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1, k2<br>
+<strong>Disk:</strong> k1, k2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1, k2<br>
+<strong>Disk:</strong> -</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Eviction thread runs and evicts k1.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k2<br>
+<strong>Disk:</strong> k1, k2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k2<br>
+<strong>Disk:</strong> k1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read k1.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1, k2<br>
+<strong>Disk:</strong> k1, k2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1, k2<br>
+<strong>Disk:</strong> k1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Eviction thread runs and evicts k2.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
+<strong>Disk:</strong> k1, k2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
+<strong>Disk:</strong> k1, k2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Remove k2.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
+<strong>Disk:</strong> k1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Memory:</strong> k1<br>
+<strong>Disk:</strong> k1</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 <div class="sect2">
@@ -6348,7 +6334,8 @@ In most cases this is the directory where your application starts.</p>
 <p>For clustered embedded caches, such as replicated or distributed, you should always enable and configure a global persistent location to restore cluster topology.</p>
 </div>
 <div class="paragraph">
-<p>You should never configure an absolute path for a file-based cache store that is outside the global persistent location.
+<p>When using a file-based cache store, you should always configure a global persistent location. You should never configure an absolute path for a file-based cache store that is outside this location.
+For more details, see <a href="proc_configuring_global_persistent_location.html">Configuring the Global Persistent Location</a>.
 If you do, Infinispan writes the following exception to logs:</p>
 </div>
 <div class="listingblock">
@@ -6611,40 +6598,6 @@ configuration value is still used to configure how many segments are to be used.
 <div class="paragraph">
 <div class="title">Expiration</div>
 <p>The SoftIndexFileStore has full support for expired entries and their requirements.</p>
-</div>
-<h4 id="single_file_cache_stores" class="discrete">Single File Cache Stores</h4>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Single file cache stores are now deprecated and planned for removal.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>Single File cache stores, <code>SingleFileStore</code>, persist data to file.
-Infinispan also maintains an in-memory index of keys while keys and values are stored in the file.</p>
-</div>
-<div class="paragraph">
-<p>Because <code>SingleFileStore</code> keeps an in-memory index of keys and the location of values, it requires additional memory, depending on the key size and the number of keys.
-For this reason, <code>SingleFileStore</code> is not recommended for use cases where the keys are larger or there can be a larger number of them.</p>
-</div>
-<div class="paragraph">
-<p>In some cases, <code>SingleFileStore</code> can also become fragmented.
-If the size of values continually increases, available space in the single file is not used but the entry is appended to the end of the file.
-Available space in the file is used only if an entry can fit within it.
-Likewise, if you remove all entries from memory, the single file store does not decrease in size or become defragmented.</p>
-</div>
-<div class="paragraph">
-<div class="title">Segmentation</div>
-<p>Single file cache stores are segmented by default with a separate instance per segment, which results in multiple directories.
-Each directory is a number that represents the segment to which the data maps.</p>
 </div>
 <div class="sect3">
 <h4 id="configuring-file-stores_persistence"><a class="anchor" href="#configuring-file-stores_persistence"></a>6.8.1. Configuring file-based cache stores</h4>
@@ -13134,7 +13087,7 @@ public class MyNonBlockingListener {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-15 09:42:19 UTC
+Last updated 2025-10-28 14:52:02 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
