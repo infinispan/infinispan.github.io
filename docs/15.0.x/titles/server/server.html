@@ -591,18 +591,22 @@ $(addBlockSwitches);
 </li>
 <li><a href="#server-endpoints">3. Infinispan Server endpoints</a>
 <ul class="sectlevel2">
-<li><a href="#server-endpoints_server-endpoints">3.1. Infinispan Server endpoints</a>
+<li><a href="#server-endpoints_server-endpoints">3.1. Infinispan Server protocols</a>
 <ul class="sectlevel3">
 <li><a href="#hot_rod">3.1.1. Hot Rod</a></li>
 <li><a href="#rest">3.1.2. REST</a></li>
 <li><a href="#resp">3.1.3. RESP</a></li>
 <li><a href="#memcached">3.1.4. Memcached</a></li>
-<li><a href="#endpoint-protocol-comparison_server-endpoints">3.1.5. Comparison of endpoint protocols</a></li>
+<li><a href="#endpoint-protocol-comparison_server-endpoints">3.1.5. Comparison of protocols</a></li>
 <li><a href="#client-server-compatibility_server-endpoints">3.1.6. Hot Rod client compatibility with Infinispan Server</a></li>
 </ul>
 </li>
 <li><a href="#configuring-server-endpoints_server-endpoints">3.2. Configuring Infinispan Server endpoints</a></li>
-<li><a href="#endpoint-connectors_server-endpoints">3.3. Endpoint connectors</a></li>
+<li><a href="#endpoint-connectors_server-endpoints">3.3. Endpoint protocol connectors</a>
+<ul class="sectlevel3">
+<li><a href="#endpoint_request_limits">3.3.1. Endpoint request limits</a></li>
+</ul>
+</li>
 <li><a href="#endpoint-ip-address-filters_server-endpoints">3.4. Endpoint IP address filtering rules</a></li>
 <li><a href="#user_tool-server-endpoints">3.5. Inspecting and modifying rules for filtering IP addresses</a></li>
 </ul>
@@ -992,7 +996,7 @@ of Infinispan which still work fine with more recent servers.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight nowrap"><code>unzip infinispan-server-15.0.16.Final.zip</code></pre>
+<pre class="highlight nowrap"><code>unzip infinispan-server-15.0.21.Final.zip</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2633,10 +2637,12 @@ The default port offset is <code>0</code>.</p>
 <h2 id="server-endpoints"><a class="anchor" href="#server-endpoints"></a>3. Infinispan Server endpoints</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan Server endpoints provide client access to the cache manager over Hot Rod and REST protocols.</p>
+<p>Infinispan Server endpoints provide client access to the cache manager over different protocols.
+A server endpoint can multiplex multiple protocols on the same socket binding by detecting the incoming
+traffic type and routing it to the appropriate internal connector handler.</p>
 </div>
 <div class="sect2">
-<h3 id="server-endpoints_server-endpoints"><a class="anchor" href="#server-endpoints_server-endpoints"></a>3.1. Infinispan Server endpoints</h3>
+<h3 id="server-endpoints_server-endpoints"><a class="anchor" href="#server-endpoints_server-endpoints"></a>3.1. Infinispan Server protocols</h3>
 <div class="sect3">
 <h4 id="hot_rod"><a class="anchor" href="#hot_rod"></a>3.1.1. Hot Rod</h4>
 <div class="paragraph">
@@ -2653,9 +2659,9 @@ Topology caches contain entries that map internal JGroups transport addresses
 to exposed Hot Rod endpoints.</p>
 </div>
 <div class="paragraph">
-<p>When client send requests, Infinispan servers compare the topology ID in
+<p>When clients send requests, Infinispan servers compare the topology ID in
 request headers with the topology ID from the cache. Infinispan servers send
-new topology views if client have older topology IDs.</p>
+new topology views if clients have older topology IDs.</p>
 </div>
 <div class="paragraph">
 <p>Cluster topology views allow Hot Rod clients to immediately detect when nodes
@@ -2682,10 +2688,11 @@ occur.</p>
 <div class="sect3">
 <h4 id="resp"><a class="anchor" href="#resp"></a>3.1.3. RESP</h4>
 <div class="paragraph">
-<p>Infinispan provides an implementation of the <a href="https://github.com/redis/redis-specifications/blob/master/protocol/RESP3.md">RESP3</a> protocol.</p>
+<p>Infinispan provides an implementation of the <a href="https://github.com/redis/redis-specifications/blob/master/protocol/RESP3.md">RESP3</a> protocol
+used by <a href="https://redis.io/">Redis</a>, <a href="https://valkey.io/">Valkey</a>, <a href="https://aws.amazon.com/elasticache/Elasticache">Elasticache</a> and others.</p>
 </div>
 <div class="paragraph">
-<p>The RESP connector supports a subset of the Redis commands.</p>
+<p>The RESP connector supports a large subset of the Redis commands.</p>
 </div>
 </div>
 <div class="sect3">
@@ -2699,14 +2706,14 @@ remote client access.</p>
 distributed cache modes.</p>
 </div>
 <div class="paragraph">
-<p>There are some Memcached client implementations, such as the Cache::Memcached
+<p>There are some Memcached client implementations, such as the <a href="https://metacpan.org/pod/Cache::Memcached">Cache::Memcached</a>
 Perl client, that can offer load balancing and failover detection capabilities
 with static lists of Infinispan server addresses that require manual updates
 when cluster topology changes occur.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="endpoint-protocol-comparison_server-endpoints"><a class="anchor" href="#endpoint-protocol-comparison_server-endpoints"></a>3.1.5. Comparison of endpoint protocols</h4>
+<h4 id="endpoint-protocol-comparison_server-endpoints"><a class="anchor" href="#endpoint-protocol-comparison_server-endpoints"></a>3.1.5. Comparison of protocols</h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 20%;">
@@ -2846,24 +2853,7 @@ For instance during a migration or upgrade to your Infinispan cluster, the Hot R
 <div class="sect2">
 <h3 id="configuring-server-endpoints_server-endpoints"><a class="anchor" href="#configuring-server-endpoints_server-endpoints"></a>3.2. Configuring Infinispan Server endpoints</h3>
 <div class="paragraph">
-<p>Control how the different protocol endpoints bind to sockets and use security realm configuration.
-You can also configure multiple endpoints and disable administrative capabilities.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Each unique endpoint configuration must include both a Hot Rod connector and a REST connector.
-Infinispan Server implicitly includes the <code>hotrod-connector</code> and <code>rest-connector</code> elements, or fields, in an <code>endpoint</code> configuration.
-You should only add these elements to custom configuration to specify authentication mechanisms for endpoints.</p>
-</div>
-</td>
-</tr>
-</table>
+<p>Control how the different server endpoints bind to sockets and use security realm configuration.</p>
 </div>
 <div class="ulist">
 <div class="title">Prerequisites</div>
@@ -2899,9 +2889,25 @@ You should only add these elements to custom configuration to specify authentica
 </li>
 </ol>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan Server must be configured with at least one endpoint which has a REST connector with administrative
+capabilities.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <h4 id="multiple_endpoint_configuration" class="discrete">Multiple endpoint configuration</h4>
 <div class="paragraph">
-<p>The following Infinispan Server configuration creates endpoints on separate socket bindings with dedicated security realms:</p>
+<p>The following Infinispan Server configuration creates endpoints on separate socket bindings with dedicated security realms
+and disabling administrative access on the <code>public</code> endpoint:</p>
 </div>
 <div class="listingblock primary">
 <div class="title">XML</div>
@@ -2924,13 +2930,15 @@ You should only add these elements to custom configuration to specify authentica
 <div class="content">
 <pre class="highlight nowrap"><code class="language-json" data-lang="json">{
   "server": {
-    "endpoints": [{
+    "endpoints": [
+      {
+        "socket-binding": "public",
+        "security-realm": "application-realm",
+        "admin": "false"
+      },
+      {
       "socket-binding": "private",
-      "security-realm": "private-realm"
-    }, {
-      "socket-binding": "public",
-      "security-realm": "default",
-      "admin": "false"
+      "security-realm": "management-realm"
     }]
   }
 }</code></pre>
@@ -2958,15 +2966,45 @@ You should only add these elements to custom configuration to specify authentica
 </div>
 </div>
 <div class="sect2">
-<h3 id="endpoint-connectors_server-endpoints"><a class="anchor" href="#endpoint-connectors_server-endpoints"></a>3.3. Endpoint connectors</h3>
+<h3 id="endpoint-connectors_server-endpoints"><a class="anchor" href="#endpoint-connectors_server-endpoints"></a>3.3. Endpoint protocol connectors</h3>
 <div class="paragraph">
-<p>Connectors configure Hot Rod and REST endpoints to use socket bindings and security realms.</p>
+<p>Endpoints multiplex different protocol connectors through a single port.
+Protocol connectors employ detectors to inspect incoming traffic and direct client connections to the appropriate handler.
+An endpoint will enable all protocol connectors that support the configured security realm, unless connectors are declared
+explicitly.
+The default endpoint configuration, using the default property security realm, implicitly enables all the protocol connectors
+(Hot Rod, REST, RESP, Memcached).</p>
 </div>
-<div class="listingblock">
-<div class="title">Default endpoint configuration</div>
+<div class="listingblock primary">
+<div class="title">XML</div>
 <div class="content">
 <pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;endpoints socket-binding="default" security-realm="default"/&gt;</code></pre>
 </div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "endpoints": [
+    {
+      "socket-binding": "default",
+      "security-realm": "default"
+    }
+  ]
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">server:
+  endpoints:
+    - socketBinding: default
+      securityRealm: default</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Enable specific protocol connectors using explicit declaration.</p>
 </div>
 <table class="tableblock frame-all grid-all stripes-even fit-content">
 <colgroup>
@@ -3006,6 +3044,137 @@ You should only add these elements to custom configuration to specify authentica
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>Expose a single endpoint with only the REST and Hot Rod connectors on the <code>default</code> socket binding with the <code>default</code>
+security realm:</p>
+</div>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
+    &lt;endpoints&gt;
+        &lt;endpoint socket-binding="default" security-realm="default"&gt;
+            &lt;rest-connector/&gt;
+            &lt;hotrod-connector/&gt;
+        &lt;/endpoint&gt;
+    &lt;/endpoints&gt;
+&lt;/server&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "endpoints": [
+    {
+      "endpoint": {
+        "socket-binding": "default",
+        "security-realm": "default",
+        "connectors": {
+          "rest": {
+            "rest-connector": {}
+          },
+          "hotrod": {
+            "hotrod-connector": {}
+          }
+        }
+      }
+    }
+  ]
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">endpoints:
+  - socketBinding: default
+    securityRealm: default
+    connectors:
+      rest:
+        restConnector: ~
+      hotrod:
+        hotrodConnector: ~</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Expose a REST connector on the <code>default</code> socket binding with the <code>default</code> security realm and a RESP connector on the
+<code>resp</code> socket binding with the <code>none</code> security realm:</p>
+</div>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.0"&gt;
+    &lt;endpoints&gt;
+        &lt;endpoint socket-binding="default" security-realm="default"&gt;
+            &lt;rest-connector/&gt;
+            &lt;resp-connector socket-binding="resp" security-realm="none"/&gt;
+        &lt;/endpoint&gt;
+    &lt;/endpoints&gt;
+&lt;/server&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-json" data-lang="json">{
+  "endpoints": [
+    {
+      "endpoint": {
+        "socket-binding": "default",
+        "security-realm": "default",
+        "connectors": {
+          "rest": {
+            "rest-connector": {}
+          },
+          "resp": {
+            "resp-connector": {
+              "socket-binding": "resp",
+              "security-realm": "none"
+            }
+          }
+        }
+      }
+    }
+  ]
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">endpoints:
+  - socketBinding: default
+    securityRealm: default
+    connectors:
+      rest:
+        restConnector: ~
+      resp:
+        respConnector:
+          socketBinding: resp
+          securityRealm: none</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="endpoint_request_limits"><a class="anchor" href="#endpoint_request_limits"></a>3.3.1. Endpoint request limits</h4>
+<div class="paragraph">
+<p>Endpoints, by default, impose a <code>10MB</code> limit on request sizes.
+If the client sends a request larger than the limit, the request may be met with an exception or the connection may be forcibly closed.
+The limit is configured via the <code>max-content-length</code> attributed. This is expressed in bytes and allows for a string
+value with a size suffix (e.g. 128KB, 10MB, 1.5GB). Note that this is the size of the entire request and is not limited to a single key or value.</p>
+</div>
+<div class="listingblock">
+<div class="title">Hot Rod, RESP &amp; Memcached endpoints</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">Unresolved directive in ../../topics/ref_endpoints_connectors.adoc - include::xml/server_endpoints_limits_hotrod_resp_memcached.xml[]</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">REST endpoint</div>
+<div class="content">
+<pre class="highlight nowrap"><code class="language-xml" data-lang="xml">Unresolved directive in ../../topics/ref_endpoints_connectors.adoc - include::xml/server_endpoints_limits_rest.xml[]</code></pre>
+</div>
+</div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
 <ul>
@@ -3013,6 +3182,7 @@ You should only add these elements to custom configuration to specify authentica
 <p><a href="https://docs.jboss.org/infinispan/15.0/configdocs/">Infinispan schema reference</a></p>
 </li>
 </ul>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -9858,7 +10028,7 @@ The transport layer also enables Infinispan nodes to replicate or distribute dat
 <div class="sect2">
 <h3 id="default-jgroups-stacks_cluster-transport"><a class="anchor" href="#default-jgroups-stacks_cluster-transport"></a>12.1. Default JGroups stacks</h3>
 <div class="paragraph">
-<p>Infinispan provides default JGroups stack files, <code>default-jgroups-*.xml</code>, in the <code>default-configs</code> directory inside the <code>infinispan-core-15.0.16.Final.jar</code> file.</p>
+<p>Infinispan provides default JGroups stack files, <code>default-jgroups-*.xml</code>, in the <code>default-configs</code> directory inside the <code>infinispan-core-15.0.21.Final.jar</code> file.</p>
 </div>
 <div class="paragraph">
 <p>You can find this JAR file in the <code>$ISPN_HOME/lib</code> directory.</p>
@@ -13560,7 +13730,7 @@ configuration, which means the root configuration is used instead:</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-06-24 11:16:17 UTC
+Last updated 2025-09-04 09:10:11 UTC
 </div>
 </div>
 <script type="text/x-mathjax-config">

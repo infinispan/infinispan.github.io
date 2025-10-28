@@ -548,12 +548,19 @@ $(addBlockSwitches);
 <li><a href="#legacy_stores">Legacy Stores</a></li>
 </ul>
 </li>
-<li><a href="#transport_changes">1.1.2. Transport Changes</a></li>
-<li><a href="#expiration_configuration_validation">1.1.3. Expiration configuration validation</a></li>
-<li><a href="#metrics">1.1.4. Metrics</a></li>
-<li><a href="#virtual_threads_enabled_by_default_jdk_21">1.1.5. Virtual threads enabled by default (JDK 21+)</a></li>
-<li><a href="#removed_legacy_hot_rod_client">1.1.6. Removed legacy Hot Rod client</a></li>
-<li><a href="#deprecation_removals">1.1.7. Deprecation removals</a></li>
+<li><a href="#query_changes">1.1.2. Query changes</a></li>
+<li><a href="#transport_changes">1.1.3. Transport Changes</a></li>
+<li><a href="#expiration_configuration_validation">1.1.4. Expiration configuration validation</a></li>
+<li><a href="#metrics">1.1.5. Metrics</a>
+<ul class="sectlevel4">
+<li><a href="#removals">Removals</a></li>
+</ul>
+</li>
+<li><a href="#virtual_threads_enabled_by_default_jdk_21">1.1.6. Virtual threads enabled by default (JDK 21+)</a></li>
+<li><a href="#filestore_supports_not_being_segmented">1.1.7. FileStore supports not being segmented</a></li>
+<li><a href="#removed_legacy_hot_rod_client">1.1.8. Removed legacy Hot Rod client</a></li>
+<li><a href="#hibernate_2lc_support_updates">1.1.9. Hibernate 2LC support updates</a></li>
+<li><a href="#deprecation_removals">1.1.10. Deprecation removals</a></li>
 </ul>
 </li>
 <li><a href="#upgrading_from_15_1_to_15_2">1.2. Upgrading from 15.1 to 15.2</a>
@@ -585,7 +592,7 @@ $(addBlockSwitches);
 <li><a href="#metrics_2">1.5.2. Metrics</a></li>
 <li><a href="#securitymanager">1.5.3. SecurityManager</a></li>
 <li><a href="#jakarta_and_java_ee">1.5.4. Jakarta and Java EE</a></li>
-<li><a href="#removals">1.5.5. Removals</a></li>
+<li><a href="#removals_2">1.5.5. Removals</a></li>
 <li><a href="#hot_rod_client_defaults">1.5.6. Hot Rod client defaults</a></li>
 <li><a href="#resp_endpoint">1.5.7. RESP Endpoint</a></li>
 <li><a href="#search">1.5.8. Search</a>
@@ -825,7 +832,7 @@ $(addBlockSwitches);
 <li><a href="#shared_and_passivation">Shared and Passivation</a></li>
 </ul>
 </li>
-<li><a href="#query_changes">1.14.3. Query changes</a>
+<li><a href="#query_changes_2">1.14.3. Query changes</a>
 <ul class="sectlevel4">
 <li><a href="#affinityindexmanager">AffinityIndexManager</a></li>
 </ul>
@@ -1019,14 +1026,36 @@ implementations need to be updated to reference the new package <code>org.infini
 </div>
 </div>
 <div class="sect3">
-<h4 id="transport_changes"><a class="anchor" href="#transport_changes"></a>1.1.2. Transport Changes</h4>
+<h4 id="query_changes"><a class="anchor" href="#query_changes"></a>1.1.2. Query changes</h4>
+<div class="paragraph">
+<p>The query modules have been refactored significantly:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <code>query-dsl</code> module has been removed. Queries should use Ickle query language</p>
+</li>
+<li>
+<p>The <code>query-core</code>, <code>object-filter</code> modules have been merged into the <code>query</code> module</p>
+</li>
+<li>
+<p>The <code>remote-query-server</code> module has been merged into the <code>server-core</code> module</p>
+</li>
+<li>
+<p>The <code>remote-query-client</code> module has been merged into the <code>commons</code> module</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="transport_changes"><a class="anchor" href="#transport_changes"></a>1.1.3. Transport Changes</h4>
 <div class="paragraph">
 <p>It&#8217;s no longer possible to provide custom <code>org.infinispan.remoting.transport.Transport</code> implementations via the <code>GlobalConfiguration</code>.
 This was removed with no replacement as in reality Infinispan is tightly coupled to the underlying <code>JGroupsTransport</code> implementation.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="expiration_configuration_validation"><a class="anchor" href="#expiration_configuration_validation"></a>1.1.3. Expiration configuration validation</h4>
+<h4 id="expiration_configuration_validation"><a class="anchor" href="#expiration_configuration_validation"></a>1.1.4. Expiration configuration validation</h4>
 <div class="paragraph">
 <p>We now will prevent a cache from being started if it has a max-idle setting that is greater than or
 equal to its lifespan expiration. This configuration meant that max-idle was enabled with no benefit
@@ -1034,7 +1063,7 @@ as lifespan would always remove the entry first.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="metrics"><a class="anchor" href="#metrics"></a>1.1.4. Metrics</h4>
+<h4 id="metrics"><a class="anchor" href="#metrics"></a>1.1.5. Metrics</h4>
 <div class="paragraph">
 <p>The format for metrics have changed.</p>
 </div>
@@ -1079,9 +1108,16 @@ infinispan_statistics_hits{cache_manager="Foo",cache="Bar"}</code></pre>
 </tr>
 </table>
 </div>
+<div class="sect4">
+<h5 id="removals"><a class="anchor" href="#removals"></a>Removals</h5>
+<div class="paragraph">
+<p>The metric for persisted entries was removed.
+Users should utilize the metrics of approximate size and in-memory entries instead.</p>
+</div>
+</div>
 </div>
 <div class="sect3">
-<h4 id="virtual_threads_enabled_by_default_jdk_21"><a class="anchor" href="#virtual_threads_enabled_by_default_jdk_21"></a>1.1.5. Virtual threads enabled by default (JDK 21+)</h4>
+<h4 id="virtual_threads_enabled_by_default_jdk_21"><a class="anchor" href="#virtual_threads_enabled_by_default_jdk_21"></a>1.1.6. Virtual threads enabled by default (JDK 21+)</h4>
 <div class="paragraph">
 <p>This release now enables virtual thread pools by default.
 This change can lead to improved application responsiveness and scalability under high concurrency.</p>
@@ -1108,14 +1144,31 @@ In these specific environments, virtual threads might, in rare cases, lead to sy
 </div>
 </div>
 <div class="sect3">
-<h4 id="removed_legacy_hot_rod_client"><a class="anchor" href="#removed_legacy_hot_rod_client"></a>1.1.6. Removed legacy Hot Rod client</h4>
+<h4 id="filestore_supports_not_being_segmented"><a class="anchor" href="#filestore_supports_not_being_segmented"></a>1.1.7. FileStore supports not being segmented</h4>
+<div class="paragraph">
+<p>When the file store changed to a new implementation in 13.0 it lost the ability to disable segmentation.
+This has been added back in.
+Note that disabling segmentation for the file store should only be done for smaller sized caches.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="removed_legacy_hot_rod_client"><a class="anchor" href="#removed_legacy_hot_rod_client"></a>1.1.8. Removed legacy Hot Rod client</h4>
 <div class="paragraph">
 <p>The legacy Hot Rod client (<code>org.infinispan:infinispan-hotrod-client-legacy</code>) has been removed. If, for some reason,
 you still need to use it, please use one from previous versions which are still maintained.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="deprecation_removals"><a class="anchor" href="#deprecation_removals"></a>1.1.7. Deprecation removals</h4>
+<h4 id="hibernate_2lc_support_updates"><a class="anchor" href="#hibernate_2lc_support_updates"></a>1.1.9. Hibernate 2LC support updates</h4>
+<div class="paragraph">
+<p>We now support Hibernate 7.1 and 6.6 as a second level cache provider.</p>
+</div>
+<div class="paragraph">
+<p>Hibernate 6.2, 6.4 &amp; 6.5 are no longer supported, but may work. Please upgrade to 6.6.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="deprecation_removals"><a class="anchor" href="#deprecation_removals"></a>1.1.10. Deprecation removals</h4>
 <div class="paragraph">
 <p>Everything that was deprecated in 10.x, 11.0 has been removed.</p>
 </div>
@@ -1346,7 +1399,7 @@ vendor_jgroups_frag4_get_number_of_sent_fragments{cache_manager="default",cluste
 </div>
 </div>
 <div class="sect3">
-<h4 id="removals"><a class="anchor" href="#removals"></a>1.5.5. Removals</h4>
+<h4 id="removals_2"><a class="anchor" href="#removals_2"></a>1.5.5. Removals</h4>
 <div class="ulist">
 <ul>
 <li>
@@ -3314,7 +3367,7 @@ cause a startup exception. Please update your configuration as appropriate.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="query_changes"><a class="anchor" href="#query_changes"></a>1.14.3. Query changes</h4>
+<h4 id="query_changes_2"><a class="anchor" href="#query_changes_2"></a>1.14.3. Query changes</h4>
 <div class="sect4">
 <h5 id="affinityindexmanager"><a class="anchor" href="#affinityindexmanager"></a>AffinityIndexManager</h5>
 <div class="paragraph">
@@ -4225,7 +4278,7 @@ RemoteCache cache = cacheContainer.getCache();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-07-17 09:58:41 UTC
+Last updated 2025-10-15 09:42:19 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
