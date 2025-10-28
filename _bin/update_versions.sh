@@ -7,9 +7,9 @@ update_version ()
 {
   echo -n "Processing $1: "
   BASE_VERSION=$(yq ".$1.minor_version" "$CONFIG_FILE")
-  echo $BASE_VERSION
+  echo "$BASE_VERSION"
   LATEST_VERSION=$(gh release list -R $REPO |cut -f1|grep "^$BASE_VERSION"|head -n1)
-  VERSION_INFO=$(gh release view -R $REPO $LATEST_VERSION --json publishedAt,url|yq -r "[.publishedAt,.url]|@csv"|tr -d \")
+  VERSION_INFO=$(gh release view -R $REPO "$LATEST_VERSION" --json publishedAt,url|yq -r "[.publishedAt,.url]|@csv"|tr -d \")
 
   echo "$LATEST_VERSION"
 
@@ -24,12 +24,14 @@ update_version ()
    .$1.download.server = \"https://github.com/infinispan/infinispan/releases/download/$LATEST_VERSION/infinispan-server-$LATEST_VERSION.zip\" |
    .$1.download.docker_native = \"quay.io/infinispan/server-native:$LATEST_VERSION-1\" |
    .$1.download.docker_cli = \"quay.io/infinispan/cli:$LATEST_VERSION-1\" |
-   .docs.infinispan.\"$2\".core.html = \"org.infinispan:infinispan-docs:$LATEST_VERSION:zip:html\"
+   .docs.infinispan.\"$2\".core.html = \"org.infinispan:infinispan-docs:$LATEST_VERSION:zip:html\" |
+   .docs.infinispan.\"$2\".core.javadoc = \"org.infinispan:infinispan-javadoc-all:$LATEST_VERSION:jar:javadoc\"
   " "$CONFIG_FILE"
 }
 
-update_version "unstable" "16.0.x"
-update_version "stable" "15.2.x"
+update_version "unstable" "16.1.x"
+update_version "stable" "16.0.x"
+update_version "old.\"15.2\"" "15.2.x"
 update_version "old.\"15.0\"" "15.0.x"
 update_version "old.\"14.0\"" "14.0.x"
 
