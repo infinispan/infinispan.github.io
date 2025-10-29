@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.23">
-<title>Infinispan Developer Guide</title>
+<title>Server startup cookbook for the Hot Rod Java Client examples</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -454,7 +454,6 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
 <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
 <script src="../../js/js.js"></script>
-<link rel="canonical" href="https://infinispan.org/docs/stable/titles/developing/developing.html">
 <style>
 .hidden {
     display: none;
@@ -534,14 +533,372 @@ $(addBlockSwitches);
 </head>
 <body class="book">
 <div id="header">
-<h1>Infinispan Developer Guide</h1>
+<h1>Server startup cookbook for the Hot Rod Java Client examples</h1>
 </div>
 <div id="content">
-<div id="preamble">
+<div class="sect1">
+<h2 id="simplest"><a class="anchor" href="#simplest"></a>1. Simplest Client</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>This guide is no longer maintained.
-Please visit the <a href="../../index.html">Infinispan documentation index</a>.</p>
+<p>Create a config file <code>infinispan-simplest.xml</code> with the following content:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="urn:infinispan:config:16.0 https://infinispan.org/schemas/infinispan-config-16.0.xsd
+                            urn:infinispan:server:16.0 https://infinispan.org/schemas/infinispan-server-16.0.xsd"
+        xmlns="urn:infinispan:config:16.0"
+        xmlns:server="urn:infinispan:server:16.0"&gt;
+    &lt;cache-container name="default" statistics="true" default-cache="my-cache"&gt;
+      &lt;local-cache name="my-cache"/&gt;
+    &lt;/cache-container&gt;
+    &lt;server xmlns="urn:infinispan:server:16.0"&gt;
+        &lt;interfaces&gt;
+            &lt;interface name="public"&gt;
+                &lt;inet-address value="${infinispan.bind.address:127.0.0.1}"/&gt;
+            &lt;/interface&gt;
+        &lt;/interfaces&gt;
+        &lt;socket-bindings default-interface="public" port-offset="${infinispan.socket.binding.port-offset:0}"&gt;
+            &lt;socket-binding name="default" port="${infinispan.bind.port:11222}"/&gt;
+        &lt;/socket-bindings&gt;
+        &lt;security&gt;
+            &lt;security-realms&gt;
+                &lt;security-realm name="none"/&gt;
+            &lt;/security-realms&gt;
+        &lt;/security&gt;
+        &lt;endpoints socket-binding="default" security-realm="none"/&gt;
+    &lt;/server&gt;
+&lt;/infinispan&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Then in the same folder run:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker run -v .:/user-config -p 11222:11222 infinispan/server:16.0 \
+-c /user-config/infinispan-simplest.xml</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="auth"><a class="anchor" href="#auth"></a>2. Authenticated Client</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Create a config file <code>infinispan-auth.xml</code> with the following content:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="urn:infinispan:config:16.0 https://infinispan.org/schemas/infinispan-config-16.0.xsd
+                            urn:infinispan:server:16.0 https://infinispan.org/schemas/infinispan-server-16.0.xsd"
+      xmlns="urn:infinispan:config:16.0"
+      xmlns:server="urn:infinispan:server:16.0"&gt;
+
+    &lt;cache-container name="default" statistics="true" default-cache="my-cache"&gt;
+      &lt;security&gt;
+         &lt;authorization/&gt;
+      &lt;/security&gt;
+      &lt;local-cache name="my-cache"/&gt;
+    &lt;/cache-container&gt;
+
+   &lt;server xmlns="urn:infinispan:server:16.0"&gt;
+      &lt;interfaces&gt;
+         &lt;interface name="public"&gt;
+            &lt;inet-address value="${infinispan.bind.address:127.0.0.1}"/&gt;
+         &lt;/interface&gt;
+      &lt;/interfaces&gt;
+
+      &lt;socket-bindings default-interface="public" port-offset="${infinispan.socket.binding.port-offset:0}"&gt;
+         &lt;socket-binding name="default" port="${infinispan.bind.port:11222}"/&gt;
+      &lt;/socket-bindings&gt;
+
+      &lt;security&gt;
+         &lt;security-realms&gt;
+            &lt;security-realm name="default"&gt;
+               &lt;properties-realm/&gt;
+            &lt;/security-realm&gt;
+         &lt;/security-realms&gt;
+      &lt;/security&gt;
+
+      &lt;endpoints socket-binding="default" security-realm="default" /&gt;
+   &lt;/server&gt;
+&lt;/infinispan&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Then in the same folder run:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker run -v .:/user-config -p 11222:11222 infinispan/server:16.0 \
+-c /user-config/infinispan-simplest.xml</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="multi"><a class="anchor" href="#multi"></a>3. Multiple clusters</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Create a config file <code>infinispan-auth-dist.xml</code> with the following content:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="urn:infinispan:config:16.0 https://infinispan.org/schemas/infinispan-config-16.0.xsd
+                            urn:infinispan:server:16.0 https://infinispan.org/schemas/infinispan-server-16.0.xsd"
+      xmlns="urn:infinispan:config:16.0"
+      xmlns:server="urn:infinispan:server:16.0"&gt;
+    &lt;cache-container name="default" statistics="true" default-cache="my-cache"&gt;
+      &lt;transport cluster="${infinispan.cluster.name:cluster}" stack="${infinispan.cluster.stack:tcp}" node-name="${infinispan.node.name:}"/&gt;
+      &lt;security&gt;
+         &lt;authorization/&gt;
+      &lt;/security&gt;
+      &lt;distributed-cache name="my-cache"/&gt;
+    &lt;/cache-container&gt;
+   &lt;server xmlns="urn:infinispan:server:16.0"&gt;
+      &lt;interfaces&gt;
+         &lt;interface name="public"&gt;
+            &lt;inet-address value="${infinispan.bind.address:127.0.0.1}"/&gt;
+         &lt;/interface&gt;
+      &lt;/interfaces&gt;
+      &lt;socket-bindings default-interface="public" port-offset="${infinispan.socket.binding.port-offset:0}"&gt;
+         &lt;socket-binding name="default" port="${infinispan.bind.port:11222}"/&gt;
+      &lt;/socket-bindings&gt;
+      &lt;security&gt;
+         &lt;security-realms&gt;
+            &lt;security-realm name="default"&gt;
+               &lt;properties-realm/&gt;
+            &lt;/security-realm&gt;
+         &lt;/security-realms&gt;
+      &lt;/security&gt;
+      &lt;endpoints socket-binding="default" security-realm="default" /&gt;
+   &lt;/server&gt;
+&lt;/infinispan&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now you need a <code>docker-compose.yml</code> file to start two clusters with two nodes each.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">version: '3.8'
+
+services:
+  # Cluster 1 - Node 1
+  infinispan-cluster1-node1:
+    image: infinispan/server:16.0
+    container_name: infinispan-cluster1-node1
+    hostname: cluster1-node1
+    networks:
+      cluster1_network:
+        ipv4_address: 172.20.0.11
+    ports:
+      - "11222:11222"
+    environment:
+      - USER=username
+      - PASS=changeme
+      - JAVA_OPTIONS=-Djgroups.bind.address=NON_LOOPBACK
+    volumes:
+      - .:/user-config
+    command: &gt;
+      -c /user-config/infinispan-auth-dist.xml
+      -b 0.0.0.0
+      --cluster-name=cluster1
+
+  # Cluster 1 - Node 2
+  infinispan-cluster1-node2:
+    image: infinispan/server:16.0
+    container_name: infinispan-cluster1-node2
+    hostname: cluster1-node2
+    networks:
+      cluster1_network:
+        ipv4_address: 172.20.0.12
+    ports:
+      - "11223:11222"
+    environment:
+      - USER=username
+      - PASS=changeme
+      - JAVA_OPTIONS=-Djgroups.bind.address=NON_LOOPBACK
+    volumes:
+      - .:/user-config
+    command: &gt;
+      -c /user-config/infinispan-auth-dist.xml
+      -b 0.0.0.0
+      --cluster-name=cluster1
+    depends_on:
+      - infinispan-cluster1-node1
+
+  # Cluster 2 - Node 1
+  infinispan-cluster2-node1:
+    image: infinispan/server:16.0
+    container_name: infinispan-cluster2-node1
+    hostname: cluster2-node1
+    networks:
+      cluster2_network:
+        ipv4_address: 172.21.0.11
+    ports:
+      - "12222:11222"
+    environment:
+      - USER=username
+      - PASS=changeme
+      - JAVA_OPTIONS=-Djgroups.bind.address=NON_LOOPBACK
+    volumes:
+      - .:/user-config
+    command: &gt;
+      -c /user-config/infinispan-auth-dist.xml
+      -b 0.0.0.0
+      --cluster-name=cluster2
+
+  # Cluster 2 - Node 2
+  infinispan-cluster2-node2:
+    image: infinispan/server:16.0
+    container_name: infinispan-cluster2-node2
+    hostname: cluster2-node2
+    networks:
+      cluster2_network:
+        ipv4_address: 172.21.0.12
+    ports:
+      - "12223:11222"
+    environment:
+      - USER=username
+      - PASS=changeme
+      - JAVA_OPTIONS=-Djgroups.bind.address=NON_LOOPBACK
+    volumes:
+      - .:/user-config
+    command: &gt;
+      -c /user-config/infinispan-auth-dist.xml
+      -b 0.0.0.0
+      --cluster-name=cluster2
+    depends_on:
+      - infinispan-cluster2-node1
+
+networks:
+  cluster1_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  cluster2_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now in the same folder run:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker compose up -d</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can see the server logs and stop everything with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker compose logs
+docker compose down -v</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="tls"><a class="anchor" href="#tls"></a>4. TLS clusters</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>To setup a tls cluster a set of certificates is needed so that client and server can verify each other identity.
+To create all the certs and organized them in trust and key store, run the following</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">keytool -genkeypair -alias infinispan \
+  -keyalg RSA -keysize 2048 -keystore server.keystore \
+  -storepass changeme -keypass changeme -validity 365 \
+  -dname "CN=infinispan, OU=Test, O=MyOrg, L=City, S=State, C=US" \
+  -ext SAN=ip:192.168.1.100,ip:127.0.0.1,dns:localhost
+keytool -exportcert -alias infinispan \
+  -keystore server.keystore -storepass changeme \
+  -rfc -file infinispan.crt
+keytool -importcert -alias infinispan \
+  -file infinispan.crt -keystore client.truststore \
+  -storepass changeme -noprompt
+rm infinispan.crt
+keytool -genkeypair -alias infinispan \
+  -keyalg RSA -keysize 2048 -keystore client.keystore \
+  -storepass changeme -keypass changeme -validity 365 \
+  -dname "CN=infinispan, OU=Test, O=MyOrg, L=City, S=State, C=US" \
+  -ext SAN=ip:192.168.1.100,ip:127.0.0.1,dns:localhost
+keytool -exportcert -alias infinispan \
+  -keystore client.keystore -storepass changeme \
+  -rfc -file infinispan.crt
+keytool -importcert -alias infinispan \
+  -file infinispan.crt -keystore server.truststore \
+  -storepass changeme -noprompt
+rm infinispan.crt</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Create a <code>infinispan-tls.xml</code> configuration file:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="urn:infinispan:config:16.0 https://infinispan.org/schemas/infinispan-config-16.0.xsd
+                            urn:infinispan:server:16.0 https://infinispan.org/schemas/infinispan-server-16.0.xsd"
+        xmlns="urn:infinispan:config:16.0"
+        xmlns:server="urn:infinispan:server:16.0"&gt;
+
+    &lt;cache-container name="default" statistics="true" default-cache="my-cache"&gt;
+      &lt;local-cache name="my-cache"/&gt;
+    &lt;/cache-container&gt;
+
+    &lt;server xmlns="urn:infinispan:server:16.0"&gt;
+        &lt;interfaces&gt;
+            &lt;interface name="public"&gt;
+                &lt;inet-address value="${infinispan.bind.address:127.0.0.1}"/&gt;
+            &lt;/interface&gt;
+        &lt;/interfaces&gt;
+
+        &lt;socket-bindings default-interface="public" port-offset="${infinispan.socket.binding.port-offset:0}"&gt;
+            &lt;socket-binding name="default" port="${infinispan.bind.port:11222}"/&gt;
+        &lt;/socket-bindings&gt;
+
+        &lt;security&gt;
+            &lt;security-realms&gt;
+                &lt;security-realm name="none"&gt;
+                &lt;server-identities&gt;
+                  &lt;ssl&gt;
+		    &lt;keystore path="/user-config/server.keystore" password="changeme"/&gt;
+		    &lt;truststore path="/user-config/server.truststore" password="changeme"/&gt;
+                  &lt;/ssl&gt;
+                &lt;/server-identities&gt;
+		&lt;/security-realm&gt;
+            &lt;/security-realms&gt;
+        &lt;/security&gt;
+        &lt;endpoints&gt;
+		&lt;endpoint socket-binding="default" security-realm="none" require-ssl-client-auth="true"&gt;
+			&lt;hotrod-connector/&gt;
+			&lt;rest-connector/&gt;
+		&lt;/endpoint&gt;
+	&lt;/endpoints&gt;
+    &lt;/server&gt;
+&lt;/infinispan&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker run -v .:/user-config -p 11222:11222 infinispan/server:16.0 \
+-c /user-config/infinispan-tls.xml</code></pre>
+</div>
 </div>
 </div>
 </div>
