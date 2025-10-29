@@ -3283,7 +3283,6 @@ import org.infinispan.client.hotrod.Search;
 import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 import org.infinispan.query.dsl.Query;
 import org.infinispan.query.dsl.QueryFactory;
-import org.infinispan.query.remote.client.ProtobufMetadataManagerConstants;
 
 public class RemoteQuery {
 
@@ -3299,8 +3298,14 @@ public class RemoteQuery {
       // Grab the generated protobuf schema and registers in the server.
       Path proto = Paths.get(RemoteQuery.class.getClassLoader()
             .getResource("proto/book.proto").toURI());
-      String protoBufCacheName = ProtobufMetadataManagerConstants.PROTOBUF_METADATA_CACHE_NAME;
-      remoteCacheManager.getCache(protoBufCacheName).put("book.proto", Files.readString(proto));
+      SchemaOpResult result = remoteCacheManager
+              .administration()
+              .schemas()
+              .createOrUpdate(Schema.buildFromStringContent("book.proto", Files.readString(proto)));
+      if (result.hasError()) {
+        // Operation brigns the validation error, if such exists
+        System.out.println(result.getError());
+      }
 
       // Obtain the 'books' remote cache
       RemoteCache&lt;Object, Object&gt; remoteCache = remoteCacheManager.getCache("books");
@@ -4507,7 +4512,7 @@ If you do not need data returned in queries as soon as it is written, you should
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-29 13:44:05 UTC
+Last updated 2025-10-29 17:53:37 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
