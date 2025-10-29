@@ -5439,17 +5439,131 @@ KeyCloak.</p>
             introspectionUrl: 'https://oauth-server/auth/realms/infinispan/protocol/openid-connect/token/introspect'</code></pre>
 </div>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-If the <code>introspection-url</code> uses HTTPS, it may be necessary to define a <a href="../server/server.html#configuring-encryption">server identity</a> containing an appropriate truststore and reference it in the <code>oauth2-introspection.client-ssl-context</code> configuration attribute.
-</td>
-</tr>
-</table>
+<div class="paragraph">
+<p>If the <code>introspection-url</code> uses HTTPS, it may be necessary to define a <a href="../server/server.html#configuring-encryption">server identity</a> containing an appropriate truststore and reference it in the <code>oauth2-introspection.client-ssl-context</code> configuration attribute.</p>
+</div>
+<h4 id="token_realm_configuration_with_tls" class="discrete">Token realm configuration with TLS</h4>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+   &lt;security&gt;
+      &lt;security-realms&gt;
+         &lt;security-realm name="keycloak"&gt;
+            &lt;server-identities&gt;
+               &lt;ssl&gt;
+                  &lt;truststore path="keycloak-trust.pfx" password="secret"/&gt;
+               &lt;/ssl&gt;
+            &lt;/server-identities&gt;
+         &lt;/security-realm&gt;
+         &lt;security-realm name="default"&gt;
+            &lt;!-- The TLS identity of this server --&gt;
+            &lt;server-identities&gt;
+               &lt;ssl&gt;
+                  &lt;keystore path="server.pfx" password="secret" alias="server"/&gt;1
+               &lt;/ssl&gt;
+            &lt;/server-identities&gt;
+            &lt;!-- Specifies the URL of the authentication server. --&gt;
+            &lt;token-realm name="token"
+                         auth-server-url="https://oauth-server/auth/"&gt;
+               &lt;!-- Specifies the URL of the token introspection endpoint and uses the `keycloak` SSL context defined above to trust the server --&gt;
+               &lt;oauth2-introspection introspection-url="https://oauth-server/auth/realms/infinispan/protocol/openid-connect/token/introspect"
+                                     client-id="infinispan-server"
+                                     client-secret="1fdca4ec-c416-47e0-867a-3d471af7050f"
+                                     client-ssl-context="keycloak"
+               /&gt;
+            &lt;/token-realm&gt;
+         &lt;/security-realm&gt;
+      &lt;/security-realms&gt;
+   &lt;/security&gt;
+   &lt;endpoints socket-binding="default" security-realm="default"/&gt;
+&lt;/server&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "infinispan" : {
+    "server" : {
+      "security" : {
+        "security-realms" : [ {
+          "name" : "keycloak",
+          "server-identities" : {
+            "ssl" : {
+              "truststore" : {
+                "path" : "ca.pfx",
+                "password" : "secret"
+              }
+            }
+          }
+        },{
+          "name" : "default",
+          "server-identities" : {
+            "ssl" : {
+              "keystore" : {
+                "path" : "server.pfx",
+                "password" : "secret"
+              }
+            }
+          },
+          "token-realm" : {
+            "name" : "token-realm",
+            "auth-server-url" : "https://127.0.0.1:14568/auth/",
+            "client-id" : "infinispan-console",
+            "oauth2-introspection" : {
+              "client-id" : "infinispan-server",
+              "client-ssl-context" : "keycloak",
+              "introspection-url" : "https://127.0.0.1:14568/realms/infinispan/protocol/openid-connect/token/introspect",
+              "client-secret" : "1fdca4ec-c416-47e0-867a-3d471af7050f"
+            }
+          }
+        } ]
+      },
+      "endpoints" : {
+        "endpoint" : {
+          "socket-binding" : "default",
+          "security-realm" : "default"
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  server:
+    security:
+      securityRealms:
+        - name: "keycloak"
+          serverIdentities:
+            ssl:
+              truststore:
+                path: "ca.pfx"
+                password: "secret"
+        - name: "default"
+          serverIdentities:
+            ssl:
+              keystore:
+                path: "server.pfx"
+                password: "secret"
+          tokenRealm:
+            name: "token-realm"
+            authServerUrl: "https://127.0.0.1:14568/auth/"
+            clientId: "infinispan-console"
+            # Specifies the URL of the token introspection endpoint and uses the `keycloak` SSL context defined above to trust the server
+            oauth2Introspection:
+              clientId: "infinispan-server"
+              clientSslContext: "keycloak"
+              introspectionUrl: "https://127.0.0.1:14568/realms/infinispan/protocol/openid-connect/token/introspect"
+              clientSecret: "1fdca4ec-c416-47e0-867a-3d471af7050f"
+    endpoints:
+      socketBinding: "default"
+      securityRealm: "default"</code></pre>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -14157,7 +14271,7 @@ However, these harnesses require an additional setup phase before running.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-29 06:48:54 UTC
+Last updated 2025-10-29 13:41:39 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
