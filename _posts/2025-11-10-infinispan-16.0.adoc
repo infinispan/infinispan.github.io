@@ -1,0 +1,193 @@
+---
+layout: blog
+title: Infinispan 16.0.0 is out!
+permalink: /blog/:year/:month/:day/infinispan-16-0
+date: '2025-11-10T00:00:00.000-00:00'
+author: ttarrant
+tags: [ "release", "final" ]
+---
+
+= Infinispan 16.0 is out!
+
+*_"Keep Rollin'"_*
+
+Infinispan 16.0 is here, and it is codenamed https://untappd.com/b/lake-of-bays-brewing-company-keep-rollin/5822804["Keep Rollin'"].
+
+This is a very significant release, as it introduces zero-downtime in-place rolling upgrades: the capability of
+incrementally upgrading individual nodes in a cluster without having to stop operations.
+
+[caption="Keep Rollin'"]
+image::/assets/images/blog/keeprollin.jpeg[Keep Rollin', 375, 500, align="center"]
+
+== Final not .Final
+
+Starting with this release, we will no longer be appending `.Final` to the version number. This release is therefore just `16.0.1`.
+Why not `16.0.0` ? Don't ask 😀.
+
+== In-place rolling upgrades
+
+Starting with Infinispan 16.0, we guarantee that it will be possible to upgrade the nodes of a live Infinispan cluster
+to a newer version with zero downtime.
+This guarantee will initially cover point releases (16.0.x -> 16.0.y), but we will strive to also maintain it across
+minor releases (16.x -> 16.y): for every new release, we will be providing a table of supported upgrade paths to help
+you plan your upgrade strategies.
+
+=== Clustering
+
+The clustering messages, that Infinispan nodes use to communicate with each other, have been rewritten to use
+https://protobuf.dev/[Protocol Buffers], via the https://github.com/infinispan/protostream[ProtoStream] serialization
+library. By adopting ProtoBuf's https://protobuf.dev/best-practices/dos-donts/[best practices] for schema evolution and
+a number of supporting tools, we can guarantee that incompatibilities cannot be introduced into these messages without
+breaking our builds and tests.
+
+== Upgrade test harness
+
+We have implemented an extensive test harness, integrated into our CI pipelines, that validates that every change that is
+made to Infinispan does not break backwards compatibility. This harness exercises every command,
+supported by coverage reports that help us identify untested code paths.
+
+== Console
+Since Infinispan 15.2, the console has used https://www.patternfly.org/[PatternFly] 6 for its interface.
+With this major update, we also added new features for users starting from version 16.0.
+
+=== Update at runtime cache configuration
+We have allowed mutating some cache configuration attributes at runtime for a while, and, starting with this release,
+this can also be done from the Web Console.
+
+A new menu option is now available for administrators:
+
+[caption="Edit runtime configuration menu"]
+image::/assets/images/blog/2025-infinispan-16-release/consoleUpdateCacheConfigRuntime1.png[Edit Runtime Configuration Menu, align="center"]
+
+The runtime properties that can be updated will be listed:
+
+[caption="Edit runtime configuration screen"]
+image::/assets/images/blog/2025-infinispan-16-release/consoleUpdateCacheConfigRuntime2.png[Edit Runtime Configuration Screen, align="center"]
+
+=== Rolling Upgrade detection
+From version 16.0 onward, when a rolling upgrade is in progress, the Console
+will display a warning to inform users that the operation is underway.
+
+[caption="Rolling Upgrade Detection"]
+image::/assets/images/blog/2025-infinispan-16-release/consoleRollingUpgrade.png[Rolling Upgrade Detection, align="center"]
+
+
+=== Working behind a Reverse Proxy
+Previously, the console URL could not be configured to work behind a reverse proxy.
+Starting with version 16.0, you can set up Infinispan and the console to run behind one, such as NGINX.
+The `X-Forwarded-Prefix` header is now supported by both Infinispan and the console to correctly serve the
+console and the REST API.
+
+[source,nginxconfiguration]
+====
+ location /infinispan/console/ {
+            proxy_pass http://infinispan:11222/console/;
+            proxy_set_header X-Forwarded-Prefix /infinispan;
+}
+====
+
+See the https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/reverse-proxy-infinispan[Reverse Proxy Simple Tutorial]
+in the Infinispan Simple Tutorials repository for more details.
+
+== Schemas Management Client API
+Users can now manage ProtoStream Schemas with a dedicated administration API.
+
+[source,java]
+====
+RemoteSchemasAdmin admin = remoteCacheManager.administration().schemas();
+Optional<Schema> = admin.get("schemaName");
+====
+
+See the https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/schemas[Schemas Simple Tutorial]
+in the Infinispan Simple Tutorials repository for more details.
+
+
+== Query
+
+=== Refactoring
+
+The various query modules have all been aggregated into the single `infinispan-query` JAR, greatly simplifying our
+dependency tree and paving the way for JPMS encapsulation.
+
+=== Aggregations
+
+Previously, only the **count** aggregation query could be executed in an indexed clustered query, providing excellent performance.
+Now, all other aggregation types (such as **sum**, **avg**, and others) work in the same way.
+This improvement comes from the new capabilities in Hibernate Search 8.1, which has been
+integrated into Infinispan’s internal engine.
+
+
+== Server
+
+We have introduced several fixes and enhancements to the Infinispan Server.
+
+=== Server container image
+
+The Infinispan Server container image is now built using the bare minimum required components, aiming to provide a
+significantly reduced attack surface.
+
+=== Server startup
+
+We have decoupled the server and the cache container start procedure, where they can start concurrently.
+This provides a faster startup time for the server, that can start replying to requests earlier.
+This helps in scenarios where the server receive probe requests for liveness and readiness. Also, this allows
+for better handling when a cache may fail to start allowing other caches to continue operating.
+
+=== On-demand caches
+
+The caches associated with dedicated connectors, such as Memcached and RESP, do not create the caches at start.
+These caches are now created on demand at the first access.
+In case these endpoints are not accessed, the caches are never created.
+
+=== Updated Lua engine
+
+We are shipping an updated Lua 5.1 engine, for Redis scripting, that includes a number of CVE fixes that have not been
+applied to the upstream Lua repository. Also, a number of dangerous Lua scripting operations have been disabled.
+The security of your servers is of the highest priority to us.
+
+== JDK improvements
+
+While Infinispan still requires at least JDK 17, we have made several changes to take advantage of the features
+introduced in newer JDKs, including support for the recently released JDK 25.
+
+=== Virtual threads
+
+Infinispan by default not utilized Virtual Threads in both Embedded and Server modes. This includes Infinispan
+enabling virtual threads in JGroups by default. Virtual threads are used by the non-blocking and blocking thread
+pools in Embedded mode and the blocking thread pool in Server mode. The latter utilizes Netty event loop for its
+non-blocking thread pool which does not yet support virtual threads.
+
+If necessary is possible to disable by setting the `org.infinispan.threads.virtual` system property to `false`.
+
+=== AOT
+
+Infinispan Server (and the CLI) can leverage OpenJDK's Ahead-of-Time features introduced in
+https://openjdk.org/jeps/483[JEP 483] to decrease startup time and initial memory usage.
+
+
+== Fixes
+Lots of these. However, should you find something that doesn't work, head over to our
+https://github.com/infinispan/infinispan/issues[issues] and provide any details that help us debug and solve problems.
+
+
+== Deprecations and removals
+
+The old Single File Store has now been completely replaced by the more scalable Soft-Index File Store and cannot be
+configured declaratively any longer.
+
+== Documentation
+
+As usual, many improvements, updates and fixes.
+
+== What's next?
+
+Infinispan is adopting timeboxed releases starting with our next release (16.1). See our https://infinispan.org/roadmap/[roadmap]
+for information. We will soon be blogging more about it.
+
+== Release notes
+
+You can look at the https://github.com/infinispan/infinispan/releases/tag/16.0.0[release notes] to see what was changed
+since our last development build.
+
+Get them from our https://infinispan.org/download/[download page].
+
