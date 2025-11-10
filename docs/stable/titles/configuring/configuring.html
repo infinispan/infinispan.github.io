@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.23">
+<meta name="generator" content="Asciidoctor 2.0.26">
 <title>Configuring Infinispan caches</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
@@ -116,7 +116,6 @@ h1 strong,h2 strong,h3 strong,#toctitle strong,.sidebarblock>.content>.title str
 :not(pre):not([class^=L])>code{font-size:.9375em;font-style:normal!important;letter-spacing:0;padding:.1em .5ex;word-spacing:-.15em;background:#f7f7f8;border-radius:4px;line-height:1.45;text-rendering:optimizeSpeed}
 pre{color:rgba(0,0,0,.9);font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;line-height:1.45;text-rendering:optimizeSpeed}
 pre code,pre pre{color:inherit;font-size:inherit;line-height:inherit}
-pre>code{display:block}
 pre.nowrap,pre.nowrap pre{white-space:pre;word-wrap:normal}
 em em{font-style:normal}
 strong strong{font-weight:400}
@@ -219,6 +218,7 @@ table.tableblock.fit-content>caption.title{white-space:nowrap;width:0}
 .literalblock pre,.listingblock>.content>pre:not(.highlight),.listingblock>.content>pre[class=highlight],.listingblock>.content>pre[class^="highlight "]{background:#f7f7f8}
 .literalblock.output pre{color:#f7f7f8;background:rgba(0,0,0,.9)}
 .listingblock>.content{position:relative}
+.listingblock pre>code{display:block}
 .listingblock code[data-lang]::before{display:none;content:attr(data-lang);position:absolute;font-size:.75em;top:.425rem;right:.5rem;line-height:1;text-transform:uppercase;color:inherit;opacity:.5}
 .listingblock:hover code[data-lang]::before{display:block}
 .listingblock.terminal pre .command::before{content:attr(data-prompt);padding-right:.5em;color:inherit;opacity:.5}
@@ -678,16 +678,16 @@ $(addBlockSwitches);
 </li>
 <li><a href="#persistence">6. Configuring persistent storage</a>
 <ul class="sectlevel2">
-<li><a href="#passivation_persistence">6.1. Passivation</a>
+<li><a href="#segmented-cache-stores_persistence">6.1. Segmented cache stores</a></li>
+<li><a href="#shared-cache-stores_persistence">6.2. Shared cache stores</a></li>
+<li><a href="#cache-loaders-transactional_persistence">6.3. Transactions with persistent cache stores</a></li>
+<li><a href="#write-through_persistence">6.4. Write-through cache stores</a></li>
+<li><a href="#write-behind_persistence">6.5. Write-behind cache stores</a></li>
+<li><a href="#passivation_persistence">6.6. Passivation</a>
 <ul class="sectlevel3">
-<li><a href="#how-passivation-works_persistence">6.1.1. How passivation works</a></li>
+<li><a href="#how-passivation-works_persistence">6.6.1. How passivation works</a></li>
 </ul>
 </li>
-<li><a href="#write-through_persistence">6.2. Write-through cache stores</a></li>
-<li><a href="#write-behind_persistence">6.3. Write-behind cache stores</a></li>
-<li><a href="#segmented-cache-stores_persistence">6.4. Segmented cache stores</a></li>
-<li><a href="#shared-cache-stores_persistence">6.5. Shared cache stores</a></li>
-<li><a href="#cache-loaders-transactional_persistence">6.6. Transactions with persistent cache stores</a></li>
 <li><a href="#global-persistent-location_persistence">6.7. Global persistent location</a>
 <ul class="sectlevel3">
 <li><a href="#configuring-global-persistent-location_persistence">6.7.1. Configuring the global persistent location</a></li>
@@ -696,100 +696,99 @@ $(addBlockSwitches);
 <li><a href="#file-stores_persistence">6.8. File-based cache stores</a>
 <ul class="sectlevel3">
 <li><a href="#configuring-file-stores_persistence">6.8.1. Configuring file-based cache stores</a></li>
-<li><a href="#configuring-single-file-stores_persistence">6.8.2. Configuring single file cache stores</a></li>
 </ul>
 </li>
-<li><a href="#jdbc-connection-factories_persistence">6.9. JDBC connection factories</a>
+</ul>
+</li>
+<li><a href="#jdbc-connection-factories_persistence">7. JDBC connection factories</a>
 <ul class="sectlevel3">
-<li><a href="#configuring-server-datasources_persistence">6.9.1. Configuring managed datasources</a>
+<li><a href="#configuring-server-datasources_persistence">7.1. Configuring managed datasources</a>
 <ul class="sectlevel4">
 <li><a href="#configuring-caches-with-jndi-names_persistence">Configuring caches with JNDI names</a></li>
 <li><a href="#server-connection-pool-properties_persistence">Connection pool tuning properties</a></li>
 </ul>
 </li>
-<li><a href="#configuring-jdbc-agroal-properties_persistence">6.9.2. Configuring JDBC connection pools with Agroal properties</a></li>
-</ul>
-</li>
-<li><a href="#sql-cache-store_persistence">6.10. SQL cache stores</a>
+<li><a href="#configuring-jdbc-agroal-properties_persistence">7.2. Configuring JDBC connection pools with Agroal properties</a></li>
+<li><a href="#sql-cache-store_persistence">7.3. SQL cache stores</a>
 <ul class="sectlevel3">
-<li><a href="#sql-store-data-types_persistence">6.10.1. Data types for keys and values</a>
+<li><a href="#sql-store-data-types_persistence">7.3.1. Data types for keys and values</a>
 <ul class="sectlevel4">
 <li><a href="#sql-store-composite-keys-values_persistence">Composite keys and values</a></li>
 <li><a href="#sql-store-embedded-keys_persistence">Embedded keys</a></li>
 <li><a href="#sql-store-protobuf-types_persistence">SQL types to Protobuf types</a></li>
 </ul>
 </li>
-<li><a href="#configuring-sql-cache-stores-table_persistence">6.10.2. Loading Infinispan caches from database tables</a></li>
-<li><a href="#configuring-sql-cache-stores-query_persistence">6.10.3. Using SQL queries to load data and perform operations</a>
+<li><a href="#configuring-sql-cache-stores-table_persistence">7.3.2. Loading Infinispan caches from database tables</a></li>
+<li><a href="#configuring-sql-cache-stores-query_persistence">7.3.3. Using SQL queries to load data and perform operations</a>
 <ul class="sectlevel4">
 <li><a href="#sql-store-query-configuration_persistence">SQL query store configuration</a></li>
 </ul>
 </li>
-<li><a href="#sql-cache-store-troubleshooting_persistence">6.10.4. SQL cache store troubleshooting</a></li>
+<li><a href="#sql-cache-store-troubleshooting_persistence">7.3.4. SQL cache store troubleshooting</a></li>
 </ul>
 </li>
-<li><a href="#jdbc-cache-store_persistence">6.11. JDBC string-based cache stores</a>
+<li><a href="#jdbc-cache-store_persistence">7.4. JDBC string-based cache stores</a>
 <ul class="sectlevel3">
-<li><a href="#configuring-jdbc-cache-stores_persistence">6.11.1. Configuring JDBC string-based cache stores</a></li>
+<li><a href="#configuring-jdbc-cache-stores_persistence">7.4.1. Configuring JDBC string-based cache stores</a></li>
 </ul>
 </li>
-<li><a href="#rocksdb-cache-store_persistence">6.12. RocksDB cache stores</a></li>
-<li><a href="#remote-cache-store_persistence">6.13. Remote cache stores</a></li>
-<li><a href="#cluster-cache-loader_persistence">6.14. Cluster cache loaders</a></li>
-<li><a href="#creating-custom-cache-stores">6.15. Creating custom cache store implementations</a>
+<li><a href="#rocksdb-cache-store_persistence">7.5. RocksDB cache stores</a></li>
+<li><a href="#remote-cache-store_persistence">7.6. Remote cache stores</a></li>
+<li><a href="#cluster-cache-loader_persistence">7.7. Cluster cache loaders</a></li>
+<li><a href="#creating-custom-cache-stores">7.8. Creating custom cache store implementations</a>
 <ul class="sectlevel3">
-<li><a href="#persistent-spi_custom-cache-stores">6.15.1. Infinispan Persistence SPI</a></li>
-<li><a href="#creating-custom-cache-stores_custom-cache-stores">6.15.2. Creating cache stores</a></li>
-<li><a href="#custom-cache-store-configuration_custom-cache-stores">6.15.3. Examples of custom cache store configuration</a></li>
-<li><a href="#deploying-custom-cache-stores_custom-cache-stores">6.15.4. Deploying custom cache stores</a></li>
+<li><a href="#persistent-spi_custom-cache-stores">7.8.1. Infinispan Persistence SPI</a></li>
+<li><a href="#creating-custom-cache-stores_custom-cache-stores">7.8.2. Creating cache stores</a></li>
+<li><a href="#custom-cache-store-configuration_custom-cache-stores">7.8.3. Examples of custom cache store configuration</a></li>
+<li><a href="#deploying-custom-cache-stores_custom-cache-stores">7.8.4. Deploying custom cache stores</a></li>
 </ul>
 </li>
-<li><a href="#cache-store-migrator">6.16. Migrating data between cache stores</a>
+<li><a href="#cache-store-migrator">7.9. Migrating data between cache stores</a>
 <ul class="sectlevel3">
-<li><a href="#store-migrator_cache-store-migrator">6.16.1. Cache store migrator</a></li>
-<li><a href="#configuring-store-migrator_cache-store-migrator">6.16.2. Configuring the cache store migrator</a>
+<li><a href="#store-migrator_cache-store-migrator">7.9.1. Cache store migrator</a></li>
+<li><a href="#configuring-store-migrator_cache-store-migrator">7.9.2. Configuring the cache store migrator</a>
 <ul class="sectlevel4">
 <li><a href="#store-migrator-properties_cache-store-migrator">Configuration properties for the cache store migrator</a></li>
 </ul>
 </li>
-<li><a href="#migrating-cache-stores_cache-store-migrator">6.16.3. Migrating Infinispan cache stores</a></li>
+<li><a href="#migrating-cache-stores_cache-store-migrator">7.9.3. Migrating Infinispan cache stores</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#partition-handling">7. Configuring Infinispan to handle network partitions</a>
+<li><a href="#partition-handling">8. Configuring Infinispan to handle network partitions</a>
 <ul class="sectlevel2">
-<li><a href="#partition-handling_partition-handling">7.1. Split clusters and network partitions</a>
+<li><a href="#partition-handling_partition-handling">8.1. Split clusters and network partitions</a>
 <ul class="sectlevel3">
-<li><a href="#partition-handling-data-consistency_partition-handling">7.1.1. Data consistency in a split cluster</a></li>
+<li><a href="#partition-handling-data-consistency_partition-handling">8.1.1. Data consistency in a split cluster</a></li>
 </ul>
 </li>
-<li><a href="#partition-handling-degraded-mode_partition-handling">7.2. Cache availability and degraded mode</a>
+<li><a href="#partition-handling-degraded-mode_partition-handling">8.2. Cache availability and degraded mode</a>
 <ul class="sectlevel3">
-<li><a href="#degraded-mode-example_partition-handling">7.2.1. Degraded cache recovery example</a></li>
-<li><a href="#checking-cache-availability_partition-handling">7.2.2. Verifying cache availability during network partitions</a></li>
-<li><a href="#making-caches-available_partition-handling">7.2.3. Making caches available</a></li>
+<li><a href="#degraded-mode-example_partition-handling">8.2.1. Degraded cache recovery example</a></li>
+<li><a href="#checking-cache-availability_partition-handling">8.2.2. Verifying cache availability during network partitions</a></li>
+<li><a href="#making-caches-available_partition-handling">8.2.3. Making caches available</a></li>
 </ul>
 </li>
-<li><a href="#configuring-partition-handling_partition-handling">7.3. Configuring partition handling</a></li>
-<li><a href="#partition-handling-strategies_partition-handling">7.4. Partition handling strategies</a></li>
-<li><a href="#partition-handling-merge-policies_partition-handling">7.5. Merge policies</a></li>
-<li><a href="#configuring-custom-merge-policies_partition-handling">7.6. Configuring custom merge policies</a></li>
-<li><a href="#merging-partitions-manually_partition-handling">7.7. Manually merging partitions in embedded caches</a></li>
+<li><a href="#configuring-partition-handling_partition-handling">8.3. Configuring partition handling</a></li>
+<li><a href="#partition-handling-strategies_partition-handling">8.4. Partition handling strategies</a></li>
+<li><a href="#partition-handling-merge-policies_partition-handling">8.5. Merge policies</a></li>
+<li><a href="#configuring-custom-merge-policies_partition-handling">8.6. Configuring custom merge policies</a></li>
+<li><a href="#merging-partitions-manually_partition-handling">8.7. Manually merging partitions in embedded caches</a></li>
 </ul>
 </li>
-<li><a href="#security-authorization">8. Security authorization with role-based access control</a>
+<li><a href="#security-authorization">9. Security authorization with role-based access control</a>
 <ul class="sectlevel2">
-<li><a href="#default-user-roles_security-authorization">8.1. Infinispan user roles and permissions</a>
+<li><a href="#default-user-roles_security-authorization">9.1. Infinispan user roles and permissions</a>
 <ul class="sectlevel3">
-<li><a href="#user-permissions_security-authorization">8.1.1. Permissions</a></li>
-<li><a href="#role-mappers_security-authorization">8.1.2. Role and permission mappers</a>
+<li><a href="#user-permissions_security-authorization">9.1.1. Permissions</a></li>
+<li><a href="#role-mappers_security-authorization">9.1.2. Role and permission mappers</a>
 <ul class="sectlevel4">
 <li><a href="#mapping_users_to_roles_and_permissions_in_infinispan">Mapping users to roles and permissions in Infinispan</a></li>
 </ul>
 </li>
-<li><a href="#configuring-role-mappers_security-authorization">8.1.3. Configuring role mappers</a></li>
-<li><a href="#configuring-cluster-role-mapper_security-authorization">8.1.4. Configuring the cluster role and permission mappers</a>
+<li><a href="#configuring-role-mappers_security-authorization">9.1.3. Configuring role mappers</a></li>
+<li><a href="#configuring-cluster-role-mapper_security-authorization">9.1.4. Configuring the cluster role and permission mappers</a>
 <ul class="sectlevel4">
 <li><a href="#creating-roles_security-authorization">Creating new roles</a></li>
 <li><a href="#granting-roles-to-users_security-authorization">Granting roles to users</a></li>
@@ -803,36 +802,36 @@ $(addBlockSwitches);
 </li>
 </ul>
 </li>
-<li><a href="#configuring-cache-authorization_security-authorization">8.2. Configuring caches with security authorization</a></li>
+<li><a href="#configuring-cache-authorization_security-authorization">9.2. Configuring caches with security authorization</a></li>
 </ul>
 </li>
-<li><a href="#transactions">9. Configuring transactions</a>
+<li><a href="#transactions">10. Configuring transactions</a>
 <ul class="sectlevel2">
-<li><a href="#transaction_manager">9.1. Transactions</a>
+<li><a href="#transaction_manager">10.1. Transactions</a>
 <ul class="sectlevel3">
-<li><a href="#tx_configuration">9.1.1. Configuring transactions</a></li>
-<li><a href="#tx_isolation_levels">9.1.2. Isolation levels</a></li>
-<li><a href="#tx_locking">9.1.3. Transaction locking</a>
+<li><a href="#tx_configuration">10.1.1. Configuring transactions</a></li>
+<li><a href="#tx_isolation_levels">10.1.2. Isolation levels</a></li>
+<li><a href="#tx_locking">10.1.3. Transaction locking</a>
 <ul class="sectlevel4">
 <li><a href="#pessimistic_transactional_cache">Pessimistic transactional cache</a></li>
 <li><a href="#optimistic_transactional_cache">Optimistic transactional cache</a></li>
 <li><a href="#what_do_i_need_pessimistic_or_optimistic_transactions">What do I need - pessimistic or optimistic transactions?</a></li>
 </ul>
 </li>
-<li><a href="#tx_write_skew">9.1.4. Write Skews</a>
+<li><a href="#tx_write_skew">10.1.4. Write Skews</a>
 <ul class="sectlevel4">
 <li><a href="#forcing_write_locks_on_keys_in_pessimitic_transactions">Forcing write locks on keys in pessimitic transactions</a></li>
 </ul>
 </li>
-<li><a href="#dealing_with_exceptions">9.1.5. Dealing with exceptions</a></li>
-<li><a href="#tx_sync_enlist">9.1.6. Enlisting Synchronizations</a></li>
-<li><a href="#tx_batching">9.1.7. Batching</a>
+<li><a href="#dealing_with_exceptions">10.1.5. Dealing with exceptions</a></li>
+<li><a href="#tx_sync_enlist">10.1.6. Enlisting Synchronizations</a></li>
+<li><a href="#tx_batching">10.1.7. Batching</a>
 <ul class="sectlevel4">
 <li><a href="#api">API</a></li>
 <li><a href="#batching_and_jta">Batching and JTA</a></li>
 </ul>
 </li>
-<li><a href="#tx_recovery">9.1.8. Transaction recovery</a>
+<li><a href="#tx_recovery">10.1.8. Transaction recovery</a>
 <ul class="sectlevel4">
 <li><a href="#when_to_use_recovery">When to use recovery</a></li>
 <li><a href="#how_does_it_work">How does it work</a></li>
@@ -854,36 +853,36 @@ $(addBlockSwitches);
 </li>
 </ul>
 </li>
-<li><a href="#locking">10. Configuring locking and concurrency</a>
+<li><a href="#locking">11. Configuring locking and concurrency</a>
 <ul class="sectlevel2">
-<li><a href="#locking-concurrency_locking">10.1. Locking and concurrency</a>
+<li><a href="#locking-concurrency_locking">11.1. Locking and concurrency</a>
 <ul class="sectlevel3">
-<li><a href="#clustered_caches_and_locks">10.1.1. Clustered caches and locks</a></li>
-<li><a href="#the_lockmanager">10.1.2. The LockManager</a></li>
-<li><a href="#lock_striping">10.1.3. Lock striping</a></li>
-<li><a href="#concurrency_levels">10.1.4. Concurrency levels</a></li>
-<li><a href="#lock_timeout">10.1.5. Lock timeout</a></li>
-<li><a href="#consistency">10.1.6. Consistency</a></li>
-<li><a href="#data_versioning">10.1.7. Data Versioning</a></li>
+<li><a href="#clustered_caches_and_locks">11.1.1. Clustered caches and locks</a></li>
+<li><a href="#the_lockmanager">11.1.2. The LockManager</a></li>
+<li><a href="#lock_striping">11.1.3. Lock striping</a></li>
+<li><a href="#concurrency_levels">11.1.4. Concurrency levels</a></li>
+<li><a href="#lock_timeout">11.1.5. Lock timeout</a></li>
+<li><a href="#consistency">11.1.6. Consistency</a></li>
+<li><a href="#data_versioning">11.1.7. Data Versioning</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#clustered-counters">11. Using clustered counters</a>
+<li><a href="#clustered-counters">12. Using clustered counters</a>
 <ul class="sectlevel2">
-<li><a href="#clustered-counters_clustered-counters">11.1. Clustered Counters</a>
+<li><a href="#clustered-counters_clustered-counters">12.1. Clustered Counters</a>
 <ul class="sectlevel3">
-<li><a href="#installation_and_configuration">11.1.1. Installation and Configuration</a>
+<li><a href="#installation_and_configuration">12.1.1. Installation and Configuration</a>
 <ul class="sectlevel4">
 <li><a href="#list_counter_names">List counter names</a></li>
 </ul>
 </li>
-<li><a href="#countermanager_interface">11.1.2. <code>CounterManager</code> interface</a>
+<li><a href="#countermanager_interface">12.1.2. <code>CounterManager</code> interface</a>
 <ul class="sectlevel4">
 <li><a href="#remove_a_counter_via_countermanager">Remove a counter via CounterManager</a></li>
 </ul>
 </li>
-<li><a href="#the_counter">11.1.3. The Counter</a>
+<li><a href="#the_counter">12.1.3. The Counter</a>
 <ul class="sectlevel4">
 <li><a href="#the_strongcounter_interface_when_the_consistency_or_bounds_matters">The <code>StrongCounter</code> interface: when the consistency or bounds matters.</a>
 <ul class="sectlevel5">
@@ -901,17 +900,17 @@ $(addBlockSwitches);
 </li>
 </ul>
 </li>
-<li><a href="#clustered_counters_notify_events">11.1.4. Notifications and Events</a></li>
+<li><a href="#clustered_counters_notify_events">12.1.4. Notifications and Events</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#listeners-notifications">12. Listeners and notifications</a>
+<li><a href="#listeners-notifications">13. Listeners and notifications</a>
 <ul class="sectlevel2">
-<li><a href="#listeners-and-notifications_listeners-notifications">12.1. Listeners and notifications</a></li>
-<li><a href="#cache-notifications_listeners-notifications">12.2. Cache-level notifications</a></li>
-<li><a href="#cache-manager-notifications_listeners-notifications">12.3. Cache Manager notifications</a></li>
-<li><a href="#event-synchronicity_listeners-notifications">12.4. Synchronicity of events</a></li>
+<li><a href="#listeners-and-notifications_listeners-notifications">13.1. Listeners and notifications</a></li>
+<li><a href="#cache-notifications_listeners-notifications">13.2. Cache-level notifications</a></li>
+<li><a href="#cache-manager-notifications_listeners-notifications">13.3. Cache Manager notifications</a></li>
+<li><a href="#event-synchronicity_listeners-notifications">13.4. Synchronicity of events</a></li>
 </ul>
 </li>
 </ul>
@@ -2595,10 +2594,10 @@ Write succinct file names.</p>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:schemaLocation="urn:infinispan:config:15.2 https://infinispan.org/schemas/infinispan-config-15.2.xsd
-                          urn:infinispan:server:15.2 https://infinispan.org/schemas/infinispan-server-15.2.xsd"
-      xmlns="urn:infinispan:config:15.2"
-      xmlns:server="urn:infinispan:server:15.2"&gt;
+      xsi:schemaLocation="urn:infinispan:config:16.0 https://infinispan.org/schemas/infinispan-config-16.0.xsd
+                          urn:infinispan:server:16.0 https://infinispan.org/schemas/infinispan-server-16.0.xsd"
+      xmlns="urn:infinispan:config:16.0"
+      xmlns:server="urn:infinispan:server:16.0"&gt;
   &lt;cache-container name="default"
                    statistics="true"&gt;
     &lt;distributed-cache name="mycacheone"
@@ -2707,7 +2706,7 @@ Write succinct file names.</p>
 <p><a href="../../configuration-schema/index.html">Infinispan configuration schema reference</a></p>
 </li>
 <li>
-<p><a href="https://infinispan.org/schemas/infinispan-config-15.2.xsd">infinispan-config-15.2.xsd</a></p>
+<p><a href="https://infinispan.org/schemas/infinispan-config-16.0.xsd">infinispan-config-16.0.xsd</a></p>
 </li>
 </ul>
 </div>
@@ -3056,14 +3055,14 @@ This means you cannot use the <code>xpointer</code> attribute, the <code>xi:fall
 </div>
 </div>
 <div class="paragraph">
-<p>Infinispan also provides an <code>infinispan-config-fragment-15.2.xsd</code> schema that you can use with configuration fragments.</p>
+<p>Infinispan also provides an <code>infinispan-config-fragment-16.0.xsd</code> schema that you can use with configuration fragments.</p>
 </div>
 <div class="listingblock">
 <div class="title">Configuration fragment schema</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;local-cache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-             xsi:schemaLocation="urn:infinispan:config:15.2 https://infinispan.org/schemas/infinispan-config-fragment-15.2.xsd"
-             xmlns="urn:infinispan:config:15.2"
+             xsi:schemaLocation="urn:infinispan:config:16.0 https://infinispan.org/schemas/infinispan-config-fragment-16.0.xsd"
+             xmlns="urn:infinispan:config:16.0"
              name="mycache"/&gt;</code></pre>
 </div>
 </div>
@@ -3306,15 +3305,37 @@ Starting Infinispan Server automatically instantiates the Cache Manager so you c
 <li>
 <p>Use the <code class="command">create cache</code> command to create remote caches.</p>
 <div class="paragraph">
-<p>For example, create a cache named "mycache" from a file named <code>mycache.xml</code> as follows:</p>
+<p>For example, create a distributed cache named "distcache" as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">create cache distcache "&lt;distributed-cache /&gt;"</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>You can use any configuration format supported by Infinispan. Create a cache using a JSON configuration as follows:</p>
+</div>
+<div class="paragraph">
+<p>+</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">create cache json '{"distributed-cache":{"mode":"SYNC"}}'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It is possible to use a configuration stored in an external file. For example, create a cache named "mycache" from a file named <code>mycache.xml</code> as follows:</p>
+</div>
+<div class="paragraph">
+<p>+</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-none hljs">create cache --file=mycache.xml mycache</code></pre>
 </div>
-</div>
-</li>
-</ol>
 </div>
 <div class="olist arabic">
 <div class="title">Verification</div>
@@ -3606,6 +3627,21 @@ cacheManager.stop();</code></pre>
 <div class="paragraph">
 <p>For more information about configuration storage providers, see <a href="../../apidocs/org/infinispan/configuration/global/GlobalStateConfigurationBuilder.html#configurationStorage(org.infinispan.globalstate.ConfigurationStorage)">GlobalStateConfigurationBuilder#configurationStorage()</a>.</p>
 </div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Visit the code tutorials to try examples with embedded Infinispan.
+See the <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-embedded">code tutorial with embedded caches</a>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
 <ul>
@@ -3627,7 +3663,7 @@ cacheManager.stop();</code></pre>
 <div class="sect3">
 <h4 id="cache-modes_creating-embedded-caches"><a class="anchor" href="#cache-modes_creating-embedded-caches"></a>3.5.3. Cache API</h4>
 <div class="paragraph">
-<p>Infinispan provides a <a href="../../apidocs/org/infinispan/Cache.html">Cache</a> interface that exposes simple methods for adding, retrieving and removing entries, including atomic mechanisms exposed by the JDK&#8217;s ConcurrentMap interface.  Based on the cache mode used, invoking these methods will trigger a number of things to happen, potentially even including replicating an entry to a remote node or looking up an entry from a remote node, or potentially a cache store.</p>
+<p>Infinispan provides a <a href="../../apidocs/org/infinispan/Cache.html">Cache</a> interface that exposes simple methods for adding, retrieving and removing entries, including atomic mechanisms exposed by the JDK&#8217;s ConcurrentMap interface.  Based on the cache mode used, invoking these methods will trigger a number of things, potentially replicating an entry to a remote node or looking up an entry from a remote node, or even a cache store.</p>
 </div>
 <div class="paragraph">
 <p>For simple usage, using the Cache API should be no different from using the JDK Map API, and hence migrating from simple in-memory caches based on a Map to Infinispan&#8217;s Cache should be trivial.</p>
@@ -3638,11 +3674,11 @@ cacheManager.stop();</code></pre>
 <a href="../../apidocs/org/infinispan/Cache.html#size()">size()</a> ,
 <a href="../../apidocs/org/infinispan/Cache.html#values()">values()</a> ,
 <a href="../../apidocs/org/infinispan/Cache.html#keySet()">keySet()</a> and
-<a href="../../apidocs/org/infinispan/Cache.html#entrySet()">entrySet()</a> .
+<a href="../../apidocs/org/infinispan/Cache.html#entrySet()">entrySet()</a>.
 Specific methods on the <code>keySet</code>, <code>values</code> and <code>entrySet</code> are fine for use please see their Javadoc for further details.</p>
 </div>
 <div class="paragraph">
-<p>Attempting to perform these operations globally would have large performance impact as well as become a scalability bottleneck.  As such, these methods should only be used for informational or debugging purposes only.</p>
+<p>Attempting to perform these operations globally could have large performance impact as well as become a scalability bottleneck.  As such, these methods should be avoided in production code and only be used for informational or debugging purposes only.</p>
 </div>
 <div class="paragraph">
 <p>It should be noted that using certain flags with the <a href="../../apidocs/org/infinispan/AdvancedCache.html#withFlags(java.util.Collection)">withFlags()</a> method can mitigate some of these concerns, please check each method&#8217;s documentation for more details.</p>
@@ -3690,7 +3726,7 @@ if (cachedPerson == null) {
 </div>
 </div>
 <div class="paragraph">
-<p>Note that <a href="../../apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> should never be used as a mechanism to update the cache with a new Person instance originating from application execution (i.e. from a transaction that modifies a Person&#8217;s address). When updating cached values, please use the standard <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">put</a> operation, otherwise the possibility of caching corrupt data is likely.</p>
+<p>Note that <a href="../../apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> should never be used as a mechanism to update the cache with a new Person instance originating from application execution (i.e. from a transaction that modifies a Person&#8217;s address). When updating cached values, please use the standard <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">put</a> operation, otherwise the possibility of caching inconsistent data is likely.</p>
 </div>
 <div class="sect4">
 <h5 id="advancedcache_api"><a class="anchor" href="#advancedcache_api"></a>AdvancedCache API</h5>
@@ -3722,7 +3758,7 @@ if (cachedPerson == null) {
 <p>In addition to synchronous API methods like <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">Cache.put()</a> , <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#remove-java.lang.Object-">Cache.remove()</a> , etc., Infinispan also has an asynchronous, non-blocking API where you can achieve the same results in a non-blocking fashion.</p>
 </div>
 <div class="paragraph">
-<p>These methods are named in a similar fashion to their blocking counterparts, with "Async" appended.  E.g., <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#putAsync(K,V)">Cache.putAsync()</a> , <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#removeAsync(java.lang.Object)">Cache.removeAsync()</a> , etc.  These asynchronous counterparts return a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/CompletableFuture.html">CompletableFuture</a> that contains the actual result of the operation.</p>
+<p>These methods are named in a similar fashion to their blocking counterparts, with "Async" appended. E.g., <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#putAsync(K,V)">Cache.putAsync()</a> , <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#removeAsync(java.lang.Object)">Cache.removeAsync()</a> , etc. These asynchronous counterparts return a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/CompletableFuture.html">CompletableFuture</a> that contains the actual result of the operation.</p>
 </div>
 <div class="paragraph">
 <p>For example, in a cache parameterized as <code>Cache&lt;String, String&gt;</code>, <code>Cache.put(String key, String value)</code> returns <code>String</code> while <code>Cache.putAsync(String key, String value)</code> returns <code>CompletableFuture&lt;String&gt;</code>.</p>
@@ -3730,7 +3766,7 @@ if (cachedPerson == null) {
 <div class="sect5">
 <h6 id="why_use_such_an_api"><a class="anchor" href="#why_use_such_an_api"></a>Why use such an API?</h6>
 <div class="paragraph">
-<p>Non-blocking APIs are powerful in that they provide all of the guarantees of synchronous communications - with the ability to handle communication failures and exceptions - with the ease of not having to block until a call completes.  This allows you to better harness parallelism in your system.  For example:</p>
+<p>Non-blocking APIs are powerful in that they provide all of the guarantees of synchronous communications - with the ability to handle communication failures and exceptions - with the ease of not having to block until a call completes. This allows you to better harness parallelism in your system. For example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -3752,11 +3788,11 @@ for (CompletableFuture&lt;?&gt; f: futures) f.get();</code></pre>
 <div class="sect5">
 <h6 id="which_processes_actually_happen_asynchronously"><a class="anchor" href="#which_processes_actually_happen_asynchronously"></a>Which processes actually happen asynchronously?</h6>
 <div class="paragraph">
-<p>There are 4 things in Infinispan that can be considered to be on the critical path of a typical write operation.
-These are, in order of cost:</p>
+<p>There are four things in Infinispan that can be considered to be on the critical path of a typical write operation.
+These are, in descending order of cost:</p>
 </div>
-<div class="ulist">
-<ul>
+<div class="olist arabic">
+<ol class="arabic">
 <li>
 <p>network calls</p>
 </li>
@@ -3769,10 +3805,10 @@ These are, in order of cost:</p>
 <li>
 <p>locking</p>
 </li>
-</ul>
+</ol>
 </div>
 <div class="paragraph">
-<p>Using the async methods will take the network calls and marshalling off the critical path.  For various technical reasons, writing to a cache store and acquiring locks, however, still happens in the caller&#8217;s thread.</p>
+<p>Using the async methods will take the network calls and marshalling off the critical path. For various technical reasons, writing to a cache store and acquiring locks, however, still happens in the caller&#8217;s thread.</p>
 </div>
 </div>
 </div>
@@ -3976,7 +4012,7 @@ Metrics related to the JVM are provided in the <code>base</code> scope.</p>
 <p>Enable or disable histograms with the <code>histograms</code> attribute or field.</p>
 </li>
 <li>
-<p>Enable or disable the inclusion of element names as tags using the <code>names-as-tags</code> attribute or field.</p>
+<p>Enable or disable the export of metrics in legacy format using the <code>legacy</code> attribute or field.</p>
 </li>
 <li>
 <p>Save and close your client configuration.</p>
@@ -4033,17 +4069,17 @@ Metrics related to the JVM are provided in the <code>base</code> scope.</p>
   .build();</code></pre>
 </div>
 </div>
-<h5 id="names_as_tags" class="discrete">Names as tags</h5>
+<h5 id="legacy_format" class="discrete">Legacy format</h5>
 <div class="paragraph">
-<p>By default, element identifiers, such as the name of the cache manager and the cache, are embedded into the name of the
-metric. Enabling <code>names-as-tags</code> places these identifiers into tags, making the metric name independent.</p>
+<p>For backwards compatibility, metrics are currently exported in a legacy format by default. The setting <code>legacy</code> should be set to
+<code>false</code> to export metrics in the new format.</p>
 </div>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container statistics="true"&gt;
-    &lt;metrics names_as_tags="true" /&gt;
+    &lt;metrics legacy="false" /&gt;
   &lt;/cache-container&gt;
 &lt;/infinispan&gt;</code></pre>
 </div>
@@ -4056,7 +4092,7 @@ metric. Enabling <code>names-as-tags</code> places these identifiers into tags, 
     "cache-container" : {
       "statistics" : "true",
       "metrics" : {
-        "names-as-tags" : "true"
+        "legacy" : "false"
       }
     }
   }
@@ -4070,7 +4106,7 @@ metric. Enabling <code>names-as-tags</code> places these identifiers into tags, 
   cacheContainer:
     statistics: "true"
     metrics:
-      namesAsTags: "true"</code></pre>
+      legacy: "false"</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -4496,7 +4532,7 @@ A state transfer exposes attributes as properties, so that Infinispan can export
 <p><a href="../configuring/configuring.html#statistics-jmx">Enabling and configuring Infinispan statistics and JMX monitoring (Infinispan caches)</a></p>
 </li>
 <li>
-<p><a href="../../apidocsjmxComponents.html#StateTransferManager"><code>StateTransferManager</code> (Infinispan 15.2 API)</a></p>
+<p><a href="../../apidocsjmxComponents.html#StateTransferManager"><code>StateTransferManager</code> (Infinispan 16.0 API)</a></p>
 </li>
 </ul>
 </div>
@@ -4725,7 +4761,7 @@ Monitoring cross-site latency metrics can help you to discover potential issues.
 </li>
 <li>
 <p>For the <code>expr</code> filed, use the following format:<br>
-<code>vendor_cache_manager_default_cache_&lt;cache name&gt;_x_site_admin_&lt;site name&gt;_status</code>.</p>
+<code>infinispan_x_site_admin_status{cache=\"&lt;cache name&gt;\",site=\"&lt;site name&gt;\"}</code>.</p>
 <div class="paragraph">
 <p>In the following example, Prometheus alerts you when the <strong>NYC</strong> site gets <code>offline</code> for cache named <code>work</code> or <code>sessions</code>.</p>
 </div>
@@ -4735,9 +4771,9 @@ Monitoring cross-site latency metrics can help you to discover potential issues.
 - name: Cross Site Rules
   rules:
   - alert: Cache Work and Site NYC
-    expr: vendor_cache_manager_default_cache_work_x_site_admin_nyc_status == 0
+    expr: infinispan_x_site_admin_status{cache=\"Work\",site=\"NYC\"} == 0
   - alert: Cache Sessions and Site NYC
-    expr: vendor_cache_manager_default_cache_sessions_x_site_admin_nyc_status == 0</code></pre>
+    expr: infinispan_x_site_admin_status{cache=\"Sessions\",site=\"NYC\"} == 0</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -5485,6 +5521,10 @@ exceeded the maximum idle time limit. This behavior ensures performance because
 no remote invocations are performed during the iteration. Also note that
 iteration does not refresh any expired entries.</p>
 </li>
+<li>
+<p>Maximum idle expiration cannot be configured to be equal or longer to lifespan
+expiration. Lifespan will always remove it at that point invalidating maximum idle.</p>
+</li>
 </ul>
 </div>
 </div>
@@ -5801,7 +5841,284 @@ frequently used data in-memory and writes older entries to persistent storage.</
 </dl>
 </div>
 <div class="sect2">
-<h3 id="passivation_persistence"><a class="anchor" href="#passivation_persistence"></a>6.1. Passivation</h3>
+<h3 id="segmented-cache-stores_persistence"><a class="anchor" href="#segmented-cache-stores_persistence"></a>6.1. Segmented cache stores</h3>
+<div class="paragraph">
+<p>Cache stores can organize data into hash space segments to which keys map. Stores are segmented by default.</p>
+</div>
+<div class="paragraph">
+<p>Segmented stores increase read performance for bulk operations; for example,
+streaming over data (<code>Cache.size</code>, <code>Cache.entrySet.stream</code>), pre-loading the
+cache, and doing state transfer operations.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>If you change the <code>numSegments</code> parameter in the configuration after you add a
+segmented cache store, Infinispan cannot read data from that cache store.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="shared-cache-stores_persistence"><a class="anchor" href="#shared-cache-stores_persistence"></a>6.2. Shared cache stores</h3>
+<div class="paragraph">
+<p>Infinispan cache stores can be local to a given node or shared across all nodes in the cluster.
+By default, cache stores are local (<code>shared="false"</code>).</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Local cache stores are unique to each node; for example, a file-based cache store that persists data to the host filesystem.</p>
+<div class="paragraph">
+<p>Local cache stores should use "purge on startup" to avoid loading stale entries from persistent storage.</p>
+</div>
+</li>
+<li>
+<p>Shared cache stores allow multiple nodes to use the same persistent storage; for example, a JDBC cache store that allows multiple nodes to access the same database.</p>
+<div class="paragraph">
+<p>Shared cache stores ensure that only the primary owner write to persistent storage, instead of backup nodes performing write operations for every modification.</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Purging deletes data, which is not typically the desired behavior for persistent storage.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock primary">
+<div class="title">Local cache store</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;persistence&gt;
+  &lt;store shared="false"
+         purge="true"/&gt;
+&lt;/persistence&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Shared cache store</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;persistence&gt;
+  &lt;store shared="true"
+         purge="false"/&gt;
+&lt;/persistence&gt;</code></pre>
+</div>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="../../configuration-schema/index.html">Infinispan Configuration Schema</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="cache-loaders-transactional_persistence"><a class="anchor" href="#cache-loaders-transactional_persistence"></a>6.3. Transactions with persistent cache stores</h3>
+<div class="paragraph">
+<p>Infinispan supports transactional operations with JDBC-based cache stores only.
+To configure caches as transactional, you set <code>transactional=true</code> to keep data in persistent storage synchronized with data in memory.</p>
+</div>
+<div class="paragraph">
+<p>For all other cache stores, Infinispan does not enlist cache loaders in transactional operations.
+This can result in data inconsistency if transactions succeed in modifying data in memory but do not completely apply changes to data in the cache store.
+In these cases manual recovery is not possible with cache stores.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="write-through_persistence"><a class="anchor" href="#write-through_persistence"></a>6.4. Write-through cache stores</h3>
+<div class="paragraph">
+<p>Write-through is a cache writing mode where writes to memory and writes to
+cache stores are synchronous. When a client application updates a cache entry,
+in most cases by invoking <code>Cache.put()</code>, Infinispan does not return the call
+until it updates the cache store. This cache writing mode results in updates to
+the cache store concluding within the boundaries of the client thread.</p>
+</div>
+<div class="paragraph">
+<p>The primary advantage of write-through mode is that the cache and cache store
+are updated simultaneously, which ensures that the cache store is always
+consistent with the cache.</p>
+</div>
+<div class="paragraph">
+<p>However, write-through mode can potentially decrease performance because the
+need to access and update cache stores directly adds latency to cache
+operations.</p>
+</div>
+<h4 id="write_through_configuration" class="discrete">Write-through configuration</h4>
+<div class="paragraph">
+<p>Infinispan uses write-through mode unless you explicitly add write-behind configuration to your caches.
+There is no separate element or method for configuring write-through mode.</p>
+</div>
+<div class="paragraph">
+<p>For example, the following configuration adds a file-based store to the cache that implicitly uses write-through mode:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
+  &lt;persistence passivation="false"&gt;
+    &lt;file-store&gt;
+      &lt;index path="path/to/index" /&gt;
+      &lt;data path="path/to/data" /&gt;
+    &lt;/file-store&gt;
+  &lt;/persistence&gt;
+&lt;/distributed-cache&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="write-behind_persistence"><a class="anchor" href="#write-behind_persistence"></a>6.5. Write-behind cache stores</h3>
+<div class="paragraph">
+<p>Write-behind is a cache writing mode where writes to memory are synchronous
+and writes to cache stores are asynchronous.</p>
+</div>
+<div class="paragraph">
+<p>When clients send write requests, Infinispan adds those operations to a
+modification queue. Infinispan processes operations as they join the queue so
+that the calling thread is not blocked and the operation completes immediately.</p>
+</div>
+<div class="paragraph">
+<p>If the number of write operations in the modification queue increases beyond
+the size of the queue, Infinispan adds those additional operations to the
+queue. However, those operations do not complete until Infinispan processes
+operations that are already in the queue.</p>
+</div>
+<div class="paragraph">
+<p>For example, calling <code>Cache.putAsync</code> returns immediately and the Stage also
+completes immediately if the modification queue is not full. If the
+modification queue is full, or if Infinispan is currently processing a batch
+of write operations, then <code>Cache.putAsync</code> returns immediately and the Stage
+completes later.</p>
+</div>
+<div class="paragraph">
+<p>Write-behind mode provides a performance advantage over write-through mode
+because cache operations do not need to wait for updates to the underlying cache
+store to complete. However, data in the cache store remains inconsistent with
+data in the cache until the modification queue is processed. For this reason,
+write-behind mode is suitable for cache stores with low latency, such as
+unshared and local file-based cache stores, where the time between the
+write to the cache and the write to the cache store is as small as possible.</p>
+</div>
+<h4 id="write_behind_configuration" class="discrete">Write-behind configuration</h4>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
+  &lt;persistence&gt;
+    &lt;table-jdbc-store xmlns="urn:infinispan:config:store:sql:16.0"
+                      dialect="H2"
+                      shared="true"
+                      table-name="books"&gt;
+      &lt;connection-pool connection-url="jdbc:h2:mem:infinispan"
+                       username="sa"
+                       password="changeme"
+                       driver="org.h2.Driver"/&gt;
+      &lt;write-behind modification-queue-size="2048"
+                    fail-silently="true"/&gt;
+    &lt;/table-jdbc-store&gt;
+  &lt;/persistence&gt;
+&lt;/distributed-cache&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "distributed-cache": {
+    "persistence" : {
+      "table-jdbc-store": {
+        "dialect": "H2",
+        "shared": "true",
+        "table-name": "books",
+        "connection-pool": {
+          "connection-url": "jdbc:h2:mem:infinispan",
+          "driver": "org.h2.Driver",
+          "username": "sa",
+          "password": "changeme"
+        },
+        "write-behind" : {
+          "modification-queue-size" : "2048",
+          "fail-silently" : true
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
+  persistence:
+    tableJdbcStore:
+      dialect: "H2"
+      shared: "true"
+      tableName: "books"
+      connectionPool:
+        connectionUrl: "jdbc:h2:mem:infinispan"
+        driver: "org.h2.Driver"
+        username: "sa"
+        password: "changeme"
+      writeBehind:
+        modificationQueueSize: "2048"
+        failSilently: "true"</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">ConfigurationBuilder</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
+builder.persistence()
+       .async()
+       .modificationQueueSize(2048)
+       .failSilently(true);</code></pre>
+</div>
+</div>
+<h4 id="failing_silently" class="discrete">Failing silently</h4>
+<div class="paragraph">
+<p>Write-behind configuration includes a <code>fail-silently</code> parameter that controls what happens when either the cache store is unavailable or the modification queue is full.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>If <code>fail-silently="true"</code> then Infinispan logs WARN messages and rejects
+write operations.</p>
+</li>
+<li>
+<p>If <code>fail-silently="false"</code> then Infinispan throws exceptions if it detects
+the cache store is unavailable during a write operation. Likewise if the
+modification queue becomes full, Infinispan throws an exception.</p>
+<div class="paragraph">
+<p>In some cases, data loss can occur if Infinispan restarts and write operations
+exist in the modification queue. For example the cache store goes offline but,
+during the time it takes to detect that the cache store is unavailable, write
+operations are added to the modification queue because it is not full. If
+Infinispan restarts or otherwise becomes unavailable before the cache store
+comes back online, then the write operations in the modification queue are lost
+because they were not persisted.</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="passivation_persistence"><a class="anchor" href="#passivation_persistence"></a>6.6. Passivation</h3>
 <div class="paragraph">
 <p>Passivation configures Infinispan to write entries to cache stores when it
 evicts those entries from memory. In this way, passivation prevents unnecessary
@@ -5810,9 +6127,9 @@ and potentially expensive writes to persistent storage.</p>
 <div class="paragraph">
 <p>Activation is the process of restoring entries to memory from the cache store
 when there is an attempt to access passivated entries. For this reason, when you
-enable passivation, you must configure cache stores that implement both
-<code>CacheWriter</code> and <code>CacheLoader</code> interfaces so they can write and load entries
-from persistent storage.</p>
+enable passivation, you must configure a cache store that implements the
+<code>NonBlockingStore</code> interface. The store&#8217;s <code>characteristics()</code> method must
+also indicate that it supports both read and write operations.</p>
 </div>
 <div class="paragraph">
 <p>When Infinispan evicts an entry from the cache, it notifies cache listeners
@@ -5861,7 +6178,7 @@ Infinispan throws an exception.</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="how-passivation-works_persistence"><a class="anchor" href="#how-passivation-works_persistence"></a>6.1.1. How passivation works</h4>
+<h4 id="how-passivation-works_persistence"><a class="anchor" href="#how-passivation-works_persistence"></a>6.6.1. How passivation works</h4>
 <div class="paragraph">
 <div class="title">Passivation disabled</div>
 <p>Writes to data in memory result in writes to persistent storage.</p>
@@ -5971,297 +6288,6 @@ series of operations:</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="write-through_persistence"><a class="anchor" href="#write-through_persistence"></a>6.2. Write-through cache stores</h3>
-<div class="paragraph">
-<p>Write-through is a cache writing mode where writes to memory and writes to
-cache stores are synchronous. When a client application updates a cache entry,
-in most cases by invoking <code>Cache.put()</code>, Infinispan does not return the call
-until it updates the cache store. This cache writing mode results in updates to
-the cache store concluding within the boundaries of the client thread.</p>
-</div>
-<div class="paragraph">
-<p>The primary advantage of write-through mode is that the cache and cache store
-are updated simultaneously, which ensures that the cache store is always
-consistent with the cache.</p>
-</div>
-<div class="paragraph">
-<p>However, write-through mode can potentially decrease performance because the
-need to access and update cache stores directly adds latency to cache
-operations.</p>
-</div>
-<h4 id="write_through_configuration" class="discrete">Write-through configuration</h4>
-<div class="paragraph">
-<p>Infinispan uses write-through mode unless you explicitly add write-behind configuration to your caches.
-There is no separate element or method for configuring write-through mode.</p>
-</div>
-<div class="paragraph">
-<p>For example, the following configuration adds a file-based store to the cache that implicitly uses write-through mode:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;persistence passivation="false"&gt;
-    &lt;file-store&gt;
-      &lt;index path="path/to/index" /&gt;
-      &lt;data path="path/to/data" /&gt;
-    &lt;/file-store&gt;
-  &lt;/persistence&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="write-behind_persistence"><a class="anchor" href="#write-behind_persistence"></a>6.3. Write-behind cache stores</h3>
-<div class="paragraph">
-<p>Write-behind is a cache writing mode where writes to memory are synchronous
-and writes to cache stores are asynchronous.</p>
-</div>
-<div class="paragraph">
-<p>When clients send write requests, Infinispan adds those operations to a
-modification queue. Infinispan processes operations as they join the queue so
-that the calling thread is not blocked and the operation completes immediately.</p>
-</div>
-<div class="paragraph">
-<p>If the number of write operations in the modification queue increases beyond
-the size of the queue, Infinispan adds those additional operations to the
-queue. However, those operations do not complete until Infinispan processes
-operations that are already in the queue.</p>
-</div>
-<div class="paragraph">
-<p>For example, calling <code>Cache.putAsync</code> returns immediately and the Stage also
-completes immediately if the modification queue is not full. If the
-modification queue is full, or if Infinispan is currently processing a batch
-of write operations, then <code>Cache.putAsync</code> returns immediately and the Stage
-completes later.</p>
-</div>
-<div class="paragraph">
-<p>Write-behind mode provides a performance advantage over write-through mode
-because cache operations do not need to wait for updates to the underlying cache
-store to complete. However, data in the cache store remains inconsistent with
-data in the cache until the modification queue is processed. For this reason,
-write-behind mode is suitable for cache stores with low latency, such as
-unshared and local file-based cache stores, where the time between the
-write to the cache and the write to the cache store is as small as possible.</p>
-</div>
-<h4 id="write_behind_configuration" class="discrete">Write-behind configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;persistence&gt;
-    &lt;table-jdbc-store xmlns="urn:infinispan:config:store:sql:15.2"
-                      dialect="H2"
-                      shared="true"
-                      table-name="books"&gt;
-      &lt;connection-pool connection-url="jdbc:h2:mem:infinispan"
-                       username="sa"
-                       password="changeme"
-                       driver="org.h2.Driver"/&gt;
-      &lt;write-behind modification-queue-size="2048"
-                    fail-silently="true"/&gt;
-    &lt;/table-jdbc-store&gt;
-  &lt;/persistence&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "persistence" : {
-      "table-jdbc-store": {
-        "dialect": "H2",
-        "shared": "true",
-        "table-name": "books",
-        "connection-pool": {
-          "connection-url": "jdbc:h2:mem:infinispan",
-          "driver": "org.h2.Driver",
-          "username": "sa",
-          "password": "changeme"
-        },
-        "write-behind" : {
-          "modification-queue-size" : "2048",
-          "fail-silently" : true
-        }
-      }
-    }
-  }
-}</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
-  persistence:
-    tableJdbcStore:
-      dialect: "H2"
-      shared: "true"
-      tableName: "books"
-      connectionPool:
-        connectionUrl: "jdbc:h2:mem:infinispan"
-        driver: "org.h2.Driver"
-        username: "sa"
-        password: "changeme"
-      writeBehind:
-        modificationQueueSize: "2048"
-        failSilently: "true"</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
-builder.persistence()
-       .async()
-       .modificationQueueSize(2048)
-       .failSilently(true);</code></pre>
-</div>
-</div>
-<h4 id="failing_silently" class="discrete">Failing silently</h4>
-<div class="paragraph">
-<p>Write-behind configuration includes a <code>fail-silently</code> parameter that controls what happens when either the cache store is unavailable or the modification queue is full.</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>If <code>fail-silently="true"</code> then Infinispan logs WARN messages and rejects
-write operations.</p>
-</li>
-<li>
-<p>If <code>fail-silently="false"</code> then Infinispan throws exceptions if it detects
-the cache store is unavailable during a write operation. Likewise if the
-modification queue becomes full, Infinispan throws an exception.</p>
-<div class="paragraph">
-<p>In some cases, data loss can occur if Infinispan restarts and write operations
-exist in the modification queue. For example the cache store goes offline but,
-during the time it takes to detect that the cache store is unavailable, write
-operations are added to the modification queue because it is not full. If
-Infinispan restarts or otherwise becomes unavailable before the cache store
-comes back online, then the write operations in the modification queue are lost
-because they were not persisted.</p>
-</div>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="segmented-cache-stores_persistence"><a class="anchor" href="#segmented-cache-stores_persistence"></a>6.4. Segmented cache stores</h3>
-<div class="paragraph">
-<p>Cache stores can organize data into hash space segments to which keys map.</p>
-</div>
-<div class="paragraph">
-<p>Segmented stores increase read performance for bulk operations; for example,
-streaming over data (<code>Cache.size</code>, <code>Cache.entrySet.stream</code>), pre-loading the
-cache, and doing state transfer operations.</p>
-</div>
-<div class="paragraph">
-<p>However, segmented stores can also result in loss of performance for write
-operations. This performance loss applies particularly to batch write
-operations that can take place with transactions or write-behind stores. For
-this reason, you should evaluate the overhead for write operations before you
-enable segmented stores. The performance gain for bulk read operations might
-not be acceptable if there is a significant performance loss for write
-operations.</p>
-</div>
-<div class="admonitionblock important">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-important" title="Important"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>The number of segments you configure for cache stores must match the number of
-segments you define in the Infinispan configuration with the
-<code>clustering.hash.numSegments</code> parameter.</p>
-</div>
-<div class="paragraph">
-<p>If you change the <code>numSegments</code> parameter in the configuration after you add a
-segmented cache store, Infinispan cannot read data from that cache store.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="shared-cache-stores_persistence"><a class="anchor" href="#shared-cache-stores_persistence"></a>6.5. Shared cache stores</h3>
-<div class="paragraph">
-<p>Infinispan cache stores can be local to a given node or shared across all nodes in the cluster.
-By default, cache stores are local (<code>shared="false"</code>).</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Local cache stores are unique to each node; for example, a file-based cache store that persists data to the host filesystem.</p>
-<div class="paragraph">
-<p>Local cache stores should use "purge on startup" to avoid loading stale entries from persistent storage.</p>
-</div>
-</li>
-<li>
-<p>Shared cache stores allow multiple nodes to use the same persistent storage; for example, a JDBC cache store that allows multiple nodes to access the same database.</p>
-<div class="paragraph">
-<p>Shared cache stores ensure that only the primary owner write to persistent storage, instead of backup nodes performing write operations for every modification.</p>
-</div>
-</li>
-</ul>
-</div>
-<div class="admonitionblock important">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-important" title="Important"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Purging deletes data, which is not typically the desired behavior for persistent storage.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="listingblock primary">
-<div class="title">Local cache store</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;persistence&gt;
-  &lt;store shared="false"
-         purge="true"/&gt;
-&lt;/persistence&gt;</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">Shared cache store</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;persistence&gt;
-  &lt;store shared="true"
-         purge="false"/&gt;
-&lt;/persistence&gt;</code></pre>
-</div>
-</div>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p><a href="../../configuration-schema/index.html">Infinispan Configuration Schema</a></p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="cache-loaders-transactional_persistence"><a class="anchor" href="#cache-loaders-transactional_persistence"></a>6.6. Transactions with persistent cache stores</h3>
-<div class="paragraph">
-<p>Infinispan supports transactional operations with JDBC-based cache stores only.
-To configure caches as transactional, you set <code>transactional=true</code> to keep data in persistent storage synchronized with data in memory.</p>
-</div>
-<div class="paragraph">
-<p>For all other cache stores, Infinispan does not enlist cache loaders in transactional operations.
-This can result in data inconsistency if transactions succeed in modifying data in memory but do not completely apply changes to data in the cache store.
-In these cases manual recovery is not possible with cache stores.</p>
-</div>
-</div>
-<div class="sect2">
 <h3 id="global-persistent-location_persistence"><a class="anchor" href="#global-persistent-location_persistence"></a>6.7. Global persistent location</h3>
 <div class="paragraph">
 <p>Infinispan preserves global state so that it can restore cluster topology and cached data after restart.</p>
@@ -6323,7 +6349,8 @@ In most cases this is the directory where your application starts.</p>
 <p>For clustered embedded caches, such as replicated or distributed, you should always enable and configure a global persistent location to restore cluster topology.</p>
 </div>
 <div class="paragraph">
-<p>You should never configure an absolute path for a file-based cache store that is outside the global persistent location.
+<p>When using a file-based cache store, you should always configure a global persistent location. You should never configure an absolute path for a file-based cache store that is outside this location.
+For more details, see <a href="proc_configuring_global_persistent_location.html">Configuring the Global Persistent Location</a>.
 If you do, Infinispan writes the following exception to logs:</p>
 </div>
 <div class="listingblock">
@@ -6555,8 +6582,7 @@ GC removes indexes before they consume too much memory while still falling back 
 </div>
 <div class="paragraph">
 <p><code>SoftIndexFileStore</code> creates a B+ tree per configured cache segment.
-This provides an additional "index" as it only has so many elements and provides additional parallelism for index updates.
-Currently we allow for a parallel amount based on one sixteenth of the number of cache segments.</p>
+This provides an additional "index" as it only has so many elements and provides additional parallelism for index updates.</p>
 </div>
 <div class="paragraph">
 <p>Each entry in the B+ tree is a node.
@@ -6576,45 +6602,17 @@ Any number remaning from configured limit is allocated for open data files thems
 </div>
 <div class="paragraph">
 <div class="title">Segmentation</div>
-<p>Soft-index file stores are always segmented. The append log(s) are not directly segmented and segmentation is handled directly by the index.</p>
+<p>Soft-index file stores by default are segmented. The append log(s) are not directly segmented and segmentation is handled directly by the index.
+It is possible to disable segmentation, which will effectively change the store to store a single index for all contents of the cache as if
+the number of cache segments was set to 1.</p>
+</div>
+<div class="paragraph">
+<p>Note that this store can be segmented even when not running in a clustered cache such as distributed. In that case the clustering segments
+configuration value is still used to configure how many segments are to be used.</p>
 </div>
 <div class="paragraph">
 <div class="title">Expiration</div>
 <p>The SoftIndexFileStore has full support for expired entries and their requirements.</p>
-</div>
-<h4 id="single_file_cache_stores" class="discrete">Single File Cache Stores</h4>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Single file cache stores are now deprecated and planned for removal.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>Single File cache stores, <code>SingleFileStore</code>, persist data to file.
-Infinispan also maintains an in-memory index of keys while keys and values are stored in the file.</p>
-</div>
-<div class="paragraph">
-<p>Because <code>SingleFileStore</code> keeps an in-memory index of keys and the location of values, it requires additional memory, depending on the key size and the number of keys.
-For this reason, <code>SingleFileStore</code> is not recommended for use cases where the keys are larger or there can be a larger number of them.</p>
-</div>
-<div class="paragraph">
-<p>In some cases, <code>SingleFileStore</code> can also become fragmented.
-If the size of values continually increases, available space in the single file is not used but the entry is appended to the end of the file.
-Available space in the file is used only if an entry can fit within it.
-Likewise, if you remove all entries from memory, the single file store does not decrease in size or become defragmented.</p>
-</div>
-<div class="paragraph">
-<div class="title">Segmentation</div>
-<p>Single file cache stores are segmented by default with a separate instance per segment, which results in multiple directories.
-Each directory is a number that represents the segment to which the data maps.</p>
 </div>
 <div class="sect3">
 <h4 id="configuring-file-stores_persistence"><a class="anchor" href="#configuring-file-stores_persistence"></a>6.8.1. Configuring file-based cache stores</h4>
@@ -6723,116 +6721,22 @@ builder.persistence().passivation(true)
           .modificationQueueSize(2048);</code></pre>
 </div>
 </div>
-</div>
-<div class="sect3">
-<h4 id="configuring-single-file-stores_persistence"><a class="anchor" href="#configuring-single-file-stores_persistence"></a>6.8.2. Configuring single file cache stores</h4>
 <div class="paragraph">
-<p>If required, you can configure Infinispan to create single file stores.</p>
-</div>
-<div class="admonitionblock important">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-important" title="Important"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Single file stores are deprecated.
-You should use soft-index file stores for better performance and data consistency in comparison with single file stores.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Enable global state and configure a global persistent location if you are configuring embedded caches.</p>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Add the <code>persistence</code> element to your cache configuration.</p>
-</li>
-<li>
-<p>Optionally specify <code>true</code> as the value for the <code>passivation</code> attribute to write to the file-based cache store only when data is evicted from memory.</p>
-</li>
-<li>
-<p>Include the <code>single-file-store</code> element.</p>
-</li>
-<li>
-<p>Specify <code>false</code> as the value for the <code>shared</code> attribute.</p>
-</li>
-<li>
-<p>Configure any other attributes as appropriate.</p>
-</li>
-<li>
-<p>Include the <code>write-behind</code> element to configure the cache store as write behind instead of as write through.</p>
-</li>
-</ol>
-</div>
-<h5 id="single_file_cache_store_configuration" class="discrete">Single file cache store configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;persistence passivation="true"&gt;
-    &lt;single-file-store shared="false"
-                       preload="true"/&gt;
-  &lt;/persistence&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "persistence" : {
-      "passivation" : true,
-      "single-file-store" : {
-        "shared" : false,
-        "preload" : true
-      }
-    }
-  }
-}</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
-  persistence:
-    passivation: "true"
-    singleFileStore:
-      shared: "false"
-      preload: "true"</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
-builder.persistence().passivation(true)
-       .addStore(SingleFileStoreConfigurationBuilder.class)
-          .shared(false)
-          .preload(true);</code></pre>
+<p>ò
+:leveloffset: +1</p>
 </div>
 </div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="jdbc-connection-factories_persistence"><a class="anchor" href="#jdbc-connection-factories_persistence"></a>6.9. JDBC connection factories</h3>
+</div>
+<div class="sect1">
+<h2 id="jdbc-connection-factories_persistence"><a class="anchor" href="#jdbc-connection-factories_persistence"></a>7. JDBC connection factories</h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan provides different <code>ConnectionFactory</code> implementations that allow you to connect to databases.
 You use JDBC connections with SQL cache stores and JDBC string-based caches stores.</p>
 </div>
-<h4 id="connection_pools" class="discrete">Connection pools</h4>
+<h3 id="connection_pools" class="discrete">Connection pools</h3>
 <div class="paragraph">
 <p>Connection pools are suitable for standalone Infinispan deployments and are based on Agroal.</p>
 </div>
@@ -6889,7 +6793,7 @@ builder.persistence()
          .driverClass("org.h2.Driver");</code></pre>
 </div>
 </div>
-<h4 id="managed_datasources" class="discrete">Managed datasources</h4>
+<h3 id="managed_datasources" class="discrete">Managed datasources</h3>
 <div class="paragraph">
 <p>Datasource connections are suitable for managed environments such as application servers.</p>
 </div>
@@ -6935,7 +6839,7 @@ builder.persistence()
          .jndiUrl("java:/StringStoreWithManagedConnectionTest/DS");</code></pre>
 </div>
 </div>
-<h4 id="simple_connections" class="discrete">Simple connections</h4>
+<h3 id="simple_connections" class="discrete">Simple connections</h3>
 <div class="paragraph">
 <p>Simple connection factories create database connections on a per invocation basis and are intended for use with test or development environments only.</p>
 </div>
@@ -7008,7 +6912,7 @@ builder.persistence()
 </ul>
 </div>
 <div class="sect3">
-<h4 id="configuring-server-datasources_persistence"><a class="anchor" href="#configuring-server-datasources_persistence"></a>6.9.1. Configuring managed datasources</h4>
+<h4 id="configuring-server-datasources_persistence"><a class="anchor" href="#configuring-server-datasources_persistence"></a>7.1. Configuring managed datasources</h4>
 <div class="paragraph">
 <p>Create managed datasources as part of your Infinispan Server configuration to optimize connection pooling and performance for JDBC database connections.
 You can then specify the JDNI name of the managed datasources in your caches, which centralizes JDBC connection configuration for your deployment.</p>
@@ -7136,7 +7040,7 @@ configuration.</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:15.2"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
   &lt;data-sources&gt;
      &lt;!-- Defines a unique name for the datasource and JNDI name that you
           reference in JDBC cache store configuration.
@@ -7395,7 +7299,7 @@ Default is <code>0</code> meaning that a call will wait indefinitely.</p></td>
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-jdbc-agroal-properties_persistence"><a class="anchor" href="#configuring-jdbc-agroal-properties_persistence"></a>6.9.2. Configuring JDBC connection pools with Agroal properties</h4>
+<h4 id="configuring-jdbc-agroal-properties_persistence"><a class="anchor" href="#configuring-jdbc-agroal-properties_persistence"></a>7.2. Configuring JDBC connection pools with Agroal properties</h4>
 <div class="paragraph">
 <p>You can use a properties file to configure pooled connection factories for JDBC string-based cache stores.</p>
 </div>
@@ -7470,9 +7374,8 @@ org.infinispan.agroal.credential=sa</code></pre>
 </ul>
 </div>
 </div>
-</div>
 <div class="sect2">
-<h3 id="sql-cache-store_persistence"><a class="anchor" href="#sql-cache-store_persistence"></a>6.10. SQL cache stores</h3>
+<h3 id="sql-cache-store_persistence"><a class="anchor" href="#sql-cache-store_persistence"></a>7.3. SQL cache stores</h3>
 <div class="paragraph">
 <p>SQL cache stores let you load Infinispan caches from existing database tables.
 Infinispan offers two types of SQL cache store:</p>
@@ -7563,12 +7466,12 @@ Expiration removes stale values from memory, causing the cache to fetch the valu
 <p><a href="../../apidocs/org/infinispan/persistence/jdbc/common/DatabaseType.html">DatabaseType Enum lists supported database dialects</a></p>
 </li>
 <li>
-<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-15.2.html">Infinispan SQL store configuration reference</a></p>
+<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-16.0.html">Infinispan SQL store configuration reference</a></p>
 </li>
 </ul>
 </div>
 <div class="sect3">
-<h4 id="sql-store-data-types_persistence"><a class="anchor" href="#sql-store-data-types_persistence"></a>6.10.1. Data types for keys and values</h4>
+<h4 id="sql-store-data-types_persistence"><a class="anchor" href="#sql-store-data-types_persistence"></a>7.3.1. Data types for keys and values</h4>
 <div class="paragraph">
 <p>Infinispan loads keys and values from columns in database tables via SQL cache stores, automatically using the appropriate data types.
 The following <code>CREATE</code> statement adds a table named "books" that has two columns, <code>isbn</code> and <code>title</code>:</p>
@@ -7590,7 +7493,7 @@ The following <code>CREATE</code> statement adds a table named "books" that has 
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-15.2.html">Infinispan SQL store configuration reference</a></p>
+<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-16.0.html">Infinispan SQL store configuration reference</a></p>
 </li>
 </ul>
 </div>
@@ -7686,7 +7589,7 @@ message books_value {
 <p><a href="../encoding/encoding.html">Cache encoding and marshalling: Generate Protobuf schema and register them with Infinispan</a></p>
 </li>
 <li>
-<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-15.2.html">Infinispan SQL store configuration reference</a></p>
+<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-16.0.html">Infinispan SQL store configuration reference</a></p>
 </li>
 </ul>
 </div>
@@ -7788,7 +7691,7 @@ message books_value {
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-sql-cache-stores-table_persistence"><a class="anchor" href="#configuring-sql-cache-stores-table_persistence"></a>6.10.2. Loading Infinispan caches from database tables</h4>
+<h4 id="configuring-sql-cache-stores-table_persistence"><a class="anchor" href="#configuring-sql-cache-stores-table_persistence"></a>7.3.2. Loading Infinispan caches from database tables</h4>
 <div class="paragraph">
 <p>Add a SQL table cache store to your configuration if you want Infinispan to load data from a database table.
 When it connects to the database, Infinispan uses metadata from the table to detect column names and data types.
@@ -7873,7 +7776,7 @@ For remote caches, you can register your schemas by adding them through the Infi
 <div class="listingblock primary">
 <div class="title">Declarative</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">table-jdbc-store xmlns="urn:infinispan:config:store:sql:15.2"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">table-jdbc-store xmlns="urn:infinispan:config:store:sql:16.0"</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
@@ -7935,7 +7838,7 @@ For remote caches, you can register your schemas by adding them through the Infi
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
-    &lt;table-jdbc-store xmlns="urn:infinispan:config:store:sql:15.2"
+    &lt;table-jdbc-store xmlns="urn:infinispan:config:store:sql:16.0"
                       dialect="H2"
                       shared="true"
                       table-name="books"&gt;
@@ -8009,13 +7912,13 @@ builder.persistence().addStore(TableJdbcStoreConfigurationBuilder.class)
 <p><a href="../../apidocs/org/infinispan/persistence/jdbc/common/DatabaseType.html">DatabaseType Enum lists supported database dialects</a></p>
 </li>
 <li>
-<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-15.2.html">Infinispan SQL store configuration reference</a></p>
+<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-16.0.html">Infinispan SQL store configuration reference</a></p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-sql-cache-stores-query_persistence"><a class="anchor" href="#configuring-sql-cache-stores-query_persistence"></a>6.10.3. Using SQL queries to load data and perform operations</h4>
+<h4 id="configuring-sql-cache-stores-query_persistence"><a class="anchor" href="#configuring-sql-cache-stores-query_persistence"></a>7.3.3. Using SQL queries to load data and perform operations</h4>
 <div class="paragraph">
 <p>SQL query cache stores let you load caches from multiple database tables, including from sub-columns in database tables, and perform insert, update, and delete operations.</p>
 </div>
@@ -8098,7 +8001,7 @@ For remote caches, you can register your schemas by adding them through the Infi
 <div class="listingblock primary">
 <div class="title">Declarative</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">query-jdbc-store xmlns="urn:infinispan:config:store:sql:15.2"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">query-jdbc-store xmlns="urn:infinispan:config:store:sql:16.0"</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
@@ -8234,7 +8137,7 @@ However you can apply the same named variable more than once in a statement.</p>
 <p><a href="../../apidocs/org/infinispan/persistence/jdbc/common/DatabaseType.html">DatabaseType Enum lists supported database dialects</a></p>
 </li>
 <li>
-<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-15.2.html">Infinispan SQL store configuration reference</a></p>
+<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-16.0.html">Infinispan SQL store configuration reference</a></p>
 </li>
 </ul>
 </div>
@@ -8321,7 +8224,7 @@ message Person {
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
-    &lt;query-jdbc-store xmlns="urn:infinispan:config:store:sql:15.2"
+    &lt;query-jdbc-store xmlns="urn:infinispan:config:store:sql:16.0"
                       dialect="POSTGRES"
                       shared="true" key-columns="name"&gt;
           &lt;connection-pool driver="org.postgresql.Driver"
@@ -8430,14 +8333,14 @@ builder.persistence().addStore(QueriesJdbcStoreConfigurationBuilder.class)
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-15.2.html">Infinispan SQL store configuration reference</a></p>
+<p><a href="../../configuration-schema/infinispan-cachestore-sql-config-16.0.html">Infinispan SQL store configuration reference</a></p>
 </li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sql-cache-store-troubleshooting_persistence"><a class="anchor" href="#sql-cache-store-troubleshooting_persistence"></a>6.10.4. SQL cache store troubleshooting</h4>
+<h4 id="sql-cache-store-troubleshooting_persistence"><a class="anchor" href="#sql-cache-store-troubleshooting_persistence"></a>7.3.4. SQL cache store troubleshooting</h4>
 <div class="paragraph">
 <p>Find out about common issues and errors with SQL cache stores and how to troubleshoot them.</p>
 </div>
@@ -8481,7 +8384,7 @@ builder.persistence().addStore(QueriesJdbcStoreConfigurationBuilder.class)
 </div>
 </div>
 <div class="sect2">
-<h3 id="jdbc-cache-store_persistence"><a class="anchor" href="#jdbc-cache-store_persistence"></a>6.11. JDBC string-based cache stores</h3>
+<h3 id="jdbc-cache-store_persistence"><a class="anchor" href="#jdbc-cache-store_persistence"></a>7.4. JDBC string-based cache stores</h3>
 <div class="paragraph">
 <p>JDBC String-Based cache stores, <code>JdbcStringBasedStore</code>, use JDBC drivers to load and store values in the underlying database.</p>
 </div>
@@ -8533,7 +8436,7 @@ shared.</p>
 </ul>
 </div>
 <div class="sect3">
-<h4 id="configuring-jdbc-cache-stores_persistence"><a class="anchor" href="#configuring-jdbc-cache-stores_persistence"></a>6.11.1. Configuring JDBC string-based cache stores</h4>
+<h4 id="configuring-jdbc-cache-stores_persistence"><a class="anchor" href="#configuring-jdbc-cache-stores_persistence"></a>7.4.1. Configuring JDBC string-based cache stores</h4>
 <div class="paragraph">
 <p>Configure Infinispan caches with JDBC string-based cache stores that can connect to databases.</p>
 </div>
@@ -8567,7 +8470,7 @@ shared.</p>
 <p>Declaratively, add the <code>persistence</code> element or field then add <code>string-keyed-jdbc-store</code> with the following schema namespace:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">xmlns="urn:infinispan:config:store:jdbc:15.2"</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">xmlns="urn:infinispan:config:store:jdbc:16.0"</code></pre>
 </div>
 </div>
 </li>
@@ -8605,7 +8508,7 @@ shared.</p>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
-    &lt;string-keyed-jdbc-store xmlns="urn:infinispan:config:store:jdbc:15.2"
+    &lt;string-keyed-jdbc-store xmlns="urn:infinispan:config:store:jdbc:16.0"
                              dialect="H2"&gt;
       &lt;connection-pool connection-url="jdbc:h2:mem:infinispan"
                        username="sa"
@@ -8728,7 +8631,7 @@ builder.persistence().addStore(JdbcStringBasedStoreConfigurationBuilder.class)
 </div>
 </div>
 <div class="sect2">
-<h3 id="rocksdb-cache-store_persistence"><a class="anchor" href="#rocksdb-cache-store_persistence"></a>6.12. RocksDB cache stores</h3>
+<h3 id="rocksdb-cache-store_persistence"><a class="anchor" href="#rocksdb-cache-store_persistence"></a>7.5. RocksDB cache stores</h3>
 <div class="paragraph">
 <p>RocksDB provides key-value filesystem-based storage with high performance and
 reliability for highly concurrent environments.</p>
@@ -8843,7 +8746,7 @@ significantly increases cache store start time.</p>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;local-cache&gt;
    &lt;persistence&gt;
-      &lt;rocksdb-store xmlns="urn:infinispan:config:store:rocksdb:15.2"
+      &lt;rocksdb-store xmlns="urn:infinispan:config:store:rocksdb:16.0"
                      path="rocksdb/data"&gt;
          &lt;expiration path="rocksdb/expired"/&gt;
       &lt;/rocksdb-store&gt;
@@ -8910,7 +8813,7 @@ Configuration cacheConfig = new ConfigurationBuilder().persistence()
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="../../configuration-schema/infinispan-cachestore-rocksdb-config-15.2.html">RocksDB cache store configuration schema</a></p>
+<p><a href="../../configuration-schema/infinispan-cachestore-rocksdb-config-16.0.html">RocksDB cache store configuration schema</a></p>
 </li>
 <li>
 <p><a href="../../apidocs/org/infinispan/persistence/rocksdb/RocksDBStore.html">RocksDBStore</a></p>
@@ -8934,7 +8837,7 @@ Configuration cacheConfig = new ConfigurationBuilder().persistence()
 </div>
 </div>
 <div class="sect2">
-<h3 id="remote-cache-store_persistence"><a class="anchor" href="#remote-cache-store_persistence"></a>6.13. Remote cache stores</h3>
+<h3 id="remote-cache-store_persistence"><a class="anchor" href="#remote-cache-store_persistence"></a>7.6. Remote cache stores</h3>
 <div class="paragraph">
 <p>Remote cache stores, <code>RemoteStore</code>, use the Hot Rod protocol to store data on
 Infinispan clusters.</p>
@@ -9008,15 +8911,14 @@ case, you should disable segmentation for <code>RemoteStore</code>.</p>
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
 
     &lt;remote-cache-containers&gt;
-        &lt;remote-cache-container uri="hotrod://one,two:12111?max-active=10&amp;amp;exhausted-action=CREATE_NEW"/&gt;
+        &lt;remote-cache-container uri="hotrod://one,two:12111"/&gt;
     &lt;/remote-cache-containers&gt;
 
     &lt;cache-container&gt;
         &lt;distributed-cache&gt;
             &lt;persistence&gt;
-                &lt;remote-store xmlns="urn:infinispan:config:store:remote:15.2"
+                &lt;remote-store xmlns="urn:infinispan:config:store:remote:16.0"
                               cache="mycache"
-                              raw-values="true"
                 /&gt;
             &lt;/persistence&gt;
         &lt;/distributed-cache&gt;
@@ -9031,7 +8933,7 @@ case, you should disable segmentation for <code>RemoteStore</code>.</p>
   "infinispan": {
     "remote-cache-containers": [
       {
-        "uri": "hotrod://one,two:12111?max-active=10&amp;exhausted-action=CREATE_NEW"
+        "uri": "hotrod://one,two:12111"
       }
     ],
     "cache-container": {
@@ -9039,8 +8941,7 @@ case, you should disable segmentation for <code>RemoteStore</code>.</p>
         "mycache": {
           "distributed-cache": {
             "remote-store": {
-              "cache": "mycache",
-              "raw-values": "true"
+              "cache": "mycache"
             }
           }
         }
@@ -9097,9 +8998,8 @@ b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
-    &lt;remote-store xmlns="urn:infinispan:config:store:remote:15.2"
-                  cache="mycache"
-                  raw-values="true"&gt;
+    &lt;remote-store xmlns="urn:infinispan:config:store:remote:16.0"
+                  cache="mycache"&gt;
       &lt;remote-server host="one"
                      port="12111" /&gt;
       &lt;remote-server host="two" /&gt;
@@ -9117,7 +9017,6 @@ b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
   "distributed-cache": {
     "remote-store": {
       "cache": "mycache",
-      "raw-values": "true",
       "remote-server": [
         {
           "host": "one",
@@ -9126,11 +9025,7 @@ b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
         {
           "host": "two"
         }
-      ],
-      "connection-pool": {
-        "max-active": "10",
-        "exhausted-action": "CREATE_NEW"
-      }
+      ]
     }
   }
 }</code></pre>
@@ -9175,7 +9070,7 @@ b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
 <div class="title">Reference</div>
 <ul>
 <li>
-<p><a href="../../configuration-schema/infinispan-cachestore-remote-config-15.2.html">Remote cache store configuration schema</a></p>
+<p><a href="../../configuration-schema/infinispan-cachestore-remote-config-16.0.html">Remote cache store configuration schema</a></p>
 </li>
 <li>
 <p><a href="../../apidocs/org/infinispan/persistence/remote/RemoteStore.html">RemoteStore</a></p>
@@ -9187,7 +9082,7 @@ b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
 </div>
 </div>
 <div class="sect2">
-<h3 id="cluster-cache-loader_persistence"><a class="anchor" href="#cluster-cache-loader_persistence"></a>6.14. Cluster cache loaders</h3>
+<h3 id="cluster-cache-loader_persistence"><a class="anchor" href="#cluster-cache-loader_persistence"></a>7.7. Cluster cache loaders</h3>
 <div class="paragraph">
 <p><code>ClusterCacheLoader</code> retrieves data from other Infinispan cluster members but
 does not persist data. In other words, <code>ClusterCacheLoader</code> is not a cache
@@ -9275,7 +9170,7 @@ b.persistence()
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="../../configuration-schema/infinispan-config-15.2.html">Infinispan configuration schema</a></p>
+<p><a href="../../configuration-schema/infinispan-config-16.0.html">Infinispan configuration schema</a></p>
 </li>
 <li>
 <p><a href="../../apidocs/org/infinispan/persistence/cluster/ClusterLoader.html">ClusterLoader</a></p>
@@ -9287,12 +9182,12 @@ b.persistence()
 </div>
 </div>
 <div class="sect2">
-<h3 id="creating-custom-cache-stores"><a class="anchor" href="#creating-custom-cache-stores"></a>6.15. Creating custom cache store implementations</h3>
+<h3 id="creating-custom-cache-stores"><a class="anchor" href="#creating-custom-cache-stores"></a>7.8. Creating custom cache store implementations</h3>
 <div class="paragraph">
 <p>You can create custom cache stores through the Infinispan persistent SPI.</p>
 </div>
 <div class="sect3">
-<h4 id="persistent-spi_custom-cache-stores"><a class="anchor" href="#persistent-spi_custom-cache-stores"></a>6.15.1. Infinispan Persistence SPI</h4>
+<h4 id="persistent-spi_custom-cache-stores"><a class="anchor" href="#persistent-spi_custom-cache-stores"></a>7.8.1. Infinispan Persistence SPI</h4>
 <div class="paragraph">
 <p>The Infinispan Service Provider Interface (SPI) enables read and write
 operations to external storage through the <code>NonBlockingStore</code> interface and has
@@ -9338,7 +9233,7 @@ writing to the wire.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="creating-custom-cache-stores_custom-cache-stores"><a class="anchor" href="#creating-custom-cache-stores_custom-cache-stores"></a>6.15.2. Creating cache stores</h4>
+<h4 id="creating-custom-cache-stores_custom-cache-stores"><a class="anchor" href="#creating-custom-cache-stores_custom-cache-stores"></a>7.8.2. Creating cache stores</h4>
 <div class="paragraph">
 <p>Create custom cache stores with implementations of the <code>NonBlockingStore</code> API.</p>
 </div>
@@ -9399,7 +9294,7 @@ initializes the cache.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="custom-cache-store-configuration_custom-cache-stores"><a class="anchor" href="#custom-cache-store-configuration_custom-cache-stores"></a>6.15.3. Examples of custom cache store configuration</h4>
+<h4 id="custom-cache-store-configuration_custom-cache-stores"><a class="anchor" href="#custom-cache-store-configuration_custom-cache-stores"></a>7.8.3. Examples of custom cache store configuration</h4>
 <div class="paragraph">
 <p>The following are examples show how to configure Infinispan with custom cache store implementations:</p>
 </div>
@@ -9447,7 +9342,7 @@ initializes the cache.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="deploying-custom-cache-stores_custom-cache-stores"><a class="anchor" href="#deploying-custom-cache-stores_custom-cache-stores"></a>6.15.4. Deploying custom cache stores</h4>
+<h4 id="deploying-custom-cache-stores_custom-cache-stores"><a class="anchor" href="#deploying-custom-cache-stores_custom-cache-stores"></a>7.8.4. Deploying custom cache stores</h4>
 <div class="paragraph">
 <p>To use your cache store implementation with Infinispan Server, you must provide it with a JAR file.</p>
 </div>
@@ -9476,12 +9371,12 @@ initializes the cache.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cache-store-migrator"><a class="anchor" href="#cache-store-migrator"></a>6.16. Migrating data between cache stores</h3>
+<h3 id="cache-store-migrator"><a class="anchor" href="#cache-store-migrator"></a>7.9. Migrating data between cache stores</h3>
 <div class="paragraph">
 <p>Infinispan provides a utility to migrate data from one cache store to another.</p>
 </div>
 <div class="sect3">
-<h4 id="store-migrator_cache-store-migrator"><a class="anchor" href="#store-migrator_cache-store-migrator"></a>6.16.1. Cache store migrator</h4>
+<h4 id="store-migrator_cache-store-migrator"><a class="anchor" href="#store-migrator_cache-store-migrator"></a>7.9.1. Cache store migrator</h4>
 <div class="paragraph">
 <p>Infinispan provides the CLI <code>migrate store</code> command that recreates data for the latest Infinispan cache store implementations.</p>
 </div>
@@ -9522,7 +9417,7 @@ For example, you can migrate from a JDBC string-based cache store to a SIFS cach
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-store-migrator_cache-store-migrator"><a class="anchor" href="#configuring-store-migrator_cache-store-migrator"></a>6.16.2. Configuring the cache store migrator</h4>
+<h4 id="configuring-store-migrator_cache-store-migrator"><a class="anchor" href="#configuring-store-migrator_cache-store-migrator"></a>7.9.2. Configuring the cache store migrator</h4>
 <div class="paragraph">
 <p>Use the <code>migrator.properties</code> file to configure properties for source and target cache stores.</p>
 </div>
@@ -9904,7 +9799,7 @@ target.location=path/to/sifs/index</pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="migrating-cache-stores_cache-store-migrator"><a class="anchor" href="#migrating-cache-stores_cache-store-migrator"></a>6.16.3. Migrating Infinispan cache stores</h4>
+<h4 id="migrating-cache-stores_cache-store-migrator"><a class="anchor" href="#migrating-cache-stores_cache-store-migrator"></a>7.9.3. Migrating Infinispan cache stores</h4>
 <div class="paragraph">
 <p>Run the store migrator to migrate data from one cache store to another.</p>
 </div>
@@ -9933,7 +9828,7 @@ cache stores.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="partition-handling"><a class="anchor" href="#partition-handling"></a>7. Configuring Infinispan to handle network partitions</h2>
+<h2 id="partition-handling"><a class="anchor" href="#partition-handling"></a>8. Configuring Infinispan to handle network partitions</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan clusters can split into network partitions in which subsets of nodes become isolated from each other.
@@ -9941,7 +9836,7 @@ This condition results in loss of availability or consistency for clustered cach
 Infinispan automatically detects crashed nodes and resolves conflicts to merge caches back together.</p>
 </div>
 <div class="sect2">
-<h3 id="partition-handling_partition-handling"><a class="anchor" href="#partition-handling_partition-handling"></a>7.1. Split clusters and network partitions</h3>
+<h3 id="partition-handling_partition-handling"><a class="anchor" href="#partition-handling_partition-handling"></a>8.1. Split clusters and network partitions</h3>
 <div class="paragraph">
 <p>Network partitions are the result of error conditions in the running environment, such as when a network router crashes.
 When a cluster splits into partitions, nodes create a JGroups cluster view that includes only the nodes in that partition.
@@ -9995,7 +9890,7 @@ During the merge, Infinispan uses the <code>.equals()</code> method for values o
 To resolve any conflicts between replicas it finds on partitions, Infinispan uses a merge policy that you can configure.</p>
 </div>
 <div class="sect3">
-<h4 id="partition-handling-data-consistency_partition-handling"><a class="anchor" href="#partition-handling-data-consistency_partition-handling"></a>7.1.1. Data consistency in a split cluster</h4>
+<h4 id="partition-handling-data-consistency_partition-handling"><a class="anchor" href="#partition-handling-data-consistency_partition-handling"></a>8.1.1. Data consistency in a split cluster</h4>
 <div class="paragraph">
 <p>Network outages or errors that cause Infinispan clusters to split into partitions can result in data loss or consistency issues regardless of any handling strategy or merge policy.</p>
 </div>
@@ -10018,7 +9913,7 @@ Before this merge process completes it is possible that write operations on tran
 </div>
 </div>
 <div class="sect2">
-<h3 id="partition-handling-degraded-mode_partition-handling"><a class="anchor" href="#partition-handling-degraded-mode_partition-handling"></a>7.2. Cache availability and degraded mode</h3>
+<h3 id="partition-handling-degraded-mode_partition-handling"><a class="anchor" href="#partition-handling-degraded-mode_partition-handling"></a>8.2. Cache availability and degraded mode</h3>
 <div class="paragraph">
 <p>To preserve data consistency, Infinispan can put caches into <code>DEGRADED</code> mode if you configure them to use either the <code>DENY_READ_WRITES</code> or <code>ALLOW_READS</code> partition handling strategy.</p>
 </div>
@@ -10078,7 +9973,7 @@ When this happens the available partition continues cache operations as normal a
 To merge the cache together Infinispan always transfers state from the available partition to the partition in <code>DEGRADED</code> mode.</p>
 </div>
 <div class="sect3">
-<h4 id="degraded-mode-example_partition-handling"><a class="anchor" href="#degraded-mode-example_partition-handling"></a>7.2.1. Degraded cache recovery example</h4>
+<h4 id="degraded-mode-example_partition-handling"><a class="anchor" href="#degraded-mode-example_partition-handling"></a>8.2.1. Degraded cache recovery example</h4>
 <div class="paragraph">
 <p>This topic illustrates how Infinispan recovers from split clusters with caches that use the <code>DENY_READ_WRITES</code> partition handling strategy.</p>
 </div>
@@ -10108,7 +10003,7 @@ Because there is only one replica for <code>k2</code> and <code>k3</code> on eit
 </div>
 </div>
 <div class="sect3">
-<h4 id="checking-cache-availability_partition-handling"><a class="anchor" href="#checking-cache-availability_partition-handling"></a>7.2.2. Verifying cache availability during network partitions</h4>
+<h4 id="checking-cache-availability_partition-handling"><a class="anchor" href="#checking-cache-availability_partition-handling"></a>8.2.2. Verifying cache availability during network partitions</h4>
 <div class="paragraph">
 <p>Determine if caches on Infinispan clusters are in <code>AVAILABLE</code> mode or <code>DEGRADED</code> mode during a network partition.</p>
 </div>
@@ -10164,7 +10059,7 @@ In <code>DEGRADED</code> mode clusters do not allow cache operations resulting i
 </div>
 </div>
 <div class="sect3">
-<h4 id="making-caches-available_partition-handling"><a class="anchor" href="#making-caches-available_partition-handling"></a>7.2.3. Making caches available</h4>
+<h4 id="making-caches-available_partition-handling"><a class="anchor" href="#making-caches-available_partition-handling"></a>8.2.3. Making caches available</h4>
 <div class="paragraph">
 <p>Make caches available for read and write operations by forcing them out of <code>DEGRADED</code> mode.</p>
 </div>
@@ -10229,7 +10124,7 @@ if (!available) {
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-partition-handling_partition-handling"><a class="anchor" href="#configuring-partition-handling_partition-handling"></a>7.3. Configuring partition handling</h3>
+<h3 id="configuring-partition-handling_partition-handling"><a class="anchor" href="#configuring-partition-handling_partition-handling"></a>8.3. Configuring partition handling</h3>
 <div class="paragraph">
 <p>Configure Infinispan to use a partition handling strategy and merge policy so it can resolve split clusters when network issues occur.
 By default Infinispan uses a strategy that provides availability at the cost of lowering consistency guarantees for your data.
@@ -10333,7 +10228,7 @@ builder.clustering().cacheMode(CacheMode.DIST_SYNC)
 </div>
 </div>
 <div class="sect2">
-<h3 id="partition-handling-strategies_partition-handling"><a class="anchor" href="#partition-handling-strategies_partition-handling"></a>7.4. Partition handling strategies</h3>
+<h3 id="partition-handling-strategies_partition-handling"><a class="anchor" href="#partition-handling-strategies_partition-handling"></a>8.4. Partition handling strategies</h3>
 <div class="paragraph">
 <p>Partition handling strategies control if Infinispan allows read and write operations when a cluster is split.
 The strategy you configure determines whether you get cache availability or data consistency.</p>
@@ -10375,7 +10270,7 @@ If a partition does not include all replicas of an entry, Infinispan prevents ca
 </table>
 </div>
 <div class="sect2">
-<h3 id="partition-handling-merge-policies_partition-handling"><a class="anchor" href="#partition-handling-merge-policies_partition-handling"></a>7.5. Merge policies</h3>
+<h3 id="partition-handling-merge-policies_partition-handling"><a class="anchor" href="#partition-handling-merge-policies_partition-handling"></a>8.5. Merge policies</h3>
 <div class="paragraph">
 <p>Merge policies control how Infinispan resolves conflicts between replicas when bringing cluster partitions together.
 You can use one of the merge policies that Infinispan provides or you can create a custom implementation of the <code>EntryMergePolicy</code> API.</p>
@@ -10419,7 +10314,7 @@ You can use one of the merge policies that Infinispan provides or you can create
 </table>
 </div>
 <div class="sect2">
-<h3 id="configuring-custom-merge-policies_partition-handling"><a class="anchor" href="#configuring-custom-merge-policies_partition-handling"></a>7.6. Configuring custom merge policies</h3>
+<h3 id="configuring-custom-merge-policies_partition-handling"><a class="anchor" href="#configuring-custom-merge-policies_partition-handling"></a>8.6. Configuring custom merge policies</h3>
 <div class="paragraph">
 <p>Configure Infinispan to use custom implementations of the <code>EntryMergePolicy</code> API when handling network partitions.</p>
 </div>
@@ -10551,7 +10446,7 @@ builder.clustering().cacheMode(CacheMode.DIST_SYNC)
 </div>
 </div>
 <div class="sect2">
-<h3 id="merging-partitions-manually_partition-handling"><a class="anchor" href="#merging-partitions-manually_partition-handling"></a>7.7. Manually merging partitions in embedded caches</h3>
+<h3 id="merging-partitions-manually_partition-handling"><a class="anchor" href="#merging-partitions-manually_partition-handling"></a>8.7. Manually merging partitions in embedded caches</h3>
 <div class="paragraph">
 <p>Detect and resolve conflicting entries to manually merge embedded caches after network partitions occur.</p>
 </div>
@@ -10605,7 +10500,7 @@ crm.resolveConflicts((preferredEntry, otherEntries) -&gt; preferredEntry);</code
 </div>
 </div>
 <div class="sect1">
-<h2 id="security-authorization"><a class="anchor" href="#security-authorization"></a>8. Security authorization with role-based access control</h2>
+<h2 id="security-authorization"><a class="anchor" href="#security-authorization"></a>9. Security authorization with role-based access control</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Role-based access control (RBAC) capabilities use different permissions levels to restrict user interactions with Infinispan.</p>
@@ -10635,7 +10530,7 @@ crm.resolveConflicts((preferredEntry, otherEntries) -&gt; preferredEntry);</code
 </table>
 </div>
 <div class="sect2">
-<h3 id="default-user-roles_security-authorization"><a class="anchor" href="#default-user-roles_security-authorization"></a>8.1. Infinispan user roles and permissions</h3>
+<h3 id="default-user-roles_security-authorization"><a class="anchor" href="#default-user-roles_security-authorization"></a>9.1. Infinispan user roles and permissions</h3>
 <div class="paragraph">
 <p>Infinispan includes several roles that provide users with permissions to access caches and Infinispan resources.</p>
 </div>
@@ -10692,7 +10587,7 @@ crm.resolveConflicts((preferredEntry, otherEntries) -&gt; preferredEntry);</code
 </ul>
 </div>
 <div class="sect3">
-<h4 id="user-permissions_security-authorization"><a class="anchor" href="#user-permissions_security-authorization"></a>8.1.1. Permissions</h4>
+<h4 id="user-permissions_security-authorization"><a class="anchor" href="#user-permissions_security-authorization"></a>9.1.1. Permissions</h4>
 <div class="paragraph">
 <p>User roles are sets of permissions with different access levels.</p>
 </div>
@@ -10826,7 +10721,7 @@ crm.resolveConflicts((preferredEntry, otherEntries) -&gt; preferredEntry);</code
 </div>
 </div>
 <div class="sect3">
-<h4 id="role-mappers_security-authorization"><a class="anchor" href="#role-mappers_security-authorization"></a>8.1.2. Role and permission mappers</h4>
+<h4 id="role-mappers_security-authorization"><a class="anchor" href="#role-mappers_security-authorization"></a>9.1.2. Role and permission mappers</h4>
 <div class="paragraph">
 <p>Infinispan implements users as a collection of principals.
 Principals represent either an individual user identity, such as a username, or a group to which the users belong. Internally, these are implemented with the <code>javax.security.auth.Subject</code> class.</p>
@@ -10935,7 +10830,7 @@ finance: LISTEN</pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-role-mappers_security-authorization"><a class="anchor" href="#configuring-role-mappers_security-authorization"></a>8.1.3. Configuring role mappers</h4>
+<h4 id="configuring-role-mappers_security-authorization"><a class="anchor" href="#configuring-role-mappers_security-authorization"></a>9.1.3. Configuring role mappers</h4>
 <div class="paragraph">
 <p>Infinispan enables the cluster role mapper and cluster permission mapper by default.
 To use a different implementation for role mapping, you must configure the role mappers.</p>
@@ -11006,7 +10901,7 @@ To use a different implementation for role mapping, you must configure the role 
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-cluster-role-mapper_security-authorization"><a class="anchor" href="#configuring-cluster-role-mapper_security-authorization"></a>8.1.4. Configuring the cluster role and permission mappers</h4>
+<h4 id="configuring-cluster-role-mapper_security-authorization"><a class="anchor" href="#configuring-cluster-role-mapper_security-authorization"></a>9.1.4. Configuring the cluster role and permission mappers</h4>
 <div class="paragraph">
 <p>The cluster role mapper maintains a dynamic mapping between principals and roles.
 The cluster permission mapper maintains a dynamic set of role definitions.
@@ -11277,7 +11172,7 @@ It is possible to configure the cluster role mapper to apply transformation to t
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-cache-authorization_security-authorization"><a class="anchor" href="#configuring-cache-authorization_security-authorization"></a>8.2. Configuring caches with security authorization</h3>
+<h3 id="configuring-cache-authorization_security-authorization"><a class="anchor" href="#configuring-cache-authorization_security-authorization"></a>9.2. Configuring caches with security authorization</h3>
 <div class="paragraph">
 <p>Add security authorization to caches to enforce role-based access control (RBAC).
 This requires Infinispan users to have a role with a sufficient level of permission to perform cache operations.</p>
@@ -11391,7 +11286,7 @@ In this case Infinispan denies cache operations for any users that do not have o
 </div>
 </div>
 <div class="sect1">
-<h2 id="transactions"><a class="anchor" href="#transactions"></a>9. Configuring transactions</h2>
+<h2 id="transactions"><a class="anchor" href="#transactions"></a>10. Configuring transactions</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Data that resides on a distributed system is vulnerable to errors that can arise from temporary network outages, system failures, or just simple human error.
@@ -11402,7 +11297,7 @@ The effects of data corruption range from lower customer satisfaction to costly 
 <p>Infinispan can carry out ACID (atomicity, consistency, isolation, durability) transactions to ensure the cache state is consistent.</p>
 </div>
 <div class="sect2">
-<h3 id="transaction_manager"><a class="anchor" href="#transaction_manager"></a>9.1. Transactions</h3>
+<h3 id="transaction_manager"><a class="anchor" href="#transaction_manager"></a>10.1. Transactions</h3>
 <div class="paragraph">
 <p>Infinispan can be configured to use and to participate in JTA compliant transactions.</p>
 </div>
@@ -11467,7 +11362,7 @@ TransactionManager tm = cache.getAdvancedCache().getTransactionManager();</code>
 </div>
 </div>
 <div class="sect3">
-<h4 id="tx_configuration"><a class="anchor" href="#tx_configuration"></a>9.1.1. Configuring transactions</h4>
+<h4 id="tx_configuration"><a class="anchor" href="#tx_configuration"></a>10.1.1. Configuring transactions</h4>
 <div class="paragraph">
 <p>Transactions are configured at cache level.
 Below is the configuration that affects a transaction behaviour and a small description of each configuration attribute.</p>
@@ -11577,7 +11472,7 @@ More details about the configuration settings are available in <a href="../../co
 </div>
 </div>
 <div class="sect3">
-<h4 id="tx_isolation_levels"><a class="anchor" href="#tx_isolation_levels"></a>9.1.2. Isolation levels</h4>
+<h4 id="tx_isolation_levels"><a class="anchor" href="#tx_isolation_levels"></a>10.1.2. Isolation levels</h4>
 <div class="paragraph">
 <p>Infinispan offers two isolation levels - <a href="https://en.wikipedia.org/wiki/Isolation_(database_systems)#Read_committed">READ_COMMITTED</a> and <a href="https://en.wikipedia.org/wiki/Isolation_(database_systems)#Repeatable_reads">REPEATABLE_READ</a>.</p>
 </div>
@@ -11624,7 +11519,7 @@ Thread2:                                       tx2.commit()</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="tx_locking"><a class="anchor" href="#tx_locking"></a>9.1.3. Transaction locking</h4>
+<h4 id="tx_locking"><a class="anchor" href="#tx_locking"></a>10.1.3. Transaction locking</h4>
 <div class="sect4">
 <h5 id="pessimistic_transactional_cache"><a class="anchor" href="#pessimistic_transactional_cache"></a>Pessimistic transactional cache</h5>
 <div class="paragraph">
@@ -11745,7 +11640,7 @@ Pessimistic transactions are more costly by their nature: each write operation p
 </div>
 </div>
 <div class="sect3">
-<h4 id="tx_write_skew"><a class="anchor" href="#tx_write_skew"></a>9.1.4. Write Skews</h4>
+<h4 id="tx_write_skew"><a class="anchor" href="#tx_write_skew"></a>10.1.4. Write Skews</h4>
 <div class="paragraph">
 <p>Write skews occur when two transactions independently and simultaneously read and write to the same key. The result of a write skew is that both transactions successfully commit updates to the same key but with different values.</p>
 </div>
@@ -11814,13 +11709,13 @@ try {
 </div>
 </div>
 <div class="sect3">
-<h4 id="dealing_with_exceptions"><a class="anchor" href="#dealing_with_exceptions"></a>9.1.5. Dealing with exceptions</h4>
+<h4 id="dealing_with_exceptions"><a class="anchor" href="#dealing_with_exceptions"></a>10.1.5. Dealing with exceptions</h4>
 <div class="paragraph">
 <p>If a <a href="../../apidocs/org/infinispan/commons/CacheException.html">CacheException</a> (or a subclass of it) is thrown by a cache method within the scope of a JTA transaction, then the transaction is automatically marked for rollback.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="tx_sync_enlist"><a class="anchor" href="#tx_sync_enlist"></a>9.1.6. Enlisting Synchronizations</h4>
+<h4 id="tx_sync_enlist"><a class="anchor" href="#tx_sync_enlist"></a>10.1.6. Enlisting Synchronizations</h4>
 <div class="paragraph">
 <p>By default Infinispan registers itself as a first class participant in distributed transactions through <a href="https://jakarta.ee/specifications/platform/9/apidocs/javax/transaction/xa/XAResource.html">XAResource</a>.
 There are situations where Infinispan is not required to be a participant in the transaction, but only to be notified by its lifecycle (prepare, complete): e.g. in the case Infinispan is used as a 2nd level cache in Hibernate.</p>
@@ -11837,7 +11732,7 @@ On the other hand, registering Infinispan as a <code>Synchronization</code> make
 </div>
 </div>
 <div class="sect3">
-<h4 id="tx_batching"><a class="anchor" href="#tx_batching"></a>9.1.7. Batching</h4>
+<h4 id="tx_batching"><a class="anchor" href="#tx_batching"></a>10.1.7. Batching</h4>
 <div class="paragraph">
 <p>Batching allows atomicity and some characteristics of a transaction, but not full-blown JTA or XA capabilities.
 Batching is often a lot lighter and cheaper than a full-blown transaction.</p>
@@ -11923,7 +11818,7 @@ With batching, you get:</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="tx_recovery"><a class="anchor" href="#tx_recovery"></a>9.1.8. Transaction recovery</h4>
+<h4 id="tx_recovery"><a class="anchor" href="#tx_recovery"></a>10.1.8. Transaction recovery</h4>
 <div class="paragraph">
 <p>Recovery is a feature of XA transactions, which deal with the eventuality of a resource or possibly even the transaction manager failing, and recovering accordingly from such a situation.</p>
 </div>
@@ -12079,7 +11974,7 @@ This process is plugged into transaction manager&#8217;s recovery and has access
 </div>
 </div>
 <div class="sect1">
-<h2 id="locking"><a class="anchor" href="#locking"></a>10. Configuring locking and concurrency</h2>
+<h2 id="locking"><a class="anchor" href="#locking"></a>11. Configuring locking and concurrency</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan uses multi-versioned concurrency control (MVCC) to improve access to shared data.</p>
@@ -12101,7 +11996,7 @@ This process is plugged into transaction manager&#8217;s recovery and has access
 </ul>
 </div>
 <div class="sect2">
-<h3 id="locking-concurrency_locking"><a class="anchor" href="#locking-concurrency_locking"></a>10.1. Locking and concurrency</h3>
+<h3 id="locking-concurrency_locking"><a class="anchor" href="#locking-concurrency_locking"></a>11.1. Locking and concurrency</h3>
 <div class="paragraph">
 <p>Multi-versioned concurrency control (MVCC) is a concurrency scheme popular with relational databases and other data stores.
 MVCC offers many advantages over coarse-grained Java synchronization and even JDK Locks for access to shared data.</p>
@@ -12123,7 +12018,7 @@ This copy isolates concurrent readers from seeing partially modified state.
 Once a write has completed, <code>MVCCEntry.commit()</code> will flush changes to the data container and subsequent readers will see the changes written.</p>
 </div>
 <div class="sect3">
-<h4 id="clustered_caches_and_locks"><a class="anchor" href="#clustered_caches_and_locks"></a>10.1.1. Clustered caches and locks</h4>
+<h4 id="clustered_caches_and_locks"><a class="anchor" href="#clustered_caches_and_locks"></a>11.1.1. Clustered caches and locks</h4>
 <div class="paragraph">
 <p>In Infinispan clusters, primary owner nodes are responsible for locking keys.</p>
 </div>
@@ -12151,7 +12046,7 @@ Infinispan also supports different isolation levels to control concurrent reads 
 </div>
 </div>
 <div class="sect3">
-<h4 id="the_lockmanager"><a class="anchor" href="#the_lockmanager"></a>10.1.2. The LockManager</h4>
+<h4 id="the_lockmanager"><a class="anchor" href="#the_lockmanager"></a>11.1.2. The LockManager</h4>
 <div class="paragraph">
 <p>The <code>LockManager</code> is a component that is responsible for locking an entry for writing.
 The <code>LockManager</code> makes use of a <code>LockContainer</code> to locate/hold/create locks.
@@ -12159,7 +12054,7 @@ The <code>LockManager</code> makes use of a <code>LockContainer</code> to locate
 </div>
 </div>
 <div class="sect3">
-<h4 id="lock_striping"><a class="anchor" href="#lock_striping"></a>10.1.3. Lock striping</h4>
+<h4 id="lock_striping"><a class="anchor" href="#lock_striping"></a>11.1.3. Lock striping</h4>
 <div class="paragraph">
 <p>Lock striping entails the use of a fixed-size, shared collection of locks for the entire cache, with locks being allocated to entries based on the entry&#8217;s key&#8217;s hash code.
 Similar to the way the JDK&#8217;s <code>ConcurrentHashMap</code> allocates locks, this allows for a highly scalable, fixed-overhead locking mechanism in exchange for potentially unrelated entries being blocked by the same lock.</p>
@@ -12202,7 +12097,7 @@ lock striping is disabled by default, due to potential deadlocks that can happen
 </div>
 </div>
 <div class="sect3">
-<h4 id="concurrency_levels"><a class="anchor" href="#concurrency_levels"></a>10.1.4. Concurrency levels</h4>
+<h4 id="concurrency_levels"><a class="anchor" href="#concurrency_levels"></a>11.1.4. Concurrency levels</h4>
 <div class="paragraph">
 <p>In addition to determining the size of the striped lock container, this concurrency level is also used to tune any JDK <code>ConcurrentHashMap</code> based collections where related, such as internal to <code>DataContainer</code>s.
 Please refer to the JDK <code>ConcurrentHashMap</code> Javadocs for a detailed discussion of concurrency levels, as this parameter is used in exactly the same way in Infinispan.</p>
@@ -12225,7 +12120,7 @@ Please refer to the JDK <code>ConcurrentHashMap</code> Javadocs for a detailed d
 </div>
 </div>
 <div class="sect3">
-<h4 id="lock_timeout"><a class="anchor" href="#lock_timeout"></a>10.1.5. Lock timeout</h4>
+<h4 id="lock_timeout"><a class="anchor" href="#lock_timeout"></a>11.1.5. Lock timeout</h4>
 <div class="paragraph">
 <p>The lock timeout specifies the amount of time, in milliseconds, to wait for a contented lock.</p>
 </div>
@@ -12249,7 +12144,7 @@ new ConfigurationBuilder().locking().lockAcquisitionTimeout(10, TimeUnit.SECONDS
 </div>
 </div>
 <div class="sect3">
-<h4 id="consistency"><a class="anchor" href="#consistency"></a>10.1.6. Consistency</h4>
+<h4 id="consistency"><a class="anchor" href="#consistency"></a>11.1.6. Consistency</h4>
 <div class="paragraph">
 <p>The fact that a single owner is locked (as opposed to all owners being locked) does not break the following consistency guarantee:
 if key <code>K</code> is hashed to nodes <code>{A, B}</code> and transaction <code>TX1</code> acquires a lock for <code>K</code>, let&#8217;s say on <code>A</code>.
@@ -12258,7 +12153,7 @@ The reason for this is the that the lock for a key <code>K</code> is always, det
 </div>
 </div>
 <div class="sect3">
-<h4 id="data_versioning"><a class="anchor" href="#data_versioning"></a>10.1.7. Data Versioning</h4>
+<h4 id="data_versioning"><a class="anchor" href="#data_versioning"></a>11.1.7. Data Versioning</h4>
 <div class="paragraph">
 <p>Infinispan supports two forms of data versioning: simple and external.
 The simple versioning is used in transactional caches for write skew check.</p>
@@ -12287,13 +12182,13 @@ Write skew checks cannot and will not be performed in the case of external data 
 </div>
 </div>
 <div class="sect1">
-<h2 id="clustered-counters"><a class="anchor" href="#clustered-counters"></a>11. Using clustered counters</h2>
+<h2 id="clustered-counters"><a class="anchor" href="#clustered-counters"></a>12. Using clustered counters</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan provides counters that record the count of objects and are distributed across all nodes in a cluster.</p>
 </div>
 <div class="sect2">
-<h3 id="clustered-counters_clustered-counters"><a class="anchor" href="#clustered-counters_clustered-counters"></a>11.1. Clustered Counters</h3>
+<h3 id="clustered-counters_clustered-counters"><a class="anchor" href="#clustered-counters_clustered-counters"></a>12.1. Clustered Counters</h3>
 <div class="paragraph">
 <p><em>Clustered counters</em> are counters which are distributed and shared among all nodes in the Infinispan cluster.
 Counters can have different consistency levels: strong and weak.</p>
@@ -12304,7 +12199,7 @@ return the current value and they provide events when its value is updated.
 Details are provided below in this document to help you choose which one fits best your uses-case.</p>
 </div>
 <div class="sect3">
-<h4 id="installation_and_configuration"><a class="anchor" href="#installation_and_configuration"></a>11.1.1. Installation and Configuration</h4>
+<h4 id="installation_and_configuration"><a class="anchor" href="#installation_and_configuration"></a>12.1.1. Installation and Configuration</h4>
 <div class="paragraph">
 <p>In order to start using the counters, you needs to add the dependency in your Maven <code>pom.xml</code> file:</p>
 </div>
@@ -12333,7 +12228,7 @@ These counters are started eagerly and they are available in all the cluster&#82
         &lt;!-- Global state configuration goes here. --&gt;
         &lt;/global-state&gt;
         &lt;!-- Cache configuration goes here. --&gt;
-         &lt;counters xmlns="urn:infinispan:config:counters:15.2" num-owners="3" reliability="CONSISTENT"&gt;
+         &lt;counters xmlns="urn:infinispan:config:counters:16.0" num-owners="3" reliability="CONSISTENT"&gt;
              &lt;strong-counter name="c1" initial-value="1" storage="PERSISTENT"/&gt;
              &lt;strong-counter name="c2" initial-value="2" storage="VOLATILE" lower-bound="0"/&gt;
              &lt;strong-counter name="c3" initial-value="3" storage="PERSISTENT" upper-bound="5"/&gt;
@@ -12404,7 +12299,7 @@ if (!manager.isDefined("someCounter")) {
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="../../configuration-schema/infinispan-counters-config-15.2.html">Infinispan configuration schema reference</a></p>
+<p><a href="../../configuration-schema/infinispan-counters-config-16.0.html">Infinispan configuration schema reference</a></p>
 </li>
 </ul>
 </div>
@@ -12417,7 +12312,7 @@ names created cluster-wide.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="countermanager_interface"><a class="anchor" href="#countermanager_interface"></a>11.1.2. <code>CounterManager</code> interface</h4>
+<h4 id="countermanager_interface"><a class="anchor" href="#countermanager_interface"></a>12.1.2. <code>CounterManager</code> interface</h4>
 <div class="paragraph">
 <p>The <code>CounterManager</code> interface is the entry point to define, retrieve and remove counters.</p>
 </div>
@@ -12481,7 +12376,7 @@ The counter is re-created if it is accessed after a removal.
 </div>
 </div>
 <div class="sect3">
-<h4 id="the_counter"><a class="anchor" href="#the_counter"></a>11.1.3. The Counter</h4>
+<h4 id="the_counter"><a class="anchor" href="#the_counter"></a>12.1.3. The Counter</h4>
 <div class="paragraph">
 <p>A counter can be strong (<code>StrongCounter</code>) or weakly consistent (<code>WeakCounter</code>) and both is identified by a name.
 They have a specific interface but they share some logic, namely, both of them are asynchronous
@@ -12895,7 +12790,7 @@ System.out.println("current value is " + counter.getValue().get());</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="clustered_counters_notify_events"><a class="anchor" href="#clustered_counters_notify_events"></a>11.1.4. Notifications and Events</h4>
+<h4 id="clustered_counters_notify_events"><a class="anchor" href="#clustered_counters_notify_events"></a>12.1.4. Notifications and Events</h4>
 <div class="paragraph">
 <p>Both strong and weak counter supports a listener to receive its updates events.
 The listener must implement <code>CounterListener</code> and it can be registered by the following method:</p>
@@ -12972,13 +12867,13 @@ The weak counter <code>reset()</code> operation will trigger multiple notificati
 </div>
 </div>
 <div class="sect1">
-<h2 id="listeners-notifications"><a class="anchor" href="#listeners-notifications"></a>12. Listeners and notifications</h2>
+<h2 id="listeners-notifications"><a class="anchor" href="#listeners-notifications"></a>13. Listeners and notifications</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Use listeners with Infinispan to get notifications when events occur for the Cache Manager or for caches.</p>
 </div>
 <div class="sect2">
-<h3 id="listeners-and-notifications_listeners-notifications"><a class="anchor" href="#listeners-and-notifications_listeners-notifications"></a>12.1. Listeners and notifications</h3>
+<h3 id="listeners-and-notifications_listeners-notifications"><a class="anchor" href="#listeners-and-notifications_listeners-notifications"></a>13.1. Listeners and notifications</h3>
 <div class="paragraph">
 <p>Infinispan offers a listener API, where clients can register for and get notified when events take place.  This annotation-driven API applies to 2 different levels: cache level events and Cache Manager level events.</p>
 </div>
@@ -13011,7 +12906,7 @@ public class PrintWhenAdded {
 </div>
 </div>
 <div class="sect2">
-<h3 id="cache-notifications_listeners-notifications"><a class="anchor" href="#cache-notifications_listeners-notifications"></a>12.2. Cache-level notifications</h3>
+<h3 id="cache-notifications_listeners-notifications"><a class="anchor" href="#cache-notifications_listeners-notifications"></a>13.2. Cache-level notifications</h3>
 <div class="paragraph">
 <p>Cache-level events occur on a per-cache basis, and by default are only raised on nodes where the events occur.  Note in a distributed cache these events are only raised on the owners of data being affected.  Examples of cache-level events are entries being added, removed, modified, etc.  These events trigger notifications to listeners registered to a specific cache.</p>
 </div>
@@ -13150,7 +13045,7 @@ public class MyRetryListener {
 </div>
 </div>
 <div class="sect2">
-<h3 id="cache-manager-notifications_listeners-notifications"><a class="anchor" href="#cache-manager-notifications_listeners-notifications"></a>12.3. Cache Manager notifications</h3>
+<h3 id="cache-manager-notifications_listeners-notifications"><a class="anchor" href="#cache-manager-notifications_listeners-notifications"></a>13.3. Cache Manager notifications</h3>
 <div class="paragraph">
 <p>Events that occur on a Cache Manager level are cluster-wide and involve events that affect all caches created by a single Cache Manager. Examples of Cache Manager events are nodes joining or leaving a cluster, or caches starting or stopping.</p>
 </div>
@@ -13159,7 +13054,7 @@ public class MyRetryListener {
 </div>
 </div>
 <div class="sect2">
-<h3 id="event-synchronicity_listeners-notifications"><a class="anchor" href="#event-synchronicity_listeners-notifications"></a>12.4. Synchronicity of events</h3>
+<h3 id="event-synchronicity_listeners-notifications"><a class="anchor" href="#event-synchronicity_listeners-notifications"></a>13.4. Synchronicity of events</h3>
 <div class="paragraph">
 <p>By default, all async notifications are dispatched in the notification thread pool.
 Sync notifications will delay the operation from continuing until the listener method completes or the CompletionStage
@@ -13199,7 +13094,7 @@ public class MyNonBlockingListener {
 </div>
 <h4 id="asynchronous_thread_pool" class="discrete">Asynchronous thread pool</h4>
 <div class="paragraph">
-<p>To tune the thread pool used to dispatch such asynchronous notifications, use the <a href="../../configuration-schema/infinispan-config-15.2.html"><code>&lt;listener-executor /&gt;</code></a> XML element in your configuration file.</p>
+<p>To tune the thread pool used to dispatch such asynchronous notifications, use the <a href="../../configuration-schema/infinispan-config-16.0.html"><code>&lt;listener-executor /&gt;</code></a> XML element in your configuration file.</p>
 </div>
 </div>
 </div>
@@ -13207,7 +13102,7 @@ public class MyNonBlockingListener {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-09-03 09:40:51 UTC
+Last updated 2025-11-08 07:59:13 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -13240,6 +13135,6 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
   })
 })
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
 </body>
 </html>

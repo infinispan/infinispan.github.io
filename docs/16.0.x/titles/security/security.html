@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.23">
+<meta name="generator" content="Asciidoctor 2.0.26">
 <title>Infinispan Security Guide</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
@@ -116,7 +116,6 @@ h1 strong,h2 strong,h3 strong,#toctitle strong,.sidebarblock>.content>.title str
 :not(pre):not([class^=L])>code{font-size:.9375em;font-style:normal!important;letter-spacing:0;padding:.1em .5ex;word-spacing:-.15em;background:#f7f7f8;border-radius:4px;line-height:1.45;text-rendering:optimizeSpeed}
 pre{color:rgba(0,0,0,.9);font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;line-height:1.45;text-rendering:optimizeSpeed}
 pre code,pre pre{color:inherit;font-size:inherit;line-height:inherit}
-pre>code{display:block}
 pre.nowrap,pre.nowrap pre{white-space:pre;word-wrap:normal}
 em em{font-style:normal}
 strong strong{font-weight:400}
@@ -219,6 +218,7 @@ table.tableblock.fit-content>caption.title{white-space:nowrap;width:0}
 .literalblock pre,.listingblock>.content>pre:not(.highlight),.listingblock>.content>pre[class=highlight],.listingblock>.content>pre[class^="highlight "]{background:#f7f7f8}
 .literalblock.output pre{color:#f7f7f8;background:rgba(0,0,0,.9)}
 .listingblock>.content{position:relative}
+.listingblock pre>code{display:block}
 .listingblock code[data-lang]::before{display:none;content:attr(data-lang);position:absolute;font-size:.75em;top:.425rem;right:.5rem;line-height:1;text-transform:uppercase;color:inherit;opacity:.5}
 .listingblock:hover code[data-lang]::before{display:block}
 .listingblock.terminal pre .command::before{content:attr(data-prompt);padding-right:.5em;color:inherit;opacity:.5}
@@ -2155,6 +2155,18 @@ credential
 </tr>
 </table>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+If the <code>url</code> uses LDAPS, it may be necessary to define a <a href="../server/server.html#configuring-encryption">server identity</a> containing an appropriate truststore and reference it in the <code>ldap-realm.client-ssl-context</code> configuration attribute.
+</td>
+</tr>
+</table>
+</div>
 <div class="admonitionblock tip">
 <table>
 <tr>
@@ -2732,6 +2744,132 @@ KeyCloak.</p>
             introspectionUrl: 'https://oauth-server/auth/realms/infinispan/protocol/openid-connect/token/introspect'</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>If the <code>introspection-url</code> uses HTTPS, it may be necessary to define a <a href="../server/server.html#configuring-encryption">server identity</a> containing an appropriate truststore and reference it in the <code>oauth2-introspection.client-ssl-context</code> configuration attribute.</p>
+</div>
+<h4 id="token_realm_configuration_with_tls" class="discrete">Token realm configuration with TLS</h4>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+   &lt;security&gt;
+      &lt;security-realms&gt;
+         &lt;security-realm name="keycloak"&gt;
+            &lt;server-identities&gt;
+               &lt;ssl&gt;
+                  &lt;truststore path="keycloak-trust.pfx" password="secret"/&gt;
+               &lt;/ssl&gt;
+            &lt;/server-identities&gt;
+         &lt;/security-realm&gt;
+         &lt;security-realm name="default"&gt;
+            &lt;!-- The TLS identity of this server --&gt;
+            &lt;server-identities&gt;
+               &lt;ssl&gt;
+                  &lt;keystore path="server.pfx" password="secret" alias="server"/&gt;1
+               &lt;/ssl&gt;
+            &lt;/server-identities&gt;
+            &lt;!-- Specifies the URL of the authentication server. --&gt;
+            &lt;token-realm name="token"
+                         auth-server-url="https://oauth-server/auth/"&gt;
+               &lt;!-- Specifies the URL of the token introspection endpoint and uses the `keycloak` SSL context defined above to trust the server --&gt;
+               &lt;oauth2-introspection introspection-url="https://oauth-server/auth/realms/infinispan/protocol/openid-connect/token/introspect"
+                                     client-id="infinispan-server"
+                                     client-secret="1fdca4ec-c416-47e0-867a-3d471af7050f"
+                                     client-ssl-context="keycloak"
+               /&gt;
+            &lt;/token-realm&gt;
+         &lt;/security-realm&gt;
+      &lt;/security-realms&gt;
+   &lt;/security&gt;
+   &lt;endpoints socket-binding="default" security-realm="default"/&gt;
+&lt;/server&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "infinispan" : {
+    "server" : {
+      "security" : {
+        "security-realms" : [ {
+          "name" : "keycloak",
+          "server-identities" : {
+            "ssl" : {
+              "truststore" : {
+                "path" : "ca.pfx",
+                "password" : "secret"
+              }
+            }
+          }
+        },{
+          "name" : "default",
+          "server-identities" : {
+            "ssl" : {
+              "keystore" : {
+                "path" : "server.pfx",
+                "password" : "secret"
+              }
+            }
+          },
+          "token-realm" : {
+            "name" : "token-realm",
+            "auth-server-url" : "https://127.0.0.1:14568/auth/",
+            "client-id" : "infinispan-console",
+            "oauth2-introspection" : {
+              "client-id" : "infinispan-server",
+              "client-ssl-context" : "keycloak",
+              "introspection-url" : "https://127.0.0.1:14568/realms/infinispan/protocol/openid-connect/token/introspect",
+              "client-secret" : "1fdca4ec-c416-47e0-867a-3d471af7050f"
+            }
+          }
+        } ]
+      },
+      "endpoints" : {
+        "endpoint" : {
+          "socket-binding" : "default",
+          "security-realm" : "default"
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  server:
+    security:
+      securityRealms:
+        - name: "keycloak"
+          serverIdentities:
+            ssl:
+              truststore:
+                path: "ca.pfx"
+                password: "secret"
+        - name: "default"
+          serverIdentities:
+            ssl:
+              keystore:
+                path: "server.pfx"
+                password: "secret"
+          tokenRealm:
+            name: "token-realm"
+            authServerUrl: "https://127.0.0.1:14568/auth/"
+            clientId: "infinispan-console"
+            # Specifies the URL of the token introspection endpoint and uses the `keycloak` SSL context defined above to trust the server
+            oauth2Introspection:
+              clientId: "infinispan-server"
+              clientSslContext: "keycloak"
+              introspectionUrl: "https://127.0.0.1:14568/realms/infinispan/protocol/openid-connect/token/introspect"
+              clientSecret: "1fdca4ec-c416-47e0-867a-3d471af7050f"
+    endpoints:
+      socketBinding: "default"
+      securityRealm: "default"</code></pre>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="trust-store-security-realms_security-realms"><a class="anchor" href="#trust-store-security-realms_security-realms"></a>3.6. Trust store realms</h3>
@@ -3306,7 +3444,7 @@ By default</p>
 <h2 id="authentication-mechanisms"><a class="anchor" href="#authentication-mechanisms"></a>4. Endpoint authentication mechanisms</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan Server can use custom SASL and HTTP authentication mechanisms for Hot Rod and REST endpoints.</p>
+<p>Infinispan Server can use custom authentication mechanisms for Hot Rod and binary Memcached (SASL) and REST (HTTP) endpoints. The RESP endpoint does not offer alternative authentication mechanisms, because of its specification.</p>
 </div>
 <div class="sect2">
 <h3 id="server-authentication_endpoint-authentication"><a class="anchor" href="#server-authentication_endpoint-authentication"></a>4.1. Infinispan Server authentication</h3>
@@ -5915,7 +6053,7 @@ Otherwise the following message is written to Infinispan logs:</p>
 <p><a href="http://www.jgroups.org/manual5/index.html">JGroups 5 Manual</a></p>
 </li>
 <li>
-<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.4 Schema</a></p>
+<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.5 Schema</a></p>
 </li>
 </ul>
 </div>
@@ -5993,7 +6131,7 @@ Otherwise the following message is written to Infinispan logs:</p>
 <p><a href="http://www.jgroups.org/manual5/index.html">JGroups 5 Manual</a></p>
 </li>
 <li>
-<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.4 Schema</a></p>
+<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.5 Schema</a></p>
 </li>
 </ul>
 </div>
@@ -6150,7 +6288,7 @@ nftables utility.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-15 09:42:19 UTC
+Last updated 2025-11-08 07:59:13 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -6183,6 +6321,6 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
   })
 })
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
 </body>
 </html>

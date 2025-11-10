@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.23">
-<title>Using Hot Rod Java clients</title>
+<meta name="generator" content="Asciidoctor 2.0.26">
+<title>Hot Rod Java client</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -116,7 +116,6 @@ h1 strong,h2 strong,h3 strong,#toctitle strong,.sidebarblock>.content>.title str
 :not(pre):not([class^=L])>code{font-size:.9375em;font-style:normal!important;letter-spacing:0;padding:.1em .5ex;word-spacing:-.15em;background:#f7f7f8;border-radius:4px;line-height:1.45;text-rendering:optimizeSpeed}
 pre{color:rgba(0,0,0,.9);font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;line-height:1.45;text-rendering:optimizeSpeed}
 pre code,pre pre{color:inherit;font-size:inherit;line-height:inherit}
-pre>code{display:block}
 pre.nowrap,pre.nowrap pre{white-space:pre;word-wrap:normal}
 em em{font-style:normal}
 strong strong{font-weight:400}
@@ -219,6 +218,7 @@ table.tableblock.fit-content>caption.title{white-space:nowrap;width:0}
 .literalblock pre,.listingblock>.content>pre:not(.highlight),.listingblock>.content>pre[class=highlight],.listingblock>.content>pre[class^="highlight "]{background:#f7f7f8}
 .literalblock.output pre{color:#f7f7f8;background:rgba(0,0,0,.9)}
 .listingblock>.content{position:relative}
+.listingblock pre>code{display:block}
 .listingblock code[data-lang]::before{display:none;content:attr(data-lang);position:absolute;font-size:.75em;top:.425rem;right:.5rem;line-height:1;text-transform:uppercase;color:inherit;opacity:.5}
 .listingblock:hover code[data-lang]::before{display:block}
 .listingblock.terminal pre .command::before{content:attr(data-prompt);padding-right:.5em;color:inherit;opacity:.5}
@@ -534,53 +534,49 @@ $(addBlockSwitches);
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
-<h1>Using Hot Rod Java clients</h1>
+<h1>Hot Rod Java client</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
-<li><a href="#hotrod-java-client">1. Hot Rod Java Clients</a>
+<li><a href="#hotrod-client-usage_hot_rod">1. Basic Usage</a>
 <ul class="sectlevel2">
-<li><a href="#hotrod_hotrod-java-client">1.1. Hot Rod Protocol</a></li>
-<li><a href="#hotrod-client-intelligence_hotrod-java-client">1.2. Client Intelligence</a></li>
-<li><a href="#request-balancing_hotrod-java-client">1.3. Request Balancing</a></li>
-<li><a href="#hotrod_failover">1.4. Client Failover</a></li>
-<li><a href="#client-server-compatibility_hotrod-java-client">1.5. Hot Rod client compatibility with Infinispan Server</a></li>
+<li><a href="#adding-hotrod-client-dependencies_hotrod-client-usage">1.1. Install Hot Rod Java client in your project</a></li>
+<li><a href="#run-simplest-setup_hotrod-client-usage">1.2. Connect a client: simplest case</a></li>
+<li><a href="#run-auth-setup_hotrod-client-usage">1.3. Connect a client: authentication</a></li>
+<li><a href="#hotrod-client-multiple-clusters_hotrod-client-usage">1.4. Connect: multiple cluster</a></li>
+<li><a href="#hotrod-client-properties_hotrod-client-usage">1.5. The hotrod-client.properties file</a></li>
+<li><a href="#configuring-hotrod-encryption_hotrod-client-usage">1.6. Configuring Hot Rod client encryption</a></li>
 </ul>
 </li>
-<li><a href="#configuring-maven-repository">2. Adding Infinispan to your Maven repository</a>
+<li><a href="#hotrod-client-beyond_{context}">2. Beyond the Basics</a>
 <ul class="sectlevel2">
-<li><a href="#configuring-pom-xml_configuring-maven-repository">2.1. Configuring your project POM</a></li>
+<li><a href="#client-server-compatibility_hotrod-client-beyond">2.1. Hot Rod client compatibility with Infinispan Server</a></li>
+<li><a href="#configuring-hotrod-authentication_hotrod-client-beyond">2.2. Configuring Authentication Mechanisms for Hot Rod Clients</a>
+<ul class="sectlevel3">
+<li><a href="#hotrod_auth_tgt">2.2.1. Creating GSSAPI Login Contexts</a></li>
+<li><a href="#sasl-authentication-mechanisms_hotrod-client-beyond">2.2.2. SASL authentication mechanisms</a></li>
 </ul>
 </li>
-<li><a href="#hotrod-client-configuration_hot_rod">3. Hot Rod Java Client Configuration</a>
+<li><a href="#hotrod-client-intelligence_hotrod-client-beyond">2.3. Client Intelligence</a></li>
+<li><a href="#request-balancing_hotrod-client-beyond">2.4. Request Balancing</a></li>
+<li><a href="#hotrod_failover">2.5. Client Failover</a></li>
+<li><a href="#near-caches-hotrod-client-beyond">2.6. Near Caches</a>
+<ul class="sectlevel3">
+<li><a href="#configuring-near-caching-hotrod-client-beyond">2.6.1. Configuring Near Caches</a></li>
+</ul>
+</li>
+<li><a href="#forcing-return-values_hotrod-client-beyond">2.7. Forcing Return Values</a></li>
+<li><a href="#creating-caches-hotrod_hotrod-client-beyond">2.8. Creating remote caches from Hot Rod clients</a></li>
+</ul>
+</li>
+<li><a href="#hotrod-client-observability_hotrod-client-beyond">3. Observability</a>
 <ul class="sectlevel2">
-<li><a href="#adding-hotrod-client-dependencies_hotrod-client-configuration">3.1. Adding Hot Rod Java Client Dependencies</a></li>
-<li><a href="#configuring-hotrod-java-clients_hotrod-client-configuration">3.2. Configuring Hot Rod Client Connections</a>
-<ul class="sectlevel3">
-<li><a href="#configuring-hotrod-clusters_hotrod-client-configuration">3.2.1. Defining Infinispan Clusters in Client Configuration</a></li>
-<li><a href="#switching-hotrod-clusters_hotrod-client-configuration">3.2.2. Manually Switching Infinispan Clusters</a></li>
+<li><a href="#enabling-hotrod-client-statistics_hotrod-client-observability">3.1. Enabling Hot Rod client statistics</a></li>
+<li><a href="#propagation-hotrod-client-tracing">3.2. Hot Rod client tracing propagation</a></li>
+<li><a href="#configuring-hotrod-metrics_hotrod-client-observability">3.3. Configuring Hot Rod Client metrics</a></li>
 </ul>
 </li>
-<li><a href="#configuring-hotrod-authentication_hotrod-client-configuration">3.3. Configuring Authentication Mechanisms for Hot Rod Clients</a>
-<ul class="sectlevel3">
-<li><a href="#hotrod_auth_tgt">3.3.1. Creating GSSAPI Login Contexts</a></li>
-<li><a href="#sasl-authentication-mechanisms_hotrod-client-configuration">3.3.2. SASL authentication mechanisms</a></li>
-</ul>
-</li>
-<li><a href="#configuring-hotrod-encryption_hotrod-client-configuration">3.4. Configuring Hot Rod client encryption</a></li>
-<li><a href="#enabling-hotrod-client-statistics_hotrod-client-configuration">3.5. Enabling Hot Rod client statistics</a></li>
-<li><a href="#propagation-hotrod-client-tracing">3.6. Hot Rod client tracing propagation</a></li>
-<li><a href="#near-caches-hotrod-client-configuration">3.7. Near Caches</a>
-<ul class="sectlevel3">
-<li><a href="#configuring-near-caching-hotrod-client-configuration">3.7.1. Configuring Near Caches</a></li>
-</ul>
-</li>
-<li><a href="#forcing-return-values_hotrod-client-configuration">3.8. Forcing Return Values</a></li>
-<li><a href="#creating-caches-hotrod_hotrod-client-configuration">3.9. Creating remote caches from Hot Rod clients</a></li>
-<li><a href="#configuring-hotrod-metrics_hotrod-client-configuration">3.10. Configuring Hot Rod Client metrics</a></li>
-</ul>
-</li>
-<li><a href="#hotrod-client-api_hot_rod">4. Hot Rod Client API</a>
+<li><a href="#hotrod-client-api_hotrod-client-observability">4. Hot Rod Client API</a>
 <ul class="sectlevel2">
 <li><a href="#remotecache_api">4.1. RemoteCache API</a>
 <ul class="sectlevel3">
@@ -645,261 +641,437 @@ $(addBlockSwitches);
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>Hot Rod is a binary TCP client/server protocol that gives fast access to data in remote Infinispan caches.
-The Hot Rod Java client provides automatic load balancing and failover along with intelligence capabilities that use consistent hash techniques to efficiently locate cache entries.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="hotrod-java-client"><a class="anchor" href="#hotrod-java-client"></a>1. Hot Rod Java Clients</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Access Infinispan remotely through the Hot Rod Java client API.</p>
-</div>
-<div class="sect2">
-<h3 id="hotrod_hotrod-java-client"><a class="anchor" href="#hotrod_hotrod-java-client"></a>1.1. Hot Rod Protocol</h3>
-<div class="paragraph">
-<p>Hot Rod is a binary TCP protocol that Infinispan offers high-performance client-server interactions with the following capabilities:</p>
+<p>Infinispan Hot Rod Java Client provides advanced client/server connectivity based on the Hot Rod protocol. Hot Rod is a binary protocol that supports:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Load balancing. Hot Rod clients can send requests across Infinispan clusters
-using different strategies.</p>
+<p>Fast access to data.</p>
 </li>
 <li>
-<p>Failover. Hot Rod clients can monitor Infinispan cluster topology changes
-and automatically switch to available nodes.</p>
+<p>Automatic load balancing.</p>
 </li>
 <li>
-<p>Efficient data location. Hot Rod clients can find key owners and make
-requests directly to those nodes, which reduces latency.</p>
+<p>Failover.</p>
+</li>
+<li>
+<p>Consistent hash techniques to efficiently locate cache entries.</p>
+</li>
+<li>
+<p>A full set of API for sync, async, functional, reactive programming.</p>
 </li>
 </ul>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>The client only supports Hot Rod protocol version 3.0 and newer.
-The server supports Hot Rod protocol version 2.0 and newer.
-If a client is needed that supports older versions up to 2.0 the hotrod-client-legacy module can be used.</p>
-</div>
-</td>
-</tr>
-</table>
 </div>
 </div>
+<div class="sect1">
+<h2 id="hotrod-client-usage_hot_rod"><a class="anchor" href="#hotrod-client-usage_hot_rod"></a>1. Basic Usage</h2>
+<div class="sectionbody">
 <div class="sect2">
-<h3 id="hotrod-client-intelligence_hotrod-java-client"><a class="anchor" href="#hotrod-client-intelligence_hotrod-java-client"></a>1.2. Client Intelligence</h3>
-<div class="paragraph">
-<p>Hot Rod clients use intelligence mechanisms to efficiently send requests to Infinispan Server clusters.
-By default, the Hot Rod protocol has the <code>HASH_DISTRIBUTION_AWARE</code> intelligence mechanism enabled.</p>
-</div>
-<div class="paragraph">
-<div class="title"><code>BASIC</code> intelligence</div>
-<p>Clients do not receive topology change events for Infinispan clusters, such as nodes joining or leaving, and use only the list of Infinispan Server network locations that you add to the client configuration.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Enable <code>BASIC</code> intelligence to use the Hot Rod client configuration when a Infinispan Server does not send internal and hidden cluster topology to the Hot Rod client.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<div class="title"><code>TOPOLOGY_AWARE</code> intelligence</div>
-<p>Clients receive and store topology change events for Infinispan clusters to dynamically keep track of Infinispan Servers on the network.</p>
-</div>
-<div class="paragraph">
-<p>To receive cluster topology, clients need the network location, either IP address or host name, of at least one Hot Rod server at startup.
-After the client connects, Infinispan Server transmits the topology to the client.
-When Infinispan Server nodes join or leave the cluster, Infinispan transmits an updated topology to the client.</p>
-</div>
-<div class="paragraph">
-<div class="title"><code>HASH_DISTRIBUTION_AWARE</code> intelligence</div>
-<p>Clients receive and store topology change events for Infinispan clusters in addition to hashing information that enables clients to identify which nodes store specific keys.</p>
-</div>
-<div class="paragraph">
-<p>For example, consider a <code>put(k,v)</code> operation. The client calculates the hash value for the key so it can locate the exact Infinispan Server node on which the data resides.
-Clients can then connect directly to that node to perform read and write operations.</p>
-</div>
-<div class="paragraph">
-<p>The benefit of <code>HASH_DISTRIBUTION_AWARE</code> intelligence is that Infinispan Server does not need to look up values based on key hashes, which uses less server-side resources.
-Another benefit is that Infinispan Server responds to client requests more quickly because they do not need to make additional network roundtrips.</p>
-</div>
-<h4 id="configuration" class="discrete">Configuration</h4>
-<div class="paragraph">
-<p>By default, Hot Rod client uses the intelligence that you configure globally for all the Infinispan clusters.</p>
-</div>
-<div class="listingblock primary">
-<div class="title">ConfigurationBuilder</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
-builder.clientIntelligence(ClientIntelligence.BASIC);</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">hotrod-client.properties</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.client_intelligence=BASIC</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>When you configure Hot Rod client to use multiple Infinispan clusters you can use different intelligence for each of the clusters.</p>
-</div>
-<div class="listingblock primary">
-<div class="title">ConfigurationBuilder</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
-builder.addCluster("NYC").clusterClientIntelligence(ClientIntelligence.BASIC);</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">hotrod-client.properties</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.cluster.intelligence.NYC=BASIC</code></pre>
-</div>
-</div>
-<h4 id="failed_server_timeout" class="discrete">Failed Server Timeout</h4>
-<div class="paragraph">
-<p>If a server does not report the topology as BASIC, or the client is unable to connect to a server due to network issues, the client will mark the server as failed.
-A client does not attempt to connect to a server marked as failed until the client receives an updated topology.
-Because BASIC topology never sends an update, the client will not re-attempt connection.</p>
-</div>
-<div class="paragraph">
-<p>To avoid such a situation, you can use the <code>serverFailureTimeout</code> setting that clears the failed server status after a defined period of time.
-Infinispan will try to reconnect to the server after the defined timeout. If the server is still unreachable, it is marked as failed again and the connection will be re-attempted after the defined timeout.
-You can disabled reconnection attempts by setting the <code>serverFailureTimeout</code> value to <code>-1</code>.</p>
-</div>
-<div class="listingblock primary">
-<div class="title">ConfigurationBuilder</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
-builder.serverFailureTimeout(5000).clusterClientIntelligence(ClientIntelligence.BASIC);</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">hotrod-client.properties</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.server_failure_timeout=5000
-infinispan.client.hotrod.client_intelligence=BASIC</code></pre>
-</div>
-</div>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
+<h3 id="adding-hotrod-client-dependencies_hotrod-client-usage"><a class="anchor" href="#adding-hotrod-client-dependencies_hotrod-client-usage"></a>1.1. Install Hot Rod Java client in your project</h3>
+<div class="ulist">
+<div class="title">Prerequisites</div>
 <ul>
 <li>
-<p><a href="../../apidocs/org/infinispan/client/hotrod/configuration/ClientIntelligence.html">org.infinispan.client.hotrod.configuration.ClientIntelligence</a></p>
+<p>Java 17 or greater.</p>
+</li>
+<li>
+<p><a href="../server/server.html#server_requirements">Infinispan Server Requirements</a></p>
 </li>
 </ul>
 </div>
-</div>
-<div class="sect2">
-<h3 id="request-balancing_hotrod-java-client"><a class="anchor" href="#request-balancing_hotrod-java-client"></a>1.3. Request Balancing</h3>
 <div class="paragraph">
-<p>Hot Rod Java clients balance requests to Infinispan Server clusters so that read and write operations are spread across nodes.</p>
-</div>
-<div class="paragraph">
-<p>Clients that use <code>BASIC</code> or <code>TOPOLOGY_AWARE</code> intelligence use request balancing for all requests.
-Clients that use <code>HASH_DISTRIBUTION_AWARE</code> intelligence send requests directly to the node that stores the desired key.
-If the node does not respond, the clients then fall back to request balancing.</p>
-</div>
-<div class="paragraph">
-<p>The default balancing strategy is round-robin, so Hot Rod clients perform request balancing as in the following example where <code>s1</code>, <code>s2</code>, <code>s3</code> are nodes in a Infinispan cluster:</p>
+<p>Add the Hot Rod Java client Maven artifact as a dependency to your project in the <code>pom.xml</code> file.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">// Connect to the Infinispan cluster
-RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build());
-// Obtain the remote cache
-RemoteCache&lt;String, String&gt; cache = cacheManager.getCache("test");
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+  &lt;artifactId&gt;infinispan-client-hotrod&lt;/artifactId&gt;
+  &lt;version&gt;16.0.1&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="run-simplest-setup_hotrod-client-usage"><a class="anchor" href="#run-simplest-setup_hotrod-client-usage"></a>1.2. Connect a client: simplest case</h3>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Infinispan is a highly configurable data grid. It can be used out of the box with minimal setup or fully configured and tuned to meet the needs of different environments, performance goals, and architectures.
+This flexibility also extends to the client side, where in real use cases the client must be appropriately configured for the target cluster.
+Since this is a client manual, the approach here is somewhat reversed: for each runnable example, an appropriate server configuration is provided.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The following code connects a client to a local server started on the default port without authentication
+and performs a put/get operation.</p>
+</div>
+<div class="listingblock primary">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">package org.infinispan.examples;
 
-//Hot Rod client sends a request to the "s1" node
-cache.put("key1", "aValue");
-//Hot Rod client sends a request to the "s2" node
-cache.put("key2", "aValue");
-//Hot Rod client sends a request to the "s3" node
-String value = cache.get("key1");
-//Hot Rod client sends the next request to the "s1" node again
-cache.remove("key2");</code></pre>
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.RemoteCacheManager;
+
+public class HotRodClientSimplest {
+    public static void main(String[] args) {
+        try (RemoteCacheManager cacheManager = new RemoteCacheManager()) {
+            RemoteCache&lt;String, String&gt; cache = cacheManager.getCache();
+
+            cache.put("KEY", "VALUE");
+            String value = cache.get("KEY");
+            System.out.println("  KEY = " + value);
+
+        } catch (Exception e) {
+            System.err.println("Error connecting to Infinispan server: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<div class="title">Custom balancing policies</div>
-<p>You can use custom <code>FailoverRequestBalancingStrategy</code> implementations if you add your class in the Hot Rod client configuration.</p>
+<p>For instructions on setting up a server for this example, see <a href="server-setup/java_client_server_setup.html#simplest">Server Setup</a>.</p>
+</div>
+<div class="paragraph">
+<p>This simple example lacks security. In fact, to encourage the development of secure code, the Infinispan Server default configuration starts with authentication enabled.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="run-auth-setup_hotrod-client-usage"><a class="anchor" href="#run-auth-setup_hotrod-client-usage"></a>1.3. Connect a client: authentication</h3>
+<div class="paragraph">
+<p>The following code connects with authentication and explicitly set host and port.</p>
 </div>
 <div class="listingblock primary">
-<div class="title">ConfigurationBuilder</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
-builder.addServer()
-         .host("127.0.0.1")
-         .port(11222)
-         .balancingStrategy(new MyCustomBalancingStrategy());</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">package org.infinispan.examples;
+
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.RemoteCacheManager;
+import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
+import org.infinispan.client.hotrod.impl.ConfigurationProperties;
+
+public class HotRodClientAuth {
+
+    public static void main(String[] args) {
+        // Create a RemoteCacheManager with default configuration
+        ConfigurationBuilder builder = new ConfigurationBuilder();
+        builder.addServer().host("127.0.0.1").port(ConfigurationProperties.DEFAULT_HOTROD_PORT)
+                .security().authentication()
+                .username("username").password("changeme");
+        try (RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build())) {
+            RemoteCache&lt;String, String&gt; cache = cacheManager.getCache();
+
+            cache.put("KEY", "VALUE");
+            String value = cache.get("KEY");
+            System.out.println("  KEY = " + value);
+            
+        } catch (Exception e) {
+            System.err.println("Error connecting to Infinispan server: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>To start a server see <a href="server-setup/java_client_server_setup.html#auth">Server Setup</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="hotrod-client-multiple-clusters_hotrod-client-usage"><a class="anchor" href="#hotrod-client-multiple-clusters_hotrod-client-usage"></a>1.4. Connect: multiple cluster</h3>
+<div class="paragraph">
+<p>A client can be configured to connect to multiple Infinispan clusters to allow failover or for any user&#8217;s needs.
+The following example show a client connected to two clusters.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Declarative</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-properties hljs" data-lang="properties">infinispan.client.hotrod.cluster.cluster1=172.20.0.11:11222; 172.20.0.12:11222
+infinispan.client.hotrod.cluster.cluster2=172.21.0.11:11222; 172.21.0.12:11222
+infinispan.client.hotrod.auth_username=username
+infinispan.client.hotrod.auth_password=changeme</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Programmatic</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">package org.infinispan.examples;
+
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.RemoteCacheManager;
+import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
+
+public class HotRodClientMultiCluster {
+
+    public static void main(String[] args) {
+        ConfigurationBuilder builder = new ConfigurationBuilder();
+        builder.security().authentication().username("username").password("changeme");
+        builder.addCluster("cluster1").addClusterNodes("172.20.0.11:11222; 172.20.0.12:11222");
+        builder.addCluster("cluster2").addClusterNodes("172.21.0.11:11222; 172.21.0.12:11222");
+
+        try (RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build())) {
+            RemoteCache&lt;String, String&gt; cache = cacheManager.getCache();
+
+            cacheManager.switchToCluster("cluster1");
+            cache.put("KEY", "VALUE ON CLUSTER 1");
+            String value = cache.get("KEY");
+            System.out.println("  KEY = " + value);
+
+            cacheManager.switchToCluster("cluster2");
+            value = cache.get("KEY");
+            System.out.println("  KEY = " + value);
+
+            cache.put("KEY", "VALUE_ON_CLUSTER_2");
+            value = cache.get("KEY");
+            System.out.println("  KEY = " + value);
+
+        } catch (Exception e) {
+            System.err.println("Error connecting to Infinispan server: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The following configuration sets up a cluster as default, so that clients always attempt to connect to it first.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Declarative</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-properties hljs" data-lang="properties">infinispan.client.hotrod.server_list=172.20.0.11:11222
+infinispan.client.hotrod.cluster.cluster2=172.21.0.11:11222; 172.21.0.12:11222
+infinispan.client.hotrod.auth_username=username
+infinispan.client.hotrod.auth_password=changeme</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Programmatic</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder clientBuilder = new ConfigurationBuilder();
+clientBuilder.addServers("172.20.0.11:11222; 172.20.0.12:11222")
+             .addCluster("siteB")
+               .addClusterNodes("172.21.0.11:11222; 172.21.0.12:11222");
+RemoteCacheManager remoteCacheManager = new RemoteCacheManager(clientBuilder.build());</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Start a server for this example with <a href="server-setup/java_client_server_setup.html#multi">Server Setup</a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="hotrod-client-properties_hotrod-client-usage"><a class="anchor" href="#hotrod-client-properties_hotrod-client-usage"></a>1.5. The hotrod-client.properties file</h3>
+<div class="paragraph">
+<p>Client configuration can be performed declaratively via the <code>hotrod-client.properties</code> file.
+By default, the RemoteCacheManager constructor looks for this file at startup and uses it for
+the setup. The following example shows the declarative configuration for an authenticated client.</p>
 </div>
 <div class="listingblock secondary">
 <div class="title">hotrod-client.properties</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.request_balancing_strategy=my.package.MyCustomBalancingStrategy</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.server_list=127.0.0.1:11222
+infinispan.client.hotrod.auth_username = username
+infinispan.client.hotrod.auth_password = changeme
+infinispan.client.hotrod.auth_realm = default</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>Provided that the <code>hotrod-client.properties</code> file is on the classpath, we can use the simplest client setup to connect to the server.</p>
+</div>
+<div class="paragraph">
+<p>All the available properties are documented in the <a href="properties/ref_hotrod_client_configuration_properties.html">Properties Reference Page</a>.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>If the configuration properties file is not on the classpath (e.g., external configuration, remote configuration hub),
+the ConfigurationBuilder can build a configuration from a java.util.Properties instance as follows.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
+Properties p = new Properties();
+try(Reader r = new FileReader("/path/to/hotrod-client.properties")) {
+   p.load(r);
+   builder.withProperties(p);
+}
+RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build());</code></pre>
+</div>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="../../apidocs/org/infinispan/client/hotrod/FailoverRequestBalancingStrategy.html">org.infinispan.client.hotrod.FailoverRequestBalancingStrategy</a></p>
+<p><a href="../../apidocs/org/infinispan/client/hotrod/configuration/package-summary.html">Hot Rod Client Configuration</a></p>
+</li>
+<li>
+<p><a href="../../apidocs/org/infinispan/client/hotrod/configuration/ConfigurationBuilder.html">org.infinispan.client.hotrod.configuration.ConfigurationBuilder</a></p>
+</li>
+<li>
+<p><a href="../../apidocs/org/infinispan/client/hotrod/RemoteCacheManager.html#RemoteCacheManager-java.net.URL-">org.infinispan.client.hotrod.RemoteCacheManager</a></p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect2">
-<h3 id="hotrod_failover"><a class="anchor" href="#hotrod_failover"></a>1.4. Client Failover</h3>
+<h3 id="configuring-hotrod-encryption_hotrod-client-usage"><a class="anchor" href="#configuring-hotrod-encryption_hotrod-client-usage"></a>1.6. Configuring Hot Rod client encryption</h3>
 <div class="paragraph">
-<p>Hot Rod clients can automatically failover when Infinispan cluster topologies
-change. For instance, Hot Rod clients that are topology-aware can detect when
-one or more Infinispan servers fail.</p>
+<p>Infinispan Server can enforce SSL/TLS encryption and present Hot Rod clients with certificates to establish trust and negotiate secure connections.</p>
 </div>
 <div class="paragraph">
-<p>In addition to failover between clustered Infinispan servers, Hot Rod clients
-can failover between Infinispan clusters.</p>
+<p>To verify certificates issued to Infinispan Server, Hot Rod clients require either the full certificate chain or a partial chain that starts with the Root CA.
+You provide server certificates to Hot Rod clients as trust stores.</p>
 </div>
 <div class="paragraph">
-<p>For example, you have a Infinispan cluster running in New York (<strong>NYC</strong>) and
-another cluster running in London (<strong>LON</strong>). Clients sending requests to
-<strong>NYC</strong> detect that no nodes are available so they switch to the cluster in
-<strong>LON</strong>. Clients then maintain connections to <strong>LON</strong> until you manually switch
-clusters or failover happens again.</p>
+<p>By default, Hot Rod clients perform hostname validation by matching the <code>dNSName</code> or <code>iPAddress</code> values (or both) in the server certificate&#8217;s <code>subjectAltName</code> extension with the expected hostname.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>As an alternative to providing trust stores, you can use shared system certificates.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Create a trust store that Hot Rod clients can use to verify Infinispan Server identities.</p>
+</li>
+<li>
+<p>If you configure Infinispan Server to validate or authenticate client certificates, create a keystore as appropriate.</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Add the trust store to the client configuration with the <code>trustStoreFileName()</code> and <code>trustStorePassword()</code> methods or corresponding properties.</p>
+</li>
+<li>
+<p>If you also configure client verification, do the following:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Add the keystore to the client configuration with the <code>keyStoreFileName()</code> and <code>keyStorePassword()</code> methods or corresponding properties.</p>
+</li>
+</ol>
+</div>
+</li>
+</ol>
+</div>
+<div class="listingblock primary">
+<div class="title">ConfigurationBuilder</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">package org.infinispan.examples;
+
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.RemoteCacheManager;
+import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
+
+public class HotRodClientTLS {
+    public static void main(String[] args) {
+        ConfigurationBuilder clientBuilder = new ConfigurationBuilder();
+        clientBuilder.addServer().host("127.0.0.1").port(11222).security().ssl()
+                // Clients use the trust store to verify Infinispan Server identities.
+                .trustStoreFileName("/path/to/client.truststore")
+                .trustStorePassword("changeme".toCharArray())
+                // Clients present these certificates to Infinispan Server.
+                .keyStoreFileName("/path/to/client.keystore")
+                .keyStorePassword("keystorepassword".toCharArray());
+        try (RemoteCacheManager cacheManager = new RemoteCacheManager()) {
+            RemoteCache&lt;String, String&gt; cache = cacheManager.getCache();
+
+            cache.put("KEY", "VALUE");
+            String value = cache.get("KEY");
+            System.out.println("  KEY = " + value);
+
+        } catch (Exception e) {
+            System.err.println("Error connecting to Infinispan server: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">hotrod-client.properties</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.server_list=127.0.0.1:11222
+infinispan.client.hotrod.use_ssl = true
+infinispan.client.hotrod.sni_host_name=localhost
+# Clients use the trust store to verify Infinispan Server identities.
+infinispan.client.hotrod.trust_store_file_name=/path/to/client.truststore
+infinispan.client.hotrod.trust_store_password=changeme
+# Clients present these certificates to Infinispan Server.
+infinispan.client.hotrod.key_store_file_name = /path/to/client.keystore
+infinispan.client.hotrod.key_store_password = changeme</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<div class="title">Transactional Caches with Failover</div>
-<p>Conditional operations, such as <code>putIfAbsent()</code>, <code>replace()</code>, <code>remove()</code>, have
-strict method return guarantees. Likewise, some operations can require previous
-values to be returned.</p>
+<p>See <a href="server-setup/java_client_server_setup.html#tls">Server Setup</a> to startup a server.</p>
 </div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="../server/server.html#endpoint-encryption">Encrypting Infinispan Server Connections</a></p>
+</li>
+<li>
+<p><a href="../../apidocs/org/infinispan/client/hotrod/configuration/SslConfigurationBuilder.html">SslConfigurationBuilder</a></p>
+</li>
+<li>
+<p><a href="../../apidocs/org/infinispan/client/hotrod/configuration/package-summary.html">Hot Rod client configuration properties</a></p>
+</li>
+<li>
+<p><a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9/html/securing_networks/using-shared-system-certificates_securing-networks">Using Shared System Certificates</a> (Red Hat Enterprise Linux 9 Securing Networks)</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="hotrod-client-beyond_{context}"><a class="anchor" href="#hotrod-client-beyond_{context}"></a>2. Beyond the Basics</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>Even though Hot Rod clients can failover, you should use transactional caches
-to ensure that operations do not partially complete and leave conflicting
-entries on different nodes.</p>
-</div>
+<p>Beyond basic configurations, Hot Rod clients support advanced features for specific use cases.
+This chapter covers authentication, failover, near caching, and other configurations that improve
+security, performance, and reliability.</p>
 </div>
 <div class="sect2">
-<h3 id="client-server-compatibility_hotrod-java-client"><a class="anchor" href="#client-server-compatibility_hotrod-java-client"></a>1.5. Hot Rod client compatibility with Infinispan Server</h3>
+<h3 id="client-server-compatibility_hotrod-client-beyond"><a class="anchor" href="#client-server-compatibility_hotrod-client-beyond"></a>2.1. Hot Rod client compatibility with Infinispan Server</h3>
 <div class="paragraph">
-<p>Infinispan Server allows you to connect Hot Rod clients with different versions.
-For instance during a migration or upgrade to your Infinispan cluster, the Hot Rod client version might be a lower Infinispan version than Infinispan Server.</p>
+<p>Before diving into advanced configuration, here is a quick note on version compatibility.
+Infinispan Server allows you to connect Hot Rod clients with different versions.
+For instance, during a migration or upgrade to your Infinispan cluster, the Hot Rod client version might be lower than the Infinispan Server version.</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -928,7 +1100,7 @@ For instance during a migration or upgrade to your Infinispan cluster, the Hot R
 <td class="content">
 <div class="title">Infinispan 9.4 and earlier</div>
 <div class="paragraph">
-<p>The client no longer supports HotRod protocol versions older than 3.0. As such you must use an older client or the <code>hotrod-client-legacy</code> module.</p>
+<p>The client no longer supports Hot Rod protocol versions older than 3.0. As such, you must use an older client or the <code>hotrod-client-legacy</code> module.</p>
 </div>
 </td>
 </tr>
@@ -946,275 +1118,8 @@ For instance during a migration or upgrade to your Infinispan cluster, the Hot R
 </ul>
 </div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="configuring-maven-repository"><a class="anchor" href="#configuring-maven-repository"></a>2. Adding Infinispan to your Maven repository</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Infinispan Java distributions are available from Maven.</p>
-</div>
-<div class="paragraph">
-<p>Infinispan artifacts are available from Maven central. See the <a href="https://search.maven.org/search?q=g:org.infinispan">org.infinispan</a> group for available Infinispan artifacts.</p>
-</div>
 <div class="sect2">
-<h3 id="configuring-pom-xml_configuring-maven-repository"><a class="anchor" href="#configuring-pom-xml_configuring-maven-repository"></a>2.1. Configuring your project POM</h3>
-<div class="paragraph">
-<p>Configure Project Object Model (POM) files in your project to use Infinispan dependencies for embedded caches, Hot Rod clients, and other capabilities.</p>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Open your project <code>pom.xml</code> for editing.</p>
-</li>
-<li>
-<p>Define the <code>version.infinispan</code> property with the correct Infinispan version.</p>
-</li>
-<li>
-<p>Include the <code>infinispan-bom</code> in a <code>dependencyManagement</code> section.</p>
-<div class="paragraph">
-<p>The Bill Of Materials (BOM) controls dependency versions, which avoids version
-conflicts and means you do not need to set the version for each Infinispan
-artifact you add as a dependency to your project.</p>
-</div>
-</li>
-<li>
-<p>Save and close <code>pom.xml</code>.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>The following example shows the Infinispan version and BOM:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;properties&gt;
-  &lt;version.infinispan&gt;16.0.0.Dev06&lt;/version.infinispan&gt;
-&lt;/properties&gt;
-
-&lt;dependencyManagement&gt;
-  &lt;dependencies&gt;
-    &lt;dependency&gt;
-      &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
-      &lt;artifactId&gt;infinispan-bom&lt;/artifactId&gt;
-      &lt;version&gt;${version.infinispan}&lt;/version&gt;
-      &lt;type&gt;pom&lt;/type&gt;
-      &lt;scope&gt;import&lt;/scope&gt;
-    &lt;/dependency&gt;
-  &lt;/dependencies&gt;
-&lt;/dependencyManagement&gt;</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<div class="title">Next Steps</div>
-<p>Add Infinispan artifacts as dependencies to your <code>pom.xml</code> as required.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="hotrod-client-configuration_hot_rod"><a class="anchor" href="#hotrod-client-configuration_hot_rod"></a>3. Hot Rod Java Client Configuration</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Infinispan provides a Hot Rod Java client configuration API that exposes configuration properties.</p>
-</div>
-<div class="sect2">
-<h3 id="adding-hotrod-client-dependencies_hotrod-client-configuration"><a class="anchor" href="#adding-hotrod-client-dependencies_hotrod-client-configuration"></a>3.1. Adding Hot Rod Java Client Dependencies</h3>
-<div class="paragraph">
-<p>Add Hot Rod Java client dependencies to include it in your project.</p>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Java 17 or greater.</p>
-</li>
-</ul>
-</div>
-<div class="ulist">
-<div class="title">Procedure</div>
-<ul>
-<li>
-<p>Add the <code>infinispan-client-hotrod</code> artifact as a dependency in your <code>pom.xml</code>
-as follows:</p>
-</li>
-</ul>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
-  &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
-  &lt;artifactId&gt;infinispan-client-hotrod&lt;/artifactId&gt;
-&lt;/dependency&gt;</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<div class="title">Reference</div>
-<p><a href="../server/server.html#server_requirements">Infinispan Server Requirements</a></p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="configuring-hotrod-java-clients_hotrod-client-configuration"><a class="anchor" href="#configuring-hotrod-java-clients_hotrod-client-configuration"></a>3.2. Configuring Hot Rod Client Connections</h3>
-<div class="paragraph">
-<p>Configure Hot Rod Java client connections to Infinispan Server.</p>
-</div>
-<div class="ulist">
-<div class="title">Procedure</div>
-<ul>
-<li>
-<p>Use the <code>ConfigurationBuilder</code> class to generate immutable configuration
-objects that you can pass to <code>RemoteCacheManager</code> or use a <code>hotrod-client.properties</code> file on the application classpath.</p>
-</li>
-</ul>
-</div>
-<div class="listingblock primary">
-<div class="title">ConfigurationBuilder</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
-builder.addServer()
-         .host("127.0.0.1")
-         .port(ConfigurationProperties.DEFAULT_HOTROD_PORT)
-       .addServer()
-         .host("192.0.2.0")
-         .port(ConfigurationProperties.DEFAULT_HOTROD_PORT)
-       .security().authentication()
-         .username("username")
-         .password("changeme")
-         .realm("default")
-         .saslMechanism("SCRAM-SHA-512");
-RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build());</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">hotrod-client.properties</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.server_list = 127.0.0.1:11222,192.0.2.0:11222
-infinispan.client.hotrod.auth_username = username
-infinispan.client.hotrod.auth_password = changeme
-infinispan.client.hotrod.auth_realm = default
-infinispan.client.hotrod.sasl_mechanism = SCRAM-SHA-512</code></pre>
-</div>
-</div>
-<h4 id="configuring_hot_rod_uris" class="discrete">Configuring Hot Rod URIs</h4>
-<div class="paragraph">
-<p>You can also configure Hot Rod client connections with URIs as follows:</p>
-</div>
-<div class="listingblock primary">
-<div class="title">ConfigurationBuilder</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
-builder.uri("hotrod://username:changeme@127.0.0.1:11222,192.0.2.0:11222?auth_realm=default&amp;sasl_mechanism=SCRAM-SHA-512");
-RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build());</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">hotrod-client.properties</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.uri = hotrod://username:changeme@127.0.0.1:11222,192.0.2.0:11222?auth_realm=default&amp;sasl_mechanism=SCRAM-SHA-512</code></pre>
-</div>
-</div>
-<h4 id="adding_properties_outside_the_classpath" class="discrete">Adding properties outside the classpath</h4>
-<div class="paragraph">
-<p>If the <code>hotrod-client.properties</code> file is not on the application classpath then you need to specify the location, as in the following example:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
-Properties p = new Properties();
-try(Reader r = new FileReader("/path/to/hotrod-client.properties")) {
-   p.load(r);
-   builder.withProperties(p);
-}
-RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build());</code></pre>
-</div>
-</div>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p><a href="../../apidocs/org/infinispan/client/hotrod/configuration/package-summary.html">Hot Rod Client Configuration</a></p>
-</li>
-<li>
-<p><a href="../../apidocs/org/infinispan/client/hotrod/configuration/ConfigurationBuilder.html">org.infinispan.client.hotrod.configuration.ConfigurationBuilder</a></p>
-</li>
-<li>
-<p><a href="../../apidocs/org/infinispan/client/hotrod/RemoteCacheManager.html#RemoteCacheManager-java.net.URL-">org.infinispan.client.hotrod.RemoteCacheManager</a></p>
-</li>
-</ul>
-</div>
-<div class="sect3">
-<h4 id="configuring-hotrod-clusters_hotrod-client-configuration"><a class="anchor" href="#configuring-hotrod-clusters_hotrod-client-configuration"></a>3.2.1. Defining Infinispan Clusters in Client Configuration</h4>
-<div class="paragraph">
-<p>Provide the locations of Infinispan clusters in Hot Rod client configuration.</p>
-</div>
-<div class="ulist">
-<div class="title">Procedure</div>
-<ul>
-<li>
-<p>Provide at least one Infinispan cluster name along with a host name and port for at least one node with the <code>ClusterConfigurationBuilder</code> class.</p>
-<div class="paragraph">
-<p>If you want to define a cluster as default, so that clients always attempt to connect to it first, then define a server list with the <code>addServers("&lt;host_name&gt;:&lt;port&gt;; &lt;host_name&gt;:&lt;port&gt;")</code> method.</p>
-</div>
-</li>
-</ul>
-</div>
-<div class="listingblock primary">
-<div class="title">Multiple cluster connections</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder clientBuilder = new ConfigurationBuilder();
-clientBuilder.addCluster("siteA")
-               .addClusterNode("hostA1", 11222)
-               .addClusterNode("hostA2", 11222)
-             .addCluster("siteB")
-               .addClusterNodes("hostB1:11222; hostB2:11222");
-RemoteCacheManager remoteCacheManager = new RemoteCacheManager(clientBuilder.build());</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">Default server list with a failover cluster</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder clientBuilder = new ConfigurationBuilder();
-clientBuilder.addServers("hostA1:11222; hostA2:11222")
-             .addCluster("siteB")
-               .addClusterNodes("hostB1:11222; hostB2:11223");
-RemoteCacheManager remoteCacheManager = new RemoteCacheManager(clientBuilder.build());</code></pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="switching-hotrod-clusters_hotrod-client-configuration"><a class="anchor" href="#switching-hotrod-clusters_hotrod-client-configuration"></a>3.2.2. Manually Switching Infinispan Clusters</h4>
-<div class="paragraph">
-<p>Manually switch Hot Rod Java client connections between Infinispan clusters.</p>
-</div>
-<div class="ulist">
-<div class="title">Procedure</div>
-<ul>
-<li>
-<p>Call one of the following methods in the <code>RemoteCacheManager</code> class:</p>
-<div class="paragraph">
-<p><code>switchToCluster(clusterName)</code> switches to a specific cluster defined in the
-client configuration.</p>
-</div>
-<div class="paragraph">
-<p><code>switchToDefaultCluster()</code> switches to the default cluster in the client
-configuration, which is defined as a list of Infinispan servers.</p>
-</div>
-</li>
-</ul>
-</div>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p><a href="../../apidocs/org/infinispan/client/hotrod/RemoteCacheManager.html">RemoteCacheManager</a></p>
-</li>
-</ul>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="configuring-hotrod-authentication_hotrod-client-configuration"><a class="anchor" href="#configuring-hotrod-authentication_hotrod-client-configuration"></a>3.3. Configuring Authentication Mechanisms for Hot Rod Clients</h3>
+<h3 id="configuring-hotrod-authentication_hotrod-client-beyond"><a class="anchor" href="#configuring-hotrod-authentication_hotrod-client-beyond"></a>2.2. Configuring Authentication Mechanisms for Hot Rod Clients</h3>
 <div class="paragraph">
 <p>Infinispan Server uses different mechanisms to authenticate Hot Rod client connections.</p>
 </div>
@@ -1428,7 +1333,7 @@ document to provide examples for each possible callback type.</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="hotrod_auth_tgt"><a class="anchor" href="#hotrod_auth_tgt"></a>3.3.1. Creating GSSAPI Login Contexts</h4>
+<h4 id="hotrod_auth_tgt"><a class="anchor" href="#hotrod_auth_tgt"></a>2.2.1. Creating GSSAPI Login Contexts</h4>
 <div class="paragraph">
 <p>To use the GSSAPI mechanism, you must create a <em>LoginContext</em> so your Hot Rod client can obtain a Ticket Granting Ticket (TGT).</p>
 </div>
@@ -1486,7 +1391,7 @@ authenticate with Kerberos and verify <code>krb5.conf</code>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sasl-authentication-mechanisms_hotrod-client-configuration"><a class="anchor" href="#sasl-authentication-mechanisms_hotrod-client-configuration"></a>3.3.2. SASL authentication mechanisms</h4>
+<h4 id="sasl-authentication-mechanisms_hotrod-client-beyond"><a class="anchor" href="#sasl-authentication-mechanisms_hotrod-client-beyond"></a>2.2.2. SASL authentication mechanisms</h4>
 <div class="paragraph">
 <p>Infinispan Server supports the following SASL authentications mechanisms with Hot Rod and Memcached binary protocol endpoints:</p>
 </div>
@@ -1553,225 +1458,210 @@ authenticate with Kerberos and verify <code>krb5.conf</code>.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-hotrod-encryption_hotrod-client-configuration"><a class="anchor" href="#configuring-hotrod-encryption_hotrod-client-configuration"></a>3.4. Configuring Hot Rod client encryption</h3>
+<h3 id="hotrod-client-intelligence_hotrod-client-beyond"><a class="anchor" href="#hotrod-client-intelligence_hotrod-client-beyond"></a>2.3. Client Intelligence</h3>
 <div class="paragraph">
-<p>Infinispan Server can enforce SSL/TLS encryption and present Hot Rod clients with certificates to establish trust and negotiate secure connections.</p>
+<p>Hot Rod clients use intelligence mechanisms to efficiently send requests to Infinispan Server clusters.
+By default, the Hot Rod protocol has the <code>HASH_DISTRIBUTION_AWARE</code> intelligence mechanism enabled. This mechanism
+allows the client to self-discover the nodes of a cluster. In this case, there is no need during the configuration
+phase to pass the full list of cluster nodes.</p>
 </div>
 <div class="paragraph">
-<p>To verify certificates issued to Infinispan Server, Hot Rod clients require either the full certificate chain or a partial chain that starts with the Root CA.
-You provide server certificates to Hot Rod clients as trust stores.</p>
+<div class="title"><code>BASIC</code> intelligence</div>
+<p>Clients do not receive topology change events for Infinispan clusters, such as nodes joining or leaving, and use only the list of Infinispan Server network locations that you add to the client configuration.</p>
 </div>
-<div class="paragraph">
-<p>By default, Hot Rod clients will also perform hostname validation by matching the <code>dNSName</code> or <code>iPAddress</code> or both types contained by the server certificate&#8217;s <code>subjectAltName</code> extension with the expected hostname.</p>
-</div>
-<div class="admonitionblock tip">
+<div class="admonitionblock note">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-tip" title="Tip"></i>
+<i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>Alternatively to providing trust stores you can use shared system certificates.</p>
+<p>Enable <code>BASIC</code> intelligence to use the Hot Rod client configuration when a Infinispan Server does not send internal and hidden cluster topology to the Hot Rod client.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Create a trust store that Hot Rod clients can use to verify Infinispan Server identities.</p>
-</li>
-<li>
-<p>If you configure Infinispan Server to validate or authenticate client certificates, create a keystore as appropriate.</p>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Add the trust store to the client configuration with the <code>trustStoreFileName()</code> and <code>trustStorePassword()</code> methods or corresponding properties.</p>
-</li>
-<li>
-<p>If you configure client certificate authentication, do the following:</p>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>Add the keystore to the client configuration with the <code>keyStoreFileName()</code> and <code>keyStorePassword()</code> methods or corresponding properties.</p>
-</li>
-<li>
-<p>Configure clients to use the <code>EXTERNAL</code> authentication mechanism.</p>
-</li>
-</ol>
-</div>
-</li>
-</ol>
-</div>
-<div class="listingblock primary">
-<div class="title">ConfigurationBuilder</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder clientBuilder = new ConfigurationBuilder();
-clientBuilder
-   .addServer()
-      .host("127.0.0.1")
-      .port(11222)
-   .security()
-      .ssl()
-         // Server SNI hostname.
-         .sniHostName("myservername")
-         // Keystore that contains the public keys for Infinispan Server.
-         // Clients use the trust store to verify Infinispan Server identities.
-         .trustStoreFileName("/path/to/server/truststore")
-         .trustStorePassword("truststorepassword".toCharArray())
-         .trustStoreType("PKCS12")
-         // Keystore that contains client certificates.
-         // Clients present these certificates to Infinispan Server.
-         .keyStoreFileName("/path/to/client/keystore")
-         .keyStorePassword("keystorepassword".toCharArray())
-         .keyStoreType("PKCS12")
-      .authentication()
-         // Clients must use the EXTERNAL mechanism for certificate authentication.
-         .saslMechanism("EXTERNAL");</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">hotrod-client.properties</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.server_list = 127.0.0.1:11222
-infinispan.client.hotrod.use_ssl = true
-# Use SNI for hostname validation
-infinispan.client.hotrod.sni_host_name = myservername
-# Keystore that contains the public keys for Infinispan Server.
-# Clients use the trust store to verify Infinispan Server identities.
-infinispan.client.hotrod.trust_store_file_name = server_truststore.pkcs12
-infinispan.client.hotrod.trust_store_password = changeme
-infinispan.client.hotrod.trust_store_type = PKCS12
-# Keystore that contains client certificates.
-# Clients present these certificates to Infinispan Server.
-infinispan.client.hotrod.key_store_file_name = client_keystore.pkcs12
-infinispan.client.hotrod.key_store_password = changeme
-infinispan.client.hotrod.key_store_type = PKCS12
-# Clients must use the EXTERNAL mechanism for certificate authentication.
-infinispan.client.hotrod.sasl_mechanism = EXTERNAL</code></pre>
-</div>
+<div class="paragraph">
+<div class="title"><code>TOPOLOGY_AWARE</code> intelligence</div>
+<p>Clients receive and store topology change events for Infinispan clusters to dynamically keep track of Infinispan Servers on the network.</p>
 </div>
 <div class="paragraph">
-<div class="title">Next steps</div>
-<p>Add a client trust store to the <code>$ISPN_HOME/server/conf</code> directory and configure Infinispan Server to use it, if necessary.</p>
+<p>To receive cluster topology, clients need the network location, either IP address or host name, of at least one Hot Rod server at startup.
+After the client connects, Infinispan Server transmits the topology to the client.
+When Infinispan Server nodes join or leave the cluster, Infinispan transmits an updated topology to the client.</p>
 </div>
-<div class="ulist _additional-resources">
-<div class="title">Additional resources</div>
-<ul>
-<li>
-<p><a href="../server/server.html#endpoint-encryption">Encrypting Infinispan Server Connections</a></p>
-</li>
-<li>
-<p><a href="../../apidocs/org/infinispan/client/hotrod/configuration/SslConfigurationBuilder.html">SslConfigurationBuilder</a></p>
-</li>
-<li>
-<p><a href="../../apidocs/org/infinispan/client/hotrod/configuration/package-summary.html">Hot Rod client configuration properties</a></p>
-</li>
-<li>
-<p><a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9/html/securing_networks/using-shared-system-certificates_securing-networks">Using Shared System Certificates</a> (Red Hat Enterprise Linux 9 Securing Networks)</p>
-</li>
-</ul>
-</div>
-</div>
-<div class="sect2">
-<h3 id="enabling-hotrod-client-statistics_hotrod-client-configuration"><a class="anchor" href="#enabling-hotrod-client-statistics_hotrod-client-configuration"></a>3.5. Enabling Hot Rod client statistics</h3>
 <div class="paragraph">
-<p>Hot Rod Java clients can provide statistics that include remote cache and near-cache hits and misses.</p>
+<div class="title"><code>HASH_DISTRIBUTION_AWARE</code> intelligence</div>
+<p>Clients receive and store topology change events for Infinispan clusters in addition to hashing information that enables clients to identify which nodes store specific keys.</p>
 </div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Open your Hot Rod Java client configuration for editing.</p>
-</li>
-<li>
-<p>Set <code>true</code> as the value for the <code>statistics</code> property or invoke the <code>statistics().enable()</code> methods.</p>
-</li>
-<li>
-<p>Export JMX MBeans for your Hot Rod client with the <code>jmx</code> and <code>jmx_domain</code> properties or invoke the <code>jmxEnable()</code> and <code>jmxDomain()</code> methods.</p>
-</li>
-<li>
-<p>Save and close your client configuration.</p>
-</li>
-</ol>
+<div class="paragraph">
+<p>For example, consider a <code>put(k,v)</code> operation. The client calculates the hash value for the key so it can locate the exact Infinispan Server node on which the data resides.
+Clients can then connect directly to that node to perform read and write operations.</p>
 </div>
-<h4 id="hot_rod_java_client_statistics" class="discrete">Hot Rod Java client statistics</h4>
+<div class="paragraph">
+<p>The benefit of <code>HASH_DISTRIBUTION_AWARE</code> intelligence is that Infinispan Server does not need to look up values based on key hashes, which uses less server-side resources.
+Another benefit is that Infinispan Server responds to client requests more quickly because they do not need to make additional network roundtrips.</p>
+</div>
+<h4 id="configuration" class="discrete">Configuration</h4>
+<div class="paragraph">
+<p>By default, the Hot Rod client uses the intelligence that you configure globally for all Infinispan clusters.</p>
+</div>
 <div class="listingblock primary">
 <div class="title">ConfigurationBuilder</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
-builder.statistics().enable()
-         .jmxEnable()
-         .jmxDomain("my.domain.org")
-       .addServer()
-         .host("127.0.0.1")
-         .port(11222);
-RemoteCacheManager remoteCacheManager = new RemoteCacheManager(builder.build());</code></pre>
+builder.clientIntelligence(ClientIntelligence.BASIC);</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">hotrod-client.properties</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">infinispan.client.hotrod.statistics = true
-infinispan.client.hotrod.jmx = true
-infinispan.client.hotrod.jmx_domain = my.domain.org</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.client_intelligence=BASIC</code></pre>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="propagation-hotrod-client-tracing"><a class="anchor" href="#propagation-hotrod-client-tracing"></a>3.6. Hot Rod client tracing propagation</h3>
 <div class="paragraph">
-<p>When you configure OpenTelemetry tracing on both the client VM and the Infinispan Server, the Hot Rod client enables automatic correlation of tracing spans between the client application and the Infinispan Server.</p>
+<p>When you configure the Hot Rod client to use multiple Infinispan clusters, you can use different intelligence for each cluster.</p>
 </div>
-<h4 id="disabling_tracing_propagation_from_the_client_to_the_infinispan_server" class="discrete">Disabling tracing propagation from the client to the Infinispan Server</h4>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Have OpenTelemetry tracing enabled on The Infinispan Server and the client side.</p>
-</li>
-</ul>
-</div>
-<div class="ulist">
-<div class="title">Procedure</div>
-<ul>
-<li>
-<p>Use the <code>disableTracingPropagation()</code> method to disable OpenTelemetry tracing propagation.</p>
-<div class="listingblock">
+<div class="listingblock primary">
+<div class="title">ConfigurationBuilder</div>
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
-
-ConfigurationBuilder builder = new ConfigurationBuilder();
-builder.addServer()
-   .host("127.0.0.1")
-   .port(ConfigurationProperties.DEFAULT_HOTROD_PORT)
-   .disableTracingPropagation();</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
+builder.addCluster("NYC").clusterClientIntelligence(ClientIntelligence.BASIC);</code></pre>
 </div>
+</div>
+<div class="listingblock secondary">
+<div class="title">hotrod-client.properties</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.cluster.intelligence.NYC=BASIC</code></pre>
+</div>
+</div>
+<h4 id="failed_server_timeout" class="discrete">Failed Server Timeout</h4>
+<div class="paragraph">
+<p>If a server does not report the topology as BASIC, or the client is unable to connect to a server due to network issues, the client will mark the server as failed.
+A client does not attempt to connect to a server marked as failed until the client receives an updated topology.
+Because BASIC topology never sends an update, the client will not re-attempt connection.</p>
 </div>
 <div class="paragraph">
-<p>The Hot Rod client stops sending tracing to the Infinispan Server.</p>
+<p>To avoid such a situation, you can use the <code>serverFailureTimeout</code> setting that clears the failed server status after a defined period of time.
+Infinispan will try to reconnect to the server after the defined timeout. If the server is still unreachable, it is marked as failed again and the connection will be re-attempted after the defined timeout.
+You can disable reconnection attempts by setting the <code>serverFailureTimeout</code> value to <code>-1</code>.</p>
 </div>
-</li>
-</ul>
+<div class="listingblock primary">
+<div class="title">ConfigurationBuilder</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
+builder.serverFailureTimeout(5000).clusterClientIntelligence(ClientIntelligence.BASIC);</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">hotrod-client.properties</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.server_failure_timeout=5000
+infinispan.client.hotrod.client_intelligence=BASIC</code></pre>
+</div>
 </div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="../server/server.html#opentelemetry-tracing">Enabling Infinispan tracing</a></p>
+<p><a href="../../apidocs/org/infinispan/client/hotrod/configuration/ClientIntelligence.html">org.infinispan.client.hotrod.configuration.ClientIntelligence</a></p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect2">
-<h3 id="near-caches-hotrod-client-configuration"><a class="anchor" href="#near-caches-hotrod-client-configuration"></a>3.7. Near Caches</h3>
+<h3 id="request-balancing_hotrod-client-beyond"><a class="anchor" href="#request-balancing_hotrod-client-beyond"></a>2.4. Request Balancing</h3>
+<div class="paragraph">
+<p>Hot Rod Java clients balance requests to Infinispan Server clusters so that read and write operations are spread across nodes.</p>
+</div>
+<div class="paragraph">
+<p>Clients that use <code>BASIC</code> or <code>TOPOLOGY_AWARE</code> intelligence use request balancing for all requests.
+Clients that use <code>HASH_DISTRIBUTION_AWARE</code> intelligence send requests directly to the node that stores the desired key.
+If the node does not respond, the clients then fall back to request balancing.</p>
+</div>
+<div class="paragraph">
+<p>The default balancing strategy is round-robin, so Hot Rod clients perform request balancing as in the following example where <code>s1</code>, <code>s2</code>, <code>s3</code> are nodes in a Infinispan cluster:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">// Connect to the Infinispan cluster
+RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build());
+// Obtain the remote cache
+RemoteCache&lt;String, String&gt; cache = cacheManager.getCache("test");
+
+//Hot Rod client sends a request to the "s1" node
+cache.put("key1", "aValue");
+//Hot Rod client sends a request to the "s2" node
+cache.put("key2", "aValue");
+//Hot Rod client sends a request to the "s3" node
+String value = cache.get("key1");
+//Hot Rod client sends the next request to the "s1" node again
+cache.remove("key2");</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<div class="title">Custom balancing policies</div>
+<p>You can use custom <code>FailoverRequestBalancingStrategy</code> implementations if you add your class in the Hot Rod client configuration.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">ConfigurationBuilder</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
+builder.addServer()
+         .host("127.0.0.1")
+         .port(11222)
+         .balancingStrategy(new MyCustomBalancingStrategy());</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">hotrod-client.properties</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.request_balancing_strategy=my.package.MyCustomBalancingStrategy</code></pre>
+</div>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="../../apidocs/org/infinispan/client/hotrod/FailoverRequestBalancingStrategy.html">org.infinispan.client.hotrod.FailoverRequestBalancingStrategy</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="hotrod_failover"><a class="anchor" href="#hotrod_failover"></a>2.5. Client Failover</h3>
+<div class="paragraph">
+<p>Hot Rod clients can automatically failover when Infinispan cluster topologies
+change. For instance, Hot Rod clients that are topology-aware can detect when
+one or more Infinispan servers fail.</p>
+</div>
+<div class="paragraph">
+<p>In addition to failover between clustered Infinispan servers, Hot Rod clients
+can failover between Infinispan clusters.</p>
+</div>
+<div class="paragraph">
+<p>For example, you have a Infinispan cluster running in New York (<strong>NYC</strong>) and
+another cluster running in London (<strong>LON</strong>). Clients sending requests to
+<strong>NYC</strong> detect that no nodes are available so they switch to the cluster in
+<strong>LON</strong>. Clients then maintain connections to <strong>LON</strong> until you manually switch
+clusters or failover happens again.</p>
+</div>
+<div class="paragraph">
+<div class="title">Transactional Caches with Failover</div>
+<p>Conditional operations, such as <code>putIfAbsent()</code>, <code>replace()</code>, <code>remove()</code>, have
+strict method return guarantees. Likewise, some operations can require previous
+values to be returned.</p>
+</div>
+<div class="paragraph">
+<p>Even though Hot Rod clients can failover, you should use transactional caches
+to ensure that operations do not partially complete and leave conflicting
+entries on different nodes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="near-caches-hotrod-client-beyond"><a class="anchor" href="#near-caches-hotrod-client-beyond"></a>2.6. Near Caches</h3>
 <div class="paragraph">
 <p>Near caches are local to Hot Rod clients and store recently used data so that every read operation does not need to traverse the network, which significantly increases performance.</p>
 </div>
@@ -1837,7 +1727,7 @@ This means you do not need to manually keep the cache size within the boundaries
 </ul>
 </div>
 <div class="sect3">
-<h4 id="configuring-near-caching-hotrod-client-configuration"><a class="anchor" href="#configuring-near-caching-hotrod-client-configuration"></a>3.7.1. Configuring Near Caches</h4>
+<h4 id="configuring-near-caching-hotrod-client-beyond"><a class="anchor" href="#configuring-near-caching-hotrod-client-beyond"></a>2.6.1. Configuring Near Caches</h4>
 <div class="paragraph">
 <p>Configure Hot Rod Java clients with near caches to store recently used data locally in the client JVM.</p>
 </div>
@@ -1917,7 +1807,7 @@ builder.remoteCache("authors")
 </div>
 </div>
 <div class="sect2">
-<h3 id="forcing-return-values_hotrod-client-configuration"><a class="anchor" href="#forcing-return-values_hotrod-client-configuration"></a>3.8. Forcing Return Values</h3>
+<h3 id="forcing-return-values_hotrod-client-beyond"><a class="anchor" href="#forcing-return-values_hotrod-client-beyond"></a>2.7. Forcing Return Values</h3>
 <div class="paragraph">
 <p>To avoid sending data unnecessarily, write operations on remote caches return <code>null</code> instead of previous values.</p>
 </div>
@@ -1975,7 +1865,7 @@ infinispan.client.hotrod.cache.somecaches*.force_return_values = true</code></pr
 </div>
 </div>
 <div class="sect2">
-<h3 id="creating-caches-hotrod_hotrod-client-configuration"><a class="anchor" href="#creating-caches-hotrod_hotrod-client-configuration"></a>3.9. Creating remote caches from Hot Rod clients</h3>
+<h3 id="creating-caches-hotrod_hotrod-client-beyond"><a class="anchor" href="#creating-caches-hotrod_hotrod-client-beyond"></a>2.8. Creating remote caches from Hot Rod clients</h3>
 <div class="paragraph">
 <p>Use the Infinispan Hot Rod API to create remote caches on Infinispan Server from Java, C++, .NET/C#, JS clients and more.</p>
 </div>
@@ -2052,8 +1942,106 @@ infinispan.client.hotrod.cache.[my.other.cache].configuration_uri=file:///path/t
 </ul>
 </div>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="hotrod-client-observability_hotrod-client-beyond"><a class="anchor" href="#hotrod-client-observability_hotrod-client-beyond"></a>3. Observability</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This chapter covers observability features including metrics, distributed tracing, and statistics that enable monitoring and troubleshooting of Hot Rod client operations in production environments.</p>
+</div>
 <div class="sect2">
-<h3 id="configuring-hotrod-metrics_hotrod-client-configuration"><a class="anchor" href="#configuring-hotrod-metrics_hotrod-client-configuration"></a>3.10. Configuring Hot Rod Client metrics</h3>
+<h3 id="enabling-hotrod-client-statistics_hotrod-client-observability"><a class="anchor" href="#enabling-hotrod-client-statistics_hotrod-client-observability"></a>3.1. Enabling Hot Rod client statistics</h3>
+<div class="paragraph">
+<p>Hot Rod Java clients can provide statistics that include remote cache and near-cache hits and misses.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Open your Hot Rod Java client configuration for editing.</p>
+</li>
+<li>
+<p>Set <code>true</code> as the value for the <code>statistics</code> property or invoke the <code>statistics().enable()</code> methods.</p>
+</li>
+<li>
+<p>Export JMX MBeans for your Hot Rod client with the <code>jmx</code> and <code>jmx_domain</code> properties or invoke the <code>jmxEnable()</code> and <code>jmxDomain()</code> methods.</p>
+</li>
+<li>
+<p>Save and close your client configuration.</p>
+</li>
+</ol>
+</div>
+<h4 id="hot_rod_java_client_statistics" class="discrete">Hot Rod Java client statistics</h4>
+<div class="listingblock primary">
+<div class="title">ConfigurationBuilder</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
+builder.statistics().enable()
+         .jmxEnable()
+         .jmxDomain("my.domain.org")
+       .addServer()
+         .host("127.0.0.1")
+         .port(11222);
+RemoteCacheManager remoteCacheManager = new RemoteCacheManager(builder.build());</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">hotrod-client.properties</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">infinispan.client.hotrod.statistics = true
+infinispan.client.hotrod.jmx = true
+infinispan.client.hotrod.jmx_domain = my.domain.org</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="propagation-hotrod-client-tracing"><a class="anchor" href="#propagation-hotrod-client-tracing"></a>3.2. Hot Rod client tracing propagation</h3>
+<div class="paragraph">
+<p>When you configure OpenTelemetry tracing on both the client VM and the Infinispan Server, the Hot Rod client enables automatic correlation of tracing spans between the client application and the Infinispan Server.</p>
+</div>
+<h4 id="disabling_tracing_propagation_from_the_client_to_the_infinispan_server" class="discrete">Disabling tracing propagation from the client to the Infinispan Server</h4>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Have OpenTelemetry tracing enabled on The Infinispan Server and the client side.</p>
+</li>
+</ul>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Use the <code>disableTracingPropagation()</code> method to disable OpenTelemetry tracing propagation.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
+
+ConfigurationBuilder builder = new ConfigurationBuilder();
+builder.addServer()
+   .host("127.0.0.1")
+   .port(ConfigurationProperties.DEFAULT_HOTROD_PORT)
+   .disableTracingPropagation();</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The Hot Rod client stops sending tracing to the Infinispan Server.</p>
+</div>
+</li>
+</ul>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
+<ul>
+<li>
+<p><a href="../server/server.html#opentelemetry-tracing">Enabling Infinispan tracing</a></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuring-hotrod-metrics_hotrod-client-observability"><a class="anchor" href="#configuring-hotrod-metrics_hotrod-client-observability"></a>3.3. Configuring Hot Rod Client metrics</h3>
 <div class="paragraph">
 <p>Hot Rod Java clients collect and expose metrics related to the cache requests.
 Implement the SPI <code>RemoteCacheManagerMetricsRegistry</code> to register metrics in the collector of your choice.
@@ -2150,7 +2138,7 @@ The <code>&lt;prefix&gt;</code> is configured here and, by default, is <code>cli
 </div>
 </div>
 <div class="sect1">
-<h2 id="hotrod-client-api_hot_rod"><a class="anchor" href="#hotrod-client-api_hot_rod"></a>4. Hot Rod Client API</h2>
+<h2 id="hotrod-client-api_hotrod-client-observability"><a class="anchor" href="#hotrod-client-api_hotrod-client-observability"></a>4. Hot Rod Client API</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan Hot Rod client API provides interfaces for creating caches
@@ -3645,7 +3633,7 @@ container.start();</code></pre>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-15 09:42:19 UTC
+Last updated 2025-11-08 07:59:13 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -3678,6 +3666,6 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
   })
 })
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.23">
+<meta name="generator" content="Asciidoctor 2.0.26">
 <title>Using the Infinispan REST API</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
@@ -116,7 +116,6 @@ h1 strong,h2 strong,h3 strong,#toctitle strong,.sidebarblock>.content>.title str
 :not(pre):not([class^=L])>code{font-size:.9375em;font-style:normal!important;letter-spacing:0;padding:.1em .5ex;word-spacing:-.15em;background:#f7f7f8;border-radius:4px;line-height:1.45;text-rendering:optimizeSpeed}
 pre{color:rgba(0,0,0,.9);font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;line-height:1.45;text-rendering:optimizeSpeed}
 pre code,pre pre{color:inherit;font-size:inherit;line-height:inherit}
-pre>code{display:block}
 pre.nowrap,pre.nowrap pre{white-space:pre;word-wrap:normal}
 em em{font-style:normal}
 strong strong{font-weight:400}
@@ -219,6 +218,7 @@ table.tableblock.fit-content>caption.title{white-space:nowrap;width:0}
 .literalblock pre,.listingblock>.content>pre:not(.highlight),.listingblock>.content>pre[class=highlight],.listingblock>.content>pre[class^="highlight "]{background:#f7f7f8}
 .literalblock.output pre{color:#f7f7f8;background:rgba(0,0,0,.9)}
 .listingblock>.content{position:relative}
+.listingblock pre>code{display:block}
 .listingblock code[data-lang]::before{display:none;content:attr(data-lang);position:absolute;font-size:.75em;top:.425rem;right:.5rem;line-height:1;text-transform:uppercase;color:inherit;opacity:.5}
 .listingblock:hover code[data-lang]::before{display:block}
 .listingblock.terminal pre .command::before{content:attr(data-prompt);padding-right:.5em;color:inherit;opacity:.5}
@@ -548,7 +548,7 @@ $(addBlockSwitches);
 <li><a href="#rest_accept">1.3.2. Accept Headers</a></li>
 <li><a href="#rest_encoded_names">1.3.3. Names with Special Characters</a></li>
 <li><a href="#rest_key_content_type">1.3.4. Key-Content-Type Headers</a></li>
-<li><a href="#rest_json_proto_conversion">1.3.5. JSON/Protostream Conversion</a></li>
+<li><a href="#rest_json_proto_conversion">1.3.5. JSON/ProtoStream Conversion</a></li>
 </ul>
 </li>
 <li><a href="#rest_cors">1.4. Cross-Origin Resource Sharing (CORS) Requests</a>
@@ -602,6 +602,7 @@ $(addBlockSwitches);
 <li><a href="#rest_v2_caches_set_topology_stable">2.1.34. Set a Stable Topology</a></li>
 <li><a href="#rest_v2_query_cache">2.1.35. Indexing and Querying with the REST API</a>
 <ul class="sectlevel4">
+<li><a href="#rest_v2_query_delete">Delete by query</a></li>
 <li><a href="#rest_v2_query_reindex">Rebuilding indexes</a></li>
 <li><a href="#rest_v2_query_updateIndexSchema">Updating index schema</a></li>
 <li><a href="#rest_v2_query_purge_index">Purging indexes</a></li>
@@ -625,6 +626,8 @@ $(addBlockSwitches);
 <li><a href="#rest_v2_xsite_clear_transfer_status_rest">Clearing state transfer status</a></li>
 <li><a href="#rest_v2_xsite_tuning_takeoffline_rest">Modifying take offline conditions</a></li>
 <li><a href="#rest_v2_xsite_cancel_receive_state_rest">Canceling state transfer from receiving sites</a></li>
+<li><a href="#rest_v2_xsite_get_state_transfer_mode_rest">Retrieving the state transfer mode</a></li>
+<li><a href="#rest_v2_xsite_set_state_transfer_mode_rest">Setting the state transfer mode</a></li>
 </ul>
 </li>
 <li><a href="#rest_v2_rolling_upgrades">2.1.37. Rolling Upgrades</a>
@@ -699,8 +702,6 @@ $(addBlockSwitches);
 <li><a href="#rest_v2_cache_manager_site_status_rest">Getting status of backup locations</a></li>
 <li><a href="#rest_v2_cache_manager_take_offline_rest">Taking backup locations offline</a></li>
 <li><a href="#rest_v2_cache_manager_bring_online_rest">Bringing backup locations online</a></li>
-<li><a href="#rest_v2_cache_manager_get_state_transfer_mode_rest">Retrieving the state transfer mode</a></li>
-<li><a href="#rest_v2_cache_manager_set_state_transfer_mode_rest">Setting the state transfer mode</a></li>
 <li><a href="#rest_v2_cache_manager_start_push_rest">Starting state transfer</a></li>
 <li><a href="#rest_v2_cache_manager_cancel_push_rest">Canceling state transfer</a></li>
 </ul>
@@ -744,6 +745,7 @@ $(addBlockSwitches);
 <li><a href="#rest_v2_restore_cluster_head">2.6.10. Checking Restore Progress</a></li>
 <li><a href="#rest_v2_restore_cluster_delete">2.6.11. Deleting Restore Metadata</a></li>
 <li><a href="#rest_v2_cluster_distribution">2.6.12. Checking Cluster Distribution</a></li>
+<li><a href="#rest_v2_cluster_members">2.6.13. Getting Cluster Members Information</a></li>
 </ul>
 </li>
 <li><a href="#rest_v2_logging">2.7. Infinispan Server logging configuration</a>
@@ -1057,7 +1059,7 @@ specific header <code>Key-Content-Type</code> for keys in different formats.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_json_proto_conversion"><a class="anchor" href="#rest_json_proto_conversion"></a>1.3.5. JSON/Protostream Conversion</h4>
+<h4 id="rest_json_proto_conversion"><a class="anchor" href="#rest_json_proto_conversion"></a>1.3.5. JSON/ProtoStream Conversion</h4>
 <div class="paragraph">
 <p>When caches are indexed, or specifically configured to store <code>application/x-protostream</code>, you can send and receive JSON documents that are automatically converted to and from Protobuf.</p>
 </div>
@@ -1508,10 +1510,10 @@ Write succinct file names.</p>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:schemaLocation="urn:infinispan:config:15.2 https://infinispan.org/schemas/infinispan-config-15.2.xsd
-                          urn:infinispan:server:15.2 https://infinispan.org/schemas/infinispan-server-15.2.xsd"
-      xmlns="urn:infinispan:config:15.2"
-      xmlns:server="urn:infinispan:server:15.2"&gt;
+      xsi:schemaLocation="urn:infinispan:config:16.0 https://infinispan.org/schemas/infinispan-config-16.0.xsd
+                          urn:infinispan:server:16.0 https://infinispan.org/schemas/infinispan-server-16.0.xsd"
+      xmlns="urn:infinispan:config:16.0"
+      xmlns:server="urn:infinispan:server:16.0"&gt;
   &lt;cache-container name="default"
                    statistics="true"&gt;
     &lt;distributed-cache name="mycacheone"
@@ -1620,7 +1622,7 @@ Write succinct file names.</p>
 <p><a href="../../configuration-schema/index.html">Infinispan configuration schema reference</a></p>
 </li>
 <li>
-<p><a href="https://infinispan.org/schemas/infinispan-config-15.2.xsd">infinispan-config-15.2.xsd</a></p>
+<p><a href="https://infinispan.org/schemas/infinispan-config-16.0.xsd">infinispan-config-16.0.xsd</a></p>
 </li>
 </ul>
 </div>
@@ -3164,6 +3166,61 @@ However, you can define the current cluster topology as stable for a specific ca
 </div>
 </div>
 <div class="sect4">
+<h5 id="rest_v2_query_delete"><a class="anchor" href="#rest_v2_query_delete"></a>Delete by query</h5>
+<div class="paragraph">
+<p>Delete multiple entries using delete by query in remote caches with <code>DELETE</code> requests and the <code>?action=deleteByQuery&amp;query</code> parameter from any HTTP client.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">DELETE /rest/v2/caches/{cacheName}?action=deleteByQuery&amp;query={ickle query}</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 16. Request Parameters</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Required or Optional</th>
+<th class="tableblock halign-left valign-top">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>query</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">REQUIRED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Specifies the query string.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>local</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OPTIONAL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When <code>true</code>, the query is restricted to the data present in node that process the request. The default is <code>false</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>To use the body of the request instead of specifying query parameters, invoke
+<code>POST</code> requests as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">POST /rest/v2/caches/{cacheName}?action=deleteByQuery</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Delete statement in request body</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+ "query":"DELETE from Entity where name:\"user1\""
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
 <h5 id="rest_v2_query_reindex"><a class="anchor" href="#rest_v2_query_reindex"></a>Rebuilding indexes</h5>
 <div class="paragraph">
 <p>When you delete fields or change index field definitions, you must rebuild the index to ensure the index is consistent with data in the cache.</p>
@@ -3177,7 +3234,7 @@ However, you can define the current cluster topology as stable for a specific ca
 <td class="content">
 <div class="paragraph">
 <p>Rebuilding Protobuf schema using REST, CLI, Infinispan Console or remote client might lead to inconsistencies.
-Remote clients might have different versions of the Protostream entity and this might lead to unreliable behavior.</p>
+Remote clients might have different versions of the ProtoStream entity and this might lead to unreliable behavior.</p>
 </div>
 </td>
 </tr>
@@ -3192,7 +3249,7 @@ Remote clients might have different versions of the Protostream entity and this 
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 16. Request Parameters</caption>
+<caption class="title">Table 17. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -3408,7 +3465,7 @@ parameter.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 17. Request Parameters</caption>
+<caption class="title">Table 18. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -3583,7 +3640,7 @@ This operation does not clear index statistics.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>indexed_class_names</code> Provides the class names of the indexes present in the cache. For Protobuf the value is always <code>org.infinispan.query.remote.impl.indexing.ProtobufValueWrapper</code>.</p>
+<p><code>indexed_class_names</code> Provides the class names of the indexes present in the cache. For Protobuf the value is always <code>org.infinispan.server.core.query.impl.indexing.ProtobufValueWrapper</code>.</p>
 </li>
 <li>
 <p><code>indexed_entities_count</code> Provides the number of entities indexed per class.</p>
@@ -3687,8 +3744,7 @@ requests.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Infinispan responds with the status of each backup location in JSON format, as
-in the following example:</p>
+<p>Infinispan responds with the status of each backup location in JSON format, as in the following example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -3709,7 +3765,7 @@ in the following example:</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 18. Returned Status</caption>
+<caption class="title">Table 19. Returned Status</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -3723,15 +3779,16 @@ in the following example:</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have a cross-site view with the backup location.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have the backup location with <code>online</code> status.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No nodes in the local cluster have a cross-site view with the backup location.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have the backup location with <code>offline</code> status.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>mixed</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Some nodes in the local cluster have a cross-site view with the backup location, other nodes in the local cluster do not have a cross-site view. The response indicates status for each node.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Some nodes in the local cluster have the backup location with <code>online</code> status while others have the backup location with <code>offline</code> status.
+The response indicates status for each node.</p></td>
 </tr>
 </tbody>
 </table>
@@ -3747,8 +3804,7 @@ in the following example:</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Infinispan responds with the status of each node in the site in JSON
-format, as in the following example:</p>
+<p>Infinispan responds with the status of each node in JSON format, as in the following example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -3759,7 +3815,7 @@ format, as in the following example:</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 19. Returned Status</caption>
+<caption class="title">Table 20. Returned Status</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -3773,15 +3829,16 @@ format, as in the following example:</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The node is online.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The node has <code>{siteName}</code> with <code>online</code> status</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The node is offline.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The node has <code>{siteName}</code> with <code>offline</code> status</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>failed</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Not possible to retrieve status. The remote cache could be shutting down or a network error occurred during the request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not possible to retrieve status.
+The remote cache could be shutting down or a network error occurred during the request.</p></td>
 </tr>
 </tbody>
 </table>
@@ -3844,8 +3901,7 @@ parameter.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Infinispan responds with the status of state transfer for each backup location
-in JSON format, as in the following example:</p>
+<p>Infinispan responds with the status of state transfer for each backup location in JSON format, as in the following example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -3856,7 +3912,7 @@ in JSON format, as in the following example:</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 20. Returned status</caption>
+<caption class="title">Table 21. Returned status</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -3870,19 +3926,20 @@ in JSON format, as in the following example:</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SENDING</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">State transfer to the backup location is in progress.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The state transfer to the backup location is in progress.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OK</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">State transfer completed successfully.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The state transfer completed successfully.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERROR</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">An error occurred with state transfer. Check log files.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An error occurred with state transfer.
+Check the log files.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CANCELLING</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">State transfer cancellation is in progress.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The state transfer cancellation is in progress.</p></td>
 </tr>
 </tbody>
 </table>
@@ -3890,8 +3947,9 @@ in JSON format, as in the following example:</p>
 <div class="sect4">
 <h5 id="rest_v2_xsite_clear_transfer_status_rest"><a class="anchor" href="#rest_v2_xsite_clear_transfer_status_rest"></a>Clearing state transfer status</h5>
 <div class="paragraph">
-<p>Clear state transfer status for sending sites with the
-<code>?action=clear-push-state-status</code> parameter.</p>
+<p>Clear the state transfer status in the sending cluster with the
+<code>?action=clear-push-state-status</code> parameter.
+It is recommended to clear it before starting the push for a new state transfer.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -3902,8 +3960,8 @@ in JSON format, as in the following example:</p>
 <div class="sect4">
 <h5 id="rest_v2_xsite_tuning_takeoffline_rest"><a class="anchor" href="#rest_v2_xsite_tuning_takeoffline_rest"></a>Modifying take offline conditions</h5>
 <div class="paragraph">
-<p>Sites go offline if certain conditions are met. Modify the take offline
-parameters to control when backup locations automatically go offline.</p>
+<p>The backup location go offline when certain conditions are met.
+Modify the take offline parameters to control when backup locations automatically go offline.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -3917,8 +3975,7 @@ parameters to control when backup locations automatically go offline.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>The Infinispan response includes <code>after_failures</code> and <code>min_wait</code> fields as
-follows:</p>
+<p>The Infinispan response includes <code>after_failures</code> and <code>min_wait</code> fields as follows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -3930,32 +3987,52 @@ follows:</p>
 </div>
 </li>
 <li>
-<p>Modify take offline parameters in the body of <code>PUT</code> requests.</p>
+<p>Modify the take offline parameters in the body of <code>PUT</code> requests.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-none hljs">PUT /rest/v2/caches/{cacheName}/x-site/backups/{siteName}/take-offline-config</code></pre>
 </div>
 </div>
-<div class="paragraph">
-<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
-</div>
 </li>
 </ol>
+</div>
+<div class="paragraph">
+<p>If the operation successfully completes, the service returns <code>204 (No Content)</code>.</p>
 </div>
 </div>
 <div class="sect4">
 <h5 id="rest_v2_xsite_cancel_receive_state_rest"><a class="anchor" href="#rest_v2_xsite_cancel_receive_state_rest"></a>Canceling state transfer from receiving sites</h5>
 <div class="paragraph">
-<p>If the connection between two backup locations breaks, you can cancel state
-transfer on the site that is receiving the push.</p>
+<p>If the connection between two backup locations breaks, you can cancel state transfer on the backup location that is receiving the push.</p>
 </div>
 <div class="paragraph">
-<p>Cancel state transfer from a remote site and keep the current state of the
-local cache with the <code>?action=cancel-receive-state</code> parameter.</p>
+<p>Cancel state transfer from another location and keep the current state of the local cache with the <code>?action=cancel-receive-state</code> parameter.</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-none hljs">POST /rest/v2/caches/{cacheName}/x-site/backups/{siteName}?action=cancel-receive-state</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="rest_v2_xsite_get_state_transfer_mode_rest"><a class="anchor" href="#rest_v2_xsite_get_state_transfer_mode_rest"></a>Retrieving the state transfer mode</h5>
+<div class="paragraph">
+<p>Check the state transfer mode with <code>GET</code> requests.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">GET /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="rest_v2_xsite_set_state_transfer_mode_rest"><a class="anchor" href="#rest_v2_xsite_set_state_transfer_mode_rest"></a>Setting the state transfer mode</h5>
+<div class="paragraph">
+<p>Configure the state transfer mode with the <code>?action=set</code> parameter.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">POST /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode?action=set&amp;mode={mode}</code></pre>
 </div>
 </div>
 </div>
@@ -3985,7 +4062,6 @@ local cache with the <code>?action=cancel-receive-state</code> parameter.</p>
   "remote-store": {
     "cache": "my-cache",
     "shared": true,
-    "raw-values": true,
     "socket-timeout": 60000,
     "protocol-version": "2.9",
     "remote-server": [
@@ -3994,10 +4070,6 @@ local cache with the <code>?action=cancel-receive-state</code> parameter.</p>
         "port": 12222
       }
     ],
-    "connection-pool": {
-      "max-active": 110,
-      "exhausted-action": "CREATE_NEW"
-    },
     "async-executor": {
       "properties": {
         "name": 4
@@ -4036,7 +4108,7 @@ local cache with the <code>?action=cancel-receive-state</code> parameter.</p>
 </div>
 <div class="paragraph">
 <p>Several elements are optional such as <code>security</code>, <code>async-executor</code> and <code>connection-pool</code>.
-The configuration must contain minimally the cache name, the <code>raw-values</code> set to <code>false</code> and the
+The configuration must contain minimally the cache name and the
 host/ip of the single port in the source cluster. For details about the <code>remote-store</code> configuration,
 consult the <a href="https://infinispan.org/schemas/infinispan-cachestore-remote-config-12.0.xsd">XSD Schema</a>.</p>
 </div>
@@ -4197,7 +4269,7 @@ It no source was connected, it returns code 304 (Not Modified).</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 21. Headers</caption>
+<caption class="title">Table 22. Headers</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -4882,7 +4954,7 @@ running and serving requests.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 22. Headers</caption>
+<caption class="title">Table 23. Headers</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -4904,7 +4976,7 @@ running and serving requests.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 23. Request parameters</caption>
+<caption class="title">Table 24. Request parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -4974,7 +5046,7 @@ configuration, as in the following example:</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 24. Request parameters</caption>
+<caption class="title">Table 25. Request parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5021,7 +5093,7 @@ configuration, as in the following example:</p>
 </table>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 25. Request parameters</caption>
+<caption class="title">Table 26. Request parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5239,7 +5311,7 @@ A <code>202</code> response indicates that the backup request is accepted for pr
 for the backup operation, as follows:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 26. JSON Parameters</caption>
+<caption class="title">Table 27. JSON Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5266,7 +5338,7 @@ for the backup operation, as follows:</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 27. Resource Parameters</caption>
+<caption class="title">Table 28. Resource Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5412,7 +5484,7 @@ that the restore request has been accepted for processing.</p>
 an archive that is available on the server.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 28. JSON Parameters</caption>
+<caption class="title">Table 29. JSON Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5439,7 +5511,7 @@ an archive that is available on the server.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 29. Resource Parameters</caption>
+<caption class="title">Table 30. Resource Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5501,7 +5573,7 @@ an archive that is available on the server.</p>
 local backup archive to the server.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 30. Form Data</caption>
+<caption class="title">Table 31. Form Data</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -5619,7 +5691,7 @@ The <code>data</code> value will contain the declarative configuration of the en
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 31. Headers</caption>
+<caption class="title">Table 32. Headers</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5641,7 +5713,7 @@ The <code>data</code> value will contain the declarative configuration of the en
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 32. Request parameters</caption>
+<caption class="title">Table 33. Request parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5683,7 +5755,7 @@ Currently, we expose only <code>LIFECYCLE</code> events.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 33. Headers</caption>
+<caption class="title">Table 34. Headers</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5705,7 +5777,7 @@ Currently, we expose only <code>LIFECYCLE</code> events.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 34. Request parameters</caption>
+<caption class="title">Table 35. Request parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5774,7 +5846,7 @@ requests.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 35. Returned status</caption>
+<caption class="title">Table 36. Returned Status</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -5788,15 +5860,16 @@ requests.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>online</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">All nodes in the local cluster have a cross-site view with the backup location.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All caches in the local cluster have the backup location with <code>online</code> status.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>offline</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No nodes in the local cluster have a cross-site view with the backup location.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All caches in the local cluster have the backup location with <code>offline</code> status.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>mixed</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Some nodes in the local cluster have a cross-site view with the backup location, other nodes in the local cluster do not have a cross-site view. The response indicates status for each node.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Some caches in the local cluster have the backup location with <code>online</code> status while others have the backup location with <code>offline</code> status.
+The response indicates status for each cache.</p></td>
 </tr>
 </tbody>
 </table>
@@ -5828,28 +5901,6 @@ requests.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-none hljs">POST /rest/v2/container/x-site/backups/{siteName}?action=bring-online</code></pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="rest_v2_cache_manager_get_state_transfer_mode_rest"><a class="anchor" href="#rest_v2_cache_manager_get_state_transfer_mode_rest"></a>Retrieving the state transfer mode</h5>
-<div class="paragraph">
-<p>Check the state transfer mode with <code>GET</code> requests.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">GET /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode</code></pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="rest_v2_cache_manager_set_state_transfer_mode_rest"><a class="anchor" href="#rest_v2_cache_manager_set_state_transfer_mode_rest"></a>Setting the state transfer mode</h5>
-<div class="paragraph">
-<p>Configure the state transfer mode with the <code>?action=set</code> parameter.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">POST /rest/v2/caches/{cacheName}/x-site/backups/{site}/state-transfer-mode?action=set&amp;mode={mode}</code></pre>
 </div>
 </div>
 </div>
@@ -6193,7 +6244,7 @@ routing, threads, in addition to configuration and log files.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 36. Request Parameters</caption>
+<caption class="title">Table 37. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -6281,7 +6332,7 @@ and so on) currently stored in the cache container for the cluster.</p>
 for the backup operation, as follows:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 37. JSON Parameters</caption>
+<caption class="title">Table 38. JSON Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -6404,7 +6455,7 @@ matches the container name for the cluster.</p>
 an archive that is available on the server.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 38. JSON Parameters</caption>
+<caption class="title">Table 39. JSON Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -6431,7 +6482,7 @@ an archive that is available on the server.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 39. Resource Parameters</caption>
+<caption class="title">Table 40. Resource Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -6493,7 +6544,7 @@ an archive that is available on the server.</p>
 local backup archive to the server.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 40. Form Data</caption>
+<caption class="title">Table 41. Form Data</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -6643,6 +6694,65 @@ disabled, information about memory usage values is -1. The properties are:</p>
 </ul>
 </div>
 </div>
+<div class="sect3">
+<h4 id="rest_v2_cluster_members"><a class="anchor" href="#rest_v2_cluster_members"></a>2.6.13. Getting Cluster Members Information</h4>
+<div class="paragraph">
+<p>Retrieving information about each cache manager member in the cluster with <code>GET</code> requests.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">GET /rest/v2/cluster/members</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan responds with information in JSON format, as in the following example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+    "rolling_upgrade" : true,
+    "members" : [ {
+        "node_address" : "NodeA",
+        "cache_manager_status" : "RUNNING",
+        "version" : "16.0.1.Final",
+        "physical_addresses" : "[127.0.0.1:64217]"
+    },{
+        "node_address" : "NodeB",
+        "cache_manager_status" : "RUNNING",
+        "version" : "16.0.8.Final",
+        "physical_addresses" : "[127.0.0.1:64218]"
+    } ]
+}</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rolling_upgrade</code> contains a flag indicate a rolling upgrade going on</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For each container x</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>version</code> contains the Infinispan version</p>
+</li>
+<li>
+<p><code>physical_addresses</code> contains the physical network addresses associated with the Cache Manager</p>
+</li>
+<li>
+<p><code>cache_manager_status</code> the lifecycle status of the Cache Manager.
+For possible values, check the <a href="https://infinispan.org/docs/stable/apidocs/org/infinispan/lifecycle/ComponentStatus.html"><code>org.infinispan.lifecycle.ComponentStatus</code></a> documentation</p>
+</li>
+<li>
+<p><code>node_address</code> contains the logical address of the Cache Manager</p>
+</li>
+</ul>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="rest_v2_logging"><a class="anchor" href="#rest_v2_logging"></a>2.7. Infinispan Server logging configuration</h3>
@@ -6772,7 +6882,7 @@ If no appenders are specified, those specified in the root logger will be used.<
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 41. Request Parameters</caption>
+<caption class="title">Table 42. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7052,7 +7162,7 @@ The principal need not exist in the realm in use.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 42. Request Parameters</caption>
+<caption class="title">Table 43. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7085,7 +7195,7 @@ The principal need not exist in the realm in use.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 43. Request Parameters</caption>
+<caption class="title">Table 44. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7137,7 +7247,7 @@ The principal need not exist in the realm in use.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 44. Request Parameters</caption>
+<caption class="title">Table 45. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7170,7 +7280,7 @@ The principal need not exist in the realm in use.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 45. Request Parameters</caption>
+<caption class="title">Table 46. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7650,7 +7760,7 @@ public class RestExample {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-09-03 09:40:51 UTC
+Last updated 2025-11-08 07:59:13 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -7683,6 +7793,6 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
   })
 })
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
 </body>
 </html>

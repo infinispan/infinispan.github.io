@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.23">
+<meta name="generator" content="Asciidoctor 2.0.26">
 <title>Embedding Infinispan caches in Java applications</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
@@ -116,7 +116,6 @@ h1 strong,h2 strong,h3 strong,#toctitle strong,.sidebarblock>.content>.title str
 :not(pre):not([class^=L])>code{font-size:.9375em;font-style:normal!important;letter-spacing:0;padding:.1em .5ex;word-spacing:-.15em;background:#f7f7f8;border-radius:4px;line-height:1.45;text-rendering:optimizeSpeed}
 pre{color:rgba(0,0,0,.9);font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;line-height:1.45;text-rendering:optimizeSpeed}
 pre code,pre pre{color:inherit;font-size:inherit;line-height:inherit}
-pre>code{display:block}
 pre.nowrap,pre.nowrap pre{white-space:pre;word-wrap:normal}
 em em{font-style:normal}
 strong strong{font-weight:400}
@@ -219,6 +218,7 @@ table.tableblock.fit-content>caption.title{white-space:nowrap;width:0}
 .literalblock pre,.listingblock>.content>pre:not(.highlight),.listingblock>.content>pre[class=highlight],.listingblock>.content>pre[class^="highlight "]{background:#f7f7f8}
 .literalblock.output pre{color:#f7f7f8;background:rgba(0,0,0,.9)}
 .listingblock>.content{position:relative}
+.listingblock pre>code{display:block}
 .listingblock code[data-lang]::before{display:none;content:attr(data-lang);position:absolute;font-size:.75em;top:.425rem;right:.5rem;line-height:1;text-transform:uppercase;color:inherit;opacity:.5}
 .listingblock:hover code[data-lang]::before{display:block}
 .listingblock.terminal pre .command::before{content:attr(data-prompt);padding-right:.5em;color:inherit;opacity:.5}
@@ -543,23 +543,18 @@ $(addBlockSwitches);
 <li><a href="#configuring-pom-xml_configuring-maven-repository">1.1. Configuring your project POM</a></li>
 </ul>
 </li>
-<li><a href="#virtual-threads-embedded_caches">2. Virtual Threads Support</a>
+<li><a href="#creating-embedded-caches">2. Creating embedded caches</a>
 <ul class="sectlevel2">
-<li><a href="#disable-virtual-threads_embedded_caches">2.1. Disable Virtual Threads</a></li>
-</ul>
-</li>
-<li><a href="#creating-embedded-caches">3. Creating embedded caches</a>
-<ul class="sectlevel2">
-<li><a href="#installing-embedded_creating-embedded-caches">3.1. Adding Infinispan to your project</a></li>
-<li><a href="#configuring-embedded-caches_creating-embedded-caches">3.2. Creating and using embedded caches</a></li>
-<li><a href="#cache-modes_creating-embedded-caches">3.3. Cache API</a>
+<li><a href="#installing-embedded_creating-embedded-caches">2.1. Adding Infinispan to your project</a></li>
+<li><a href="#configuring-embedded-caches_creating-embedded-caches">2.2. Creating and using embedded caches</a></li>
+<li><a href="#cache-modes_creating-embedded-caches">2.3. Cache API</a>
 <ul class="sectlevel3">
-<li><a href="#advancedcache_api">3.3.1. AdvancedCache API</a>
+<li><a href="#advancedcache_api">2.3.1. AdvancedCache API</a>
 <ul class="sectlevel4">
 <li><a href="#flags">Flags</a></li>
 </ul>
 </li>
-<li><a href="#cache_asynchronous_api">3.3.2. Asynchronous API</a>
+<li><a href="#cache_asynchronous_api">2.3.2. Asynchronous API</a>
 <ul class="sectlevel4">
 <li><a href="#why_use_such_an_api">Why use such an API?</a></li>
 <li><a href="#which_processes_actually_happen_asynchronously">Which processes actually happen asynchronously?</a></li>
@@ -569,72 +564,72 @@ $(addBlockSwitches);
 </li>
 </ul>
 </li>
-<li><a href="#rbac-embedded">4. Programmatically configuring user roles and permissions</a>
+<li><a href="#rbac-embedded">3. Programmatically configuring user roles and permissions</a>
 <ul class="sectlevel2">
-<li><a href="#default-user-roles_rbac-embedded">4.1. Infinispan user roles and permissions</a>
+<li><a href="#default-user-roles_rbac-embedded">3.1. Infinispan user roles and permissions</a>
 <ul class="sectlevel3">
-<li><a href="#user-permissions_rbac-embedded">4.1.1. Permissions</a></li>
-<li><a href="#role-mappers_rbac-embedded">4.1.2. Role and permission mappers</a>
+<li><a href="#user-permissions_rbac-embedded">3.1.1. Permissions</a></li>
+<li><a href="#role-mappers_rbac-embedded">3.1.2. Role and permission mappers</a>
 <ul class="sectlevel4">
 <li><a href="#mapping_users_to_roles_and_permissions_in_infinispan">Mapping users to roles and permissions in Infinispan</a></li>
 </ul>
 </li>
-<li><a href="#configuring-role-mappers_rbac-embedded">4.1.3. Configuring role mappers</a></li>
+<li><a href="#configuring-role-mappers_rbac-embedded">3.1.3. Configuring role mappers</a></li>
 </ul>
 </li>
-<li><a href="#configuring-authorization-embedded_rbac-embedded">4.2. Enabling and configuring authorization for embedded caches</a></li>
-<li><a href="#adding-authorization-roles-at-runtime_rbac-embedded">4.3. Adding authorization roles at runtime</a></li>
-<li><a href="#executing-secure-caches_rbac-embedded">4.4. Executing code with secure caches</a></li>
-<li><a href="#configuring-acl-cache_rbac-embedded">4.5. Configuring the access control list (ACL) cache</a>
+<li><a href="#configuring-authorization-embedded_rbac-embedded">3.2. Enabling and configuring authorization for embedded caches</a></li>
+<li><a href="#adding-authorization-roles-at-runtime_rbac-embedded">3.3. Adding authorization roles at runtime</a></li>
+<li><a href="#executing-secure-caches_rbac-embedded">3.4. Executing code with secure caches</a></li>
+<li><a href="#configuring-acl-cache_rbac-embedded">3.5. Configuring the access control list (ACL) cache</a>
 <ul class="sectlevel3">
-<li><a href="#flushing_acl_caches">4.5.1. Flushing ACL caches</a></li>
+<li><a href="#flushing_acl_caches">3.5.1. Flushing ACL caches</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#statistics-jmx">5. Enabling and configuring Infinispan statistics and JMX monitoring</a>
+<li><a href="#statistics-jmx">4. Enabling and configuring Infinispan statistics and JMX monitoring</a>
 <ul class="sectlevel2">
-<li><a href="#enabling-statistics-embedded_statistics-jmx">5.1. Enabling statistics in embedded caches</a></li>
-<li><a href="#configuring-metrics_statistics-jmx">5.2. Configuring Infinispan metrics</a></li>
-<li><a href="#enabling-jmx_statistics-jmx">5.3. Registering JMX MBeans</a>
+<li><a href="#enabling-statistics-embedded_statistics-jmx">4.1. Enabling statistics in embedded caches</a></li>
+<li><a href="#configuring-metrics_statistics-jmx">4.2. Configuring Infinispan metrics</a></li>
+<li><a href="#enabling-jmx_statistics-jmx">4.3. Registering JMX MBeans</a>
 <ul class="sectlevel3">
-<li><a href="#enabling-jmx-port_statistics-jmx">5.3.1. Enabling JMX remote ports</a></li>
-<li><a href="#jmx-mbeans_statistics-jmx">5.3.2. Infinispan MBeans</a></li>
-<li><a href="#registering-jmx-mbean-servers-statistics-jmx">5.3.3. Registering MBeans in custom MBean servers</a></li>
+<li><a href="#enabling-jmx-port_statistics-jmx">4.3.1. Enabling JMX remote ports</a></li>
+<li><a href="#jmx-mbeans_statistics-jmx">4.3.2. Infinispan MBeans</a></li>
+<li><a href="#registering-jmx-mbean-servers-statistics-jmx">4.3.3. Registering MBeans in custom MBean servers</a></li>
 </ul>
 </li>
-<li><a href="#displaying-metrics-state-transfer_statistics-jmx">5.4. Exporting metrics during a state transfer operation</a></li>
-<li><a href="#monitor-xsite-replication">5.5. Monitoring the status of cross-site replication</a></li>
+<li><a href="#displaying-metrics-state-transfer_statistics-jmx">4.4. Exporting metrics during a state transfer operation</a></li>
+<li><a href="#monitor-xsite-replication">4.5. Monitoring the status of cross-site replication</a></li>
 </ul>
 </li>
-<li><a href="#cluster-transport">6. Setting up Infinispan cluster transport</a>
+<li><a href="#cluster-transport">5. Setting up Infinispan cluster transport</a>
 <ul class="sectlevel2">
-<li><a href="#default-jgroups-stacks_cluster-transport">6.1. Default JGroups stacks</a></li>
-<li><a href="#cluster-discovery-protocols_cluster-transport">6.2. Cluster discovery protocols</a>
+<li><a href="#default-jgroups-stacks_cluster-transport">5.1. Default JGroups stacks</a></li>
+<li><a href="#cluster-discovery-protocols_cluster-transport">5.2. Cluster discovery protocols</a>
 <ul class="sectlevel3">
-<li><a href="#discovery-ping_cluster-transport">6.2.1. PING</a></li>
-<li><a href="#discovery-tcpping_cluster-transport">6.2.2. TCPPING</a></li>
-<li><a href="#discovery-mping_cluster-transport">6.2.3. MPING</a></li>
-<li><a href="#discovery-tcp-gossip_cluster-transport">6.2.4. TCPGOSSIP</a></li>
-<li><a href="#discovery-jdbcping_cluster-transport">6.2.5. JDBC_PING2</a>
+<li><a href="#discovery-ping_cluster-transport">5.2.1. PING</a></li>
+<li><a href="#discovery-tcpping_cluster-transport">5.2.2. TCPPING</a></li>
+<li><a href="#discovery-mping_cluster-transport">5.2.3. MPING</a></li>
+<li><a href="#discovery-tcp-gossip_cluster-transport">5.2.4. TCPGOSSIP</a></li>
+<li><a href="#discovery-jdbcping_cluster-transport">5.2.5. JDBC_PING2</a>
 <ul class="sectlevel4">
 <li><a href="#discovery-jdbcping-datasource_cluster-transport">Using a server datasource for JDBC_PING2 discovery</a></li>
 </ul>
 </li>
-<li><a href="#discovery-dns-ping_cluster-transport">6.2.6. DNS_PING</a></li>
-<li><a href="#jgroups-cloud-discovery-protocols_cluster-transport">6.2.7. Cloud discovery protocols</a></li>
+<li><a href="#discovery-dns-ping_cluster-transport">5.2.6. DNS_PING</a></li>
+<li><a href="#jgroups-cloud-discovery-protocols_cluster-transport">5.2.7. Cloud discovery protocols</a></li>
 </ul>
 </li>
-<li><a href="#using-jgroups-default-stacks_cluster-transport">6.3. Using the default JGroups stacks</a></li>
-<li><a href="#customizing-jgroups-stacks_cluster-transport">6.4. Customizing JGroups stacks</a>
+<li><a href="#using-jgroups-default-stacks_cluster-transport">5.3. Using the default JGroups stacks</a></li>
+<li><a href="#customizing-jgroups-stacks_cluster-transport">5.4. Customizing JGroups stacks</a>
 <ul class="sectlevel3">
-<li><a href="#jgroups-inheritance-attributes_cluster-transport">6.4.1. Inheritance attributes</a></li>
+<li><a href="#jgroups-inheritance-attributes_cluster-transport">5.4.1. Inheritance attributes</a></li>
 </ul>
 </li>
-<li><a href="#using-jgroups-system-properties_cluster-transport">6.5. Using JGroups system properties</a>
+<li><a href="#using-jgroups-system-properties_cluster-transport">5.5. Using JGroups system properties</a>
 <ul class="sectlevel3">
-<li><a href="#jgroups-system-properties_cluster-transport">6.5.1. Cluster transport properties</a></li>
-<li><a href="#jgroups-extras-properties_cluster-transport">6.5.2. System properties for cloud discovery protocols</a>
+<li><a href="#jgroups-system-properties_cluster-transport">5.5.1. Cluster transport properties</a></li>
+<li><a href="#jgroups-extras-properties_cluster-transport">5.5.2. System properties for cloud discovery protocols</a>
 <ul class="sectlevel4">
 <li><a href="#amazon_ec2">Amazon EC2</a></li>
 <li><a href="#google_cloud_platform">Google Cloud Platform</a></li>
@@ -644,99 +639,107 @@ $(addBlockSwitches);
 </li>
 </ul>
 </li>
-<li><a href="#using-inline-jgroups-stacks_cluster-transport">6.6. Using inline JGroups stacks</a></li>
-<li><a href="#using-external-jgroups-stacks_cluster-transport">6.7. Using external JGroups stacks</a></li>
-<li><a href="#using-custom-jchannels_cluster-transport">6.8. Using custom JChannels</a></li>
-<li><a href="#secure-cluster-transport">6.9. Encrypting cluster transport</a>
+<li><a href="#using-inline-jgroups-stacks_cluster-transport">5.6. Using inline JGroups stacks</a></li>
+<li><a href="#using-external-jgroups-stacks_cluster-transport">5.7. Using external JGroups stacks</a></li>
+<li><a href="#using-custom-jchannels_cluster-transport">5.8. Using custom JChannels</a></li>
+<li><a href="#secure-cluster-transport">5.9. Encrypting cluster transport</a>
 <ul class="sectlevel3">
-<li><a href="#jgroups-encryption-protocols_secure-cluster-transport">6.9.1. JGroups encryption protocols</a></li>
-<li><a href="#configuring-jgroups-asym-encrypt_secure-cluster-transport">6.9.2. Securing cluster transport with asymmetric encryption</a></li>
-<li><a href="#configuring-jgroups-sym-encrypt_secure-cluster-transport">6.9.3. Securing cluster transport with symmetric encryption</a></li>
+<li><a href="#jgroups-encryption-protocols_secure-cluster-transport">5.9.1. JGroups encryption protocols</a></li>
+<li><a href="#configuring-jgroups-asym-encrypt_secure-cluster-transport">5.9.2. Securing cluster transport with asymmetric encryption</a></li>
+<li><a href="#configuring-jgroups-sym-encrypt_secure-cluster-transport">5.9.3. Securing cluster transport with symmetric encryption</a></li>
 </ul>
 </li>
-<li><a href="#jgroups-ports_cluster-transport">6.10. TCP and UDP ports for cluster traffic</a></li>
-</ul>
-</li>
-<li><a href="#clustered_locks">7. Clustered Locks</a>
-<ul class="sectlevel2">
-<li><a href="#lock_api-locking">7.1. Lock API</a></li>
-<li><a href="#using_clustered_locks-locking">7.2. Using Clustered Locks</a></li>
-<li><a href="#configuring_clustered_locks-locking">7.3. Configuring Internal Caches for Locks</a></li>
-</ul>
-</li>
-<li><a href="#cluster-executor">8. Executing code in the grid</a>
-<ul class="sectlevel2">
-<li><a href="#executing-code-grid_cluster-executor">8.1. Cluster Executor</a>
+<li><a href="#jgroups-ports_cluster-transport">5.10. TCP and UDP ports for cluster traffic</a></li>
+<li><a href="#virtual-threads-cluster-transport">5.11. Virtual Threads Support</a>
 <ul class="sectlevel3">
-<li><a href="#filtering_execution_nodes">8.1.1. Filtering execution nodes</a></li>
-<li><a href="#timeout">8.1.2. Timeout</a></li>
-<li><a href="#single_node_submission">8.1.3. Single Node Submission</a>
+<li><a href="#disable-virtual-threads_cluster-transport">5.11.1. Disable Virtual Threads</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#clustered_locks">6. Clustered Locks</a>
+<ul class="sectlevel2">
+<li><a href="#lock_api-locking">6.1. Lock API</a></li>
+<li><a href="#using_clustered_locks-locking">6.2. Using Clustered Locks</a></li>
+<li><a href="#configuring_clustered_locks-locking">6.3. Configuring Internal Caches for Locks</a></li>
+</ul>
+</li>
+<li><a href="#cluster-executor">7. Executing code in the grid</a>
+<ul class="sectlevel2">
+<li><a href="#executing-code-grid_cluster-executor">7.1. Cluster Executor</a>
+<ul class="sectlevel3">
+<li><a href="#filtering_execution_nodes">7.1.1. Filtering execution nodes</a></li>
+<li><a href="#timeout">7.1.2. Timeout</a></li>
+<li><a href="#single_node_submission">7.1.3. Single Node Submission</a>
 <ul class="sectlevel4">
 <li><a href="#failover">Failover</a></li>
 </ul>
 </li>
-<li><a href="#example_pi_approximation">8.1.4. Example: PI Approximation</a></li>
+<li><a href="#example_pi_approximation">7.1.4. Example: PI Approximation</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#streams">9. Using the Streams API for code execution</a></li>
-<li><a href="#streams_streams">10. Streams</a>
+<li><a href="#streams">8. Using the Streams API for code execution</a>
 <ul class="sectlevel2">
-<li><a href="#common_stream_operations">10.1. Common stream operations</a></li>
-<li><a href="#key_filtering">10.2. Key filtering</a></li>
-<li><a href="#segment_based_filtering">10.3. Segment based filtering</a></li>
-<li><a href="#localinvalidation">10.4. Local/Invalidation</a></li>
-<li><a href="#example">10.5. Example</a></li>
-<li><a href="#distributionreplicationscattered">10.6. Distribution/Replication/Scattered</a>
+<li><a href="#streams_streams">8.1. Streams</a>
 <ul class="sectlevel3">
-<li><a href="#rehash_aware">10.6.1. Rehash Aware</a></li>
-<li><a href="#serialization">10.6.2. Serialization</a></li>
+<li><a href="#common_stream_operations">8.1.1. Common stream operations</a></li>
+<li><a href="#key_filtering">8.1.2. Key filtering</a></li>
+<li><a href="#segment_based_filtering">8.1.3. Segment based filtering</a></li>
+<li><a href="#localinvalidation">8.1.4. Local/Invalidation</a></li>
+<li><a href="#example">8.1.5. Example</a></li>
+<li><a href="#distributionreplication">8.1.6. Distribution/Replication</a>
+<ul class="sectlevel4">
+<li><a href="#rehash_aware">Rehash Aware</a></li>
+<li><a href="#serialization">Serialization</a></li>
 </ul>
 </li>
-<li><a href="#parallel_computation">10.7. Parallel Computation</a></li>
-<li><a href="#task_timeout">10.8. Task timeout</a></li>
-<li><a href="#injection">10.9. Injection</a></li>
-<li><a href="#distributed_stream_execution">10.10. Distributed Stream execution</a></li>
-<li><a href="#key_based_rehash_aware_operators">10.11. Key based rehash aware operators</a></li>
-<li><a href="#intermediate_operation_exceptions">10.12. Intermediate operation exceptions</a></li>
-<li><a href="#examples">10.13. Examples</a></li>
+<li><a href="#parallel_computation">8.1.7. Parallel Computation</a></li>
+<li><a href="#operation_timeout">8.1.8. Operation timeout</a></li>
+<li><a href="#injection">8.1.9. Injection</a></li>
+<li><a href="#distributed_stream_execution">8.1.10. Distributed Stream execution</a></li>
+<li><a href="#key_based_rehash_aware_operators">8.1.11. Key based rehash aware operators</a></li>
+<li><a href="#intermediate_operation_exceptions">8.1.12. Intermediate operation exceptions</a></li>
+<li><a href="#examples">8.1.13. Examples</a></li>
 </ul>
 </li>
-<li><a href="#ispn_modules">11. Using Infinispan in WildFly applications</a>
+</ul>
+</li>
+<li><a href="#ispn_modules">9. Using Infinispan in WildFly applications</a>
 <ul class="sectlevel2">
-<li><a href="#configure_ispn_modules">11.1. Configuring applications to Use Infinispan modules</a></li>
-<li><a href="#configuring-caches-in-jboss_server">11.2. Configuring Infinispan caches in WildFly</a></li>
-<li><a href="#using-cahches-in-jboss-applications_server">11.3. Using Infinispan caches in WildFly applications</a></li>
+<li><a href="#configure_ispn_modules">9.1. Configuring applications to use Infinispan modules</a></li>
+<li><a href="#configuring-caches-in-jboss_server">9.2. Configuring Infinispan caches in WildFly</a></li>
+<li><a href="#using-cahches-in-jboss-applications_server">9.3. Using Infinispan caches in WildFly applications</a></li>
 </ul>
 </li>
-<li><a href="#quarkus_embedded">12. Using the Quarkus extension</a>
+<li><a href="#quarkus_embedded">10. Using the Quarkus extension</a>
 <ul class="sectlevel2">
-<li><a href="#quarkus_embedded_dependencies">12.1. Quarkus dependencies</a></li>
-<li><a href="#quarkus_inject_embedded">12.2. Injecting Embedded Caches</a></li>
-<li><a href="#quarkus_native_compilation">12.3. Compiling Quarkus Infinispan application</a></li>
+<li><a href="#quarkus_embedded_dependencies">10.1. Quarkus dependencies</a></li>
+<li><a href="#quarkus_inject_embedded">10.2. Injecting Embedded Caches</a></li>
+<li><a href="#quarkus_native_compilation">10.3. Compiling Quarkus Infinispan application</a></li>
 </ul>
 </li>
-<li><a href="#cdi_support">13. Using the CDI Extension</a>
+<li><a href="#cdi_support">11. Using the CDI Extension</a>
 <ul class="sectlevel2">
-<li><a href="#cdi_dependencies">13.1. CDI Dependencies</a></li>
-<li><a href="#cdi_inject_embed">13.2. Injecting Embedded Caches</a></li>
-<li><a href="#cdi_inject_remote">13.3. Injecting Remote Caches</a></li>
-<li><a href="#cache_events">13.4. Receiving Cache and Cache Manager Events</a></li>
+<li><a href="#cdi_dependencies">11.1. CDI Dependencies</a></li>
+<li><a href="#cdi_inject_embed">11.2. Injecting Embedded Caches</a></li>
+<li><a href="#cdi_inject_remote">11.3. Injecting Remote Caches</a></li>
+<li><a href="#cache_events">11.4. Receiving Cache and Cache Manager Events</a></li>
 </ul>
 </li>
-<li><a href="#multimap-cache">14. Multimap cache</a>
+<li><a href="#multimap-cache">12. Multimap cache</a>
 <ul class="sectlevel2">
-<li><a href="#using-multimap-cache_multimap-cache">14.1. Multimap Cache</a>
+<li><a href="#using-multimap-cache_multimap-cache">12.1. Multimap Cache</a>
 <ul class="sectlevel3">
-<li><a href="#installation_and_configuration">14.1.1. Installation and configuration</a></li>
-<li><a href="#multimapcache_api">14.1.2. MultimapCache API</a></li>
-<li><a href="#creating_a_multimap_cache">14.1.3. Creating a Multimap Cache</a>
+<li><a href="#installation_and_configuration">12.1.1. Installation and configuration</a></li>
+<li><a href="#multimapcache_api">12.1.2. MultimapCache API</a></li>
+<li><a href="#creating_a_multimap_cache">12.1.3. Creating a Multimap Cache</a>
 <ul class="sectlevel4">
 <li><a href="#embedded_mode">Embedded mode</a></li>
 </ul>
 </li>
-<li><a href="#multimap_limitations">14.1.4. Limitations</a>
+<li><a href="#multimap_limitations">12.1.4. Limitations</a>
 <ul class="sectlevel4">
 <li><a href="#support_for_duplicates">Support for duplicates</a></li>
 <li><a href="#eviction">Eviction</a></li>
@@ -747,65 +750,58 @@ $(addBlockSwitches);
 </li>
 </ul>
 </li>
-<li><a href="#custom_interceptors_chapter">15. Custom Interceptors</a>
+<li><a href="#functional-map-api">13. Functional Map API</a>
 <ul class="sectlevel2">
-<li><a href="#adding_custom_interceptors_declaratively">15.1. Adding custom interceptors declaratively</a></li>
-<li><a href="#adding_custom_interceptors_programmatically">15.2. Adding custom interceptors programmatically</a></li>
-<li><a href="#custom_interceptor_design">15.3. Custom interceptor design</a></li>
-</ul>
-</li>
-<li><a href="#functional-map-api">16. Functional Map API</a>
-<ul class="sectlevel2">
-<li><a href="#using-functional-map-api">16.1. Using the Functional Map API</a>
+<li><a href="#using-functional-map-api">13.1. Using the Functional Map API</a>
 <ul class="sectlevel3">
-<li><a href="#asynchronous_and_lazy">16.1.1. Asynchronous and Lazy</a></li>
-<li><a href="#function_transparency">16.1.2. Function transparency</a></li>
-<li><a href="#constructing_functional_maps">16.1.3. Constructing Functional Maps</a></li>
-<li><a href="#read_only_map_api">16.1.4. Read-Only Map API</a>
+<li><a href="#asynchronous_and_lazy">13.1.1. Asynchronous and Lazy</a></li>
+<li><a href="#function_transparency">13.1.2. Function transparency</a></li>
+<li><a href="#constructing_functional_maps">13.1.3. Constructing Functional Maps</a></li>
+<li><a href="#read_only_map_api">13.1.4. Read-Only Map API</a>
 <ul class="sectlevel4">
 <li><a href="#read_only_entry_view">Read-Only Entry View</a></li>
 </ul>
 </li>
-<li><a href="#write_only_map_api">16.1.5. Write-Only Map API</a>
+<li><a href="#write_only_map_api">13.1.5. Write-Only Map API</a>
 <ul class="sectlevel4">
 <li><a href="#write_only_entry_view">Write-Only Entry View</a></li>
 </ul>
 </li>
-<li><a href="#read_write_map_api">16.1.6. Read-Write Map API</a>
+<li><a href="#read_write_map_api">13.1.6. Read-Write Map API</a>
 <ul class="sectlevel4">
 <li><a href="#read_write_entry_view">Read-Write Entry View</a></li>
 </ul>
 </li>
-<li><a href="#meta_parameter">16.1.7. Metadata Parameter Handling</a></li>
-<li><a href="#_invocation_parameter">16.1.8. Invocation Parameter</a></li>
-<li><a href="#functional_listeners">16.1.9. Functional Listeners</a>
+<li><a href="#meta_parameter">13.1.7. Metadata Parameter Handling</a></li>
+<li><a href="#_invocation_parameter">13.1.8. Invocation Parameter</a></li>
+<li><a href="#functional_listeners">13.1.9. Functional Listeners</a>
 <ul class="sectlevel4">
 <li><a href="#write_listeners">Write Listeners</a></li>
 <li><a href="#read_write_listeners">Read-Write Listeners</a></li>
 </ul>
 </li>
-<li><a href="#marshalling_of_functions">16.1.10. Marshalling of Functions</a></li>
-<li><a href="#use_cases_for_functional_api">16.1.11. Use Cases for Functional API</a></li>
+<li><a href="#marshalling_of_functions">13.1.10. Marshalling of Functions</a></li>
+<li><a href="#use_cases_for_functional_api">13.1.11. Use Cases for Functional API</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#anchored-keys">17. Anchored keys</a>
+<li><a href="#anchored-keys">14. Anchored keys</a>
 <ul class="sectlevel2">
-<li><a href="#anchored_keys_module">17.1. Anchored Keys module</a>
+<li><a href="#anchored_keys_module">14.1. Anchored Keys module</a>
 <ul class="sectlevel3">
-<li><a href="#background">17.1.1. Background</a></li>
-<li><a href="#architecture">17.1.2. Architecture</a></li>
-<li><a href="#limitations">17.1.3. Limitations</a></li>
-<li><a href="#configuration">17.1.4. Configuration</a></li>
-<li><a href="#implementation_status">17.1.5. Implementation status</a>
+<li><a href="#background">14.1.1. Background</a></li>
+<li><a href="#architecture">14.1.2. Architecture</a></li>
+<li><a href="#limitations">14.1.3. Limitations</a></li>
+<li><a href="#configuration">14.1.4. Configuration</a></li>
+<li><a href="#implementation_status">14.1.5. Implementation status</a>
 <ul class="sectlevel4">
 <li><a href="#functional_commands">Functional commands</a></li>
 <li><a href="#partition_handling">Partition handling</a></li>
 <li><a href="#listeners">Listeners</a></li>
 </ul>
 </li>
-<li><a href="#performance_considerations">17.1.6. Performance considerations</a>
+<li><a href="#performance_considerations">14.1.6. Performance considerations</a>
 <ul class="sectlevel4">
 <li><a href="#clientserver_latency">Client/Server Latency</a></li>
 <li><a href="#memory_overhead">Memory overhead</a></li>
@@ -816,10 +812,10 @@ $(addBlockSwitches);
 </li>
 </ul>
 </li>
-<li><a href="#extending">18. Extending Infinispan</a>
+<li><a href="#extending">15. Extending Infinispan</a>
 <ul class="sectlevel2">
-<li><a href="#custom_commands">18.1. Custom Commands</a></li>
-<li><a href="#extending_the_configuration_builders_and_parsers">18.2. Extending the configuration builders and parsers</a></li>
+<li><a href="#custom_commands">15.1. Custom Commands</a></li>
+<li><a href="#extending_the_configuration_builders_and_parsers">15.2. Extending the configuration builders and parsers</a></li>
 </ul>
 </li>
 </ul>
@@ -837,7 +833,7 @@ $(addBlockSwitches);
 <h2 id="configuring-maven-repository"><a class="anchor" href="#configuring-maven-repository"></a>1. Adding Infinispan to your Maven repository</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan Java distributions are available from Maven.</p>
+<p>Infinispan Java distributions are available from Maven and requires at least JDK 17.</p>
 </div>
 <div class="paragraph">
 <p>Infinispan artifacts are available from Maven central. See the <a href="https://search.maven.org/search?q=g:org.infinispan">org.infinispan</a> group for available Infinispan artifacts.</p>
@@ -875,7 +871,7 @@ artifact you add as a dependency to your project.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;properties&gt;
-  &lt;version.infinispan&gt;16.0.0.Dev06&lt;/version.infinispan&gt;
+  &lt;version.infinispan&gt;16.0.1&lt;/version.infinispan&gt;
 &lt;/properties&gt;
 
 &lt;dependencyManagement&gt;
@@ -899,63 +895,13 @@ artifact you add as a dependency to your project.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="virtual-threads-embedded_caches"><a class="anchor" href="#virtual-threads-embedded_caches"></a>2. Virtual Threads Support</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Infinispan supports virtual threads, which can significantly improve application responsiveness and scalability under high concurrency.
-By default, they are enabled if you are running on JDK 21 or higher.</p>
-</div>
-<div class="admonitionblock warning">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>On systems with JDK versions prior to 24 and low CPU counts (2 or less), Infinispan might experience thread pinning issues when using virtual threads.
-Thread pinning is a situation where virtual threads are unexpectedly bound to a limited number of OS threads, potentially leading to performance degradation or system freezes.</p>
-</div>
-<div class="paragraph">
-<p>To work around this problem, virtual threads can be disabled as described in the procedure below, or the virtual thread scheduler parallelism may be increased with the Java option <code>-Djdk.virtualThreadScheduler.parallelism=&lt;value&gt;</code>.
-A common starting point for <code>&lt;value&gt;</code> on low-CPU systems is <code>4</code>.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="sect2">
-<h3 id="disable-virtual-threads_embedded_caches"><a class="anchor" href="#disable-virtual-threads_embedded_caches"></a>2.1. Disable Virtual Threads</h3>
-<div class="paragraph">
-<p>Disables the virtual threads pool.</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Append <code>-Dorg.infinispan.threads.virtual=false</code> to the Java options used to start your application.</p>
-</li>
-<li>
-<p>Verify by checking the server logs.
-The following log entry should <strong>not</strong> be present:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">Virtual threads support enabled</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="creating-embedded-caches"><a class="anchor" href="#creating-embedded-caches"></a>3. Creating embedded caches</h2>
+<h2 id="creating-embedded-caches"><a class="anchor" href="#creating-embedded-caches"></a>2. Creating embedded caches</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan provides an <code>EmbeddedCacheManager</code> API that lets you control both the Cache Manager and embedded cache lifecycles programmatically.</p>
 </div>
 <div class="sect2">
-<h3 id="installing-embedded_creating-embedded-caches"><a class="anchor" href="#installing-embedded_creating-embedded-caches"></a>3.1. Adding Infinispan to your project</h3>
+<h3 id="installing-embedded_creating-embedded-caches"><a class="anchor" href="#installing-embedded_creating-embedded-caches"></a>2.1. Adding Infinispan to your project</h3>
 <div class="paragraph">
 <p>Add Infinispan to your project to create embedded caches in your applications.</p>
 </div>
@@ -988,7 +934,7 @@ follows:</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-embedded-caches_creating-embedded-caches"><a class="anchor" href="#configuring-embedded-caches_creating-embedded-caches"></a>3.2. Creating and using embedded caches</h3>
+<h3 id="configuring-embedded-caches_creating-embedded-caches"><a class="anchor" href="#configuring-embedded-caches_creating-embedded-caches"></a>2.2. Creating and using embedded caches</h3>
 <div class="paragraph">
 <p>Infinispan provides a <code>GlobalConfigurationBuilder</code> API that controls the Cache Manager and a <code>ConfigurationBuilder</code> API that configures caches.</p>
 </div>
@@ -1101,6 +1047,21 @@ cacheManager.stop();</code></pre>
 <div class="paragraph">
 <p>For more information about configuration storage providers, see <a href="../../apidocs/org/infinispan/configuration/global/GlobalStateConfigurationBuilder.html#configurationStorage(org.infinispan.globalstate.ConfigurationStorage)">GlobalStateConfigurationBuilder#configurationStorage()</a>.</p>
 </div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Visit the code tutorials to try examples with embedded Infinispan.
+See the <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-embedded">code tutorial with embedded caches</a>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
 <ul>
@@ -1120,9 +1081,9 @@ cacheManager.stop();</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cache-modes_creating-embedded-caches"><a class="anchor" href="#cache-modes_creating-embedded-caches"></a>3.3. Cache API</h3>
+<h3 id="cache-modes_creating-embedded-caches"><a class="anchor" href="#cache-modes_creating-embedded-caches"></a>2.3. Cache API</h3>
 <div class="paragraph">
-<p>Infinispan provides a <a href="../../apidocs/org/infinispan/Cache.html">Cache</a> interface that exposes simple methods for adding, retrieving and removing entries, including atomic mechanisms exposed by the JDK&#8217;s ConcurrentMap interface.  Based on the cache mode used, invoking these methods will trigger a number of things to happen, potentially even including replicating an entry to a remote node or looking up an entry from a remote node, or potentially a cache store.</p>
+<p>Infinispan provides a <a href="../../apidocs/org/infinispan/Cache.html">Cache</a> interface that exposes simple methods for adding, retrieving and removing entries, including atomic mechanisms exposed by the JDK&#8217;s ConcurrentMap interface.  Based on the cache mode used, invoking these methods will trigger a number of things, potentially replicating an entry to a remote node or looking up an entry from a remote node, or even a cache store.</p>
 </div>
 <div class="paragraph">
 <p>For simple usage, using the Cache API should be no different from using the JDK Map API, and hence migrating from simple in-memory caches based on a Map to Infinispan&#8217;s Cache should be trivial.</p>
@@ -1133,11 +1094,11 @@ cacheManager.stop();</code></pre>
 <a href="../../apidocs/org/infinispan/Cache.html#size()">size()</a> ,
 <a href="../../apidocs/org/infinispan/Cache.html#values()">values()</a> ,
 <a href="../../apidocs/org/infinispan/Cache.html#keySet()">keySet()</a> and
-<a href="../../apidocs/org/infinispan/Cache.html#entrySet()">entrySet()</a> .
+<a href="../../apidocs/org/infinispan/Cache.html#entrySet()">entrySet()</a>.
 Specific methods on the <code>keySet</code>, <code>values</code> and <code>entrySet</code> are fine for use please see their Javadoc for further details.</p>
 </div>
 <div class="paragraph">
-<p>Attempting to perform these operations globally would have large performance impact as well as become a scalability bottleneck.  As such, these methods should only be used for informational or debugging purposes only.</p>
+<p>Attempting to perform these operations globally could have large performance impact as well as become a scalability bottleneck.  As such, these methods should be avoided in production code and only be used for informational or debugging purposes only.</p>
 </div>
 <div class="paragraph">
 <p>It should be noted that using certain flags with the <a href="../../apidocs/org/infinispan/AdvancedCache.html#withFlags(java.util.Collection)">withFlags()</a> method can mitigate some of these concerns, please check each method&#8217;s documentation for more details.</p>
@@ -1185,10 +1146,10 @@ if (cachedPerson == null) {
 </div>
 </div>
 <div class="paragraph">
-<p>Note that <a href="../../apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> should never be used as a mechanism to update the cache with a new Person instance originating from application execution (i.e. from a transaction that modifies a Person&#8217;s address). When updating cached values, please use the standard <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">put</a> operation, otherwise the possibility of caching corrupt data is likely.</p>
+<p>Note that <a href="../../apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> should never be used as a mechanism to update the cache with a new Person instance originating from application execution (i.e. from a transaction that modifies a Person&#8217;s address). When updating cached values, please use the standard <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">put</a> operation, otherwise the possibility of caching inconsistent data is likely.</p>
 </div>
 <div class="sect3">
-<h4 id="advancedcache_api"><a class="anchor" href="#advancedcache_api"></a>3.3.1. AdvancedCache API</h4>
+<h4 id="advancedcache_api"><a class="anchor" href="#advancedcache_api"></a>2.3.1. AdvancedCache API</h4>
 <div class="paragraph">
 <p>In addition to the simple Cache interface, Infinispan offers an <a href="../../apidocs/org/infinispan/AdvancedCache.html">AdvancedCache</a> interface, geared towards extension authors.  The AdvancedCache offers the ability to access certain internal components and to apply flags to alter the default behavior of certain cache methods.  The following code snippet depicts how an AdvancedCache can be obtained:</p>
 </div>
@@ -1212,12 +1173,12 @@ if (cachedPerson == null) {
 </div>
 </div>
 <div class="sect3">
-<h4 id="cache_asynchronous_api"><a class="anchor" href="#cache_asynchronous_api"></a>3.3.2. Asynchronous API</h4>
+<h4 id="cache_asynchronous_api"><a class="anchor" href="#cache_asynchronous_api"></a>2.3.2. Asynchronous API</h4>
 <div class="paragraph">
 <p>In addition to synchronous API methods like <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">Cache.put()</a> , <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#remove-java.lang.Object-">Cache.remove()</a> , etc., Infinispan also has an asynchronous, non-blocking API where you can achieve the same results in a non-blocking fashion.</p>
 </div>
 <div class="paragraph">
-<p>These methods are named in a similar fashion to their blocking counterparts, with "Async" appended.  E.g., <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#putAsync(K,V)">Cache.putAsync()</a> , <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#removeAsync(java.lang.Object)">Cache.removeAsync()</a> , etc.  These asynchronous counterparts return a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/CompletableFuture.html">CompletableFuture</a> that contains the actual result of the operation.</p>
+<p>These methods are named in a similar fashion to their blocking counterparts, with "Async" appended. E.g., <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#putAsync(K,V)">Cache.putAsync()</a> , <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#removeAsync(java.lang.Object)">Cache.removeAsync()</a> , etc. These asynchronous counterparts return a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/CompletableFuture.html">CompletableFuture</a> that contains the actual result of the operation.</p>
 </div>
 <div class="paragraph">
 <p>For example, in a cache parameterized as <code>Cache&lt;String, String&gt;</code>, <code>Cache.put(String key, String value)</code> returns <code>String</code> while <code>Cache.putAsync(String key, String value)</code> returns <code>CompletableFuture&lt;String&gt;</code>.</p>
@@ -1225,7 +1186,7 @@ if (cachedPerson == null) {
 <div class="sect4">
 <h5 id="why_use_such_an_api"><a class="anchor" href="#why_use_such_an_api"></a>Why use such an API?</h5>
 <div class="paragraph">
-<p>Non-blocking APIs are powerful in that they provide all of the guarantees of synchronous communications - with the ability to handle communication failures and exceptions - with the ease of not having to block until a call completes.  This allows you to better harness parallelism in your system.  For example:</p>
+<p>Non-blocking APIs are powerful in that they provide all of the guarantees of synchronous communications - with the ability to handle communication failures and exceptions - with the ease of not having to block until a call completes. This allows you to better harness parallelism in your system. For example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1247,11 +1208,11 @@ for (CompletableFuture&lt;?&gt; f: futures) f.get();</code></pre>
 <div class="sect4">
 <h5 id="which_processes_actually_happen_asynchronously"><a class="anchor" href="#which_processes_actually_happen_asynchronously"></a>Which processes actually happen asynchronously?</h5>
 <div class="paragraph">
-<p>There are 4 things in Infinispan that can be considered to be on the critical path of a typical write operation.
-These are, in order of cost:</p>
+<p>There are four things in Infinispan that can be considered to be on the critical path of a typical write operation.
+These are, in descending order of cost:</p>
 </div>
-<div class="ulist">
-<ul>
+<div class="olist arabic">
+<ol class="arabic">
 <li>
 <p>network calls</p>
 </li>
@@ -1264,10 +1225,10 @@ These are, in order of cost:</p>
 <li>
 <p>locking</p>
 </li>
-</ul>
+</ol>
 </div>
 <div class="paragraph">
-<p>Using the async methods will take the network calls and marshalling off the critical path.  For various technical reasons, writing to a cache store and acquiring locks, however, still happens in the caller&#8217;s thread.</p>
+<p>Using the async methods will take the network calls and marshalling off the critical path. For various technical reasons, writing to a cache store and acquiring locks, however, still happens in the caller&#8217;s thread.</p>
 </div>
 </div>
 </div>
@@ -1275,13 +1236,13 @@ These are, in order of cost:</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="rbac-embedded"><a class="anchor" href="#rbac-embedded"></a>4. Programmatically configuring user roles and permissions</h2>
+<h2 id="rbac-embedded"><a class="anchor" href="#rbac-embedded"></a>3. Programmatically configuring user roles and permissions</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Configure security authorization programmatically when using embedded caches in Java applications.</p>
 </div>
 <div class="sect2">
-<h3 id="default-user-roles_rbac-embedded"><a class="anchor" href="#default-user-roles_rbac-embedded"></a>4.1. Infinispan user roles and permissions</h3>
+<h3 id="default-user-roles_rbac-embedded"><a class="anchor" href="#default-user-roles_rbac-embedded"></a>3.1. Infinispan user roles and permissions</h3>
 <div class="paragraph">
 <p>Infinispan includes several roles that provide users with permissions to access caches and Infinispan resources.</p>
 </div>
@@ -1338,7 +1299,7 @@ These are, in order of cost:</p>
 </ul>
 </div>
 <div class="sect3">
-<h4 id="user-permissions_rbac-embedded"><a class="anchor" href="#user-permissions_rbac-embedded"></a>4.1.1. Permissions</h4>
+<h4 id="user-permissions_rbac-embedded"><a class="anchor" href="#user-permissions_rbac-embedded"></a>3.1.1. Permissions</h4>
 <div class="paragraph">
 <p>User roles are sets of permissions with different access levels.</p>
 </div>
@@ -1472,7 +1433,7 @@ These are, in order of cost:</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="role-mappers_rbac-embedded"><a class="anchor" href="#role-mappers_rbac-embedded"></a>4.1.2. Role and permission mappers</h4>
+<h4 id="role-mappers_rbac-embedded"><a class="anchor" href="#role-mappers_rbac-embedded"></a>3.1.2. Role and permission mappers</h4>
 <div class="paragraph">
 <p>Infinispan implements users as a collection of principals.
 Principals represent either an individual user identity, such as a username, or a group to which the users belong. Internally, these are implemented with the <code>javax.security.auth.Subject</code> class.</p>
@@ -1581,7 +1542,7 @@ finance: LISTEN</pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-role-mappers_rbac-embedded"><a class="anchor" href="#configuring-role-mappers_rbac-embedded"></a>4.1.3. Configuring role mappers</h4>
+<h4 id="configuring-role-mappers_rbac-embedded"><a class="anchor" href="#configuring-role-mappers_rbac-embedded"></a>3.1.3. Configuring role mappers</h4>
 <div class="paragraph">
 <p>Infinispan enables the cluster role mapper and cluster permission mapper by default.
 To use a different implementation for role mapping, you must configure the role mappers.</p>
@@ -1653,7 +1614,7 @@ To use a different implementation for role mapping, you must configure the role 
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-authorization-embedded_rbac-embedded"><a class="anchor" href="#configuring-authorization-embedded_rbac-embedded"></a>4.2. Enabling and configuring authorization for embedded caches</h3>
+<h3 id="configuring-authorization-embedded_rbac-embedded"><a class="anchor" href="#configuring-authorization-embedded_rbac-embedded"></a>3.2. Enabling and configuring authorization for embedded caches</h3>
 <div class="paragraph">
 <p>When using embedded caches, you can configure authorization with the <code>GlobalSecurityConfigurationBuilder</code> and <code>ConfigurationBuilder</code> classes.</p>
 </div>
@@ -1718,7 +1679,7 @@ config.security().authorization().enable().role("myroleone");</pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="adding-authorization-roles-at-runtime_rbac-embedded"><a class="anchor" href="#adding-authorization-roles-at-runtime_rbac-embedded"></a>4.3. Adding authorization roles at runtime</h3>
+<h3 id="adding-authorization-roles-at-runtime_rbac-embedded"><a class="anchor" href="#adding-authorization-roles-at-runtime_rbac-embedded"></a>3.3. Adding authorization roles at runtime</h3>
 <div class="paragraph">
 <p>Dynamically map roles to permissions when using security authorization with Infinispan caches.</p>
 </div>
@@ -1761,7 +1722,7 @@ mapper.addRole(Role.newRole("myroletwo", true, AuthorizationPermission.READ, Aut
 </div>
 </div>
 <div class="sect2">
-<h3 id="executing-secure-caches_rbac-embedded"><a class="anchor" href="#executing-secure-caches_rbac-embedded"></a>4.4. Executing code with secure caches</h3>
+<h3 id="executing-secure-caches_rbac-embedded"><a class="anchor" href="#executing-secure-caches_rbac-embedded"></a>3.4. Executing code with secure caches</h3>
 <div class="paragraph">
 <p>When you construct a <code>DefaultCacheManager</code> for an embedded cache that uses security authorization, the Cache Manager returns a <code>SecureCache</code> that checks the security context before invoking any operations.
 A <code>SecureCache</code> also ensures that applications cannot retrieve lower-level insecure objects such as <code>DataContainer</code>.
@@ -1809,7 +1770,7 @@ For this reason, you must execute code with a Infinispan user that has a role wi
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-acl-cache_rbac-embedded"><a class="anchor" href="#configuring-acl-cache_rbac-embedded"></a>4.5. Configuring the access control list (ACL) cache</h3>
+<h3 id="configuring-acl-cache_rbac-embedded"><a class="anchor" href="#configuring-acl-cache_rbac-embedded"></a>3.5. Configuring the access control list (ACL) cache</h3>
 <div class="paragraph">
 <p>When you grant or deny roles to users, Infinispan stores details about which users can access your caches internally.
 This ACL cache improves performance for security authorization by avoiding the need for Infinispan to calculate if users have the appropriate permissions to perform read and write operations for every request.</p>
@@ -1912,9 +1873,11 @@ You should disable the ACL cache only if you disable authorization.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="flushing_acl_caches"><a class="anchor" href="#flushing_acl_caches"></a>4.5.1. Flushing ACL caches</h4>
+<h4 id="flushing_acl_caches"><a class="anchor" href="#flushing_acl_caches"></a>3.5.1. Flushing ACL caches</h4>
 <div class="paragraph">
-<p>It is possible to flush the ACL cache using the <code>GlobalSecurityManager</code> MBean, accessible over JMX.</p>
+<p>It is possible to flush the ACL cache using the <code>GlobalSecurityManager</code> MBean, accessible over JMX.
+In this case, flush means the cache is empty and the information is loaded from the external source.
+Flushing the ACL caches does not synchronize it cluster-wide.</p>
 </div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
@@ -1929,13 +1892,13 @@ You should disable the ACL cache only if you disable authorization.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="statistics-jmx"><a class="anchor" href="#statistics-jmx"></a>5. Enabling and configuring Infinispan statistics and JMX monitoring</h2>
+<h2 id="statistics-jmx"><a class="anchor" href="#statistics-jmx"></a>4. Enabling and configuring Infinispan statistics and JMX monitoring</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan can provide Cache Manager and cache statistics as well as export JMX MBeans.</p>
 </div>
 <div class="sect2">
-<h3 id="enabling-statistics-embedded_statistics-jmx"><a class="anchor" href="#enabling-statistics-embedded_statistics-jmx"></a>5.1. Enabling statistics in embedded caches</h3>
+<h3 id="enabling-statistics-embedded_statistics-jmx"><a class="anchor" href="#enabling-statistics-embedded_statistics-jmx"></a>4.1. Enabling statistics in embedded caches</h3>
 <div class="paragraph">
 <p>Configure Infinispan to export statistics for the Cache Manager and embedded caches.</p>
 </div>
@@ -1977,7 +1940,7 @@ builder.statistics().enable();</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-metrics_statistics-jmx"><a class="anchor" href="#configuring-metrics_statistics-jmx"></a>5.2. Configuring Infinispan metrics</h3>
+<h3 id="configuring-metrics_statistics-jmx"><a class="anchor" href="#configuring-metrics_statistics-jmx"></a>4.2. Configuring Infinispan metrics</h3>
 <div class="paragraph">
 <p>Infinispan generates metrics that are compatible with any monitoring system.</p>
 </div>
@@ -2144,7 +2107,7 @@ Metrics related to the JVM are provided in the <code>base</code> scope.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="enabling-jmx_statistics-jmx"><a class="anchor" href="#enabling-jmx_statistics-jmx"></a>5.3. Registering JMX MBeans</h3>
+<h3 id="enabling-jmx_statistics-jmx"><a class="anchor" href="#enabling-jmx_statistics-jmx"></a>4.3. Registering JMX MBeans</h3>
 <div class="paragraph">
 <p>Infinispan can register JMX MBeans that you can use to collect statistics and
 perform administrative operations.
@@ -2232,7 +2195,7 @@ You must also enable statistics otherwise Infinispan provides <code>0</code> val
 </div>
 </div>
 <div class="sect3">
-<h4 id="enabling-jmx-port_statistics-jmx"><a class="anchor" href="#enabling-jmx-port_statistics-jmx"></a>5.3.1. Enabling JMX remote ports</h4>
+<h4 id="enabling-jmx-port_statistics-jmx"><a class="anchor" href="#enabling-jmx-port_statistics-jmx"></a>4.3.1. Enabling JMX remote ports</h4>
 <div class="paragraph">
 <p>Provide unique remote JMX ports to expose Infinispan MBeans through connections in JMXServiceURL format.</p>
 </div>
@@ -2322,7 +2285,7 @@ Disabling authentication and SSL allows unauthorized users to connect to your se
 </div>
 </div>
 <div class="sect3">
-<h4 id="jmx-mbeans_statistics-jmx"><a class="anchor" href="#jmx-mbeans_statistics-jmx"></a>5.3.2. Infinispan MBeans</h4>
+<h4 id="jmx-mbeans_statistics-jmx"><a class="anchor" href="#jmx-mbeans_statistics-jmx"></a>4.3.2. Infinispan MBeans</h4>
 <div class="paragraph">
 <p>Infinispan exposes JMX MBeans that represent manageable resources.</p>
 </div>
@@ -2353,7 +2316,7 @@ documentation.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="registering-jmx-mbean-servers-statistics-jmx"><a class="anchor" href="#registering-jmx-mbean-servers-statistics-jmx"></a>5.3.3. Registering MBeans in custom MBean servers</h4>
+<h4 id="registering-jmx-mbean-servers-statistics-jmx"><a class="anchor" href="#registering-jmx-mbean-servers-statistics-jmx"></a>4.3.3. Registering MBeans in custom MBean servers</h4>
 <div class="paragraph">
 <p>Infinispan includes an <code>MBeanServerLookup</code> interface that you can use to
 register MBeans in custom MBeanServer instances.</p>
@@ -2440,7 +2403,7 @@ register MBeans in custom MBeanServer instances.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="displaying-metrics-state-transfer_statistics-jmx"><a class="anchor" href="#displaying-metrics-state-transfer_statistics-jmx"></a>5.4. Exporting metrics during a state transfer operation</h3>
+<h3 id="displaying-metrics-state-transfer_statistics-jmx"><a class="anchor" href="#displaying-metrics-state-transfer_statistics-jmx"></a>4.4. Exporting metrics during a state transfer operation</h3>
 <div class="paragraph">
 <p>You can export time metrics for clustered caches that Infinispan redistributes across nodes.</p>
 </div>
@@ -2511,7 +2474,7 @@ A state transfer exposes attributes as properties, so that Infinispan can export
 </div>
 </div>
 <div class="sect2">
-<h3 id="monitor-xsite-replication"><a class="anchor" href="#monitor-xsite-replication"></a>5.5. Monitoring the status of cross-site replication</h3>
+<h3 id="monitor-xsite-replication"><a class="anchor" href="#monitor-xsite-replication"></a>4.5. Monitoring the status of cross-site replication</h3>
 <div class="paragraph">
 <p>Monitor the site status of your backup locations to detect interruptions in the communication between the sites.
 When a remote site status changes to <code>offline</code>, Infinispan stops replicating your data to the backup location.
@@ -2785,16 +2748,16 @@ Monitoring cross-site latency metrics can help you to discover potential issues.
 </div>
 </div>
 <div class="sect1">
-<h2 id="cluster-transport"><a class="anchor" href="#cluster-transport"></a>6. Setting up Infinispan cluster transport</h2>
+<h2 id="cluster-transport"><a class="anchor" href="#cluster-transport"></a>5. Setting up Infinispan cluster transport</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan requires a transport layer so nodes can automatically join and leave clusters.
 The transport layer also enables Infinispan nodes to replicate or distribute data across the network and perform operations such as re-balancing and state transfer.</p>
 </div>
 <div class="sect2">
-<h3 id="default-jgroups-stacks_cluster-transport"><a class="anchor" href="#default-jgroups-stacks_cluster-transport"></a>6.1. Default JGroups stacks</h3>
+<h3 id="default-jgroups-stacks_cluster-transport"><a class="anchor" href="#default-jgroups-stacks_cluster-transport"></a>5.1. Default JGroups stacks</h3>
 <div class="paragraph">
-<p>Infinispan provides default JGroups stack files, <code>default-jgroups-*.xml</code>, in the <code>default-configs</code> directory inside the <code>infinispan-core-16.0.0.Dev06.jar</code> file.</p>
+<p>Infinispan provides default JGroups stack files, <code>default-jgroups-*.xml</code>, in the <code>default-configs</code> directory inside the <code>infinispan-core-16.0.1.jar</code> file.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -2861,7 +2824,7 @@ It requires <code>jgroups.tunnel.hosts</code> property to be set in the format <
 </div>
 </div>
 <div class="sect2">
-<h3 id="cluster-discovery-protocols_cluster-transport"><a class="anchor" href="#cluster-discovery-protocols_cluster-transport"></a>6.2. Cluster discovery protocols</h3>
+<h3 id="cluster-discovery-protocols_cluster-transport"><a class="anchor" href="#cluster-discovery-protocols_cluster-transport"></a>5.2. Cluster discovery protocols</h3>
 <div class="paragraph">
 <p>Infinispan supports different protocols that allow nodes to automatically find each other on the network and form clusters.</p>
 </div>
@@ -2902,7 +2865,7 @@ For instance the DNS_PING protocol performs discovery through DNS server records
 </ul>
 </div>
 <div class="sect3">
-<h4 id="discovery-ping_cluster-transport"><a class="anchor" href="#discovery-ping_cluster-transport"></a>6.2.1. PING</h4>
+<h4 id="discovery-ping_cluster-transport"><a class="anchor" href="#discovery-ping_cluster-transport"></a>5.2.1. PING</h4>
 <div class="paragraph">
 <p>PING, or UDPPING is a generic JGroups discovery mechanism that uses dynamic multicasting with the UDP protocol.</p>
 </div>
@@ -2927,7 +2890,7 @@ If no nodes respond to the PING request, the joining node becomes the coordinato
 </div>
 </div>
 <div class="sect3">
-<h4 id="discovery-tcpping_cluster-transport"><a class="anchor" href="#discovery-tcpping_cluster-transport"></a>6.2.2. TCPPING</h4>
+<h4 id="discovery-tcpping_cluster-transport"><a class="anchor" href="#discovery-tcpping_cluster-transport"></a>5.2.2. TCPPING</h4>
 <div class="paragraph">
 <p>TCPPING is a generic JGroups discovery mechanism that uses a list of static addresses for cluster members.</p>
 </div>
@@ -2954,7 +2917,7 @@ If no nodes respond to the PING request, the joining node becomes the coordinato
 </div>
 </div>
 <div class="sect3">
-<h4 id="discovery-mping_cluster-transport"><a class="anchor" href="#discovery-mping_cluster-transport"></a>6.2.3. MPING</h4>
+<h4 id="discovery-mping_cluster-transport"><a class="anchor" href="#discovery-mping_cluster-transport"></a>5.2.3. MPING</h4>
 <div class="paragraph">
 <p>MPING uses IP multicast to discover the initial membership of Infinispan clusters.</p>
 </div>
@@ -2981,7 +2944,7 @@ However, you can also use MPING with UDP stacks.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="discovery-tcp-gossip_cluster-transport"><a class="anchor" href="#discovery-tcp-gossip_cluster-transport"></a>6.2.4. TCPGOSSIP</h4>
+<h4 id="discovery-tcp-gossip_cluster-transport"><a class="anchor" href="#discovery-tcp-gossip_cluster-transport"></a>5.2.4. TCPGOSSIP</h4>
 <div class="paragraph">
 <p>Gossip routers provide a centralized location on the network from which your
 Infinispan cluster can retrieve addresses of other nodes.</p>
@@ -3018,7 +2981,7 @@ Infinispan cluster can retrieve addresses of other nodes.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="discovery-jdbcping_cluster-transport"><a class="anchor" href="#discovery-jdbcping_cluster-transport"></a>6.2.5. JDBC_PING2</h4>
+<h4 id="discovery-jdbcping_cluster-transport"><a class="anchor" href="#discovery-jdbcping_cluster-transport"></a>5.2.5. JDBC_PING2</h4>
 <div class="paragraph">
 <p>JDBC_PING2 uses shared databases to store information about Infinispan clusters.
 This protocol supports any database that can use a JDBC connection.</p>
@@ -3136,7 +3099,7 @@ When nodes leave Infinispan clusters, they delete their IP addresses from the sh
 </div>
 </div>
 <div class="sect3">
-<h4 id="discovery-dns-ping_cluster-transport"><a class="anchor" href="#discovery-dns-ping_cluster-transport"></a>6.2.6. DNS_PING</h4>
+<h4 id="discovery-dns-ping_cluster-transport"><a class="anchor" href="#discovery-dns-ping_cluster-transport"></a>5.2.6. DNS_PING</h4>
 <div class="paragraph">
 <p>JGroups DNS_PING queries DNS servers to discover Infinispan cluster members
 in Kubernetes environments such as OKD and Red Hat OpenShift.</p>
@@ -3160,7 +3123,7 @@ in Kubernetes environments such as OKD and Red Hat OpenShift.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="jgroups-cloud-discovery-protocols_cluster-transport"><a class="anchor" href="#jgroups-cloud-discovery-protocols_cluster-transport"></a>6.2.7. Cloud discovery protocols</h4>
+<h4 id="jgroups-cloud-discovery-protocols_cluster-transport"><a class="anchor" href="#jgroups-cloud-discovery-protocols_cluster-transport"></a>5.2.7. Cloud discovery protocols</h4>
 <div class="paragraph">
 <p>Infinispan includes default JGroups stacks that use discovery protocol implementations that are specific to cloud providers.</p>
 </div>
@@ -3232,7 +3195,7 @@ in Kubernetes environments such as OKD and Red Hat OpenShift.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="using-jgroups-default-stacks_cluster-transport"><a class="anchor" href="#using-jgroups-default-stacks_cluster-transport"></a>6.3. Using the default JGroups stacks</h3>
+<h3 id="using-jgroups-default-stacks_cluster-transport"><a class="anchor" href="#using-jgroups-default-stacks_cluster-transport"></a>5.3. Using the default JGroups stacks</h3>
 <div class="paragraph">
 <p>Infinispan uses JGroups protocol stacks so nodes can send each other messages on dedicated cluster channels.</p>
 </div>
@@ -3287,7 +3250,7 @@ You can use these default stacks as a starting point for building custom cluster
 </div>
 </div>
 <div class="sect2">
-<h3 id="customizing-jgroups-stacks_cluster-transport"><a class="anchor" href="#customizing-jgroups-stacks_cluster-transport"></a>6.4. Customizing JGroups stacks</h3>
+<h3 id="customizing-jgroups-stacks_cluster-transport"><a class="anchor" href="#customizing-jgroups-stacks_cluster-transport"></a>5.4. Customizing JGroups stacks</h3>
 <div class="paragraph">
 <p>Adjust and tune properties to create a cluster transport configuration that works for your network requirements.</p>
 </div>
@@ -3362,7 +3325,7 @@ You can inherit properties from the default stacks while combining, removing, an
 </ol>
 </div>
 <div class="sect3">
-<h4 id="jgroups-inheritance-attributes_cluster-transport"><a class="anchor" href="#jgroups-inheritance-attributes_cluster-transport"></a>6.4.1. Inheritance attributes</h4>
+<h4 id="jgroups-inheritance-attributes_cluster-transport"><a class="anchor" href="#jgroups-inheritance-attributes_cluster-transport"></a>5.4.1. Inheritance attributes</h4>
 <div class="paragraph">
 <p>When you extend a JGroups stack, inheritance attributes let you adjust protocols and properties in the stack you are extending.</p>
 </div>
@@ -3417,7 +3380,7 @@ Affects the protocol that you specify as the insertion point.</p></td>
 </div>
 </div>
 <div class="sect2">
-<h3 id="using-jgroups-system-properties_cluster-transport"><a class="anchor" href="#using-jgroups-system-properties_cluster-transport"></a>6.5. Using JGroups system properties</h3>
+<h3 id="using-jgroups-system-properties_cluster-transport"><a class="anchor" href="#using-jgroups-system-properties_cluster-transport"></a>5.5. Using JGroups system properties</h3>
 <div class="paragraph">
 <p>Pass system properties to Infinispan at startup to tune cluster transport.</p>
 </div>
@@ -3456,7 +3419,7 @@ In this case both Infinispan and your WildFly application use the JGroups defaul
 </table>
 </div>
 <div class="sect3">
-<h4 id="jgroups-system-properties_cluster-transport"><a class="anchor" href="#jgroups-system-properties_cluster-transport"></a>6.5.1. Cluster transport properties</h4>
+<h4 id="jgroups-system-properties_cluster-transport"><a class="anchor" href="#jgroups-system-properties_cluster-transport"></a>5.5.1. Cluster transport properties</h4>
 <div class="paragraph">
 <p>Use the following properties to customize JGroups cluster transport.</p>
 </div>
@@ -3563,7 +3526,7 @@ In this case both Infinispan and your WildFly application use the JGroups defaul
 </div>
 </div>
 <div class="sect3">
-<h4 id="jgroups-extras-properties_cluster-transport"><a class="anchor" href="#jgroups-extras-properties_cluster-transport"></a>6.5.2. System properties for cloud discovery protocols</h4>
+<h4 id="jgroups-extras-properties_cluster-transport"><a class="anchor" href="#jgroups-extras-properties_cluster-transport"></a>5.5.2. System properties for cloud discovery protocols</h4>
 <div class="paragraph">
 <p>Use the following properties to configure JGroups discovery protocols for hosted platforms.</p>
 </div>
@@ -3714,7 +3677,7 @@ In this case both Infinispan and your WildFly application use the JGroups defaul
 </div>
 </div>
 <div class="sect2">
-<h3 id="using-inline-jgroups-stacks_cluster-transport"><a class="anchor" href="#using-inline-jgroups-stacks_cluster-transport"></a>6.6. Using inline JGroups stacks</h3>
+<h3 id="using-inline-jgroups-stacks_cluster-transport"><a class="anchor" href="#using-inline-jgroups-stacks_cluster-transport"></a>5.6. Using inline JGroups stacks</h3>
 <div class="paragraph">
 <p>You can insert complete JGroups stack definitions into <code>infinispan.xml</code> files.</p>
 </div>
@@ -3766,7 +3729,7 @@ In this case both Infinispan and your WildFly application use the JGroups defaul
 </div>
 </div>
 <div class="sect2">
-<h3 id="using-external-jgroups-stacks_cluster-transport"><a class="anchor" href="#using-external-jgroups-stacks_cluster-transport"></a>6.7. Using external JGroups stacks</h3>
+<h3 id="using-external-jgroups-stacks_cluster-transport"><a class="anchor" href="#using-external-jgroups-stacks_cluster-transport"></a>5.7. Using external JGroups stacks</h3>
 <div class="paragraph">
 <p>Reference external files that define custom JGroups stacks in <code>infinispan.xml</code> files.</p>
 </div>
@@ -3852,7 +3815,7 @@ In this case both Infinispan and your WildFly application use the JGroups defaul
 </div>
 </div>
 <div class="sect2">
-<h3 id="using-custom-jchannels_cluster-transport"><a class="anchor" href="#using-custom-jchannels_cluster-transport"></a>6.8. Using custom JChannels</h3>
+<h3 id="using-custom-jchannels_cluster-transport"><a class="anchor" href="#using-custom-jchannels_cluster-transport"></a>5.8. Using custom JChannels</h3>
 <div class="paragraph">
 <p>Construct custom JGroups JChannels as in the following example:</p>
 </div>
@@ -3890,13 +3853,13 @@ new DefaultCacheManager(global.build());</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="secure-cluster-transport"><a class="anchor" href="#secure-cluster-transport"></a>6.9. Encrypting cluster transport</h3>
+<h3 id="secure-cluster-transport"><a class="anchor" href="#secure-cluster-transport"></a>5.9. Encrypting cluster transport</h3>
 <div class="paragraph">
 <p>Secure cluster transport so that nodes communicate with encrypted messages.
 You can also configure Infinispan clusters to perform certificate authentication so that only nodes with valid identities can join.</p>
 </div>
 <div class="sect3">
-<h4 id="jgroups-encryption-protocols_secure-cluster-transport"><a class="anchor" href="#jgroups-encryption-protocols_secure-cluster-transport"></a>6.9.1. JGroups encryption protocols</h4>
+<h4 id="jgroups-encryption-protocols_secure-cluster-transport"><a class="anchor" href="#jgroups-encryption-protocols_secure-cluster-transport"></a>5.9.1. JGroups encryption protocols</h4>
 <div class="paragraph">
 <p>To secure cluster traffic, you can configure Infinispan nodes to encrypt JGroups message payloads with secret keys.</p>
 </div>
@@ -3988,7 +3951,7 @@ Users are responsible for generating and distributing the secret keys that nodes
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-jgroups-asym-encrypt_secure-cluster-transport"><a class="anchor" href="#configuring-jgroups-asym-encrypt_secure-cluster-transport"></a>6.9.2. Securing cluster transport with asymmetric encryption</h4>
+<h4 id="configuring-jgroups-asym-encrypt_secure-cluster-transport"><a class="anchor" href="#configuring-jgroups-asym-encrypt_secure-cluster-transport"></a>5.9.2. Securing cluster transport with asymmetric encryption</h4>
 <div class="paragraph">
 <p>Configure Infinispan clusters to generate and distribute secret keys that encrypt JGroups messages.</p>
 </div>
@@ -4067,13 +4030,13 @@ Otherwise the following message is written to Infinispan logs:</p>
 <p><a href="http://www.jgroups.org/manual5/index.html">JGroups 5 Manual</a></p>
 </li>
 <li>
-<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.4 Schema</a></p>
+<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.5 Schema</a></p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-jgroups-sym-encrypt_secure-cluster-transport"><a class="anchor" href="#configuring-jgroups-sym-encrypt_secure-cluster-transport"></a>6.9.3. Securing cluster transport with symmetric encryption</h4>
+<h4 id="configuring-jgroups-sym-encrypt_secure-cluster-transport"><a class="anchor" href="#configuring-jgroups-sym-encrypt_secure-cluster-transport"></a>5.9.3. Securing cluster transport with symmetric encryption</h4>
 <div class="paragraph">
 <p>Configure Infinispan clusters to encrypt JGroups messages with secret keys from keystores that you provide.</p>
 </div>
@@ -4145,14 +4108,14 @@ Otherwise the following message is written to Infinispan logs:</p>
 <p><a href="http://www.jgroups.org/manual5/index.html">JGroups 5 Manual</a></p>
 </li>
 <li>
-<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.4 Schema</a></p>
+<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.5 Schema</a></p>
 </li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="jgroups-ports_cluster-transport"><a class="anchor" href="#jgroups-ports_cluster-transport"></a>6.10. TCP and UDP ports for cluster traffic</h3>
+<h3 id="jgroups-ports_cluster-transport"><a class="anchor" href="#jgroups-ports_cluster-transport"></a>5.10. TCP and UDP ports for cluster traffic</h3>
 <div class="paragraph">
 <p>Infinispan uses the following ports for cluster transport messages:</p>
 </div>
@@ -4204,10 +4167,58 @@ Otherwise the following message is written to Infinispan logs:</p>
 </dl>
 </div>
 </div>
+<div class="sect2">
+<h3 id="virtual-threads-cluster-transport"><a class="anchor" href="#virtual-threads-cluster-transport"></a>5.11. Virtual Threads Support</h3>
+<div class="paragraph">
+<p>Infinispan supports virtual threads, which can significantly improve application responsiveness and scalability under high concurrency.
+By default, they are enabled if you are running on JDK 21 or higher.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>On systems with JDK versions prior to 24 and low CPU counts (2 or less), Infinispan might experience thread pinning issues when using virtual threads.
+Thread pinning is a situation where virtual threads are unexpectedly bound to a limited number of OS threads, potentially leading to performance degradation or system freezes.</p>
+</div>
+<div class="paragraph">
+<p>To work around this problem, virtual threads can be disabled as described in the procedure below, or the virtual thread scheduler parallelism may be increased with the Java option <code>-Djdk.virtualThreadScheduler.parallelism=&lt;value&gt;</code>.
+A common starting point for <code>&lt;value&gt;</code> on low-CPU systems is <code>4</code>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="disable-virtual-threads_cluster-transport"><a class="anchor" href="#disable-virtual-threads_cluster-transport"></a>5.11.1. Disable Virtual Threads</h4>
+<div class="paragraph">
+<p>Disables the virtual threads pool.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Append <code>-Dorg.infinispan.threads.virtual=false</code> to the Java options used to start your application.</p>
+</li>
+<li>
+<p>Verify by checking the server logs.
+The following log entry should <strong>not</strong> be present:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">Virtual threads support enabled</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="clustered_locks"><a class="anchor" href="#clustered_locks"></a>7. Clustered Locks</h2>
+<h2 id="clustered_locks"><a class="anchor" href="#clustered_locks"></a>6. Clustered Locks</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Clustered locks are data structures that are distributed and shared across
@@ -4215,7 +4226,7 @@ nodes in a Infinispan cluster. Clustered locks allow you to run code that is
 synchronized between nodes.</p>
 </div>
 <div class="sect2">
-<h3 id="lock_api-locking"><a class="anchor" href="#lock_api-locking"></a>7.1. Lock API</h3>
+<h3 id="lock_api-locking"><a class="anchor" href="#lock_api-locking"></a>6.1. Lock API</h3>
 <div class="paragraph">
 <p>Infinispan provides a <code>ClusteredLock</code> API that lets you concurrently execute
 code on a cluster when using Infinispan in embedded mode.</p>
@@ -4266,7 +4277,7 @@ acquires the lock if it is available and the second call is blocked.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="using_clustered_locks-locking"><a class="anchor" href="#using_clustered_locks-locking"></a>7.2. Using Clustered Locks</h3>
+<h3 id="using_clustered_locks-locking"><a class="anchor" href="#using_clustered_locks-locking"></a>6.2. Using Clustered Locks</h3>
 <div class="paragraph">
 <p>Learn how to use clustered locks with Infinispan embedded in your application.</p>
 </div>
@@ -4367,7 +4378,7 @@ CompletableFuture.allOf(call1, call2, call3).whenComplete((r, ex) -&gt; {
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring_clustered_locks-locking"><a class="anchor" href="#configuring_clustered_locks-locking"></a>7.3. Configuring Internal Caches for Locks</h3>
+<h3 id="configuring_clustered_locks-locking"><a class="anchor" href="#configuring_clustered_locks-locking"></a>6.3. Configuring Internal Caches for Locks</h3>
 <div class="paragraph">
 <p>Clustered Lock Managers include an internal cache that stores lock state. You
 can configure the internal cache either declaratively or programmatically.</p>
@@ -4455,7 +4466,7 @@ clm1.defineLock("lock");</code></pre>
 </div>
 </div>
 <div class="sect1">
-<h2 id="cluster-executor"><a class="anchor" href="#cluster-executor"></a>8. Executing code in the grid</h2>
+<h2 id="cluster-executor"><a class="anchor" href="#cluster-executor"></a>7. Executing code in the grid</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The main benefit of a cache is the ability to very quickly lookup a value
@@ -4465,7 +4476,7 @@ However Infinispan can provide many more benefits that aren&#8217;t immediately 
 Since Infinispan is usually used in a cluster of machines we also have features available that can help utilize the entire cluster for performing the user&#8217;s desired workload.</p>
 </div>
 <div class="sect2">
-<h3 id="executing-code-grid_cluster-executor"><a class="anchor" href="#executing-code-grid_cluster-executor"></a>8.1. Cluster Executor</h3>
+<h3 id="executing-code-grid_cluster-executor"><a class="anchor" href="#executing-code-grid_cluster-executor"></a>7.1. Cluster Executor</h3>
 <div class="paragraph">
 <p>Since you have a group of machines, it makes sense to leverage their combined
 computing power for executing code on all of them them.
@@ -4495,7 +4506,7 @@ interface as an argument. Also since these arguments will be sent to other nodes
 used a nice trick to ensure our lambdas are immediately Serializable.  That is by having the arguments implement both
 Serializable and the real argument type (ie. Runnable or Function).  The JRE will pick the most specific class when
 determining which method to invoke, so in that case your lambdas will always be serializable.
-It is also possible to use ProtoStream marshalling to reduce message size further.</p>
+It is also possible to use <a href="../encoding/encoding.html#protostream_marshalling">ProtoStream marshalling</a> to reduce message size further.</p>
 </div>
 <div class="paragraph">
 <p>The manager by default will submit a given command to all nodes in the cluster including the node
@@ -4503,7 +4514,7 @@ where it was submitted from. You can control on which nodes the task is executed
 by using the <code>filterTargets</code> methods as is explained in the section.</p>
 </div>
 <div class="sect3">
-<h4 id="filtering_execution_nodes"><a class="anchor" href="#filtering_execution_nodes"></a>8.1.1. Filtering execution nodes</h4>
+<h4 id="filtering_execution_nodes"><a class="anchor" href="#filtering_execution_nodes"></a>7.1.1. Filtering execution nodes</h4>
 <div class="paragraph">
 <p>It is possible to limit on which nodes the command will be ran. For example you may
 want to only run a computation on machines in the same rack. Or you may want to perform an operation
@@ -4518,7 +4529,7 @@ manager.executor().filterTargets(ClusterExecutionPolicy.SAME_RACK).submit(...)</
 </div>
 </div>
 <div class="paragraph">
-<p>To use this topology base filtering you must enable topology aware consistent hashing through Server Hinting.</p>
+<p>To use this topology base filtering you must enable topology aware consistent hashing through <a href="../configuring/configuring.html#server-hinting_clustered-caches">Server Hinting</a>.</p>
 </div>
 <div class="paragraph">
 <p>You can also filter using a predicate based on the <code>Address</code> of the node. This can also
@@ -4542,19 +4553,19 @@ manager.executor().filterTargets(ClusterExecutionPolicy.SAME_SITE, a -&gt; a.equ
 </div>
 </div>
 <div class="sect3">
-<h4 id="timeout"><a class="anchor" href="#timeout"></a>8.1.2. Timeout</h4>
+<h4 id="timeout"><a class="anchor" href="#timeout"></a>7.1.2. Timeout</h4>
 <div class="paragraph">
 <p>Cluster Executor allows for a timeout to be set per invocation. This defaults to the distributed sync timeout
-as configured on the Transport Configuration. This timeout works in both a clustered and non clustered
-Cache Manager. The executor may or may not interrupt the threads executing a task when the timeout expires. However
+as configured on the Transport Configuration. This timeout works in both a clustered and non-clustered
+Cache Manager. The executor may or may not interrupt the threads executing a task when the timeout expires. However,
 when the timeout occurs any <code>Consumer</code> or <code>Future</code> will be completed passing back a <code>TimeoutException</code>.
-This value can be overridden by ivoking the
+This value can be overridden by invoking the
 <a href="../../apidocs/org/infinispan/manager/ClusterExecutor.html#timeout-long-java.util.concurrent.TimeUnit-">timeout</a>
 method and supplying the desired duration.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="single_node_submission"><a class="anchor" href="#single_node_submission"></a>8.1.3. Single Node Submission</h4>
+<h4 id="single_node_submission"><a class="anchor" href="#single_node_submission"></a>7.1.3. Single Node Submission</h4>
 <div class="paragraph">
 <p>Cluster Executor can also run in single node submission mode instead of submitting the command
 to all nodes it will instead pick one of the nodes that would have normally received the command
@@ -4575,8 +4586,8 @@ manager.executor().singleNodeSubmission().submit(...)</code></pre>
 <p>When running in single node submission it may be desirable to also allow the Cluster Executor
 handle cases where an exception occurred during the processing of a given command by retrying
 the command again.
-When this occurs the Cluster Executor will choose a single node again to resubmit the command to
-up to the desired number of failover attempts. Note the chosen node could be any node that passes
+When this occurs, the Cluster Executor will choose a single node again to resubmit the command to
+up to the desired number of failover attempts. Note that, the chosen node could be any node that passes
 the topology or predicate check. Failover is enabled by invoking the overridden
 <a href="../../apidocs/org/infinispan/manager/ClusterExecutor.html#singleNodeSubmission-int-">singleNodeSubmission</a>
 method. The given command will be resubmitted again to a single node until either
@@ -4586,22 +4597,22 @@ failover count.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="example_pi_approximation"><a class="anchor" href="#example_pi_approximation"></a>8.1.4. Example: PI Approximation</h4>
+<h4 id="example_pi_approximation"><a class="anchor" href="#example_pi_approximation"></a>7.1.4. Example: PI Approximation</h4>
 <div class="paragraph">
 <p>This example shows how you can use the ClusterExecutor to estimate the value of PI.</p>
 </div>
 <div class="paragraph">
 <p>Pi approximation can greatly benefit from parallel distributed execution via
-Cluster Executor. Recall that area of the square is Sa = 4r2 and area of the
-circle is Ca=pi*r2. Substituting r2 from the second equation into the first
-one it turns out that pi = 4 * Ca/Sa. Now, image that we can shoot very large
+Cluster Executor. Recall that the area of the square is \(S_a = 4r^{2}\) and the area of the
+circle is \(C_a=\pi r^2\). Substituting \(r^2\) from the second equation into the first
+one it turns out that \(\pi = 4\frac{C_a}{S_a}\). Now, image that we can shoot very large
 number of darts into a square; if we take ratio of darts that land inside a
-circle over a total number of darts shot we will approximate Ca/Sa value. Since
-we know that pi = 4 * Ca/Sa we can easily derive approximate value of pi. The
-more darts we shoot the better approximation we get. In the example below we
-shoot 1 billion darts but instead of "shooting" them serially we parallelize
-work of dart shooting across the entire Infinispan cluster. Note this will
-work in a cluster of 1 was well, but will be slower.</p>
+circle over a total number of darts shot, we will approximate the \(\frac{C_a}{S_a}\) value. Since
+we know that \(\pi = 4\frac{C_a}{S_a}\), we can approximate the value of \(\pi\). The
+more darts we shoot, the better approximation we get. In the example below, we
+shoot 1 billion darts, but instead of "shooting" them serially, we parallelize
+the work of dart shooting across the entire Infinispan cluster. Note that, this
+works in a cluster of one as well, but likely slower.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -4611,15 +4622,24 @@ work in a cluster of 1 was well, but will be slower.</p>
       EmbeddedCacheManager cacheManager = ..
       boolean isCluster = ..
 
+      // The number of darts to shoot at the circle.
       int numPoints = 1_000_000_000;
       int numServers = isCluster ? cacheManager.getMembers().size() : 1;
       int numberPerWorker = numPoints / numServers;
 
       ClusterExecutor clusterExecutor = cacheManager.executor();
       long start = System.currentTimeMillis();
-      // We receive results concurrently - need to handle that
+      // We receive results concurrently from the executor.
+      // You must guarantee thread-safety when collecting the results.
+      // In this example, we utilize an AtomicLong to collect the results from the executor.
       AtomicLong countCircle = new AtomicLong();
+
+      // Submits the lambda utilizing the executor.
+      // The future completes once the computation finishes cluster-wide (exceptionally or not).
       CompletableFuture&lt;Void&gt; fut = clusterExecutor.submitConsumer(m -&gt; {
+
+         // This is the lambda executed remotely across all nodes in the cluster.
+         // All the values and methods must be serializable to be transferred across the wire.
          int insideCircleCount = 0;
          for (int i = 0; i &lt; numberPerWorker; i++) {
             double x = Math.random();
@@ -4628,7 +4648,11 @@ work in a cluster of 1 was well, but will be slower.</p>
                insideCircleCount++;
          }
          return insideCircleCount;
-      }, (address, count, throwable) -&gt; {
+      },
+      // This lambda runs on the caller and does not need to be marshallable.
+      // It is invoked with the results of each remote call, possibly concurrently.
+      // Therefore, collecting the results must guarantee thread-safety.
+      (address, count, throwable) -&gt; {
          if (throwable != null) {
             throwable.printStackTrace();
             System.out.println("Address: " + address + " encountered an error: " + throwable);
@@ -4650,6 +4674,7 @@ work in a cluster of 1 was well, but will be slower.</p>
       });
 
       // May have to sleep here to keep alive if no user threads left
+      fut.join();
    }
 
    private static boolean insideCircle(double x, double y) {
@@ -4664,24 +4689,21 @@ work in a cluster of 1 was well, but will be slower.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="streams"><a class="anchor" href="#streams"></a>9. Using the Streams API for code execution</h2>
+<h2 id="streams"><a class="anchor" href="#streams"></a>8. Using the Streams API for code execution</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Efficiently process data stored in Infinispan caches using the <code>Streams</code> API.</p>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="streams_streams"><a class="anchor" href="#streams_streams"></a>10. Streams</h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="streams_streams"><a class="anchor" href="#streams_streams"></a>8.1. Streams</h3>
 <div class="paragraph">
 <p>You may want to process a subset or all data in the cache to produce a result.
-This may bring thoughts of Map Reduce. Infinispan allows the user to do something
+This may bring thoughts of MapReduce. Infinispan allows the user to do something
 very similar but utilizes the standard JRE APIs to do so.
-Java 8 introduced the concept of a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html">Stream</a>
+Java 8 introduced the concept of a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html">Stream</a>,
 which allows functional-style operations on collections rather than having to procedurally
 iterate over the data yourself. Stream operations can be implemented in a fashion very
-similar to MapReduce.  Streams, just like MapReduce allow you to perform processing
+similar to MapReduce. Streams, just like MapReduce allow you to perform processing
 upon the entirety of your cache, possibly a very large data set, but in an efficient way.</p>
 </div>
 <div class="admonitionblock note">
@@ -4699,7 +4721,7 @@ upon the entirety of your cache, possibly a very large data set, but in an effic
 </table>
 </div>
 <div class="paragraph">
-<p>Also since we can control how the entries are iterated upon we can more efficiently perform the operations in a cache that is distributed if you want it to perform all of the operations across the cluster concurrently.</p>
+<p>Also, since we can control how the entries are iterated upon, we can more efficiently perform the operations in a cache that is distributed if you want it to perform all the operations across the cluster concurrently.</p>
 </div>
 <div class="paragraph">
 <p>A stream is retrieved from the <a href="../../apidocs/org/infinispan/Cache.html#entrySet--">entrySet</a>,
@@ -4708,15 +4730,15 @@ upon the entirety of your cache, possibly a very large data set, but in an effic
 Cache by invoking the <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Collection.html#stream--">stream</a> or
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Collection.html#parallelStream--">parallelStream</a> methods.</p>
 </div>
-<div class="sect2">
-<h3 id="common_stream_operations"><a class="anchor" href="#common_stream_operations"></a>10.1. Common stream operations</h3>
+<div class="sect3">
+<h4 id="common_stream_operations"><a class="anchor" href="#common_stream_operations"></a>8.1.1. Common stream operations</h4>
 <div class="paragraph">
 <p>This section highlights various options that are present irrespective of what type of underlying cache
 you are using.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="key_filtering"><a class="anchor" href="#key_filtering"></a>10.2. Key filtering</h3>
+<div class="sect3">
+<h4 id="key_filtering"><a class="anchor" href="#key_filtering"></a>8.1.2. Key filtering</h4>
 <div class="paragraph">
 <p>It is possible to filter the stream so that it only operates upon a given subset of keys.  This can be done
 by invoking the
@@ -4726,16 +4748,16 @@ method on the <code>CacheStream</code>.  This should always be used over a Predi
 and will be faster if the predicate was holding all keys.</p>
 </div>
 <div class="paragraph">
-<p>If you are familiar with the <code>AdvancedCache</code> interface you may be wondering why you even use
+<p>If you are familiar with the <code>AdvancedCache</code> interface, you may be wondering why you even use
 <a href="../../apidocs/org/infinispan/AdvancedCache.html#getAll-java.util.Set-">getAll</a>
 over this keyFilter.  There are some small benefits (mostly smaller payloads) to using getAll
-if you need the entries as is and need them all in memory in the local node.  However if you
-need to do processing on these elements a stream is recommended since you will get both
+if you need the entries as is and need them all in memory in the local node.  However, if you
+need to do processing on these elements, a stream is recommended, since you will get both
 distributed and threaded parallelism for free.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="segment_based_filtering"><a class="anchor" href="#segment_based_filtering"></a>10.3. Segment based filtering</h3>
+<div class="sect3">
+<h4 id="segment_based_filtering"><a class="anchor" href="#segment_based_filtering"></a>8.1.3. Segment based filtering</h4>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -4760,17 +4782,17 @@ The segments can be filtered by invoking
 method on the <code>CacheStream</code>.  This is applied after the key filter but before any intermediate operations are performed.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="localinvalidation"><a class="anchor" href="#localinvalidation"></a>10.4. Local/Invalidation</h3>
+<div class="sect3">
+<h4 id="localinvalidation"><a class="anchor" href="#localinvalidation"></a>8.1.4. Local/Invalidation</h4>
 <div class="paragraph">
 <p>A stream used with a local or invalidation cache can be used just the same way you would use a stream on a
-regular collection. Infinispan handles all of the translations if necessary behind the scenes and works with all
-of the more interesting options (ie. storeAsBinary and a cache loader).  Only data local to
-the node where the stream operation is performed will be used, for example invalidation only uses local entries.</p>
+regular collection. Infinispan handles all the translations, if necessary, behind the scenes and works with all
+the more interesting options (i.e. storeAsBinary and a cache loader).  Only data local to
+the node where the stream operation is performed will be used, for example, invalidation only uses local entries.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="example"><a class="anchor" href="#example"></a>10.5. Example</h3>
+<div class="sect3">
+<h4 id="example"><a class="anchor" href="#example"></a>8.1.5. Example</h4>
 <div class="paragraph">
 <p>The code below takes a cache and returns a map with all the cache entries whose values contain the string "JBoss"</p>
 </div>
@@ -4783,19 +4805,19 @@ cache.entrySet().stream()
 </div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="distributionreplicationscattered"><a class="anchor" href="#distributionreplicationscattered"></a>10.6. Distribution/Replication/Scattered</h3>
+<div class="sect3">
+<h4 id="distributionreplication"><a class="anchor" href="#distributionreplication"></a>8.1.6. Distribution/Replication</h4>
 <div class="paragraph">
-<p>This is where streams come into their stride.  When a stream operation is performed it will
+<p>This is where streams come into their stride.  When a stream operation is performed, it will
 send the various intermediate and terminal operations to each node that has pertinent data.
 This allows processing the intermediate values on the nodes owning the data, and only sending
 the final results back to the originating nodes, improving performance.</p>
 </div>
-<div class="sect3">
-<h4 id="rehash_aware"><a class="anchor" href="#rehash_aware"></a>10.6.1. Rehash Aware</h4>
+<div class="sect4">
+<h5 id="rehash_aware"><a class="anchor" href="#rehash_aware"></a>Rehash Aware</h5>
 <div class="paragraph">
-<p>Internally the data is segmented and each node only performs the operations upon the data it owns as a primary owner.
-This allows for data to be processed evenly, assuming segments are granular enough to provide for equal amounts of
+<p>Internally, the data is segmented and each node only performs the operations upon the data it owns as a primary owner.
+This allows for data to be processed evenly, assuming segments are granular enough to provide an equal amount of
 data on each node.</p>
 </div>
 <div class="paragraph">
@@ -4807,7 +4829,7 @@ key level or at the segment level (depending on the terminal operation) to limit
 duplicate processing.</p>
 </div>
 <div class="paragraph">
-<p>It is possible but highly discouraged to disable rehash awareness on the stream.  This should only be considered if
+<p>It is possible, but highly discouraged, to disable rehash awareness on the stream.  This should only be considered if
 your request can handle only seeing a subset of data if a rehash occurs.  This can be done by invoking
 <a href="../../apidocs/org/infinispan/CacheStream.html#disableRehashAware--">CacheStream.disableRehashAware()</a>
 The performance gain for most operations when a rehash doesn&#8217;t occur is completely negligible.
@@ -4827,24 +4849,24 @@ Please rethink disabling rehash awareness unless you really know what you are do
 </table>
 </div>
 </div>
-<div class="sect3">
-<h4 id="serialization"><a class="anchor" href="#serialization"></a>10.6.2. Serialization</h4>
+<div class="sect4">
+<h5 id="serialization"><a class="anchor" href="#serialization"></a>Serialization</h5>
 <div class="paragraph">
-<p>Since the operations are sent across to other nodes they must be serializable by Infinispan marshalling.  This allows the
+<p>Since the operations are sent across to other nodes, they must be serializable by Infinispan marshalling.  This allows the
 operations to be sent to the other nodes.</p>
 </div>
 <div class="paragraph">
 <p>The simplest way is to use a CacheStream instance and use a lambda just as you would normally.
-Infinispan overrides all of the various Stream intermediate and terminal methods to take
-Serializable versions of the arguments (ie. SerializableFunction, SerializablePredicate&#8230;&#8203;)
+Infinispan overrides all the various Stream intermediate and terminal methods to take
+Serializable versions of the arguments (i.e. SerializableFunction, SerializablePredicate, etc.)
 You can find these methods at
 <a href="../../apidocs/org/infinispan/CacheStream.html">CacheStream</a>.
 This relies on the spec to pick the most specific method as defined <a href="https://docs.oracle.com/javase/specs/jls/se8/html/jls-15.html#jls-15.12.2.5">here</a>.</p>
 </div>
 <div class="paragraph">
-<p>In our previous example we used a <code>Collector</code> to collect all the results into a <code>Map</code>.
-Unfortunately the <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Collectors.html">Collectors</a>
-class doesn&#8217;t produce Serializable instances.  Thus if you need to use these, there are two ways to do so:</p>
+<p>In our previous example, we used a <code>Collector</code> to collect all the results into a <code>Map</code>.
+Unfortunately, the <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Collectors.html">Collectors</a>
+class doesn&#8217;t produce Serializable instances.  Thus, if you need to use these, there are two ways to do so:</p>
 </div>
 <div class="paragraph">
 <p>One option would be to use the
@@ -4874,9 +4896,9 @@ These overloaded <code>collect</code> methods are only available via <code>Cache
 </div>
 </div>
 <div class="paragraph">
-<p>If however you are not able to use the <code>Cache</code> and <code>CacheStream</code> interfaces you cannot utilize <code>Serializable</code>
-arguments and you must instead cast the lambdas to be <code>Serializable</code> manually by casting the lambda to multiple
-interfaces.  It is not a pretty sight but it gets the job done.</p>
+<p>However, you are not able to use the <code>Cache</code> and <code>CacheStream</code> interfaces you cannot utilize <code>Serializable</code>
+arguments, and you must instead cast the lambdas to be <code>Serializable</code> manually by casting the lambda to multiple
+interfaces.  It is not a pretty sight, but it gets the job done.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -4887,7 +4909,7 @@ interfaces.  It is not a pretty sight but it gets the job done.</p>
 </div>
 <div class="paragraph">
 <p>The recommended and most performant way is to use ProtoStream as this provides the smallest payload.  Unfortunately
-this means you cannot use lamdbas as this requires defining the class beforehand.</p>
+this means you cannot use lambdas, as it requires defining the class beforehand.</p>
 </div>
 <div class="paragraph">
 <p>You can use an ProtoStream as shown below:</p>
@@ -4943,49 +4965,49 @@ this means you cannot use lamdbas as this requires defining the class beforehand
 </div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="parallel_computation"><a class="anchor" href="#parallel_computation"></a>10.7. Parallel Computation</h3>
+<div class="sect3">
+<h4 id="parallel_computation"><a class="anchor" href="#parallel_computation"></a>8.1.7. Parallel Computation</h4>
 <div class="paragraph">
 <p>Distributed streams by default try to parallelize as much as possible.  It is possible for the end user to control this and
-actually they always have to control one of the options.  There are 2 ways these streams are parallelized.</p>
+actually they always have to control one of the options.  There are two ways these streams are parallelized.</p>
 </div>
 <div class="paragraph">
-<p><strong>Local to each node</strong>
-When a stream is created from the cache collection the end user can choose between invoking
+<p><strong>Local to each node:</strong>
+When a stream is created from the cache collection, the end user can choose between invoking
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Collection.html#stream--">stream</a> or
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Collection.html#parallelStream--">parallelStream</a>
 method.  Depending on if the parallel stream was picked will enable multiple threading for
-each node locally.  Note that some operations like a rehash aware iterator and forEach operations
+each node locally.  Note that, some operations like a rehash aware iterator and forEach operations
 will always use a sequential stream locally.  This could be enhanced at some point to allow for
 parallel streams locally.</p>
 </div>
 <div class="paragraph">
 <p>Users should be careful when using local parallelism as it requires having a large number of entries or operations
-that are computationally expensive to be faster. Also it should be noted that if a user uses a parallel
-stream with <code>forEach</code> that the action should not block as this would be executed on the common pool, which
+that are computationally expensive to be faster. Also, it should be noted that, if a user uses a parallel
+stream with <code>forEach</code>, the action should not block as this would be executed on the common pool, which
 is normally reserved for computation operations.</p>
 </div>
 <div class="paragraph">
-<p><strong>Remote requests</strong>
-When there are multiple nodes it may be desirable to control whether the remote requests are all processed
-at the same time concurrently or one at a time.  By default all terminal operations except the iterator
+<p><strong>Remote requests:</strong>
+When there are multiple nodes, it may be desirable to control whether the remote requests are all processed
+at the same time concurrently or one at a time.  By default, all terminal operations, except the iterator,
 perform concurrent requests.  The iterator, method to reduce overall memory pressure on the local node,
 only performs sequential requests which actually performs slightly better.</p>
 </div>
 <div class="paragraph">
-<p>If a user wishes to change this default however they can do so by invoking the
+<p>If a user wishes to change the default behavior, they can do so by invoking the
 <a href="../../apidocs/org/infinispan/CacheStream.html#sequentialDistribution--">sequentialDistribution</a>
 or <a href="../../apidocs/org/infinispan/CacheStream.html#parallelDistribution--">parallelDistribution</a>
 methods on the <code>CacheStream</code>.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="task_timeout"><a class="anchor" href="#task_timeout"></a>10.8. Task timeout</h3>
+<div class="sect3">
+<h4 id="operation_timeout"><a class="anchor" href="#operation_timeout"></a>8.1.8. Operation timeout</h4>
 <div class="paragraph">
-<p>It is possible to set a timeout value for the operation requests. This timeout is used only for remote requests timing out and
-it is on a per request basis. The former means the local execution will not timeout and the latter means if you have a failover
-scenario as described above the subsequent requests each have a new timeout.  If no timeout is specified it uses the
-replication timeout as a default timeout. You can set the timeout in your task by doing the following:</p>
+<p>It is possible to set a timeout value for the operation requests. This timeout is used only for remote requests timing out, and
+it is on a per-request basis. The former means the local execution will not timeout, and the latter means if you have a failover
+scenario, as described above, the subsequent requests each have a new timeout.  If no timeout is specified, it uses the
+replication timeout as a default timeout. You can set the timeout in your operation by doing the following:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -4999,23 +5021,23 @@ stream.timeout(1, TimeUnit.MINUTES);</code></pre>
 javadoc.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="injection"><a class="anchor" href="#injection"></a>10.9. Injection</h3>
+<div class="sect3">
+<h4 id="injection"><a class="anchor" href="#injection"></a>8.1.9. Injection</h4>
 <div class="paragraph">
 <p>The <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html">Stream</a>
 has a terminal operation called
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#forEach-java.util.function.Consumer-">forEach</a>
-which allows for running some sort of side effect operation on the data.  In this case it may be desirable to get a reference to
+which allows for running some sort of side effect operation on the data.  In this case, it may be desirable to get a reference to
 the <code>Cache</code> that is backing this Stream.  If your <code>Consumer</code> implements the
 <a href="../../apidocs/org/infinispan/stream/CacheAware.html">CacheAware</a>
-interface the <code>injectCache</code> method be invoked before the accept method from the <code>Consumer</code> interface.</p>
+interface, the <code>injectCache</code> method must be invoked before the accept method from the <code>Consumer</code> interface.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="distributed_stream_execution"><a class="anchor" href="#distributed_stream_execution"></a>10.10. Distributed Stream execution</h3>
+<div class="sect3">
+<h4 id="distributed_stream_execution"><a class="anchor" href="#distributed_stream_execution"></a>8.1.10. Distributed Stream execution</h4>
 <div class="paragraph">
-<p>Distributed streams execution works in a fashion very similar to map reduce.  Except in this case we are sending zero to many intermediate operations
-(map, filter etc.) and a single terminal operation to the various nodes.  The operation basically comes down to the following:</p>
+<p>Distributed streams execution works in a fashion very similar to MapReduce.  Except, in this case, we are sending zero to many intermediate operations
+(map, filter etc.) and a single terminal operation to the various nodes.  The operation comes down to the following:</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
@@ -5044,12 +5066,12 @@ interface the <code>injectCache</code> method be invoked before the accept metho
 </ol>
 </div>
 <div class="paragraph">
-<p>In most cases all operations are fully distributed, as in the operations are all fully applied on each remote node and usually only the last operation or something related may be
+<p>In most cases, all operations are fully distributed, as in the operations are all fully applied on each remote node and usually only the last operation or something related may be
 reapplied to reduce the results from multiple nodes.  One important note is that intermediate values do not actually have to be serializable, it is the last value
 sent back that is the part desired (exceptions for various operations will be highlighted below).</p>
 </div>
 <div class="paragraph">
-<p><strong>Terminal operator distributed result reductions</strong>
+<p><strong>Terminal operator distributed result reductions:</strong>
 The following paragraphs describe how the distributed reductions work for the various terminal operators.  Some of these are special in that an intermediate value may
 be required to be serializable instead of the final result.</p>
 </div>
@@ -5058,24 +5080,24 @@ be required to be serializable instead of the final result.</p>
 <dt class="hdlist1">allMatch noneMatch anyMatch</dt>
 <dd>
 <p>The <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#allMatch-java.util.function.Predicate-">allMatch</a>
-operation is ran on each node and then all the results are logically anded together locally
+operation is run on each node and then all the results use a logical <em>and</em> together locally
 to get the appropriate value.  The
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#noneMatch-java.util.function.Predicate-">noneMatch</a>
 and
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#anyMatch-java.util.function.Predicate-">anyMatch</a>
-operations use a logical or instead. These methods also have early termination support,
+operations use a logical <em>or</em> instead. These methods also have early termination support,
 stopping remote and local operations once the final result is known.</p>
 </dd>
 <dt class="hdlist1">collect</dt>
 <dd>
 <p>The <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#collect-java.util.stream.Collector-">collect</a>
-method is interesting in that it can do a few extra steps.  The remote node performs
-everything as normal except it doesn&#8217;t perform the final
+method is interesting, in that it can do a few extra steps.  The remote node performs
+everything as normal, except it doesn&#8217;t perform the final
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Collector.html#finisher--">finisher</a>
 upon the result and instead sends back the fully combined results.  The local thread
 then <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Collector.html#combiner--">combines</a>
 the remote and local result into a value which is then finally finished.  The key
-here to remember is that the final value doesn&#8217;t have to be serializable but rather
+here to remember is that the final value doesn&#8217;t have to be serializable, but rather
 the values produced from the <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Collector.html#supplier--">supplier</a>
 and <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Collector.html#combiner--">combiner</a>
 methods.</p>
@@ -5090,14 +5112,14 @@ method just adds the numbers together from each node.</p>
 <p>The <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#findAny--">findAny</a>
 operation returns just the first value they find, whether it was from a remote node
 or locally.  Note this supports early termination in that once a value is found it
-will not process others.  Note the findFirst method is special since it requires a sorted
+will not process others.  Note that, the findFirst method is special since it requires a sorted
 intermediate operation, which is detailed in the
 <a href="../embedding/embedding.html#intermediate_operation_exceptions">exceptions</a> section.</p>
 </dd>
 <dt class="hdlist1">max min</dt>
 <dd>
 <p>The <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#max-java.util.Comparator-">max</a> and
-<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#min-java.util.Comparator-">min</a> methods find the respective min or max value on each node then a final
+<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#min-java.util.Comparator-">min</a> methods find the respective min or max value on each node, then a final
 reduction is performed locally to ensure only the min or max across all nodes is returned.</p>
 </dd>
 <dt class="hdlist1">reduce</dt>
@@ -5105,25 +5127,25 @@ reduction is performed locally to ensure only the min or max across all nodes is
 <p>The various reduce methods <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#reduce-java.util.function.BinaryOperator-">1</a> ,
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#reduce-T-java.util.function.BinaryOperator-">2</a> ,
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#reduce-U-java.util.function.BiFunction-java.util.function.BinaryOperator-">3</a> will end up serializing
-the result as much as the accumulator can do.  Then it will accumulate the local and remote results together locally, before combining if you have provided that.  Note this means
+the result as much as the accumulator can do.  Then it will accumulate the local and remote results together locally, before combining if you have provided that.  Note that, this means
 a value coming from the combiner doesn&#8217;t have to be Serializable.</p>
 </dd>
 </dl>
 </div>
 </div>
-<div class="sect2">
-<h3 id="key_based_rehash_aware_operators"><a class="anchor" href="#key_based_rehash_aware_operators"></a>10.11. Key based rehash aware operators</h3>
+<div class="sect3">
+<h4 id="key_based_rehash_aware_operators"><a class="anchor" href="#key_based_rehash_aware_operators"></a>8.1.11. Key based rehash aware operators</h4>
 <div class="paragraph">
 <p>The <a href="../../apidocs/org/infinispan/CacheStream.html#iterator--">iterator</a>,
 <a href="../../apidocs/org/infinispan/CacheStream.html#spliterator--">spliterator</a>
 and <a href="../../apidocs/org/infinispan/CacheStream.html#forEach-java.util.function.Consumer-">forEach</a>
 are unlike the other terminal operators in that the rehash awareness has to keep
-track of what keys per segment have been processed instead of just segments.  This is
+track of what keys per segment have been processed instead of just segments.  This is needed
 to guarantee an exactly once (iterator &amp; spliterator) or at least once behavior (forEach)
 even under cluster membership changes.</p>
 </div>
 <div class="paragraph">
-<p>The <code>iterator</code> and <code>spliterator</code> operators when invoked on a remote node will return back batches
+<p>The <code>iterator</code> and <code>spliterator</code> operators, when invoked on a remote node will return back batches
 of entries, where the next batch is only sent back after the last has been fully consumed.  This
 batching is done to limit how many entries are in memory at a given time.  The user node will hold
 onto which keys it has processed and when a given segment is completed it will release those keys from
@@ -5132,18 +5154,18 @@ keys are held in memory at once, instead of from all nodes.</p>
 </div>
 <div class="paragraph">
 <p>The <code>forEach()</code> method also returns batches, but it returns a batch of keys after it has finished processing
-at least a batch worth of keys.  This way the originating node can know what keys have been processed
-already to reduce chances of processing the same entry again.  Unfortunately this means it is possible
-to have an at least once behavior when a node goes down unexpectedly.  In this case that node could have
+at least a batch worth of keys.  This way, the originating node can know what keys have been processed
+already to reduce chances of processing the same entry again.  Unfortunately, this means it is possible
+to have an at least once behavior when a node goes down unexpectedly.  In this case, that node could have
 been processing a batch and not yet completed one and those entries that were processed but not
-in a completed batch will be ran again when the rehash failure operation occurs.  Note that adding a
+in a completed batch will be ran again when the rehash failure operation occurs.  Note that, adding a
 node will not cause this issue as the rehash failover doesn&#8217;t occur until all responses are received.</p>
 </div>
 <div class="paragraph">
-<p>These operations batch sizes are both controlled by the same value which can be configured by invoking
+<p>These operations' batch sizes are both controlled by the same value which can be configured by invoking
 <a href="../../apidocs/org/infinispan/CacheStream.html#distributedBatchSize-int-">distributedBatchSize</a>
 method on the <code>CacheStream</code>.  This value will default to the <code>chunkSize</code> configured in state transfer.
-Unfortunately this value is a tradeoff with memory usage vs performance vs at least once and your
+Unfortunately, this value is a tradeoff with memory usage vs. performance vs. at least once, and your
 mileage may vary.</p>
 </div>
 <div class="paragraph">
@@ -5156,8 +5178,8 @@ mileage may vary.</p>
 <p>This optimization applies to both replicated and distributed caches. However, Infinispan performs iterations remotely when using cache stores that are both <code>shared</code> and have <code>write-behind</code> enabled. In this case performing the iterations remotely ensures consistency.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="intermediate_operation_exceptions"><a class="anchor" href="#intermediate_operation_exceptions"></a>10.12. Intermediate operation exceptions</h3>
+<div class="sect3">
+<h4 id="intermediate_operation_exceptions"><a class="anchor" href="#intermediate_operation_exceptions"></a>8.1.12. Intermediate operation exceptions</h4>
 <div class="paragraph">
 <p>There are some intermediate operations that have special exceptions, these are
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#skip-long-">skip</a>,
@@ -5166,15 +5188,15 @@ sorted <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/str
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#sorted--">2</a>.
 &amp; <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#distinct--">distinct</a>.
 All of these methods have some sort of artificial iterator implanted in the stream
-processing to guarantee correctness, they are documented as below.  Note this means
-these operations may cause possibly severe performance degradation.</p>
+processing to guarantee correctness, they are documented as below.  Note that, this means
+these operations may cause severe performance degradation.</p>
 </div>
 <div class="dlist">
 <dl>
 <dt class="hdlist1">Skip</dt>
 <dd>
 <p>An artificial iterator is implanted up to the intermediate skip operation.
-Then results are brought locally so it can skip the appropriate amount of elements.</p>
+Then, results are brought locally so it can skip the appropriate amount of elements.</p>
 </dd>
 <dt class="hdlist1">Sorted</dt>
 <dd>
@@ -5187,7 +5209,7 @@ returns batches of elements, but this is not yet implemented.</p>
 <dd>
 <p>WARNING: This operation requires having all or nearly all entries in memory on the local node.
 Distinct is performed on each remote node and then an artificial iterator returns those distinct values.
-Then finally all of those results have a distinct operation performed upon them.</p>
+Then, finally all of those results have a distinct operation performed upon them.</p>
 </dd>
 </dl>
 </div>
@@ -5195,14 +5217,14 @@ Then finally all of those results have a distinct operation performed upon them.
 <p>The rest of the intermediate operations are fully distributed as one would expect.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="examples"><a class="anchor" href="#examples"></a>10.13. Examples</h3>
+<div class="sect3">
+<h4 id="examples"><a class="anchor" href="#examples"></a>8.1.13. Examples</h4>
 <div class="paragraph">
 <p><strong>Word Count</strong></p>
 </div>
 <div class="paragraph">
 <p>Word count is a classic, if overused, example
-of map/reduce paradigm. Assume we have a mapping of key &#8594; sentence stored on
+of MapReduce paradigm. Assume we have a mapping of key &#8594; sentence stored on
 Infinispan nodes. Key is a String, each sentence is also a String, and we have
 to count occurrence of all words in all sentences available. The implementation
 of such a distributed task could be defined as follows:</p>
@@ -5248,12 +5270,12 @@ of such a distributed task could be defined as follows:</p>
 </div>
 </div>
 <div class="paragraph">
-<p>In this case it is pretty simple to do the word count from the previous example.</p>
+<p>In this case, it is pretty simple to do the word count from the previous example.</p>
 </div>
 <div class="paragraph">
-<p>However what if we want to find the most frequent word in the example?  If you take a second
-to think about this case you will realize you need to have all words counted  and available
-locally first. Thus we actually have a few options.</p>
+<p>However, what if we want to find the most frequent word in the example?  If you take a second
+to think about this case, you will realize you need to have all words counted  and available
+locally first. Thus, we actually have a few options.</p>
 </div>
 <div class="paragraph">
 <p>We could use a finisher on the collector, which is invoked on the user thread
@@ -5274,22 +5296,21 @@ Some redundant lines have been removed from the previous example.</p>
                wordCountMap -&gt; {
                   String mostFrequent = null;
                   long maxCount = 0;
-                     for (Map.Entry&lt;String, Long&gt; e : wordCountMap.entrySet()) {
-                        int count = e.getValue().intValue();
-                        if (count &gt; maxCount) {
-                           maxCount = count;
-                           mostFrequent = e.getKey();
-                        }
+                  for (Map.Entry&lt;String, Long&gt; e : wordCountMap.entrySet()) {
+                     int count = e.getValue().intValue();
+                     if (count &gt; maxCount) {
+                        maxCount = count;
+                        mostFrequent = e.getKey();
                      }
-                     return mostFrequent;
+                  }
+                  return mostFrequent;
                }));
-
 }</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Unfortunately the last step is only going to be ran in a single thread, which if we have a lot of
-words could be quite slow.  Maybe there is another way to parallelize this with Streams.</p>
+<p>Unfortunately, the last step is only going to be ran in a single thread, which if we have a lot of
+words, could be quite slow.  Maybe there is another way to parallelize this with Streams.</p>
 </div>
 <div class="paragraph">
 <p>We mentioned before we are in the local node after processing, so we could actually use
@@ -5310,14 +5331,14 @@ a stream on the map results.  We can therefore use a parallel stream on the resu
 </div>
 </div>
 <div class="paragraph">
-<p>This way you can still utilize all of the cores locally when calculating the most frequent element.</p>
+<p>This way you can still utilize all the cores locally when calculating the most frequent element.</p>
 </div>
 <div class="paragraph">
 <p><strong>Remove specific entries</strong></p>
 </div>
 <div class="paragraph">
 <p>Distributed streams can also be used as a way to modify data where it lives.
-For example you may want to remove all entries in your cache that contain
+For example, you may want to remove all entries in your cache that contain
 a specific word.</p>
 </div>
 <div class="listingblock">
@@ -5335,19 +5356,17 @@ a specific word.</p>
 <div class="paragraph">
 <p>If we carefully note what is serialized and what is not, we notice that only the word along
 with the operations are serialized across to other nods as it is captured by the lambda.
-However the real saving piece is that the cache operation is performed on the primary
-owner thus reducing the amount of network traffic required to remove these values from the
-cache. The cache is not captured by the lambda as we provide a special BiConsumer method
-override that when invoked on each node passes the cache to the BiConsumer</p>
+However, the real saving piece is that the cache operation is performed on the primary
+owner, thus reducing the amount of network traffic required to remove these values from the
+cache. The cache is not captured by the lambda, as we provide a special BiConsumer method
+override that when invoked on each node passes the cache to the BiConsumer.</p>
 </div>
 <div class="paragraph">
 <p>One thing to keep in mind using the <code>forEach</code> command in this manner is that the underlying
 stream obtains no locks. The cache remove operation will still obtain locks naturally, but
 the value could have changed from what the stream saw. That means that the entry could
-have been changed after the stream read it but the remove actually removed it.</p>
-</div>
-<div class="paragraph">
-<p>We have specifically added a new variant which is called <code>LockedStream</code>.</p>
+have been changed after the stream read it but the remove actually removed it.
+We have specifically added a new variant which is called <code>LockedStream</code> to address this.</p>
 </div>
 <div class="paragraph">
 <p><strong>Plenty of other examples</strong></p>
@@ -5359,8 +5378,9 @@ Just remember that your operations need to be Serializable in some way.</p>
 </div>
 </div>
 </div>
+</div>
 <div class="sect1">
-<h2 id="ispn_modules"><a class="anchor" href="#ispn_modules"></a>11. Using Infinispan in WildFly applications</h2>
+<h2 id="ispn_modules"><a class="anchor" href="#ispn_modules"></a>9. Using Infinispan in WildFly applications</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>WildFly includes Infinispan modules that you can use in WildFly applications. You can do this in two ways:</p>
@@ -5398,7 +5418,7 @@ Just remember that your operations need to be Serializable in some way.</p>
 <p>The following procedures describe using the Infinispan libraries provided by WildFly.</p>
 </div>
 <div class="sect2">
-<h3 id="configure_ispn_modules"><a class="anchor" href="#configure_ispn_modules"></a>11.1. Configuring applications to Use Infinispan modules</h3>
+<h3 id="configure_ispn_modules"><a class="anchor" href="#configure_ispn_modules"></a>9.1. Configuring applications to use Infinispan modules</h3>
 <div class="paragraph">
 <p>To use Infinispan libraries provided by WildFly in your applications, add Infinispan dependency in the application&#8217;s pom.xml file.</p>
 </div>
@@ -5419,7 +5439,7 @@ Just remember that your operations need to be Serializable in some way.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>You must define the value for <code>${version.infinispan.bom}`in the `&lt;properties&gt;</code> section of the pom.xml file.</p>
+<p>You must define the value for <code>${version.infinispan.bom}</code> in the <code>&lt;properties&gt;</code> section of the pom.xml file.</p>
 </div>
 </li>
 <li>
@@ -5441,7 +5461,7 @@ Just remember that your operations need to be Serializable in some way.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-caches-in-jboss_server"><a class="anchor" href="#configuring-caches-in-jboss_server"></a>11.2. Configuring Infinispan caches in WildFly</h3>
+<h3 id="configuring-caches-in-jboss_server"><a class="anchor" href="#configuring-caches-in-jboss_server"></a>9.2. Configuring Infinispan caches in WildFly</h3>
 <div class="paragraph">
 <p>Create Infinispan caches in WildFly.</p>
 </div>
@@ -5490,7 +5510,7 @@ Just remember that your operations need to be Serializable in some way.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="using-cahches-in-jboss-applications_server"><a class="anchor" href="#using-cahches-in-jboss-applications_server"></a>11.3. Using Infinispan caches in WildFly applications</h3>
+<h3 id="using-cahches-in-jboss-applications_server"><a class="anchor" href="#using-cahches-in-jboss-applications_server"></a>9.3. Using Infinispan caches in WildFly applications</h3>
 <div class="paragraph">
 <p>You can access Infinispan caches in your applications through resource lookup.</p>
 </div>
@@ -5501,7 +5521,7 @@ Just remember that your operations need to be Serializable in some way.</p>
 <p>WildFly is running.</p>
 </li>
 <li>
-<p>You have created Infinispan cahches in WildFly.</p>
+<p>You have created Infinispan caches in WildFly.</p>
 </li>
 </ul>
 </div>
@@ -5556,14 +5576,14 @@ private Cache&lt;String, String&gt; ispnCache;</code></pre>
 </div>
 </div>
 <div class="sect1">
-<h2 id="quarkus_embedded"><a class="anchor" href="#quarkus_embedded"></a>12. Using the Quarkus extension</h2>
+<h2 id="quarkus_embedded"><a class="anchor" href="#quarkus_embedded"></a>10. Using the Quarkus extension</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan provides an extension that integrates with the Quarkus framework.
 The extension lets you create natively compiled Infinispan applications.</p>
 </div>
 <div class="sect2">
-<h3 id="quarkus_embedded_dependencies"><a class="anchor" href="#quarkus_embedded_dependencies"></a>12.1. Quarkus dependencies</h3>
+<h3 id="quarkus_embedded_dependencies"><a class="anchor" href="#quarkus_embedded_dependencies"></a>10.1. Quarkus dependencies</h3>
 <div class="paragraph">
 <p>Include the Infinispan Quarkus extension in your <code>pom.xml</code>:</p>
 </div>
@@ -5578,9 +5598,9 @@ The extension lets you create natively compiled Infinispan applications.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="quarkus_inject_embedded"><a class="anchor" href="#quarkus_inject_embedded"></a>12.2. Injecting Embedded Caches</h3>
+<h3 id="quarkus_inject_embedded"><a class="anchor" href="#quarkus_inject_embedded"></a>10.2. Injecting Embedded Caches</h3>
 <div class="paragraph">
-<p>Inject a <code>EmbeddedCacheManager</code> instance into your Quarkus application to interact with Infinispan caches..</p>
+<p>Inject a <code>EmbeddedCacheManager</code> instance into your Quarkus application to interact with Infinispan caches.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -5613,7 +5633,7 @@ public class ExampleResource {
 </div>
 </div>
 <div class="sect2">
-<h3 id="quarkus_native_compilation"><a class="anchor" href="#quarkus_native_compilation"></a>12.3. Compiling Quarkus Infinispan application</h3>
+<h3 id="quarkus_native_compilation"><a class="anchor" href="#quarkus_native_compilation"></a>10.3. Compiling Quarkus Infinispan application</h3>
 <div class="paragraph">
 <p>Generate a native executable for Quarkus Infinispan application.</p>
 </div>
@@ -5642,7 +5662,7 @@ public class ExampleResource {
 </div>
 </div>
 <div class="sect1">
-<h2 id="cdi_support"><a class="anchor" href="#cdi_support"></a>13. Using the CDI Extension</h2>
+<h2 id="cdi_support"><a class="anchor" href="#cdi_support"></a>11. Using the CDI Extension</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan provides an extension that integrates with the CDI (Contexts and
@@ -5662,7 +5682,7 @@ Dependency Injection) programming model and allows you to:</p>
 </ul>
 </div>
 <div class="sect2">
-<h3 id="cdi_dependencies"><a class="anchor" href="#cdi_dependencies"></a>13.1. CDI Dependencies</h3>
+<h3 id="cdi_dependencies"><a class="anchor" href="#cdi_dependencies"></a>11.1. CDI Dependencies</h3>
 <div class="paragraph">
 <p>Update your <code>pom.xml</code> with one of the following dependencies to include the
 Infinispan CDI extension in your project:</p>
@@ -5687,7 +5707,7 @@ Infinispan CDI extension in your project:</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cdi_inject_embed"><a class="anchor" href="#cdi_inject_embed"></a>13.2. Injecting Embedded Caches</h3>
+<h3 id="cdi_inject_embed"><a class="anchor" href="#cdi_inject_embed"></a>11.2. Injecting Embedded Caches</h3>
 <div class="paragraph">
 <p>Set up CDI beans to inject embedded caches.</p>
 </div>
@@ -5812,7 +5832,7 @@ method or do not add any qualifier.</p>
 <p>Add the <code>@GreetingCache</code> qualifier to your cache injection point.</p>
 <div class="listingblock">
 <div class="content">
-<pre>...
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">...
 import jakarta.inject.Inject;
 
 public class GreetingService {
@@ -5828,7 +5848,7 @@ public class GreetingService {
         }
         return cachedValue;
     }
-}</pre>
+}</code></pre>
 </div>
 </div>
 </li>
@@ -5836,7 +5856,7 @@ public class GreetingService {
 </div>
 </div>
 <div class="sect2">
-<h3 id="cdi_inject_remote"><a class="anchor" href="#cdi_inject_remote"></a>13.3. Injecting Remote Caches</h3>
+<h3 id="cdi_inject_remote"><a class="anchor" href="#cdi_inject_remote"></a>11.3. Injecting Remote Caches</h3>
 <div class="paragraph">
 <p>Set up CDI beans to inject remote caches.</p>
 </div>
@@ -5860,11 +5880,11 @@ public @interface RemoteGreetingCache { <i class="conum" data-value="2"></i><b>(
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>names the cache to inject.</td>
+<td>Names the cache to inject.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>creates a <code>@RemoteGreetingCache</code> qualifier.</td>
+<td>Creates a <code>@RemoteGreetingCache</code> qualifier.</td>
 </tr>
 </table>
 </div>
@@ -5929,11 +5949,11 @@ public class Config {
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>creates the bean once for the application. Producers that create Cache Managers should always include the <code>@ApplicationScoped</code> annotation to avoid creating multiple Cache Managers, which are heavy weight objects.</td>
+<td>Creates the bean once for the application. Producers that create Cache Managers should always include the <code>@ApplicationScoped</code> annotation to avoid creating multiple Cache Managers, which are heavy weight objects.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>creates a new <code>RemoteCacheManager</code> instance that is bound to the <code>@RemoteGreetingCache</code> qualifier.</td>
+<td>Creates a new <code>RemoteCacheManager</code> instance that is bound to the <code>@RemoteGreetingCache</code> qualifier.</td>
 </tr>
 </table>
 </div>
@@ -5942,7 +5962,7 @@ public class Config {
 </div>
 </div>
 <div class="sect2">
-<h3 id="cache_events"><a class="anchor" href="#cache_events"></a>13.4. Receiving Cache and Cache Manager Events</h3>
+<h3 id="cache_events"><a class="anchor" href="#cache_events"></a>11.4. Receiving Cache and Cache Manager Events</h3>
 <div class="paragraph">
 <p>You can use CDI Events to receive Cache and Cache Manager level events.</p>
 </div>
@@ -5977,18 +5997,18 @@ public class GreetingService {
 </div>
 </div>
 <div class="sect1">
-<h2 id="multimap-cache"><a class="anchor" href="#multimap-cache"></a>14. Multimap cache</h2>
+<h2 id="multimap-cache"><a class="anchor" href="#multimap-cache"></a>12. Multimap cache</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>MutimapCache is a type of Infinispan Cache that maps keys to values in which each key can contain multiple values.</p>
 </div>
 <div class="sect2">
-<h3 id="using-multimap-cache_multimap-cache"><a class="anchor" href="#using-multimap-cache_multimap-cache"></a>14.1. Multimap Cache</h3>
+<h3 id="using-multimap-cache_multimap-cache"><a class="anchor" href="#using-multimap-cache_multimap-cache"></a>12.1. Multimap Cache</h3>
 <div class="paragraph">
 <p>MutimapCache is a type of Infinispan Cache that maps keys to values in which each key can contain multiple values.</p>
 </div>
 <div class="sect3">
-<h4 id="installation_and_configuration"><a class="anchor" href="#installation_and_configuration"></a>14.1.1. Installation and configuration</h4>
+<h4 id="installation_and_configuration"><a class="anchor" href="#installation_and_configuration"></a>12.1.1. Installation and configuration</h4>
 <div class="listingblock">
 <div class="title">pom.xml</div>
 <div class="content">
@@ -6000,9 +6020,9 @@ public class GreetingService {
 </div>
 </div>
 <div class="sect3">
-<h4 id="multimapcache_api"><a class="anchor" href="#multimapcache_api"></a>14.1.2. MultimapCache API</h4>
+<h4 id="multimapcache_api"><a class="anchor" href="#multimapcache_api"></a>12.1.2. MultimapCache API</h4>
 <div class="paragraph">
-<p>MultimapCache API exposes several methods to interact with the Multimap Cache.
+<p><a href="../../apidocs/org/infinispan/multimap/api/embedded/MultimapCache.html">MultimapCache API</a> exposes several methods to interact with the Multimap Cache.
 These methods are non-blocking in most cases; see
 <a href="#multimap_limitations">limitations</a> for more information.</p>
 </div>
@@ -6101,29 +6121,33 @@ When this method returns an empty collection, it means the key was not found.</p
 </div>
 <div class="paragraph">
 <div class="title">boolean supportsDuplicates()</div>
-<p>Asynchronous that returns true if the multimap cache supports duplicates. This means that the content of the multimap can be
-'a' &#8594; ['1', '1', '2']. For now this method will always return false, as duplicates are not yet supported.
+<p>Returns true if the multimap cache supports duplicates. This means that the content of the multimap can be
+'a' &#8594; ['1', '1', '2'].
 The existence of a given value is determined by 'equals' and `hashcode' method&#8217;s contract.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="creating_a_multimap_cache"><a class="anchor" href="#creating_a_multimap_cache"></a>14.1.3. Creating a Multimap Cache</h4>
+<h4 id="creating_a_multimap_cache"><a class="anchor" href="#creating_a_multimap_cache"></a>12.1.3. Creating a Multimap Cache</h4>
 <div class="paragraph">
-<p>Currently the MultimapCache is configured as a regular cache. This can be done either by code or XML configuration.
+<p>Currently, the MultimapCache is configured as a regular cache. This can be done either by code or XML configuration.
 See how to configure a regular cache in <a href="../configuring/configuring.html#cache-configuration">Configuring Infinispan caches</a>.</p>
 </div>
 <div class="sect4">
 <h5 id="embedded_mode"><a class="anchor" href="#embedded_mode"></a>Embedded mode</h5>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">// create or obtain your EmbeddedCacheManager
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import org.infinispan.configuration.cache.ConfigurationBuilder;
+
+// Create or obtain your EmbeddedCacheManager
 EmbeddedCacheManager cm = ... ;
+// Configure the multimap cache
+ConfigurationBuilder cb = ...;
 
 // create or obtain a MultimapCacheManager passing the EmbeddedCacheManager
 MultimapCacheManager multimapCacheManager = EmbeddedMultimapCacheManagerFactory.from(cm);
 
 // define the configuration for the multimap cache
-multimapCacheManager.defineConfiguration(multimapCacheName, c.build());
+multimapCacheManager.defineConfiguration(multimapCacheName, cb.build());
 
 // get the multimap cache
 multimapCache = multimapCacheManager.get(multimapCacheName);</code></pre>
@@ -6132,9 +6156,9 @@ multimapCache = multimapCacheManager.get(multimapCacheName);</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="multimap_limitations"><a class="anchor" href="#multimap_limitations"></a>14.1.4. Limitations</h4>
+<h4 id="multimap_limitations"><a class="anchor" href="#multimap_limitations"></a>12.1.4. Limitations</h4>
 <div class="paragraph">
-<p>In almost every case the Multimap Cache will behave as a regular Cache, but some limitations exist in the current version, as follows:</p>
+<p>In almost every case, the Multimap Cache will behave as a regular Cache, but some limitations exist in the current version, as follows:</p>
 </div>
 <div class="sect4">
 <h5 id="support_for_duplicates"><a class="anchor" href="#support_for_duplicates"></a>Support for duplicates</h5>
@@ -6148,15 +6172,15 @@ Invoking remove on the multimap will remove all duplicates if present.</p>
 <h5 id="eviction"><a class="anchor" href="#eviction"></a>Eviction</h5>
 <div class="paragraph">
 <p>For now, the eviction works per key, and not per key-value pair.
-This means that whenever a key is evicted, all the values associated with the key will be evicted too.</p>
+This means that, whenever a key is evicted, all the values associated with the key will be evicted too.</p>
 </div>
 </div>
 <div class="sect4">
 <h5 id="transactions"><a class="anchor" href="#transactions"></a>Transactions</h5>
 <div class="paragraph">
-<p>Implicit transactions are supported through the auto-commit and all the methods are non blocking.
+<p>Implicit transactions are supported through the auto-commit and all the methods are non-blocking.
 Explicit transactions work without blocking in most of the cases.
-Methods that will block are <code>size</code>, <code>containsEntry</code> and <code>remove(Predicate&lt;? super V&gt; p)</code></p>
+Methods that will block are <code>size</code>, <code>containsEntry</code> and <code>remove(Predicate&lt;? super V&gt; p)</code>.</p>
 </div>
 </div>
 </div>
@@ -6164,101 +6188,19 @@ Methods that will block are <code>size</code>, <code>containsEntry</code> and <c
 </div>
 </div>
 <div class="sect1">
-<h2 id="custom_interceptors_chapter"><a class="anchor" href="#custom_interceptors_chapter"></a>15. Custom Interceptors</h2>
-<div class="sectionbody">
-<div class="admonitionblock important">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-important" title="Important"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Custom interceptors are deprecated in Infinispan and will be removed in a
-future version.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>Custom interceptors are a way of extending Infinispan by being able to influence or respond to any modifications to cache. Example of such modifications are: elements are added/removed/updated or transactions are committed.</p>
-</div>
-<div class="sect2">
-<h3 id="adding_custom_interceptors_declaratively"><a class="anchor" href="#adding_custom_interceptors_declaratively"></a>15.1. Adding custom interceptors declaratively</h3>
-<div class="paragraph">
-<p>Custom interceptors can be added on a per named cache basis. This is because each named cache have its own interceptor stack. Following xml snippet depicts the ways in which a custom interceptor can be added.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;local-cache name="cacheWithCustomInterceptors"&gt;
-  &lt;!-- Define custom interceptors. --&gt;
-  &lt;!-- Custom interceptors should extend
-       org.infinispan.interceptors.BaseCustomAsyncInterceptor --&gt;
-  &lt;custom-interceptors&gt;
-    &lt;interceptor position="FIRST" class="com.mycompany.CustomInterceptor1"&gt;
-      &lt;property name="attributeOne"&gt;value1&lt;/property&gt;
-      &lt;property name="attributeTwo"&gt;value2&lt;/property&gt;
-    &lt;/interceptor&gt;
-    &lt;interceptor position="LAST" class="com.mycompany.CustomInterceptor2"/&gt;
-    &lt;interceptor index="3" class="com.mycompany.CustomInterceptor1"/&gt;
-    &lt;interceptor before="org.infinispanpan.interceptors.CallInterceptor"
-                 class="com.mycompany.CustomInterceptor2"/&gt;
-    &lt;interceptor after="org.infinispanpan.interceptors.CallInterceptor"
-                 class="com.mycompany.CustomInterceptor1"/&gt;
-  &lt;/custom-interceptors&gt;
-&lt;/local-cache&gt;</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="adding_custom_interceptors_programmatically"><a class="anchor" href="#adding_custom_interceptors_programmatically"></a>15.2. Adding custom interceptors programmatically</h3>
-<div class="paragraph">
-<p>In order to do that one needs to obtain a reference to the <a href="../../apidocs/org/infinispan/AdvancedCache.html"><code>AdvancedCache</code></a>. This can be done as follows:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">CacheManager cm = getCacheManager();//magic
-Cache aCache = cm.getCache("aName");
-AdvancedCache advCache = aCache.getAdvancedCache();</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Then one of the <em>addInterceptor()</em> methods should be used to add the actual interceptor. For further documentation refer to <a href="../../apidocs/org/infinispan/AdvancedCache.html"><code>AdvancedCache</code></a> javadoc.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="custom_interceptor_design"><a class="anchor" href="#custom_interceptor_design"></a>15.3. Custom interceptor design</h3>
-<div class="paragraph">
-<p>When writing a custom interceptor, you need to abide by the following rules.</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Custom interceptors must declare a public, empty constructor to enable construction.</p>
-</li>
-<li>
-<p>Custom interceptors will have setters for any property defined through property tags used in the XML configuration.</p>
-</li>
-</ul>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="functional-map-api"><a class="anchor" href="#functional-map-api"></a>16. Functional Map API</h2>
+<h2 id="functional-map-api"><a class="anchor" href="#functional-map-api"></a>13. Functional Map API</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan provides an experimental API for interacting with your data which takes advantage of the functional programming additions and improved asynchronous programming capabilities available since Java 8.</p>
 </div>
 <div class="sect2">
-<h3 id="using-functional-map-api"><a class="anchor" href="#using-functional-map-api"></a>16.1. Using the Functional Map API</h3>
+<h3 id="using-functional-map-api"><a class="anchor" href="#using-functional-map-api"></a>13.1. Using the Functional Map API</h3>
 <div class="paragraph">
 <p>Infinispan&#8217;s <a href="../../apidocs/org/infinispan/functional/FunctionalMap.html">Functional Map API</a>
 is a distilled map-like asynchronous API which uses functions to interact with data.</p>
 </div>
 <div class="sect3">
-<h4 id="asynchronous_and_lazy"><a class="anchor" href="#asynchronous_and_lazy"></a>16.1.1. Asynchronous and Lazy</h4>
+<h4 id="asynchronous_and_lazy"><a class="anchor" href="#asynchronous_and_lazy"></a>13.1.1. Asynchronous and Lazy</h4>
 <div class="paragraph">
 <p>Being an asynchronous API, all methods that return a single result,
 return a CompletableFuture which wraps the result, so you can use the
@@ -6275,7 +6217,7 @@ has completed, or you can chain or compose them with other CompletableFuture.</p
 </div>
 </div>
 <div class="sect3">
-<h4 id="function_transparency"><a class="anchor" href="#function_transparency"></a>16.1.2. Function transparency</h4>
+<h4 id="function_transparency"><a class="anchor" href="#function_transparency"></a>13.1.2. Function transparency</h4>
 <div class="paragraph">
 <p>Since the content of the functions is transparent to Infinispan, the API
 has been split into 3 interfaces for read-only (
@@ -6289,7 +6231,7 @@ internals on the type of work needed to support functions.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="constructing_functional_maps"><a class="anchor" href="#constructing_functional_maps"></a>16.1.3. Constructing Functional Maps</h4>
+<h4 id="constructing_functional_maps"><a class="anchor" href="#constructing_functional_maps"></a>13.1.3. Constructing Functional Maps</h4>
 <div class="paragraph">
 <p>To construct any of the read-only, write-only or read-write map
 instances, an Infinispan
@@ -6334,7 +6276,7 @@ is temporary.
 </div>
 </div>
 <div class="sect3">
-<h4 id="read_only_map_api"><a class="anchor" href="#read_only_map_api"></a>16.1.4. Read-Only Map API</h4>
+<h4 id="read_only_map_api"><a class="anchor" href="#read_only_map_api"></a>13.1.4. Read-Only Map API</h4>
 <div class="paragraph">
 <p>Read-only operations have the advantage that no locks are acquired
 for the duration of the operation. Here&#8217;s an example on how to the
@@ -6411,7 +6353,7 @@ See <a href="#meta_parameter">Metadata Parameter Handling</a> to find out more.<
 </div>
 </div>
 <div class="sect3">
-<h4 id="write_only_map_api"><a class="anchor" href="#write_only_map_api"></a>16.1.5. Write-Only Map API</h4>
+<h4 id="write_only_map_api"><a class="anchor" href="#write_only_map_api"></a>13.1.5. Write-Only Map API</h4>
 <div class="paragraph">
 <p>Write-only operations include operations that insert or update data in the
 cache and also removals. Crucially, a write-only operation does not attempt
@@ -6449,7 +6391,7 @@ readFuture.thenAccept(System.out::println);</code></pre>
 </div>
 <div class="paragraph">
 <p>Multiple key/value pairs can be stored in one go using
-../../apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html#evalMany(java.util.Map,java.util.function.BiConsumer)[<code>evalMany</code>]
+<a href="../../apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html#evalMany(java.util.Map,java.util.function.BiConsumer)"><code>evalMany</code></a>
 API:</p>
 </div>
 <div class="listingblock">
@@ -6519,10 +6461,10 @@ parameters associated with this key.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="read_write_map_api"><a class="anchor" href="#read_write_map_api"></a>16.1.6. Read-Write Map API</h4>
+<h4 id="read_write_map_api"><a class="anchor" href="#read_write_map_api"></a>13.1.6. Read-Write Map API</h4>
 <div class="paragraph">
-<p>The final type of operations we have are read­write operations, and within
-this category CAS-like (Compare­And­Swap) operations can be found.
+<p>The final type of operations we have are read-write operations, and within
+this category CAS-like (Compare-And-Swap) operations can be found.
 This type of operations require previous value associated with the key
 to be read and for locks to be acquired before executing the function.
 The vast majority of operations within
@@ -6533,10 +6475,10 @@ APIs fall within this category, and they can easily be implemented using the
 <a href="../../apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html">read-write map API</a>
 . Moreover, with
 <a href="../../apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html">read-write map API</a>
-, you can make CAS­like comparisons not only based on value equality
+, you can make CAS-like comparisons not only based on value equality
 but based on metadata parameter equality such as version information,
 and you can send back previous value or boolean instances to signal
-whether the CAS­like comparison succeeded.</p>
+whether the CAS-like comparison succeeded.</p>
 </div>
 <div class="paragraph">
 <p>Implementing a write operation that returns the previous value associated
@@ -6618,12 +6560,12 @@ and <a href="#write_only_entry_view">write-only entry views</a>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="meta_parameter"><a class="anchor" href="#meta_parameter"></a>16.1.7. Metadata Parameter Handling</h4>
+<h4 id="meta_parameter"><a class="anchor" href="#meta_parameter"></a>13.1.7. Metadata Parameter Handling</h4>
 <div class="paragraph">
 <p><a href="../../apidocs/org/infinispan/functional/MetaParam.html">Metadata parameters</a>
 provide extra information about the cache entry, such
-as version information, lifespan, last accessed/used time&#8230;&#8203;etc. Some of
-these can be provided by the user, e.g. version, lifespan&#8230;&#8203;etc, but some
+as version information, lifespan, last accessed/used time, etc. Some of
+these can be provided by the user, e.g. version, lifespan, etc., but some
 others are computed internally and can only be queried, e.g. last
 accessed/used time.</p>
 </div>
@@ -6685,7 +6627,7 @@ CompletableFuture&lt;String&gt; readFuture = readOnlyMap.eval("key1", view -&gt;
 </div>
 </div>
 <div class="paragraph">
-<p>When generic information is important the user can define a static helper
+<p>When generic information is important, the user can define a static helper
 method that coerces the static class retrieval to the type requested,
 and then use that helper method in the call to <code>findMetaParam</code>:</p>
 </div>
@@ -6714,7 +6656,7 @@ for the metadata parameters already provided by the functional map API.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_invocation_parameter"><a class="anchor" href="#_invocation_parameter"></a>16.1.8. Invocation Parameter</h4>
+<h4 id="_invocation_parameter"><a class="anchor" href="#_invocation_parameter"></a>13.1.8. Invocation Parameter</h4>
 <div class="paragraph">
 <p><a href="../../apidocs/org/infinispan/functional/Param.html">Per-invocation parameters</a>
 are applied to regular functional map API calls to
@@ -6724,38 +6666,14 @@ done using the
 method.</p>
 </div>
 <div class="paragraph">
-<p><a href="../../apidocs/org/infinispan/functional/Param.FutureMode.html"><code>Param.FutureMode</code></a>
-tweaks whether a method returning a
-<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/CompletableFuture.html"><code>CompletableFuture</code></a>
-will span a thread to invoke the method, or instead will use the caller
-thread. By default, whenever a call is made to a method returning a
-<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/CompletableFuture.html"><code>CompletableFuture</code></a>
-, a separate thread will be span to execute the method asynchronously.
-However, if the caller will immediately block waiting for the
-<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/CompletableFuture.html"><code>CompletableFuture</code></a>
-to complete, spanning a different thread is wasteful, and hence
-<a href="../../apidocs/org/infinispan/functional/Param.FutureMode.html#COMPLETED"><code>Param.FutureMode.COMPLETED</code></a>
-can be passed as per-invocation parameter to avoid creating that extra thread. Example:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import org.infinispan.functional.EntryView.*;
-import org.infinispan.functional.FunctionalMap.*;
-import org.infinispan.functional.Param.*;
-
-ReadOnlyMap&lt;String, String&gt; readOnlyMap = ...
-ReadOnlyMap&lt;String, String&gt; readOnlyMapCompleted = readOnlyMap.withParams(FutureMode.COMPLETED);
-Optional&lt;String&gt; readFuture = readOnlyMapCompleted.eval("key1", ReadEntryView::find).get();</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Param.PersistenceMode controls whether a write operation will be propagated
+<p><a href="../../apidocs/org/infinispan/functional/Param.PersistenceMode.html"><code>Param.PersistenceMode</code></a>
+controls whether a write operation will be propagated
 to a persistence store. The default behaviour is for all write-operations
 to be propagated to the persistence store if the cache is configured with
-a persistence store. By passing PersistenceMode.SKIP as parameter,
+a persistence store. By passing <a href="../../apidocs/org/infinispan/functional/Param.PersistenceMode.html#SKIP"><code>PersistenceMode.SKIP</code></a> as parameter,
 the write operation skips the persistence store and its effects are only
-seen in the in-memory contents of the cache. PersistenceMode.SKIP can
-be used to implement an
+seen in the in-memory contents of the cache. <a href="../../apidocs/org/infinispan/functional/Param.PersistenceMode.html#SKIP"><code>PersistenceMode.SKIP</code></a>
+can be used to implement an
 <a href="../../apidocs/org/infinispan/Cache.html#evict-K-"><code>Cache.evict()</code></a>
 method which removes data from memory but leaves the persistence store
 untouched:</p>
@@ -6772,22 +6690,20 @@ CompletableFuture&lt;Void&gt; removeFuture = skiPersistMap.eval("key1", WriteEnt
 </div>
 </div>
 <div class="paragraph">
-<p>Note that there&#8217;s no need for another PersistenceMode option to skip
+<p>Note that there&#8217;s no need for another <a href="../../apidocs/org/infinispan/functional/Param.PersistenceMode.html"><code>Param.PersistenceMode</code></a> option to skip
 reading from the persistence store, because a write operation can skip
 reading previous value from the store by calling a write-only operation
-via the WriteOnlyMap.</p>
+via the <a href="../../apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html">WriteOnlyMap</a>.</p>
 </div>
 <div class="paragraph">
-<p>Finally, new Param implementations are normally provided by the functional
+<p>Finally, new <a href="../../apidocs/org/infinispan/functional/Param.html">Param</a> implementations are normally provided by the functional
 map API since they tweak how the internal logic works. So, for the most part
 of users, they should limit themselves to using the Param instances exposed
-by the API. The exception to this rule would be advanced users who decide
-to add new interceptors to the internal stack. These users have the ability
-to query these parameters within the interceptors.</p>
+by the API.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="functional_listeners"><a class="anchor" href="#functional_listeners"></a>16.1.9. Functional Listeners</h4>
+<h4 id="functional_listeners"><a class="anchor" href="#functional_listeners"></a>13.1.9. Functional Listeners</h4>
 <div class="paragraph">
 <p>The functional map offers a listener API, where clients can register for and
 get notified when events take place. These notifications are post-event, so
@@ -6987,7 +6903,7 @@ writeClose.close();</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="marshalling_of_functions"><a class="anchor" href="#marshalling_of_functions"></a>16.1.10. Marshalling of Functions</h4>
+<h4 id="marshalling_of_functions"><a class="anchor" href="#marshalling_of_functions"></a>13.1.10. Marshalling of Functions</h4>
 <div class="paragraph">
 <p>Running functional map in a cluster of nodes involves marshalling and
 replication of the operation parameters under certain circumstances.</p>
@@ -7036,7 +6952,22 @@ CompletableFuture&lt;Void&gt; writeFuture = writeOnlyMap.eval("key1", wv -&gt; w
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Unresolved directive in ../../topics/functional_api.adoc - include::code_examples/WriteOnlyMapProtoStream.java[]</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import org.infinispan.functional.EntryView.*;
+import org.infinispan.functional.FunctionalMap.*;
+import org.infinispan.protostream.annotations.Proto;
+
+WriteOnlyMap&lt;String, String&gt; writeOnlyMap = ...
+
+Consumer&lt;WriteEntryView&lt;String&gt;&gt; function = new SetStringConstant&lt;&gt;();
+CompletableFuture&lt;Void&gt; writeFuture = writeOnlyMap.eval("key1", function);
+
+@Proto
+class SetStringConstant implements Consumer&lt;WriteEntryView&lt;String&gt;&gt; {
+   @Override
+   public void accept(WriteEntryView&lt;String&gt; view) {
+      view.set("value1");
+   }
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -7066,14 +6997,14 @@ import org.infinispan.commons.marshall.MarshallableFunctions;
 
 ReadWriteMap&lt;String, String&gt; readWriteMap = ...
 
-CompletableFuture&lt;Boolean&gt; future = readWriteMap.eval("key1,
+CompletableFuture&lt;Boolean&gt; future = readWriteMap.eval("key1",
    MarshallableFunctions.setValueIfAbsentReturnBoolean());
 future.thenAccept(stored -&gt; System.out.printf("Value was put? %s%n", stored));</code></pre>
 </div>
 </div>
 </div>
 <div class="sect3">
-<h4 id="use_cases_for_functional_api"><a class="anchor" href="#use_cases_for_functional_api"></a>16.1.11. Use Cases for Functional API</h4>
+<h4 id="use_cases_for_functional_api"><a class="anchor" href="#use_cases_for_functional_api"></a>13.1.11. Use Cases for Functional API</h4>
 <div class="paragraph">
 <p>This new API is meant to complement existing Key/Value Infinispan API
 offerings, so you&#8217;ll still be able to use
@@ -7088,7 +7019,7 @@ standard APIs if that&#8217;s what suits your use case best.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Distributed or persistent caching/in­memory­data­grid users that want
+<p>Distributed or persistent caching/in-memory-data-grid users that want
 to benefit from CompletableFuture and/or Traversable for async/lazy data
 grid or caching data manipulation. The clear advantage here is that threads
 do not need to be idle waiting for remote operations to complete, but
@@ -7103,6 +7034,10 @@ and
 operation using metadata parameter equality instead of value equality, or
 if you want to retrieve metadata information from values and so on.</p>
 </li>
+<li>
+<p>Implement more complex data-structures backed by the cache. The <a href="../embedding/embedding.html#multimap-cache">multimap</a> is an example of a data-structure backed by
+the functional map API.</p>
+</li>
 </ul>
 </div>
 </div>
@@ -7110,16 +7045,16 @@ if you want to retrieve metadata information from values and so on.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="anchored-keys"><a class="anchor" href="#anchored-keys"></a>17. Anchored keys</h2>
+<h2 id="anchored-keys"><a class="anchor" href="#anchored-keys"></a>14. Anchored keys</h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="anchored_keys_module"><a class="anchor" href="#anchored_keys_module"></a>17.1. Anchored Keys module</h3>
+<h3 id="anchored_keys_module"><a class="anchor" href="#anchored_keys_module"></a>14.1. Anchored Keys module</h3>
 <div class="paragraph">
 <p>Infinispan version 11 introduces an experimental module that allows scaling up a cluster
 and adding new nodes without expensive <strong>state transfer</strong>.</p>
 </div>
 <div class="sect3">
-<h4 id="background"><a class="anchor" href="#background"></a>17.1.1. Background</h4>
+<h4 id="background"><a class="anchor" href="#background"></a>14.1.1. Background</h4>
 <div class="paragraph">
 <p>For background, the preferred way to scale up the storage capacity of a Infinispan cluster
 is to use distributed caches.
@@ -7152,7 +7087,7 @@ it is common (though less so after
 </div>
 </div>
 <div class="sect3">
-<h4 id="architecture"><a class="anchor" href="#architecture"></a>17.1.2. Architecture</h4>
+<h4 id="architecture"><a class="anchor" href="#architecture"></a>14.1.2. Architecture</h4>
 <div class="paragraph">
 <p>The basic idea is to skip the static mapping of keys to segments and to map keys directly to nodes.</p>
 </div>
@@ -7168,7 +7103,7 @@ and values can stay on the anchor owner, minimizing the amount of traffic.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="limitations"><a class="anchor" href="#limitations"></a>17.1.3. Limitations</h4>
+<h4 id="limitations"><a class="anchor" href="#limitations"></a>14.1.3. Limitations</h4>
 <div class="dlist">
 <dl>
 <dt class="hdlist1">Only one node can be added at a time</dt>
@@ -7214,7 +7149,7 @@ in order to retrieve the value.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuration"><a class="anchor" href="#configuration"></a>17.1.4. Configuration</h4>
+<h4 id="configuration"><a class="anchor" href="#configuration"></a>14.1.4. Configuration</h4>
 <div class="paragraph">
 <p>The module is still very young and does not yet support many Infinispan features.</p>
 </div>
@@ -7267,7 +7202,7 @@ if state transfer is disabled, or if transactions are enabled.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="implementation_status"><a class="anchor" href="#implementation_status"></a>17.1.5. Implementation status</h4>
+<h4 id="implementation_status"><a class="anchor" href="#implementation_status"></a>14.1.5. Implementation status</h4>
 <div class="paragraph">
 <p>Basic operations are implemented: <code>put</code>, <code>putIfAbsent</code>, <code>get</code>, <code>replace</code>, <code>remove</code>, <code>putAll</code>, <code>getAll</code>.</p>
 </div>
@@ -7301,7 +7236,7 @@ where the value is stored.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="performance_considerations"><a class="anchor" href="#performance_considerations"></a>17.1.6. Performance considerations</h4>
+<h4 id="performance_considerations"><a class="anchor" href="#performance_considerations"></a>14.1.6. Performance considerations</h4>
 <div class="sect4">
 <h5 id="clientserver_latency"><a class="anchor" href="#clientserver_latency"></a>Client/Server Latency</h5>
 <div class="paragraph">
@@ -7378,7 +7313,7 @@ but also in server mode, if the client is not <code>HASH_DISTRIBUTION_AWARE</cod
 </div>
 </div>
 <div class="sect1">
-<h2 id="extending"><a class="anchor" href="#extending"></a>18. Extending Infinispan</h2>
+<h2 id="extending"><a class="anchor" href="#extending"></a>15. Extending Infinispan</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan can be extended to provide the ability for an end user to add
@@ -7389,7 +7324,7 @@ additional configurations, operations and components outside of the scope of the
 interface. This interface allows Infinispan to be extended and modified at various stages of its lifecycle.</p>
 </div>
 <div class="sect2">
-<h3 id="custom_commands"><a class="anchor" href="#custom_commands"></a>18.1. Custom Commands</h3>
+<h3 id="custom_commands"><a class="anchor" href="#custom_commands"></a>15.1. Custom Commands</h3>
 <div class="paragraph">
 <p>Infinispan makes use of a <a href="http://en.wikipedia.org/wiki/Command_pattern">command/visitor pattern</a> to
 implement the various top-level methods you see on the public-facing API.</p>
@@ -7412,7 +7347,7 @@ implement the various top-level methods you see on the public-facing API.</p>
 <p>Generate <code>.proto</code> schema files and marshaller code by creating an interface annotated with <code>@ProtoSchema</code></p>
 </li>
 <li>
-<p>Register the generated <code>SerilaizationContextInitializer</code> with the <code>GLOBAL</code> <code>SerializationContextRegistry</code></p>
+<p>Register the generated <code>SerializationContextInitializer</code> with the <code>GLOBAL</code> <code>SerializationContextRegistry</code></p>
 </li>
 </ol>
 </div>
@@ -7422,7 +7357,7 @@ module that adds both custom commands and interceptors.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="extending_the_configuration_builders_and_parsers"><a class="anchor" href="#extending_the_configuration_builders_and_parsers"></a>18.2. Extending the configuration builders and parsers</h3>
+<h3 id="extending_the_configuration_builders_and_parsers"><a class="anchor" href="#extending_the_configuration_builders_and_parsers"></a>15.2. Extending the configuration builders and parsers</h3>
 <div class="paragraph">
 <p>If a custom module requires configuration, it is possible to enhance Infinispan&#8217;s configuration builders and
 parsers. Look at the <a href="https://github.com/infinispan/infinispan/blob/main/core/src/test/java/org/infinispan/configuration/module">custom module tests</a>
@@ -7434,7 +7369,7 @@ for a detail example on how to implement this.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-15 09:42:19 UTC
+Last updated 2025-11-08 07:59:13 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -7467,6 +7402,6 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
   })
 })
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
 </body>
 </html>
