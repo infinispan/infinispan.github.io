@@ -76,7 +76,7 @@ end
 
 def extract_maven_artifact(artifact, target, ext)
   puts "Downloading #{artifact} to #{target}"
-  %x( mvn org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy -DoutputDirectory=#{target} -DrepoUrl=https://search.maven.org/artifact/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
+  %x( mvn org.apache.maven.plugins:maven-dependency-plugin:3.9.0:copy -DoutputDirectory=#{target} -DrepoUrl=https://search.maven.org/artifact/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
   %x( unzip -qo #{target}/*#{ext} -d #{target} )
   FileUtils.rm Dir.glob("#{target}/*#{ext}")
 end
@@ -147,6 +147,7 @@ else
         get_maven_docs(core["html"], core["javadoc"], core["pdf"], "docs", "#{ver}", valias)
         vname = if valias != nil then "#{ver} (#{valias})" else "#{ver}" end
         coreDocIndex.push "#{vname}!#{ver}"
+        %x( mvn org.apache.maven.plugins:maven-dependency-plugin:3.9.0:unpack -DoutputDirectory=schema -DmarkersDirectory=. -Dartifact=org.infinispan:infinispan-distribution:#{ver}:zip:xsd )
       end
     end
   end
