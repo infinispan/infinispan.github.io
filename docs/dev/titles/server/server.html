@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.23">
+<meta name="generator" content="Asciidoctor 2.0.26">
 <title>Guide to Infinispan Server</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
@@ -116,7 +116,6 @@ h1 strong,h2 strong,h3 strong,#toctitle strong,.sidebarblock>.content>.title str
 :not(pre):not([class^=L])>code{font-size:.9375em;font-style:normal!important;letter-spacing:0;padding:.1em .5ex;word-spacing:-.15em;background:#f7f7f8;border-radius:4px;line-height:1.45;text-rendering:optimizeSpeed}
 pre{color:rgba(0,0,0,.9);font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;line-height:1.45;text-rendering:optimizeSpeed}
 pre code,pre pre{color:inherit;font-size:inherit;line-height:inherit}
-pre>code{display:block}
 pre.nowrap,pre.nowrap pre{white-space:pre;word-wrap:normal}
 em em{font-style:normal}
 strong strong{font-weight:400}
@@ -219,6 +218,7 @@ table.tableblock.fit-content>caption.title{white-space:nowrap;width:0}
 .literalblock pre,.listingblock>.content>pre:not(.highlight),.listingblock>.content>pre[class=highlight],.listingblock>.content>pre[class^="highlight "]{background:#f7f7f8}
 .literalblock.output pre{color:#f7f7f8;background:rgba(0,0,0,.9)}
 .listingblock>.content{position:relative}
+.listingblock pre>code{display:block}
 .listingblock code[data-lang]::before{display:none;content:attr(data-lang);position:absolute;font-size:.75em;top:.425rem;right:.5rem;line-height:1;text-transform:uppercase;color:inherit;opacity:.5}
 .listingblock:hover code[data-lang]::before{display:block}
 .listingblock.terminal pre .command::before{content:attr(data-prompt);padding-right:.5em;color:inherit;opacity:.5}
@@ -442,16 +442,16 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/themes/default/style.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.17/themes/default/style.min.css">
 <link rel="stylesheet" href="../../css/css.css">
 <link rel="stylesheet" href="/assets/css/clipboard.css">
 <link rel="stylesheet" href="/assets/css/cookieconsent.css">
 <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
-<script src="/assets/javascript/clipboard.min.js" type="text/javascript"></script>
-<script src="/assets/javascript/copy.js" type="text/javascript"></script>
-<script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.17/jstree.min.js"></script>
+<script src="/assets/javascript/clipboard.min.js"></script>
+<script src="/assets/javascript/copy.js"></script>
+<script src="/assets/javascript/cookieconsent.umd.js"></script>
 <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
 <script src="../../js/js.js"></script>
 <link rel="canonical" href="https://infinispan.org/docs/stable/titles/server/server.html">
@@ -540,10 +540,24 @@ $(addBlockSwitches);
 <ul class="sectlevel1">
 <li><a href="#server-getting-started">1. Getting started with Infinispan Server</a>
 <ul class="sectlevel2">
-<li><a href="#server-container-requirements_server-getting-started">1.1. Infinispan Server container image</a>
+<li><a href="#infinispan_server_container_image">1.1. Infinispan Server Container Image</a>
 <ul class="sectlevel3">
 <li><a href="#container_registries">1.1.1. Container registries</a></li>
 <li><a href="#container_execution">1.1.2. Container execution</a></li>
+<li><a href="#hot_rod_clients">1.1.3. Hot Rod Clients</a></li>
+<li><a href="#identities_batch">1.1.4. Identities Batch</a></li>
+<li><a href="#server_configuration">1.1.5. Server Configuration</a>
+<ul class="sectlevel4">
+<li><a href="#kubernetesopenshift_clustering">Kubernetes/OpenShift Clustering</a></li>
+<li><a href="#java_properties">Java Properties</a></li>
+<li><a href="#deploying_artifacts_to_the_server_lib_directory">Deploying artifacts to the server lib directory</a></li>
+</ul>
+</li>
+<li><a href="#kubernetes">1.1.6. Kubernetes</a>
+<ul class="sectlevel4">
+<li><a href="#liveness_and_readiness_probes">Liveness and Readiness Probes</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#server-distribution-requirements_server-getting-started">1.2. Infinispan Server distribution</a>
@@ -804,7 +818,7 @@ $(addBlockSwitches);
 <li><a href="#amazon_ec2">Amazon EC2</a></li>
 <li><a href="#google_cloud_platform">Google Cloud Platform</a></li>
 <li><a href="#azure">Azure</a></li>
-<li><a href="#kubernetes">Kubernetes</a></li>
+<li><a href="#kubernetes_2">Kubernetes</a></li>
 </ul>
 </li>
 </ul>
@@ -820,6 +834,11 @@ $(addBlockSwitches);
 </ul>
 </li>
 <li><a href="#jgroups-ports_cluster-transport">12.9. TCP and UDP ports for cluster traffic</a></li>
+<li><a href="#virtual-threads-cluster-transport">12.10. Virtual Threads Support</a>
+<ul class="sectlevel3">
+<li><a href="#disable-virtual-threads_cluster-transport">12.10.1. Disable Virtual Threads</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#creating-remote-caches">13. Creating remote caches</a>
@@ -947,7 +966,7 @@ Infinispan Server can run either as a containerized image or as a standalone Jav
 <a href="https://infinispan.org/get-started/">Start running Infinispan in 4 easy steps</a></p>
 </div>
 <div class="sect2">
-<h3 id="server-container-requirements_server-getting-started"><a class="anchor" href="#server-container-requirements_server-getting-started"></a>1.1. Infinispan Server container image</h3>
+<h3 id="infinispan_server_container_image"><a class="anchor" href="#infinispan_server_container_image"></a>1.1. Infinispan Server Container Image</h3>
 <div class="paragraph">
 <p>Infinispan Server as a container image requires a container manager, such as <a href="https://docker.com">Docker</a> or <a href="https://podman.io">Podman</a>.</p>
 </div>
@@ -987,17 +1006,235 @@ Infinispan Server can run either as a containerized image or as a standalone Jav
 <div class="listingblock primary">
 <div class="title">Docker</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">docker run -p 11222:11222 infinispan/server</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker run -p 11222:11222 --name infinispan infinispan/server</code></pre>
 </div>
 </div>
 <div class="listingblock secondary">
 <div class="title">Podman</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">podman run --net=host -p 11222:11222 infinispan/server</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">podman run -p 11222:11222 --net=host --name infinispan infinispan/server</code></pre>
+</div>
+</div>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>When utilising podman it is necessary for the <code>--net=host</code> to be passed when not executing as <code>sudo</code>.</p>
+</div>
+</blockquote>
+</div>
+<div class="paragraph">
+<p>By default, the image has authentication enabled on all exposed endpoints. When executing the above command the image automatically generates a username/password pair with the <code>admin</code> role, prints the values to stdout and then starts the Infinispan server with the authenticated endpoints exposed on port <code>11222</code>. Therefore, it&#8217;s necessary to utilise the printed credentials when accessing the exposed endpoints via clients.</p>
+</div>
+<div class="paragraph">
+<p>It is also possible to provide an administrator username/password combination via environment variables:</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Docker</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker run -p 11222:11222 -e USER="admin" -e PASS="changeme" --name infinispan infinispan/server</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Podman</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">podman run -p 11222:11222 -e USER="admin" -e PASS="changeme" --net=host --name infinispan infinispan/server</code></pre>
+</div>
+</div>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>We recommend utilising the auto-generated credentials or USER &amp; PASS env variables for initial development only. Providing authentication and authorization configuration via an [Identities Batch file](#identities-batch) allows for much greater control.</p>
+</div>
+</blockquote>
+</div>
+</div>
+<div class="sect3">
+<h4 id="hot_rod_clients"><a class="anchor" href="#hot_rod_clients"></a>1.1.3. Hot Rod Clients</h4>
+<div class="paragraph">
+<p>When connecting a Hot Rod client to the image, the following SASL properties must be configured on your client (with the username and password properties changed as required):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-properties hljs" data-lang="properties">infinispan.client.hotrod.auth_username=admin
+infinispan.client.hotrod.auth_password=changme
+infinispan.client.hotrod.sasl_mechanism=DIGEST-MD5</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="identities_batch"><a class="anchor" href="#identities_batch"></a>1.1.4. Identities Batch</h4>
+<div class="paragraph">
+<p>User identities and roles can be defined by providing a cli batch file via the <code>IDENTITIES_BATCH</code> env variable.
+All the cli commands defined in this file are executed before the server is started, therefore it iss only possible to execute offline commands otherwise the container will fail. For example, including <code>create cache &#8230;&#8203;</code> in the batch would fail as it requires a connection to an Infinispan server.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan provides implicit roles for some users.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Check Infinispan <a href="https://infinispan.org/docs/stable/titles/configuring/configuring.html#default-user-roles_security-authorization">documentation</a>
+to know more about implicit roles and authorization</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Below is an example Identities batch CLI file <code>identities.batch</code>, that defines four users and their role:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">user create "Alan Shearer" -p "striker9" -g admin
+user create "observer" -p "secret1"
+user create "deployer" -p "secret2"
+user create "Rigoberta Baldini" -p "secret3" -g monitor</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>For more detailed information about the Infinispan Server container image, refer to the <a href="../container_image/container_image.html/container_image.html">Container Image guide</a>.</p>
+<p>To run the image using a local <code>identities.batch</code>, execute:</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Docker</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker run -v $(pwd):/user-config -e IDENTITIES_BATCH="/user-config/identities.batch" -p 11222:11222 --name infinispan infinispan/server</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Podman</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">podman run -v $(pwd):/user-config -e IDENTITIES_BATCH="/user-config/identities.batch" -p 11222:11222 --net=host --name infinispan infinispan/server</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="server_configuration"><a class="anchor" href="#server_configuration"></a>1.1.5. Server Configuration</h4>
+<div class="paragraph">
+<p>The Infinispan image passes all container arguments to the created server, therefore it is possible to configure the server in the same manner as a non-containerised deployment.</p>
+</div>
+<div class="paragraph">
+<p>Below shows how a <a href="https://docs.docker.com/storage/volumes/">docker volume</a> can be created and mounted in order to run the Infinispan image with the local configuration file <code>my-infinispan-config.xml</code> located in the users current working directory.</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Docker</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker run -v $(pwd):/user-config -e IDENTITIES_BATCH="/user-config/identities.batch" -p 11222:11222 --name infinispan infinispan/server -c /user-config/my-infinispan-config.xml</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Podman</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">podman run -v $(pwd):/user-config -e IDENTITIES_BATCH="/user-config/identities.batch" -p 11222:11222 --net=host --name infinispan infinispan/server -c /user-config/my-infinispan-config.xml</code></pre>
+</div>
+</div>
+<div class="sect4">
+<h5 id="kubernetesopenshift_clustering"><a class="anchor" href="#kubernetesopenshift_clustering"></a>Kubernetes/OpenShift Clustering</h5>
+<div class="paragraph">
+<p>When running in a managed environment such as Kubernetes, it is not possible to utilise multicasting for initial node discovery, therefore we must utilise the JGroups <a href="http://jgroups.org/manual4/index.html#_dns_ping">DNS_PING</a> protocol to discover cluster members. To enable this, we must provide the <code>jgroups.dnsPing.query</code> property and configure the <code>kubernetes</code> stack.</p>
+</div>
+<div class="paragraph">
+<p>To utilise the tcp stack with DNS_PING, execute the following config:</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Docker</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker run -v $(pwd):/user-config --name infinispan infinispan/server --bind-address=0.0.0.0  -Dinfinispan.cluster.stack=kubernetes -Djgroups.dns.query="infinispan-dns-ping.myproject.svc.cluster.local"</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Podman</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">podman run -v $(pwd):/user-config --name infinispan infinispan/server --bind-address=0.0.0.0  -Dinfinispan.cluster.stack=kubernetes -Djgroups.dns.query="infinispan-dns-ping.myproject.svc.cluster.local"</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="java_properties"><a class="anchor" href="#java_properties"></a>Java Properties</h5>
+<div class="paragraph">
+<p>It is possible to provide additional Java properties and JVM options to the server images via the <code>JAVA_OPTIONS</code> env variable.
+For example, to quickly configure CORS without providing a server.yaml file, do the following:</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Docker</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker run -e JAVA_OPTIONS="-Dinfinispan.cors.enableAll=https://host.domain:port" --name infinispan infinispan/server</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Podman</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">podman run -e JAVA_OPTIONS="-Dinfinispan.cors.enableAll=https://host.domain:port" --net=host --name infinispan infinispan/server</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Using <code>JAVA_OPTIONS</code> will append the options to those determined by the server launch script, such as those that configure
+the JVM memory sizing. You can completely override these options by setting the <code>JAVA_OPTS</code> env variable.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="deploying_artifacts_to_the_server_lib_directory"><a class="anchor" href="#deploying_artifacts_to_the_server_lib_directory"></a>Deploying artifacts to the server lib directory</h5>
+<div class="paragraph">
+<p>Deploy artifacts to the server lib directory using the <code>SERVER_LIBS</code> env variable.
+For example, to add the PostgreSQL JDBC driver to the server:</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Docker</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">docker run -e SERVER_LIBS="org.postgresql:postgresql:42.3.1" --name infinispan infinispan/server</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">Podman</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">podman run -e SERVER_LIBS="org.postgresql:postgresql:42.3.1" --name infinispan infinispan/server</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>SERVER_LIBS</code> variable supports multiple, space-separated artifacts represented as URLs or as Maven coordinates. Archive artifacts in <code>.tar</code>, <code>.tar.gz</code> or <code>.zip</code> formats will be extracted. Refer to the <a href="https://infinispan.org/docs/stable/titles/cli/cli.html#install1">CLI</a> <code>install</code> command help to learn about all possible arguments and options.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="kubernetes"><a class="anchor" href="#kubernetes"></a>1.1.6. Kubernetes</h4>
+<div class="sect4">
+<h5 id="liveness_and_readiness_probes"><a class="anchor" href="#liveness_and_readiness_probes"></a>Liveness and Readiness Probes</h5>
+<div class="paragraph">
+<p>It is recommended to utilise Infinispan&#8217;s REST endpoint in order to determine if the server is ready/live. To do this, you can utilise the Kubernetes <a href="https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/">httpGet probes</a> as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">livenessProbe:
+  httpGet:
+    path: /rest/v2/cache-managers/default/health/status
+    port: 11222
+  failureThreshold: 5
+  initialDelaySeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 10
+readinessProbe:
+  httpGet:
+    path: /rest/v2/cache-managers/default/health/status
+    port: 11222
+  failureThreshold: 5
+  initialDelaySeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 10</code></pre>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1033,7 +1270,7 @@ of Infinispan which still work fine with more recent servers. See the <a href=".
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Download Infinispan 16.0 Server from <a href="https://infinispan.org/download/">Infinispan downloads</a>.</p>
+<p>Download Infinispan 16.1 Server from <a href="https://infinispan.org/download/">Infinispan downloads</a>.</p>
 </li>
 <li>
 <p>Run the <code>sha1sum</code> command with the server download archive as the argument, for example:</p>
@@ -1076,7 +1313,7 @@ of Infinispan which still work fine with more recent servers. See the <a href=".
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">unzip infinispan-server-16.0.0.Dev06.zip</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">unzip infinispan-server-16.1.0.Dev01.zip</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2182,7 +2419,7 @@ and disabling administrative access on the <code>public</code> endpoint:</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;endpoints&gt;
     &lt;endpoint socket-binding="public"
               security-realm="application-realm"
@@ -2321,7 +2558,7 @@ security realm:</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
     &lt;endpoints&gt;
         &lt;endpoint socket-binding="default" security-realm="default"&gt;
             &lt;rest-connector/&gt;
@@ -2374,7 +2611,7 @@ security realm:</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
     &lt;endpoints&gt;
         &lt;endpoint socket-binding="default" security-realm="default"&gt;
             &lt;rest-connector/&gt;
@@ -2518,7 +2755,7 @@ Infinispan Server rejects all other connections.</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;endpoints&gt;
     &lt;endpoint socket-binding="default" security-realm="default"&gt;
       &lt;ip-filter&gt;
@@ -2650,7 +2887,7 @@ You can configure how Infinispan Server binds to network interfaces to listen fo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;!-- Selects a specific IPv4 address, which can be public, private, or loopback. This is the default network interface for Infinispan Server. --&gt;
   &lt;interfaces&gt;
     &lt;interface name="public"&gt;
@@ -2689,7 +2926,7 @@ You can configure how Infinispan Server binds to network interfaces to listen fo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;!-- Selects an IP address in an IPv4 or IPv6 loopback address block. --&gt;
   &lt;interfaces&gt;
     &lt;interface name="public"&gt;
@@ -2725,7 +2962,7 @@ You can configure how Infinispan Server binds to network interfaces to listen fo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;!-- Selects an IP address in an IPv4 or IPv6 non-loopback address block. --&gt;
   &lt;interfaces&gt;
     &lt;interface name="public"&gt;
@@ -2761,7 +2998,7 @@ You can configure how Infinispan Server binds to network interfaces to listen fo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;!-- Uses the `INADDR_ANY` wildcard address which means Infinispan Server listens for inbound client requests on all interfaces. --&gt;
   &lt;interfaces&gt;
     &lt;interface name="public"&gt;
@@ -2797,7 +3034,7 @@ You can configure how Infinispan Server binds to network interfaces to listen fo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;!-- Selects a link-local IP address in an IPv4 or IPv6 address block. --&gt;
   &lt;interfaces&gt;
     &lt;interface name="public"&gt;
@@ -2833,7 +3070,7 @@ You can configure how Infinispan Server binds to network interfaces to listen fo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;!-- Selects a site-local (private) IP address in an IPv4 or IPv6 address block. --&gt;
   &lt;interfaces&gt;
     &lt;interface name="public"&gt;
@@ -2874,7 +3111,7 @@ You can configure how Infinispan Server binds to network interfaces to listen fo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;!-- Selects an IP address that is assigned to a matching host name. --&gt;
   &lt;interfaces&gt;
     &lt;interface name="public"&gt;
@@ -2913,7 +3150,7 @@ You can configure how Infinispan Server binds to network interfaces to listen fo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;!--Selects an IP address assigned to a matching network interface. --&gt;
   &lt;interfaces&gt;
     &lt;interface name="public"&gt;
@@ -2952,7 +3189,7 @@ You can configure how Infinispan Server binds to network interfaces to listen fo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;!-- Selects an IP address that matches a regular expression. --&gt;
   &lt;interfaces&gt;
     &lt;interface name="public"&gt;
@@ -2991,7 +3228,7 @@ You can configure how Infinispan Server binds to network interfaces to listen fo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;!-- Includes multiple strategies that Infinispan Server tries in the declared order until it finds a match. --&gt;
   &lt;interfaces&gt;
     &lt;interface name="public"&gt;
@@ -3047,7 +3284,7 @@ If you enable the Memcached endpoint, the default socket bindings configure Infi
 <div class="listingblock">
 <div class="title">Default socket bindings</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;socket-bindings default-interface="public"
                    port-offset="${infinispan.socket.binding.port-offset:0}"&gt;
     &lt;socket-binding name="default"
@@ -3095,7 +3332,7 @@ If you enable the Memcached endpoint, the default socket bindings configure Infi
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;interfaces&gt;
     &lt;interface name="public"&gt;
       &lt;inet-address value="${infinispan.bind.address:127.0.0.1}"/&gt;
@@ -3201,7 +3438,7 @@ You can specify that IP address directly in your Infinispan Server configuration
 <p>Open your Infinispan Server configuration and set the value for the <code>inet-address</code> element, for example:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;interfaces&gt;
     &lt;interface name="custom"&gt;
       &lt;inet-address value="${infinispan.bind.address:192.0.2.0}"/&gt;
@@ -3297,7 +3534,7 @@ For example, <code>10.129.2.100/23</code> and <code>10.129.4.100/23</code> are i
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="../../configuration-schema/infinispan-server-16.0.html">Infinispan Server schema reference</a></p>
+<p><a href="../../configuration-schema/infinispan-server-16.1.html">Infinispan Server schema reference</a></p>
 </li>
 <li>
 <p><a href="https://datatracker.ietf.org/doc/html/rfc1112">RFC 1112</a></p>
@@ -3550,7 +3787,7 @@ For example, if you explicitly declare a <code>hotrod-connector</code> you must 
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;endpoints&gt;
     &lt;endpoint socket-binding="default"
               security-realm="my-realm"&gt;
@@ -3662,7 +3899,7 @@ When you disable user authentication you should also disable authorization in yo
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;endpoints socket-binding="default"/&gt;
 &lt;/server&gt;</code></pre>
 </div>
@@ -4073,7 +4310,7 @@ Configure cache authorization and then set <code>&lt;no-anonymous value=false /&
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;endpoints&gt;
     &lt;endpoint socket-binding="default"
               security-realm="default"&gt;
@@ -4347,7 +4584,7 @@ You must manually synchronize credentials in a properties realm to each node in 
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="application-realm"&gt;
@@ -4525,7 +4762,7 @@ ktab -k http.keytab -a HTTP/datagrid@INFINISPAN.ORG</code></pre>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="kerberos-realm"&gt;
@@ -4673,7 +4910,7 @@ user2=supervisor</code></pre>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="default"&gt;
@@ -4964,7 +5201,7 @@ You can specify a different filter using the <code>filter-name</code> attribute.
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="ldap-realm"&gt;
@@ -5105,7 +5342,7 @@ regex-principal-transformer
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="ldap-realm"&gt;
@@ -5169,7 +5406,7 @@ regex-principal-transformer
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="ldap-realm"&gt;
@@ -5230,7 +5467,7 @@ regex-principal-transformer
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="ldap-realm"&gt;
@@ -5385,7 +5622,7 @@ KeyCloak.</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="token-realm"&gt;
@@ -5447,7 +5684,7 @@ KeyCloak.</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
    &lt;security&gt;
       &lt;security-realms&gt;
          &lt;security-realm name="keycloak"&gt;
@@ -5592,7 +5829,7 @@ KeyCloak.</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="trust-store-realm"&gt;
@@ -5679,7 +5916,7 @@ When users attempt to access the Hot Rod or REST endpoints, Infinispan Server us
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="distributed-realm"&gt;
@@ -5794,7 +6031,7 @@ For example, this can be used to authenticate users via a client certificate, an
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
    &lt;security&gt;
       &lt;security-realms&gt;
          &lt;security-realm name="default" default-realm="aggregate"&gt;
@@ -6085,7 +6322,7 @@ By default</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
     &lt;security&gt;
         &lt;security-realms&gt;
             &lt;security-realm name="default" cache-max-size="1024" cache-lifespan="20m"&gt;
@@ -6238,7 +6475,7 @@ The server will issue a warning if it is started with a certificate which does n
 <div class="listingblock">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="default"&gt;
@@ -6379,7 +6616,7 @@ temporary handshake failures until all clients and servers have been updated.
 <div class="listingblock">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="generated-keystore"&gt;
@@ -6498,7 +6735,7 @@ Omitting the <code>enabled-protocols</code> attribute allows any TLS version.</p
 <div class="listingblock">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="default"&gt;
@@ -6634,7 +6871,7 @@ You can configure your Infinispan Server to use encryption ciphers that adhere t
 <div class="listingblock">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
    &lt;security&gt;
       &lt;security-realms&gt;
          &lt;security-realm name="default"&gt;
@@ -6735,7 +6972,7 @@ You can configure your Infinispan Server to use encryption ciphers that adhere t
 <div class="listingblock">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
    &lt;security&gt;
       &lt;security-realms&gt;
          &lt;security-realm name="default"&gt;
@@ -6891,7 +7128,7 @@ These trust stores should be configured with an empty password: <code>password="
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="trust-store-realm"&gt;
@@ -7395,7 +7632,7 @@ If the command requires parameters, provide them as a space-separated list of st
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;credential-stores&gt;
       &lt;credential-store name="credentials" path="credentials.pfx"&gt;
@@ -7440,7 +7677,7 @@ If the command requires parameters, provide them as a space-separated list of st
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;credential-stores&gt;
       &lt;credential-store name="credentials"
@@ -7486,7 +7723,7 @@ If the command requires parameters, provide them as a space-separated list of st
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;credential-stores&gt;
       &lt;credential-store name="credentials"
@@ -7538,7 +7775,7 @@ If the command requires parameters, provide them as a space-separated list of st
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;credential-stores&gt;
       &lt;credential-store name="credentials"
@@ -7626,7 +7863,7 @@ If the command requires parameters, provide them as a space-separated list of st
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;credential-stores&gt;
       &lt;credential-store name="credentials"
@@ -8671,7 +8908,9 @@ You should disable the ACL cache only if you disable authorization.</p>
 <div class="sect3">
 <h4 id="flushing_acl_caches"><a class="anchor" href="#flushing_acl_caches"></a>8.7.1. Flushing ACL caches</h4>
 <div class="paragraph">
-<p>It is possible to flush the ACL cache using the <code>GlobalSecurityManager</code> MBean, accessible over JMX.</p>
+<p>It is possible to flush the ACL cache using the <code>GlobalSecurityManager</code> MBean, accessible over JMX.
+In this case, flush means the cache is empty and the information is loaded from the external source.
+Flushing the ACL caches does not synchronize it cluster-wide.</p>
 </div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
@@ -9323,7 +9562,7 @@ A state transfer exposes attributes as properties, so that Infinispan can export
 <p><a href="../configuring/configuring.html#statistics-jmx">Enabling and configuring Infinispan statistics and JMX monitoring (Infinispan caches)</a></p>
 </li>
 <li>
-<p><a href="../../apidocsjmxComponents.html#StateTransferManager"><code>StateTransferManager</code> (Infinispan 16.0 API)</a></p>
+<p><a href="../../apidocsjmxComponents.html#StateTransferManager"><code>StateTransferManager</code> (Infinispan 16.1 API)</a></p>
 </li>
 </ul>
 </div>
@@ -9987,7 +10226,7 @@ configuration.</p>
 <div class="listingblock primary">
 <div class="title">XML</div>
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;data-sources&gt;
      &lt;!-- Defines a unique name for the datasource and JNDI name that you
           reference in JDBC cache store configuration.
@@ -10257,7 +10496,7 @@ The transport layer also enables Infinispan nodes to replicate or distribute dat
 <div class="sect2">
 <h3 id="default-jgroups-stacks_cluster-transport"><a class="anchor" href="#default-jgroups-stacks_cluster-transport"></a>12.1. Default JGroups stacks</h3>
 <div class="paragraph">
-<p>Infinispan provides default JGroups stack files, <code>default-jgroups-*.xml</code>, in the <code>default-configs</code> directory inside the <code>infinispan-core-16.0.0.Dev06.jar</code> file.</p>
+<p>Infinispan provides default JGroups stack files, <code>default-jgroups-*.xml</code>, in the <code>default-configs</code> directory inside the <code>infinispan-core-16.1.0.Dev01.jar</code> file.</p>
 </div>
 <div class="paragraph">
 <p>You can find this JAR file in the <code>$ISPN_HOME/lib</code> directory.</p>
@@ -10539,7 +10778,7 @@ When nodes leave Infinispan clusters, they delete their IP addresses from the sh
 <p>Create a datasource for your database.</p>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;data-sources&gt;
      &lt;!-- Defines a unique name for the datasource and JNDI name that you
           reference in JDBC cache store configuration.
@@ -11125,7 +11364,7 @@ Affects the protocol that you specify as the insertion point.</p></td>
 </table>
 </div>
 <div class="sect4">
-<h5 id="kubernetes"><a class="anchor" href="#kubernetes"></a>Kubernetes</h5>
+<h5 id="kubernetes_2"><a class="anchor" href="#kubernetes_2"></a>Kubernetes</h5>
 <div class="paragraph">
 <p>System properties for <code>DNS_PING</code>.</p>
 </div>
@@ -11314,7 +11553,7 @@ Nodes in the Infinispan Server cluster then exchange SSL/TLS certificates to enc
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.0"&gt;
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.1"&gt;
   &lt;security&gt;
     &lt;security-realms&gt;
       &lt;security-realm name="cluster-transport"&gt;
@@ -11530,7 +11769,7 @@ Otherwise the following message is written to Infinispan logs:</p>
 <p><a href="http://www.jgroups.org/manual5/index.html">JGroups 5 Manual</a></p>
 </li>
 <li>
-<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.4 Schema</a></p>
+<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.5 Schema</a></p>
 </li>
 </ul>
 </div>
@@ -11608,7 +11847,7 @@ Otherwise the following message is written to Infinispan logs:</p>
 <p><a href="http://www.jgroups.org/manual5/index.html">JGroups 5 Manual</a></p>
 </li>
 <li>
-<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.4 Schema</a></p>
+<p><a href="http://www.jgroups.org/schema/jgroups-5.5.xsd">JGroups 5.5 Schema</a></p>
 </li>
 </ul>
 </div>
@@ -11665,6 +11904,62 @@ Otherwise the following message is written to Infinispan logs:</p>
 <p>For other deployments.</p>
 </dd>
 </dl>
+</div>
+</div>
+<div class="sect2">
+<h3 id="virtual-threads-cluster-transport"><a class="anchor" href="#virtual-threads-cluster-transport"></a>12.10. Virtual Threads Support</h3>
+<div class="paragraph">
+<p>Infinispan supports virtual threads, which can significantly improve application responsiveness and scalability under high concurrency.
+By default, they are enabled if you are running on JDK 21 or higher.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>On systems with JDK versions prior to 24 and low CPU counts (2 or less), Infinispan might experience thread pinning issues when using virtual threads.
+Thread pinning is a situation where virtual threads are unexpectedly bound to a limited number of OS threads, potentially leading to performance degradation or system freezes.</p>
+</div>
+<div class="paragraph">
+<p>To work around this problem, virtual threads can be disabled as described in the procedure below, or the virtual thread scheduler parallelism may be increased with the Java option <code>-Djdk.virtualThreadScheduler.parallelism=&lt;value&gt;</code>.
+A common starting point for <code>&lt;value&gt;</code> on low-CPU systems is <code>4</code>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="disable-virtual-threads_cluster-transport"><a class="anchor" href="#disable-virtual-threads_cluster-transport"></a>12.10.1. Disable Virtual Threads</h4>
+<div class="paragraph">
+<p>Disables the virtual threads pool.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Set the <code>-Dorg.infinispan.threads.virtual=false</code> option in the <code>JAVA_OPTS</code> environment variable before starting the Infinispan server.</p>
+<div class="paragraph">
+<p>Alternatively, you can append this option directly to the command used to start the Infinispan server:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">bin/server.sh -Dorg.infinispan.threads.virtual=false</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Verify by checking the server logs.
+The following log entry should <strong>not</strong> be present:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">Virtual threads support enabled</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
 </div>
 </div>
 </div>
@@ -13192,7 +13487,7 @@ schemas defined on the source cluster will also be present on the target cluster
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="../../configuration-schema/infinispan-cachestore-remote-config-16.0.html">Remote cache store configuration schema</a></p>
+<p><a href="../../configuration-schema/infinispan-cachestore-remote-config-16.1.html">Remote cache store configuration schema</a></p>
 </li>
 </ul>
 </div>
@@ -14032,7 +14327,8 @@ The loggers available for each endpoint are:</p>
 <div class="sect2">
 <h3 id="jvm-settings-for-server_server"><a class="anchor" href="#jvm-settings-for-server_server"></a>18.4. JVM settings for Infinispan</h3>
 <div class="paragraph">
-<p>You can define Java Virtual Machine (JVM) settings for Infinispan either by editing the <code>server.conf</code> configuration file, or by setting the <code>JAVA_OPTS</code> environment variable .</p>
+<p>You can define Java Virtual Machine (JVM) settings for Infinispan either by editing the <code>server.conf</code> configuration file, or by setting the <code>JAVA_OPTS</code> and <code>JAVA_OPTIONS</code> environment variables. Set the <code>JAVA_OPTIONS</code> variable if you just want to append JVM settings to those that are automatically set by the
+<code>server.conf</code> file. Set the <code>JAVA_OPTS</code> variable if you want to completely override the JVM settings.</p>
 </div>
 <div class="admonitionblock important">
 <table>
@@ -14042,7 +14338,7 @@ The loggers available for each endpoint are:</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p>If you are running Infinispan in a container do not set <code>Xmx</code> or <code>Xms</code>  because the values are automatically calculated from the container settings to be 50% of the container size.</p>
+<p>If you are running Infinispan in a container do not set <code>Xmx</code> or <code>Xms</code>  because the values are automatically calculated from the container settings to be 70% of the container size.</p>
 </div>
 </td>
 </tr>
@@ -14054,8 +14350,11 @@ The loggers available for each endpoint are:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>JAVA_OPTS="-Xms64m -Xmx512m -XX:MetaspaceSize=64M -Djava.net.preferIPv4Stack=true"
-JAVA_OPTS="$JAVA_OPTS -Djava.awt.headless=true"</pre>
+<pre>if [ "x$JAVA_OPTS" = "x" ]; then
+   JAVA_OPTS="..."
+else
+   echo "JAVA_OPTS already set in environment; overriding default settings with values: $JAVA_OPTS"
+fi</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -14272,7 +14571,7 @@ However, these harnesses require an additional setup phase before running.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-10-29 17:53:37 UTC
+Last updated 2025-12-09 17:10:23 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -14305,6 +14604,6 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
   })
 })
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_HTMLorMML"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
 </body>
 </html>
