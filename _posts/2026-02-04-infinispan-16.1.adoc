@@ -1,0 +1,118 @@
+---
+layout: blog
+title: Infinispan 16.1
+permalink: /blog/:year/:month/:day/infinispan-16-1
+date: '2026-02-04T00:00:00.000-00:00'
+author: ttarrant
+tags: [ "release", "final" ]
+---
+
+= Infinispan 16.1
+
+*_"Polly Want a Pilsner"_*
+
+Infinispan 16.1 is here, and it is codenamed https://untappd.com/b/hop-city-brewing-co-polly-want-a-pilsner/1372902["Polly Want a Pilsner"].
+
+It is the first release that follows link:/roadmap/[our time-boxed plan].
+
+[caption="Polly Want a Pilsner"]
+image::/assets/images/blog/pollywantapilsner.png[Polly Want a Pilsner, 406, 696, align="center"]
+
+== Container-based eviction
+
+Prior to this release, it was only possible to configure memory bounds for individual caches.
+
+Infinispan 16.1 introduces the concept of bounded memory containers: configure a global container (you can have more
+than one), and whether you want it to be bound by count or by memory and reference that container name in the cache
+configuration.
+
+The following diagram shows the difference between per-cache and container eviction
+
+[caption="Per-cache and container eviction"]
+image::/assets/images/blog/memory-container.png[Memory container, align="center"]
+
+In the example below, the memory configuration for caches `a` and `b` combined will be bounded at `100MB`:
+[source,xml]
+----
+<infinispan>
+   <cache-container>
+      <eviction-containers>
+         <max-size-container name="max-size" size="100MB"/>
+      </eviction-containers>
+
+      <local-cache name="a">
+          <memory eviction-container="max-size"/>
+      </local-cache>
+
+      <local-cache name="b">
+          <memory eviction-container="max-size"/>
+      </local-cache>
+   </cache-container>
+</infinispan>
+----
+
+== OpenAPI / Swagger
+
+Infinispan 10 introduced the `v2` REST endpoint which aimed to improve the original API and expand it with all the
+requirements we added for data and system management. Unfortunately that API was designed in a way that made it
+impossible to represent via an OpenAPI descriptor.
+
+Infinispan 16.1 introduces a new `v3` REST API which *is* OpenAPI-compliant.
+
+To try it out, start an Infinispan Server and point to http://127.0.0.1:11222/swagger-ui/
+
+[caption="Infinispan's v3 REST API in Swagger UI"]
+image::/assets/images/blog/swaggerui.png[Infinispan v3 REST API, align="center"]
+
+== Query and Lucene 10
+
+Thanks to the work done by our friends over at https://hibernate.org/search/[Hibernate Search], Infinispan now supports
+both Lucene 9 and 10.
+
+== Infinispan Server
+
+=== Server now requires Java 25
+
+Our server image has already included Java 25 since 16.0, but we've now made this a hard requirement for bare metal
+deployments too.
+Don't worry: the clients can continue running with _ye olde_ legacy Java versions of choice.
+
+=== Lucene 10.3
+By requiring Java 25, the server can now include
+https://lucene.apache.org/core/corenews.html#apache-lucenetm-1030-available[Lucene 10.3], which can leverage SIMD to
+increase performance in several areas.
+
+=== Pre-start batch scripts
+
+The server can now automatically execute batch scripts before start.
+This feature is primarily intended for our operator in order to prepare the server according to its configuration, but
+it may also be useful for your own use-cases.
+
+=== AOT cache in the container image
+
+The server image now includes an https://openjdk.org/jeps/483[AOT cache] to reduce startup and warmup time.
+
+== CLI batch error handling
+
+The CLI has been enhanced to better report errors during batch execution: you can now decide to fail-fast, fail-at-end
+or ignore batch errors altogether.
+
+== Default mechanisms
+
+Infinispan Server no longer enables weak/vulnerable authentication mechanisms by default: algorithms which use
+`MD5` and `SHA-1` must be explicitly enabled if you want to keep using them.
+
+== Backwards compatibility
+
+Infinispan 16.1 is fully backwards compatible with 16.0 deployments.
+
+== The next release
+
+According to our link:/roadmap/[roadmap], our next release will be 16.2, and it will happen on 2026-06-03.
+
+== Release notes
+
+You can look at the https://github.com/infinispan/infinispan/releases/tag/16.1.0[release notes] to see what was changed
+since our previous release.
+
+Get them from our https://infinispan.org/download/[download page].
