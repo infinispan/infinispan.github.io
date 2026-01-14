@@ -29,8 +29,9 @@ update_version ()
   " "$CONFIG_FILE"
 }
 
-update_version "unstable" "16.1.x"
-update_version "stable" "16.0.x"
+update_version "unstable" "16.2.x"
+update_version "stable" "16.1.x"
+update_version "old.\"16.0\"" "16.0.x"
 update_version "old.\"15.2\"" "15.2.x"
 update_version "old.\"15.0\"" "15.0.x"
 update_version "old.\"14.0\"" "14.0.x"
