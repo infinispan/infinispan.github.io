@@ -1,4 +1,236 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.3">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-01-07T10:48:55+01:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Infinispan 16.0.5</title><link href="https://infinispan.org/blog/2025/12/18/infinispan-16-0-5" rel="alternate" type="text/html" title="Infinispan 16.0.5" /><published>2025-12-18T01:00:00+01:00</published><updated>2025-12-18T01:00:00+01:00</updated><id>https://infinispan.org/blog/2025/12/18/infinispan-16.0.5</id><content type="html" xml:base="https://infinispan.org/blog/2025/12/18/infinispan-16-0-5"><![CDATA[<div id="preamble">
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.3">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-01-14T14:53:21+01:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Infinispan Insights: Supporting Redis JSON and Scripting features with Infinispan</title><link href="https://infinispan.org/blog/2026/01/14/infinispan-resp-json-lua-scripting" rel="alternate" type="text/html" title="Infinispan Insights: Supporting Redis JSON and Scripting features with Infinispan" /><published>2026-01-14T01:00:00+01:00</published><updated>2026-01-14T01:00:00+01:00</updated><id>https://infinispan.org/blog/2026/01/14/infinispan-json-commands-lua-scripting</id><content type="html" xml:base="https://infinispan.org/blog/2026/01/14/infinispan-resp-json-lua-scripting"><![CDATA[<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>In Infinispan 15, we added a variety of commands to help replace your Redis server without changing your code. The 15.2 release also included Lua Scripting and Redis JSON APIs.
+Key takeaways:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Understanding Redis JSON commands</p>
+</li>
+<li>
+<p>The benefits of Lua scripting</p>
+</li>
+<li>
+<p>How and why transition applications from Redis to Infinispan, or use Infinispan as a
+backend while working with Redis clients.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>This article follows up on supporting multiple Redis databases with Infinispan.
+For more details, check out the <a href="https://infinispan.org/blog/2024/10/07/cache-aliases-redis-databases">full article</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="redis-drop-in-replacement-with-infinispan">Redis drop-in replacement with Infinispan</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>A drop-in replacement means you can substitute one technology for another without changing
+application code. This is valuable because:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Minimizes migration effort</strong>: You avoid rewriting logic or changing client libraries significantly.</p>
+</li>
+<li>
+<p><strong>Reduces downtime and risk:</strong> You can swap the backend and test incrementally.</p>
+</li>
+<li>
+<p><strong>Retains existing usage patterns</strong>: Developers can continue using the familiar APIs and data models.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Replacing open-source Redis with Infinispan offers several key benefits, especially
+for Java-based or enterprise-grade systems. Infinispan is fully open source under Apache 2.0,
+avoiding the licensing limitations of Redis modules. It provides advanced clustering, built-in high availability
+(Active-Active cross site replication), and better support for distributed and geo-replicated setups.
+It supports multiple databases even in clustered mode and it offers flexible persistence options like write-through and write-behind.
+Additionally, it includes robust security features such as fine-grained access control and encryption,
+and supports multiple deployment modes including embedded, server, and Kubernetes-native.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s test how this works, now also with JSON commands and Lua scripts.</p>
+</div>
+<div class="sect2">
+<h3 id="running-infinispan-as-usual">Running Infinispan as usual</h3>
+<div class="paragraph">
+<p><a href="https://infinispan.org/get-started/">Get started tutorial</a> is the best place to start.
+Just run the following command with docker or podman.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">podman/docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" quay.io/infinispan/server:latest</code></pre>
+</div>
+</div>
+<div class="sect3">
+<h4 id="running-infinispan-with-the-redis-default-port">Running Infinispan with the Redis default port</h4>
+<div class="paragraph">
+<p>For those want to keep using the <strong>6379</strong> port, run Infinispan providing the following configuration
+file:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">podman/docker run -it -p 6379:6379 -p 11222:11222 -e USER="admin" -e PASS="password" quay.io/infinispan/server:latest -c infinispan-resp.xml</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Map -p 6379:6379 -p 11222:11222 (you keep the access to the console)</p>
+</li>
+<li>
+<p>Provide -c infinispan-resp.xml configuration file</p>
+</li>
+<li>
+<p>-e USER="admin" -e PASS="password will be used for 11222 port security</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="using-a-redis-client">Using a Redis client</h3>
+<div class="paragraph">
+<p>Once the server is running, connect to Infinispan using Redis-CLI.
+Use port <strong>11222</strong> instead of the default <strong>6379</strong> if you are running Infinispan as usual.
+Since Infinispan is secured by default, make sure to provide the admin credentials.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">&gt; redis-cli -3 -p 11222 --raw
+127.0.0.1:11222&gt; AUTH admin password
+OK</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Connect using Protocol 3</p>
+</li>
+<li>
+<p>Use -p 11222 (Infinispan single port)</p>
+</li>
+<li>
+<p>Add --raw option to allow formatting</p>
+</li>
+<li>
+<p>Authenticate with admin/password</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>You can access the Infinispan Server Console as usual in <a href="http://localhost:11222" class="bare">http://localhost:11222</a>, with admin/password credentials.
+Check the (<a href="https://infinispan.org/blog/2024/10/07/cache-aliases-redis-databases">cache aliases tutorial</a> to learn
+more about respCache and how it connects to Redis Databases and cache aliases.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2025-04-11-resp-json-lua/ServerConsole_15_2.png"><img src="/assets/images/blog/2025-04-11-resp-json-lua/ServerConsole_15_2.png" alt="Infinispan Web Console 15.2"></a>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="redis-json-feature">Redis JSON Feature</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>RedisJSON is a powerful extension for managing JSON data directly in Redis.
+If you&#8217;re working with JSON-like data and need fast, efficient access and
+manipulation, RedisJSON is a great tool to use. This is part of the RedisStack
+or Redis Enterprise, and works with the JSON Query engine
+(which is not supported by Infinispan for now).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">127.0.0.1:11222&gt; JSON.SET doc $ '{"project":"infinispan", "details": {"latest": "16.0", "year": 2025}}'
+OK
+127.0.0.1:11222&gt; JSON.GET doc INDENT "\t" NEWLINE "\n" SPACE " " $
+[
+	{
+		"project": "infinispan",
+		"details": {
+			"latest": "16.0",
+			"year": 2025
+		}
+	}
+]
+127.0.0.1:11222&gt; JSON.OBJKEYS doc $
+project
+details</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the console, the REST API currently shows the key, and the value is
+only displayed as the JSON.Bucket. Additional support for displaying more data
+is planned for future Infinispan releases, so we just need to wait a bit for the ability to
+show more content through the REST API.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<a class="image" href="/assets/images/blog/2025-04-11-resp-json-lua/Json_Bucket.png"><img src="/assets/images/blog/2025-04-11-resp-json-lua/Json_Bucket.png" alt="Json RESP cache"></a>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>All JSON commands are implemented for the RESP 3 responses.</strong></p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="scripting-feature">Scripting Feature</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Lua scripting in Redis lets you write small programs in the Lua language
+that run directly on the Redis server. This helps you perform multiple actions
+in one go, saving time and making things faster. You can use it to do complex
+tasks without sending many commands back and forth between the client and server.</p>
+</div>
+<div class="paragraph">
+<p>Since <strong>Infinispan 16.0</strong>, you can now use Lua Scripting to perform these operations.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">127.0.0.1:11222&gt; EVAL "return 'Hello, scripting!'" 0
+Hello, scripting!
+127.0.0.1:11222&gt; EVAL "return ARGV[1]" 0 Hello
+Hello
+127.0.0.1:11222&gt; EVAL "return ARGV[1]" 0 Parameterization!
+Parameterization!
+127.0.0.1:11222&gt; EVAL "redis.call('SET', KEYS[1], ARGV[1]) redis.call('SET', KEYS[2], ARGV[2]) redis.call('SET', KEYS[3], ARGV[3]) return 'SET commands executed'" 3 key1 key2 key3 value1 value2 value3
+SET commands executed
+127.0.0.1:11222&gt; KEYS "*"
+key2
+key3
+key1
+doc</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Technically speaking, when using Infinispan, scripts are stored in an internal
+cache <strong>___script_cache</strong>.
+This cache is handled by Infinispan and manipulating it requires admin permissions.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="conclusions">Conclusions</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In this tutorial, you’ve learned how to use Infinispan for JSON commands and Scripting from
+version 16.0. Redis Hot Replacement is gaining attention,
+especially with the concerns about Redis' licensing changes in 2024.
+Infinispan, an open-source solution under the Apache 2.0 license,
+is part of the <a href="https://www.commonhaus.org/">Commonhaus foundation</a>, allowing
+free use in your products.
+If you need official support, you can get it through supported versions of Infinispan.</p>
+</div>
+</div>
+</div>]]></content><author><name>Katia Aresti</name></author><category term="resp" /><category term="infinispan" /><category term="json" /><category term="lua" /><summary type="html"><![CDATA[In Infinispan 15, we added a variety of commands to help replace your Redis server without changing your code. The 15.2 release also included Lua Scripting and Redis JSON APIs. Key takeaways:]]></summary></entry><entry><title type="html">Infinispan 16.0.5</title><link href="https://infinispan.org/blog/2025/12/18/infinispan-16-0-5" rel="alternate" type="text/html" title="Infinispan 16.0.5" /><published>2025-12-18T01:00:00+01:00</published><updated>2025-12-18T01:00:00+01:00</updated><id>https://infinispan.org/blog/2025/12/18/infinispan-16.0.5</id><content type="html" xml:base="https://infinispan.org/blog/2025/12/18/infinispan-16-0-5"><![CDATA[<div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
 <p>We don&#8217;t usually blog about micros&#8230;&#8203; but this is the second time in as many days that I have to break with tradition.</p>
@@ -1194,168 +1426,4 @@ which supports back to HotRod 2.0. This can be used by just changing the module 
 If you want to discuss this please feel free to reach out to us as can be seen at <a href="https://infinispan.org/community/" class="bare">https://infinispan.org/community/</a>.</p>
 </div>
 </div>
-</div>]]></content><author><name>William Burns</name></author><category term="client" /><category term="hotrod" /><category term="performance" /><summary type="html"><![CDATA[Infinispan 15.1 will be shipping a new default Hot Rod client implementation. This implementation completely overhauls the "pool" implementation and adds many internal code optimizations and reductions.]]></summary></entry><entry><title type="html">Spatial queries</title><link href="https://infinispan.org/blog/2024/11/25/spatial-queries" rel="alternate" type="text/html" title="Spatial queries" /><published>2024-11-25T01:00:00+01:00</published><updated>2024-11-25T01:00:00+01:00</updated><id>https://infinispan.org/blog/2024/11/25/spatial-queries</id><content type="html" xml:base="https://infinispan.org/blog/2024/11/25/spatial-queries"><![CDATA[<div id="preamble">
-<div class="sectionbody">
-<div class="paragraph">
-<p>The upcoming Infinispan 15.1 will support <strong>geographical queries</strong>.
-The feature allows users to perform queries based on geographical criteria.
-Spatial predicates can used in combination with other predicates to implement additional filtering.
-Moreover, spatial fields can be used to project distances and to order the results according to distances from a given geographical point.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="spatial-fields-mapping">Spatial fields mapping</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>You can define on the same entity one or more spatial fields.
-Each of them denotes a pair of geographical coordinates: latitude and longitude.</p>
-</div>
-<div class="paragraph">
-<p>Suppose we want to define a train route, having a <code>name</code> field and two spatial fields <code>departure</code> and <code>arrival</code>.
-We can use <code>@GeoField</code> annotations together with pairs of <code>@Latitude</code> and <code>Longitude</code> annotations.
-Here is an example:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
-@Indexed
-@GeoPoint(fieldName = "departure", projectable = true)
-@GeoPoint(fieldName = "arrival", sortable = true)
-public record TrainRoute(
-   @Keyword(normalizer = "lowercase") String name,
-   @Latitude(fieldName = "departure") Double departureLat,
-   @Longitude(fieldName = "departure") Double departureLon,
-   @Latitude(fieldName = "arrival") Double arrivalLat,
-   @Longitude(fieldName = "arrival") Double arrivalLon
-) {
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Alternatively, we can use the <code>@GeoField</code> annotation together with <code>LatLng</code> fields,
-in this case the same entity could be designed with the following, more compact, code:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
-@Indexed
-public record TrainRoute(
-   @Keyword(normalizer = "lowercase") String name,
-   @GeoField LatLng departure,
-   @GeoField LatLng arrival
-) {
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The result on the index model is the same: in both cases we have defined
-two spatial fields: <code>departure</code> and <code>arrival</code>.</p>
-</div>
-<div class="paragraph">
-<p>For more information about spatial mappings see the documentation section:
-<a href="https://infinispan.org/docs/dev/titles/query/query.html#spatial_fields_mapping">Spatial fields mapping</a></p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="spatial-predicates">Spatial predicates</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Infinispan&#8217;s query language supports three spatial predicates: <code>within circle</code>, <code>within polygon</code> and <code>within box</code>.</p>
-</div>
-<div class="paragraph">
-<p>In order to find all the trains departing from a place that is at most 300 Km from
-Bologna, we can define the following query:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;TrainRoute&gt; query = cache.query(
-   "from geo.TrainRoute r where r.departure within circle(:lat, :lon, :distance)");
-query.setParameter("lat", BOLOGNA.latitude());
-query.setParameter("lon", BOLOGNA.longitude());
-query.setParameter("distance", 300_000);
-List&lt;TrainRoute&gt; trainRoutes = trainQuery.list();
-assertThat(trainRoutes).extracting(TrainRoute::name)
-      .containsExactlyInAnyOrder("Milan-Como", "Bologna-Venezia", "Bologna-Selva");</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The above query will return trains starting from Milano, since Milan is within 300 Km from Bologna.
-Conversely, the result set will not contain any trains departing from Roma.
-Notice that parameters can be used as arguments of the predicates.</p>
-</div>
-<div class="paragraph">
-<p>Another way to filter places is to define a given number of vertices.
-Those vertices will denote a polygon used to filter all the places that are contained within.
-Here is an example:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">query = cache.query(
-   "from geo.TrainRoute r where r.arrival within polygon(:a, :b, :c, :d)");
-query.setParameter("a", "(47.00, 8.00)");
-query.setParameter("b", "(47.00, 12.00)");
-query.setParameter("c", "(45.70, 12.00)");
-query.setParameter("d", "(45.70, 8.00)");
-query = trainQuery.list();
-assertThat(trainRoutes).extracting(TrainRoute::name)
-      .containsExactlyInAnyOrder("Milano-Como", "Bologna-Selva");</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>In the above example, only trains arriving in Como and Selva are returned, since Milano, Bologna and Roma
-are not far enough north.</p>
-</div>
-<div class="paragraph">
-<p>For more information about spatial predicates see the documentation section:
-<a href="https://infinispan.org/docs/dev/titles/query/query.html#spatial_predicates">Spatial predicates</a></p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="spatial-sorting-and-projections">Spatial sorting and projections</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>If we want to sort our results according to the distance from a given query point,
-we can use the <code>order by distance</code> clause. Here is an example:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-sql hljs" data-lang="sql">select r.name, distance(r.arrival, 41.91, 12.46)
-from geo.TrainRoute r
-where r.departure within box(45.74, 8.30, 44.22, 12.59)
-order by distance(r.arrival, 41.91, 12.46)</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>In the same example we also project the distances from the same query point.
-The result will be ordered in ascending order of distances:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">List&lt;Object[]&gt; list = result.list();
-assertThat(list).extracting(item -&gt; item[0])
-  .containsExactly("Bologna-Venezia", "Milano-Como", "Bologna-Selva");
-assertThat(list).extracting(item -&gt; item[1])
-  .containsExactly(392893.53564872313, 510660.6643083735, 519774.5486163137);</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>If you want to use spatial queries with Infinispan, you can do so today by downloading our latest development release.</p>
-</div>
-<div class="paragraph">
-<p>For more information spatial  sorting and projections see the documentation sections:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><a href="https://infinispan.org/docs/dev/titles/query/query.html#spatial_sorting">Spatial Sorting</a></p>
-</li>
-<li>
-<p><a href="https://infinispan.org/docs/dev/titles/query/query.html#spatial_projections">Spatial Projections</a></p>
-</li>
-</ul>
-</div>
-</div>
-</div>]]></content><author><name>Fabio Massimo Ercoli</name></author><category term="search" /><category term="indexing" /><category term="spatial" /><category term="queries" /><category term="geographical" /><summary type="html"><![CDATA[The upcoming Infinispan 15.1 will support geographical queries. The feature allows users to perform queries based on geographical criteria. Spatial predicates can used in combination with other predicates to implement additional filtering. Moreover, spatial fields can be used to project distances and to order the results according to distances from a given geographical point.]]></summary></entry></feed>
+</div>]]></content><author><name>William Burns</name></author><category term="client" /><category term="hotrod" /><category term="performance" /><summary type="html"><![CDATA[Infinispan 15.1 will be shipping a new default Hot Rod client implementation. This implementation completely overhauls the "pool" implementation and adds many internal code optimizations and reductions.]]></summary></entry></feed>
