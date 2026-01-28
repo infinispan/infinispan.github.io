@@ -15,4 +15,4 @@ fi
 #
 bundle install
 # Build the site
-bundle exec jekyll serve
+bundle exec jekyll serve --incremental
