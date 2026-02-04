@@ -659,19 +659,20 @@ $(addBlockSwitches);
 <li><a href="#eviction-passivation_configuring-memory-usage">5.3.5. Passivation with eviction</a></li>
 </ul>
 </li>
-<li><a href="#expiration_configuring-memory-usage">5.4. Expiration with lifespan and maximum idle</a>
+<li><a href="#configuring-container-eviction_configuring-memory-usage">5.4. Configuring container eviction</a></li>
+<li><a href="#expiration_configuring-memory-usage">5.5. Expiration with lifespan and maximum idle</a>
 <ul class="sectlevel3">
-<li><a href="#how-expiration-works_configuring-memory-usage">5.4.1. How expiration works</a></li>
-<li><a href="#expiration-reaper_configuring-memory-usage">5.4.2. Expiration reaper</a></li>
-<li><a href="#expiration-maxidle_configuring-memory-usage">5.4.3. Maximum idle and clustered caches</a></li>
-<li><a href="#configuring-expiration-for-caches_configuring-memory-usage">5.4.4. Configuring lifespan and maximum idle times for caches</a></li>
-<li><a href="#configuring-expiration-per-entry_configuring-memory-usage">5.4.5. Configuring lifespan and maximum idle times per entry</a></li>
+<li><a href="#how-expiration-works_configuring-memory-usage">5.5.1. How expiration works</a></li>
+<li><a href="#expiration-reaper_configuring-memory-usage">5.5.2. Expiration reaper</a></li>
+<li><a href="#expiration-maxidle_configuring-memory-usage">5.5.3. Maximum idle and clustered caches</a></li>
+<li><a href="#configuring-expiration-for-caches_configuring-memory-usage">5.5.4. Configuring lifespan and maximum idle times for caches</a></li>
+<li><a href="#configuring-expiration-per-entry_configuring-memory-usage">5.5.5. Configuring lifespan and maximum idle times per entry</a></li>
 </ul>
 </li>
-<li><a href="#off-heap-memory_configuring-memory-usage">5.5. JVM heap and off-heap memory</a>
+<li><a href="#off-heap-memory_configuring-memory-usage">5.6. JVM heap and off-heap memory</a>
 <ul class="sectlevel3">
-<li><a href="#off-heap-storage_configuring-memory-usage">5.5.1. Off-heap data storage</a></li>
-<li><a href="#configuring-memory-off-heap_configuring-memory-usage">5.5.2. Configuring off-heap memory</a></li>
+<li><a href="#off-heap-storage_configuring-memory-usage">5.6.1. Off-heap data storage</a></li>
+<li><a href="#configuring-memory-off-heap_configuring-memory-usage">5.6.2. Configuring off-heap memory</a></li>
 </ul>
 </li>
 </ul>
@@ -5332,7 +5333,126 @@ builder.persistence().passivation(true); //Persistent storage configuration</cod
 </div>
 </div>
 <div class="sect2">
-<h3 id="expiration_configuring-memory-usage"><a class="anchor" href="#expiration_configuring-memory-usage"></a>5.4. Expiration with lifespan and maximum idle</h3>
+<h3 id="configuring-container-eviction_configuring-memory-usage"><a class="anchor" href="#configuring-container-eviction_configuring-memory-usage"></a>5.4. Configuring container eviction</h3>
+<div class="paragraph">
+<p>Configure container eviction to set a limit for the memory usage of the entire container (node), rather than for individual caches.
+Infinispan supports both size-based (<code>max-size-container</code>) and count-based (<code>max-count-container</code>) eviction containers. You can also define multiple eviction containers as needed.
+This simplifies configuration as you only need to know the limit for the node.
+Note that this setting is not cluster-wide; it applies only to the local node.</p>
+</div>
+<div class="paragraph">
+<div class="title">Drawbacks of shared eviction</div>
+<p>All caches using the shared eviction container share the same eviction policy.
+This means that data from one cache can evict data from another cache, which might not be desirable.
+If you need strict control over the memory usage of a specific cache, use per-cache eviction instead.
+Runtime updates of the shared eviction container are not yet supported.</p>
+</div>
+<div class="paragraph">
+<div class="title">Memory overhead</div>
+<p>A cache that uses a shared eviction container incurs a minor memory overhead.
+Each entry is stored with a wrapper that contains the cache name and the actual value.
+This adds two additional pointers (affected by compressed oops) and an object header per entry.</p>
+</div>
+<div class="paragraph">
+<div class="title">Performance considerations</div>
+<p>Shared eviction container performance is generally comparable to per-cache eviction:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Single key operations:</strong> Same performance as a <code>HashMap</code>.</p>
+</li>
+<li>
+<p><strong>Clearing the cache or removing segments:</strong> Slower than per-cache eviction.
+The system must iterate through the shared container to find and remove entries belonging to the specific cache or segment.
+However, this overhead is typically negligible compared to the network overhead of state transfer or rebalancing.</p>
+</li>
+</ul>
+</div>
+<div class="ulist">
+<div class="title">Procedure</div>
+<ul>
+<li>
+<p>Define an eviction container in the <code>cache-container</code> configuration.</p>
+</li>
+<li>
+<p>Reference the eviction container in your cache configuration.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
+   &lt;eviction-containers&gt;
+      &lt;max-count-container name="my-container" count="1000"/&gt;
+   &lt;/eviction-containers&gt;
+   ...
+   &lt;distributed-cache name="distributed-shared-eviction"&gt;
+      &lt;memory eviction-container="my-container"/&gt;
+   &lt;/distributed-cache&gt;
+
+   &lt;replicated-cache name="replicated-shared-eviction"&gt;
+      &lt;memory eviction-container="my-container"/&gt;
+   &lt;/replicated-cache&gt;
+&lt;/cache-container&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "infinispan": {
+    "cacheContainer": {
+      "evictionContainers": {
+        "maxCountContainer": [
+          {
+            "name": "my-container",
+            "count": 1000
+          }
+        ]
+      },
+      "distributedCache": {
+        "distributed-shared-eviction": {
+          "memory": {
+            "evictionContainer": "my-container"
+          }
+        }
+      },
+      "replicatedCache": {
+        "replicated-shared-eviction": {
+          "memory": {
+            "evictionContainer": "my-container"
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  cacheContainer:
+    evictionContainers:
+      maxCountContainer:
+        - name: "my-container"
+          count: 1000
+    distributedCache:
+      "distributed-shared-eviction":
+        memory:
+          evictionContainer: "my-container"
+    replicatedCache:
+      "replicated-shared-eviction":
+        memory:
+          evictionContainer: "my-container"</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="expiration_configuring-memory-usage"><a class="anchor" href="#expiration_configuring-memory-usage"></a>5.5. Expiration with lifespan and maximum idle</h3>
 <div class="paragraph">
 <p>Expiration configures Infinispan to remove entries from caches when they reach one of the following time limits:</p>
 </div>
@@ -5378,7 +5498,7 @@ entries, they become idle.</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="how-expiration-works_configuring-memory-usage"><a class="anchor" href="#how-expiration-works_configuring-memory-usage"></a>5.4.1. How expiration works</h4>
+<h4 id="how-expiration-works_configuring-memory-usage"><a class="anchor" href="#how-expiration-works_configuring-memory-usage"></a>5.5.1. How expiration works</h4>
 <div class="paragraph">
 <p>When you configure expiration, Infinispan stores keys with metadata that
 determines when entries expire.</p>
@@ -5432,7 +5552,7 @@ entries. This can increase the size of keys by as much as 32 bytes.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="expiration-reaper_configuring-memory-usage"><a class="anchor" href="#expiration-reaper_configuring-memory-usage"></a>5.4.2. Expiration reaper</h4>
+<h4 id="expiration-reaper_configuring-memory-usage"><a class="anchor" href="#expiration-reaper_configuring-memory-usage"></a>5.5.2. Expiration reaper</h4>
 <div class="paragraph">
 <p>Infinispan uses a reaper thread that runs periodically to detect and remove
 expired entries. The expiration reaper ensures that expired entries that are no
@@ -5480,7 +5600,7 @@ case you cannot disable it.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="expiration-maxidle_configuring-memory-usage"><a class="anchor" href="#expiration-maxidle_configuring-memory-usage"></a>5.4.3. Maximum idle and clustered caches</h4>
+<h4 id="expiration-maxidle_configuring-memory-usage"><a class="anchor" href="#expiration-maxidle_configuring-memory-usage"></a>5.5.3. Maximum idle and clustered caches</h4>
 <div class="paragraph">
 <p>Because maximum idle expiration relies on the last access time for cache
 entries, it has some limitations with clustered cache modes.</p>
@@ -5529,7 +5649,7 @@ expiration. Lifespan will always remove it at that point invalidating maximum id
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-expiration-for-caches_configuring-memory-usage"><a class="anchor" href="#configuring-expiration-for-caches_configuring-memory-usage"></a>5.4.4. Configuring lifespan and maximum idle times for caches</h4>
+<h4 id="configuring-expiration-for-caches_configuring-memory-usage"><a class="anchor" href="#configuring-expiration-for-caches_configuring-memory-usage"></a>5.5.4. Configuring lifespan and maximum idle times for caches</h4>
 <div class="paragraph">
 <p>Set lifespan and maximum idle times for all entries in a cache.</p>
 </div>
@@ -5594,7 +5714,7 @@ builder.expiration().lifespan(5000, TimeUnit.MILLISECONDS)
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-expiration-per-entry_configuring-memory-usage"><a class="anchor" href="#configuring-expiration-per-entry_configuring-memory-usage"></a>5.4.5. Configuring lifespan and maximum idle times per entry</h4>
+<h4 id="configuring-expiration-per-entry_configuring-memory-usage"><a class="anchor" href="#configuring-expiration-per-entry_configuring-memory-usage"></a>5.5.5. Configuring lifespan and maximum idle times per entry</h4>
 <div class="paragraph">
 <p>Specify lifespan and maximum idle times for individual entries.
 When you add lifespan and maximum idle times to entries, those values take priority over expiration configuration for caches.</p>
@@ -5653,7 +5773,7 @@ cache.put("hello", "world", -1, TimeUnit.SECONDS, 1, TimeUnit.SECONDS);</code></
 </div>
 </div>
 <div class="sect2">
-<h3 id="off-heap-memory_configuring-memory-usage"><a class="anchor" href="#off-heap-memory_configuring-memory-usage"></a>5.5. JVM heap and off-heap memory</h3>
+<h3 id="off-heap-memory_configuring-memory-usage"><a class="anchor" href="#off-heap-memory_configuring-memory-usage"></a>5.6. JVM heap and off-heap memory</h3>
 <div class="paragraph">
 <p>Infinispan stores cache entries in JVM heap memory by default.
 You can configure Infinispan to use off-heap storage, which means that your data occupies native memory outside the managed JVM memory space.</p>
@@ -5699,7 +5819,7 @@ The diagram also represents a section of native memory that holds Infinispan cac
 <p>One disadvantage, however, is that JVM heap dumps do not show entries stored in off-heap memory.</p>
 </div>
 <div class="sect3">
-<h4 id="off-heap-storage_configuring-memory-usage"><a class="anchor" href="#off-heap-storage_configuring-memory-usage"></a>5.5.1. Off-heap data storage</h4>
+<h4 id="off-heap-storage_configuring-memory-usage"><a class="anchor" href="#off-heap-storage_configuring-memory-usage"></a>5.6.1. Off-heap data storage</h4>
 <div class="paragraph">
 <p>When you add entries to off-heap caches, Infinispan dynamically allocates native memory to your data.</p>
 </div>
@@ -5735,7 +5855,7 @@ This ensures that there is an even distribution of <code>ReadWriteLock</code> in
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-memory-off-heap_configuring-memory-usage"><a class="anchor" href="#configuring-memory-off-heap_configuring-memory-usage"></a>5.5.2. Configuring off-heap memory</h4>
+<h4 id="configuring-memory-off-heap_configuring-memory-usage"><a class="anchor" href="#configuring-memory-off-heap_configuring-memory-usage"></a>5.6.2. Configuring off-heap memory</h4>
 <div class="paragraph">
 <p>Configure Infinispan to store cache entries in native memory outside the JVM
 heap space.</p>
@@ -7544,8 +7664,8 @@ For the value, Infinispan requires a Protobuf schema that maps the <code>title</
 <pre class="highlightjs highlight nowrap"><code class="language-protobuf hljs" data-lang="protobuf">package library;
 
 message books_value {
-    optional string title = 1;
-    optional string author = 2;
+   optional string title = 1;
+   optional string author = 2;
 }</code></pre>
 </div>
 </div>
@@ -7572,13 +7692,13 @@ message books_value {
 <pre class="highlightjs highlight nowrap"><code class="language-protobuf hljs" data-lang="protobuf">package library;
 
 message books_key {
-    required string isbn = 1;
-    required int32 reprint = 2;
+   required string isbn = 1;
+   required int32 reprint = 2;
 }
 
 message books_value {
-    optional string title = 1;
-    optional string author = 2;
+   optional string title = 1;
+   optional string author = 2;
 }</code></pre>
 </div>
 </div>
@@ -7605,15 +7725,15 @@ message books_value {
 <pre class="highlightjs highlight nowrap"><code class="language-protobuf hljs" data-lang="protobuf">package library;
 
 message books_key {
-    required string isbn = 1;
-    required int32 reprint = 2;
+   required string isbn = 1;
+   required int32 reprint = 2;
 }
 
 message books_value {
-    required string isbn = 1;
-    required string reprint = 2;
-    optional string title = 3;
-    optional string author = 4;
+   required string isbn = 1;
+   required string reprint = 2;
+   optional string title = 3;
+   optional string author = 4;
 }</code></pre>
 </div>
 </div>
@@ -13102,7 +13222,7 @@ public class MyNonBlockingListener {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-12-09 17:10:23 UTC
+Last updated 2026-02-04 08:53:11 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>

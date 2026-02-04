@@ -695,8 +695,8 @@ $(addBlockSwitches);
 <li><a href="#rest_v2_restore_manager_list">2.4.19. Listing Restores</a></li>
 <li><a href="#rest_v2_restore_manager_head">2.4.20. Checking Restore Progress</a></li>
 <li><a href="#rest_v2_restore_manager_delete">2.4.21. Deleting Restore Metadata</a></li>
-<li><a href="#rest_v2_container_configuration_listen">2.4.22. Listening to container configuration events</a></li>
-<li><a href="#rest_v2_container_listen">2.4.23. Listening to container events</a></li>
+<li><a href="#rest_v2_container_listen">2.4.22. Listening to container events</a></li>
+<li><a href="#rest_v2_container_configuration_listen">2.4.23. Listening to container configuration events</a></li>
 <li><a href="#rest_v2_xsite_cache_manager">2.4.24. Cross-Site Operations with Cache Managers</a>
 <ul class="sectlevel4">
 <li><a href="#rest_v2_cache_manager_site_status_rest">Getting status of backup locations</a></li>
@@ -1510,10 +1510,10 @@ Write succinct file names.</p>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xsi:schemaLocation="urn:infinispan:config:16.0 https://infinispan.org/schemas/infinispan-config-16.0.xsd
-                          urn:infinispan:server:16.0 https://infinispan.org/schemas/infinispan-server-16.0.xsd"
-      xmlns="urn:infinispan:config:16.0"
-      xmlns:server="urn:infinispan:server:16.0"&gt;
+      xsi:schemaLocation="urn:infinispan:config:16.1 https://infinispan.org/schemas/infinispan-config-16.1.xsd
+                          urn:infinispan:server:16.1 https://infinispan.org/schemas/infinispan-server-16.1.xsd"
+      xmlns="urn:infinispan:config:16.1"
+      xmlns:server="urn:infinispan:server:16.1"&gt;
   &lt;cache-container name="default"
                    statistics="true"&gt;
     &lt;distributed-cache name="mycacheone"
@@ -1622,7 +1622,7 @@ Write succinct file names.</p>
 <p><a href="../../configuration-schema/index.html">Infinispan configuration schema reference</a></p>
 </li>
 <li>
-<p><a href="https://infinispan.org/schemas/infinispan-config-16.0.xsd">infinispan-config-16.0.xsd</a></p>
+<p><a href="https://infinispan.org/schemas/infinispan-config-16.1.xsd">infinispan-config-16.1.xsd</a></p>
 </li>
 </ul>
 </div>
@@ -4082,7 +4082,7 @@ Modify the take offline parameters to control when backup locations automaticall
           "username": "username",
           "password": "password",
           "realm": "realm",
-          "sasl-mechanism": "DIGEST-MD5"
+          "sasl-mechanism": "DIGEST-SHA-256"
         }
       },
       "encryption": {
@@ -5679,15 +5679,102 @@ completes.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="rest_v2_container_configuration_listen"><a class="anchor" href="#rest_v2_container_configuration_listen"></a>2.4.22. Listening to container configuration events</h4>
+<h4 id="rest_v2_container_listen"><a class="anchor" href="#rest_v2_container_listen"></a>2.4.22. Listening to container events</h4>
 <div class="paragraph">
-<p>Receive events about configuration changes using <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html">Server-Sent Events</a>.
-The <code>event</code> value will be one of <code>create-cache</code>, <code>remove-cache</code>, <code>update-cache</code>, <code>create-template</code>, <code>remove-template</code> or <code>update-template</code>.
-The <code>data</code> value will contain the declarative configuration of the entity that has been created. Remove events will only contain the name of the removed entity.</p>
+<p>Receive events from the container using <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html">Server-Sent Events</a>.
+The <code>event</code> value will be one of:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>create-cache</code>, <code>remove-cache</code>, <code>update-cache</code>: a cache was created, removed or its configuration updated</p>
+</li>
+<li>
+<p><code>create-template</code>, <code>remove-template</code>, <code>update-template</code>: a template was created, removed or updated</p>
+</li>
+<li>
+<p><code>create-schema</code>, <code>remove-schema</code>, <code>update-schema</code>: a schema was created, removed or updated</p>
+</li>
+<li>
+<p><code>lifecycle-event</code>: container lifecycle events, such as nodes joining and leaving the cluster</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>data</code> value will contain information about the event:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>create-cache</code>, <code>update-cache</code>, <code>create-template</code>, <code>update-template</code>: the declarative configuration of the entity that has been created in the format negotiated by the <code>Accept</code> header. The following example uses <code>application/yaml</code>:</p>
+</li>
+</ul>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">GET /rest/v2/container/config?action=listen</code></pre>
+<pre>event: create-cache
+data: infinispan:
+data:   cacheContainer:
+data:     myCache:
+data:       replicatedCache:
+data:         mode: "SYNC"</pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>create-schema</code>, <code>update-schema</code>: a response structured in the negotiated media type. The following example uses <code>application/json</code>:</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>event: create-schema
+data: {"schema":{"name":"address.proto","errors":"","proto":"message Address {
+data:     string street = 1;
+data: }
+data: "}}</pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>remove-cache</code>, <code>remove-template</code>, <code>remove-schema</code>: the name of the removed entity.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>event: remove-cache
+data: myCache</pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>lifecycle-event</code>: the event payload</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>event: lifecycle-event
+data: log:
+data:   category: "CLUSTER"
+data:   content:
+data:     level: "INFO"
+data:     message: "Some message"
+data:     detail: "A more detailed message"
+data:   meta:
+data:     instant: "2025-11-21T11:25:33.554122447Z"
+data:     context: "myCache"
+data:     scope: ~
+data:     who: ~</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">GET /rest/v2/container?action=listen</code></pre>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -5741,17 +5828,14 @@ The <code>data</code> value will contain the declarative configuration of the en
 </table>
 </div>
 <div class="sect3">
-<h4 id="rest_v2_container_listen"><a class="anchor" href="#rest_v2_container_listen"></a>2.4.23. Listening to container events</h4>
+<h4 id="rest_v2_container_configuration_listen"><a class="anchor" href="#rest_v2_container_configuration_listen"></a>2.4.23. Listening to container configuration events</h4>
 <div class="paragraph">
-<p>Receive events from the container using <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html">Server-Sent Events</a>.
-The emitted events come from logged information, so each event contains an identifier associated with the message.
-The <code>event</code> value will be <code>lifecycle-event</code>. The <code>data</code> has the logged information, which includes the <code>message</code>,
-<code>category</code>, <code>level</code>, <code>timestamp</code>, <code>owner</code>, <code>context</code>, and <code>scope</code>, some of which may be empty.
-Currently, we expose only <code>LIFECYCLE</code> events.</p>
+<p>Receive events about configuration changes using <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html">Server-Sent Events</a>.
+This endpoint returns only the <code>cache</code>, <code>template</code> and <code>schema</code> events which are also returned by <a href="#rest_v2_container_listen">Listening to container events</a>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-none hljs">GET /rest/v2/container?action=listen</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">GET /rest/v2/container/config?action=listen</code></pre>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -7760,7 +7844,7 @@ public class RestExample {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-12-18 20:52:19 UTC
+Last updated 2026-02-04 08:53:11 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
