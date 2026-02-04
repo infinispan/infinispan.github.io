@@ -165,7 +165,8 @@ else
         %x( mkdir -p docs/hotrod-clients/#{client}/docs )
         %x( rm _tmp/*/documentation/.gitignore )
         %x( mv _tmp/*/documentation "docs/hotrod-clients/#{client}/docs/#{docs_version}" )
-        Dir.glob("docs/hotrod-clients/#{client}/docs/**/*.adoc").each do |f|
+        # Only process the main entry point files in titles directory
+        Dir.glob("docs/hotrod-clients/#{client}/docs/**/titles/*.{adoc,asciidoc}").each do |f|
           %x( asciidoctor -q #{f} )
         end
         %x( rm -rf _tmp _tmp.zip )
