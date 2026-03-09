@@ -616,10 +616,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#configuring-service-monitor-target-labels_monitor">14.1.2. Configuring Service Monitor Target Labels</a></li>
 </ul>
 </li>
-<li><a href="#creating-grafana-dashboards_monitor">14.2. Creating Grafana data sources</a></li>
-<li><a href="#configuring-grafana-dashboards_monitor">14.3. Configuring Infinispan dashboards</a></li>
-<li><a href="#enabling-jmx_monitor">14.4. Enabling JMX remote ports for Infinispan clusters</a></li>
-<li><a href="#deploying-cryostat_monitor">14.5. Setting up JFR recordings with Cryostat</a></li>
+<li><a href="#enabling-jmx_monitor">14.2. Enabling JMX remote ports for Infinispan clusters</a></li>
+<li><a href="#deploying-cryostat_monitor">14.3. Setting up JFR recordings with Cryostat</a></li>
 </ul>
 </li>
 <li><a href="#anti-affinity">15. Guaranteeing availability with anti-affinity</a>
@@ -6670,7 +6668,7 @@ spec:
 <h2 id="monitoring-services"><a class="anchor" href="#monitoring-services"></a>14. Monitoring Infinispan services</h2>
 <div class="sectionbody">
 <div class="paragraph _abstract">
-<p>Infinispan exposes metrics that can be used by Prometheus and Grafana for monitoring and visualizing the cluster state.</p>
+<p>Infinispan exposes metrics that can be used by Prometheus for monitoring and visualizing the cluster state.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -6828,209 +6826,7 @@ metadata:
 </div>
 </div>
 <div class="sect2">
-<h3 id="creating-grafana-dashboards_monitor"><a class="anchor" href="#creating-grafana-dashboards_monitor"></a>14.2. Creating Grafana data sources</h3>
-<div class="paragraph _abstract">
-<p>Create a <code>GrafanaDatasource</code> CR so you can visualize Infinispan metrics in Grafana dashboards.</p>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Have an <code>oc</code> client.</p>
-</li>
-<li>
-<p>Have <code>cluster-admin</code> access to OpenShift Container Platform.</p>
-</li>
-<li>
-<p>Enable monitoring for user-defined projects on OpenShift Container Platform.</p>
-</li>
-<li>
-<p>Install the Grafana Operator from the <strong>alpha</strong> channel and create a <code>Grafana</code> CR.</p>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Create a <code>ServiceAccount</code> that lets Grafana read Infinispan metrics from Prometheus.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: infinispan-monitoring</code></pre>
-</div>
-</div>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>Apply the <code>ServiceAccount</code>.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc apply -f service-account.yaml</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Grant <code>cluster-monitoring-view</code> permissions to the <code>ServiceAccount</code>.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc adm policy add-cluster-role-to-user cluster-monitoring-view -z infinispan-monitoring</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
-</li>
-<li>
-<p>Create a Grafana data source.</p>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>Retrieve the token for the <code>ServiceAccount</code>.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc serviceaccounts get-token infinispan-monitoring</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Define a <code>GrafanaDataSource</code> that includes the token in the <code>spec.datasources.secureJsonData.httpHeaderValue1</code> field, as in the following example:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>apiVersion: integreatly.org/v1alpha1
-kind: GrafanaDataSource
-metadata:
-  name: grafanadatasource
-spec:
-  name: datasource.yaml
-  datasources:
-    - access: proxy
-      editable: true
-      isDefault: true
-      jsonData:
-        httpHeaderName1: Authorization
-        timeInterval: 5s
-        tlsSkipVerify: true
-      name: Prometheus
-      secureJsonData:
-        httpHeaderValue1: &gt;-
-          Bearer
-          eyJhbGciOiJSUzI1NiIsImtpZCI6Imc4O...
-      type: prometheus
-      url: 'https://thanos-querier.openshift-monitoring.svc.cluster.local:9091'</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
-</li>
-<li>
-<p>Apply the <code>GrafanaDataSource</code>.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc apply -f grafana-datasource.yaml</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<div class="title">Next steps</div>
-<p>Enable Grafana dashboards with the Infinispan Operator configuration properties.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="configuring-grafana-dashboards_monitor"><a class="anchor" href="#configuring-grafana-dashboards_monitor"></a>14.3. Configuring Infinispan dashboards</h3>
-<div class="paragraph _abstract">
-<p>Infinispan Operator provides global configuration properties that let you configure Grafana dashboards for Infinispan clusters.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>You can modify global configuration properties while Infinispan Operator is running.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Infinispan Operator must watch the namespace where the Grafana Operator is running.</p>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Create a <code>ConfigMap</code> named <code>infinispan-operator-config</code> in the Infinispan Operator namespace.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: infinispan-operator-config
-data:
-  grafana.dashboard.namespace: infinispan
-  grafana.dashboard.name: infinispan
-  grafana.dashboard.monitoring.key: middleware</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Specify the namespace of your Infinispan cluster with the <code>data.grafana.dashboard.namespace</code> property.</p>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Deleting the value for this property removes the dashboard.
-Changing the value moves the dashboard to that namespace.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</li>
-<li>
-<p>Specify a name for the dashboard with the <code>data.grafana.dashboard.name</code> property.</p>
-</li>
-<li>
-<p>If necessary, specify a monitoring key with the <code>data.grafana.dashboard.monitoring.key</code> property.</p>
-</li>
-<li>
-<p>Create <code>infinispan-operator-config</code> or update the configuration.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc apply -f infinispan-operator-config.yaml</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Open the Grafana UI, which is available at:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc get routes grafana-route -o jsonpath=https://"{.spec.host}"</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
-</div>
-<div class="sect2">
-<h3 id="enabling-jmx_monitor"><a class="anchor" href="#enabling-jmx_monitor"></a>14.4. Enabling JMX remote ports for Infinispan clusters</h3>
+<h3 id="enabling-jmx_monitor"><a class="anchor" href="#enabling-jmx_monitor"></a>14.2. Enabling JMX remote ports for Infinispan clusters</h3>
 <div class="paragraph">
 <p>Enable JMX remote ports to expose Infinispan MBeans and to integrate Infinispan with external monitoring systems such as Cryostat.</p>
 </div>
@@ -7096,7 +6892,7 @@ spec:
 </div>
 </div>
 <div class="sect2">
-<h3 id="deploying-cryostat_monitor"><a class="anchor" href="#deploying-cryostat_monitor"></a>14.5. Setting up JFR recordings with Cryostat</h3>
+<h3 id="deploying-cryostat_monitor"><a class="anchor" href="#deploying-cryostat_monitor"></a>14.3. Setting up JFR recordings with Cryostat</h3>
 <div class="paragraph">
 <p>Enable JDK Flight Recorder (JFR) monitoring for your Infinispan clusters that run on Kubernetes.</p>
 </div>
@@ -9310,7 +9106,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-03-05 14:52:08 UTC
+Last updated 2026-03-09 10:32:58 UTC
 </div>
 </div>
 <script>
