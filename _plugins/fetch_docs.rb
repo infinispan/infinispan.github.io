@@ -272,14 +272,6 @@ else
     end
   end
 
-  # Fetch Spring Boot starter docs
-  spring_boot = projects["projects"]["spring-boot"]
-  if spring_boot && spring_boot["doc_branches"]
-    spring_boot["doc_branches"].each do |branch|
-      fetch_github_docs(spring_boot["github"], branch, "docs/infinispan-spring-boot/#{branch}", verbose)
-    end
-  end
-
   gen_versions_xml_file("docs/infinispan-operator/versions.xml", operatorDocIndex)
   gen_versions_xml_file("docs/helm-chart/versions.xml", helmChartDocIndex)
   gen_versions_xml_file("docs/versions.xml", coreDocIndex)
@@ -287,5 +279,4 @@ end
 
 system('find . -regex "\./docs/[0-9].*html$" -exec sed -i -e "s|^<head>$|<head><meta name=\"robots\" content=\"noindex\">|" {} \;')
 system('find . -regex "\./docs/infinispan-operator/[0-9].*html$" -exec sed -i -e "s|^<head>$|<head><meta name=\"robots\" content=\"noindex\">|" {} \;')
-system('find . -regex "\./docs/infinispan-spring-boot/[0-9].*html$" -exec sed -i -e "s|^<head>$|<head><meta name=\"robots\" content=\"noindex\">|" {} \;')
 puts "Time elapsed #{Time.now - beginning} seconds"
