@@ -1,7 +1,5 @@
 source "https://rubygems.org"
 
-gem "logger"
-
 # Hello! This is where you manage which Jekyll version is used to run.
 # When you want to use a different version, change it below, save the
 # file and run `bundle install`. Run Jekyll with `bundle exec`, like so:
@@ -20,14 +18,12 @@ gem "jekyll-theme-minimal"
 
 # If you have any plugins, put them here!
 group :jekyll_plugins do
-  gem "jekyll-timeago", "~> 0.13.1"
   gem "jekyll-asciidoc"
   gem "jekyll-feed", "~> 0.6"
   gem "jekyll-paginate-v2"
   gem "jekyll-archives"
   gem "jekyll-mermaid"
   gem "optimist"
-  gem "bigdecimal"
   gem "nokogiri"
   gem "rouge"
 end
@@ -43,5 +39,3 @@ gem "wdm", "~> 0.1.0" if Gem.win_platform?
 
 gem "webrick", "~> 1.8"
 
-gem "base64"
-gem "csv"
