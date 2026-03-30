@@ -1,0 +1,42 @@
+name: Update releases and publish
+
+on:
+  repository_dispatch:
+    types: [release_updated]
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v6
+        with:
+          ref: develop
+          token: ${{ secrets.API_TOKEN_GITHUB }}
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Update release data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ruby _bin/update_releases.rb
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet _data/projects.yml && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and publish
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "Infinispan"
+          git config user.email "infinispan@infinispan.org"
+          git add _data/projects.yml
+          git commit -m "Update release data from ${{ github.event.client_payload.project || 'manual trigger' }}"
+          git push origin develop
+          _bin/publish.sh
