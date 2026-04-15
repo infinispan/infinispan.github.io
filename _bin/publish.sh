@@ -17,6 +17,8 @@ bundle install
 # Build the site
 bundle exec jekyll build
 
+# Workflow only fetches develop, we need to fetch also master
+git fetch origin master
 git checkout -f master
 git pull --rebase
 
