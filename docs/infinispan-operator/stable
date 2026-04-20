@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.17">
-<title>Infinispan Operator 2.4 Guide</title>
+<title>Infinispan Operator 2.5 Guide</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -448,7 +448,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </head>
 <body id="infinispan_operator" class="book toc2 toc-left">
 <div id="header">
-<h1>Infinispan Operator 2.4 Guide</h1>
+<h1>Infinispan Operator 2.5 Guide</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
@@ -499,9 +499,10 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#cluster-upgrades_upgrading-clusters">6.1. Infinispan cluster upgrades</a></li>
 <li><a href="#upgrading-clusters-downtime_upgrading-clusters">6.2. Upgrading Infinispan clusters with downtime</a></li>
-<li><a href="#upgrading-clusters-rolling_upgrading-clusters">6.3. Performing Hot Rod rolling upgrades for Infinispan clusters</a>
+<li><a href="#upgrading-clusters-inplace_upgrading-clusters">6.3. Upgrading Infinispan clusters using InPlace rolling strategy</a></li>
+<li><a href="#upgrading-clusters-rolling_upgrading-clusters">6.4. Performing Hot Rod rolling upgrades for Infinispan clusters</a>
 <ul class="sectlevel3">
-<li><a href="#recovering_rolling_upgrades_upgrading-clusters">6.3.1. Recovering from a failed Hot Rod rolling upgrade</a></li>
+<li><a href="#recovering_rolling_upgrades_upgrading-clusters">6.4.1. Recovering from a failed Hot Rod rolling upgrade</a></li>
 </ul>
 </li>
 </ul>
@@ -523,16 +524,17 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#setting-jvm-options_services">7.5. Setting JVM options</a></li>
 <li><a href="#configuring-pod-probesservices">7.6. Configuring pod probes</a></li>
 <li><a href="#configuring-pod-priority_services">7.7. Configuring pod priority</a></li>
-<li><a href="#configuring-logging-pattern_services">7.8. Adjusting log pattern</a></li>
-<li><a href="#configuring-logging-levels_services">7.9. Adjusting log levels</a>
+<li><a href="#configuring-pod-termination-grace-periodservices">7.8. Configuring pod termination grace period</a></li>
+<li><a href="#configuring-logging-pattern_services">7.9. Adjusting log pattern</a></li>
+<li><a href="#configuring-logging-levels_services">7.10. Adjusting log levels</a>
 <ul class="sectlevel3">
-<li><a href="#logging-levels_services">7.9.1. Logging reference</a></li>
+<li><a href="#logging-levels_services">7.10.1. Logging reference</a></li>
 </ul>
 </li>
-<li><a href="#specifying-server-image_services">7.10. Specifying Infinispan Server images</a></li>
-<li><a href="#adding-custom-labels_services">7.11. Adding labels and annotations to Infinispan resources</a></li>
-<li><a href="#adding-labels-annotations-env_services">7.12. Adding labels and annotations with environment variables</a></li>
-<li><a href="#defining-environment-variables_services">7.13. Defining environment variables in the Infinispan Operator subscription</a></li>
+<li><a href="#specifying-server-image_services">7.11. Specifying Infinispan Server images</a></li>
+<li><a href="#adding-custom-labels_services">7.12. Adding labels and annotations to Infinispan resources</a></li>
+<li><a href="#adding-labels-annotations-env_services">7.13. Adding labels and annotations with environment variables</a></li>
+<li><a href="#defining-environment-variables_services">7.14. Defining environment variables in the Infinispan Operator subscription</a></li>
 </ul>
 </li>
 <li><a href="#configuring-authentication">8. Configuring authentication</a>
@@ -614,10 +616,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#configuring-service-monitor-target-labels_monitor">14.1.2. Configuring Service Monitor Target Labels</a></li>
 </ul>
 </li>
-<li><a href="#creating-grafana-dashboards_monitor">14.2. Creating Grafana data sources</a></li>
-<li><a href="#configuring-grafana-dashboards_monitor">14.3. Configuring Infinispan dashboards</a></li>
-<li><a href="#enabling-jmx_monitor">14.4. Enabling JMX remote ports for Infinispan clusters</a></li>
-<li><a href="#deploying-cryostat_monitor">14.5. Setting up JFR recordings with Cryostat</a></li>
+<li><a href="#enabling-jmx_monitor">14.2. Enabling JMX remote ports for Infinispan clusters</a></li>
+<li><a href="#deploying-cryostat_monitor">14.3. Setting up JFR recordings with Cryostat</a></li>
 </ul>
 </li>
 <li><a href="#anti-affinity">15. Guaranteeing availability with anti-affinity</a>
@@ -768,132 +768,6 @@ You can upgrade the version of your cluster between supported Infinispan version
 14.0.24
 14.0.27
 = 15.0.0</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.10</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-14.0.32
-15.0.0
-15.0.3
-15.0.4
-15.0.5
-15.0.8
-15.0.10
-15.0.11
-15.0.13
-15.1.0
-15.1.1
-15.1.3
-15.1.4
-15.1.5</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.11</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-14.0.32
-15.0.0
-15.0.3
-15.0.4
-15.0.5
-15.0.8
-15.0.10
-15.0.11
-15.0.13
-15.0.14
-15.1.0
-15.1.1
-15.1.3
-15.1.4
-15.1.5
-15.1.7</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.12</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-14.0.32
-15.0.0
-15.0.3
-15.0.4
-15.0.5
-15.0.8
-15.0.10
-15.0.11
-15.0.13
-15.0.14
-15.1.0
-15.1.1
-15.1.3
-15.1.4
-15.1.5
-15.1.7
-15.2.1</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.13</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>14.0.1
-14.0.6
-14.0.9
-14.0.13
-14.0.17
-14.0.19
-14.0.20
-14.0.21
-14.0.24
-14.0.27
-14.0.32
-15.0.0
-15.0.3
-15.0.4
-15.0.5
-15.0.8
-15.0.10
-15.0.11
-15.0.13
-15.0.14
-15.0.15
-15.1.0
-15.1.1
-15.1.3
-15.1.4
-15.1.5
-15.1.7
-15.2.1
-15.2.2</p>
 </div></div></td>
 </tr>
 <tr>
@@ -1072,6 +946,516 @@ You can upgrade the version of your cluster between supported Infinispan version
 15.1.0
 15.1.1
 15.1.3</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.10</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.11</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.12</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.13</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.14</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.0.16
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.15</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.0.16
+15.0.18
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4
+15.2.5</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.16</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.0.16
+15.0.18
+15.0.19
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4
+15.2.5</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.17</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.0.16
+15.0.18
+15.0.19
+15.0.20
+15.0.21
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4
+15.2.5
+15.2.6</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.4.18</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.0.16
+15.0.18
+15.0.19
+15.0.20
+15.0.21
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4
+15.2.5
+15.2.6</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.5.0</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.0.16
+15.0.18
+15.0.19
+15.0.20
+15.0.21
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4
+15.2.5
+15.2.6
+16.0.1</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.5.1</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.0.16
+15.0.18
+15.0.19
+15.0.20
+15.0.21
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4
+15.2.5
+15.2.6
+16.0.1
+16.0.2
+16.0.3
+16.0.4
+16.0.5</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.5.2</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.0.16
+15.0.18
+15.0.19
+15.0.20
+15.0.21
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4
+15.2.5
+15.2.6
+16.0.1
+16.0.2
+16.0.3
+16.0.4
+16.0.5
+16.0.7</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2.5.3</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>14.0.1
+14.0.6
+14.0.9
+14.0.13
+14.0.17
+14.0.19
+14.0.20
+14.0.21
+14.0.24
+14.0.27
+14.0.32
+15.0.0
+15.0.3
+15.0.4
+15.0.5
+15.0.8
+15.0.10
+15.0.11
+15.0.13
+15.0.14
+15.0.15
+15.0.16
+15.0.18
+15.0.19
+15.0.20
+15.0.21
+15.1.0
+15.1.1
+15.1.3
+15.1.4
+15.1.5
+15.1.7
+15.2.1
+15.2.2
+15.2.4
+15.2.5
+15.2.6
+16.0.1
+16.0.2
+16.0.3
+16.0.4
+16.0.5
+16.0.7
+16.0.8</p>
 </div></div></td>
 </tr>
 </tbody>
@@ -1301,6 +1685,23 @@ The following compatible plugins are available:
 <div class="sectionbody">
 <div class="paragraph _abstract">
 <p>Install Infinispan Operator into a Kubernetes namespace to create and manage Infinispan clusters.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Because Custom Resource Definitions (CRDs) are deployed cluster-wide, you cannot run multiple versions of the Infinispan Operator on the same cluster.</p>
+</div>
+<div class="paragraph">
+<p>To avoid issues, deploy the Operator cluster-wide and use the <code>spec.version</code> field in your Infinispan custom resources (CRs) to control upgrades of Infinispan server versions.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="sect2">
 <h3 id="install-olm_install"><a class="anchor" href="#install-olm_install"></a>3.1. Installing Infinispan Operator on Red Hat OpenShift</h3>
@@ -1582,7 +1983,7 @@ spec:
 <td class="content">
 <div class="paragraph">
 <p>Add the <code>--version</code> argument to control the Infinispan version of your cluster.
-For example, <code>--version=15.2.2</code>.
+For example, <code>--version=16.0.8</code>.
 If you don&#8217;t specify the version, Infinispan Operator creates cluster with the latest supported Infinispan version.</p>
 </div>
 </td>
@@ -2147,7 +2548,7 @@ data:
 <p>Open your Infinispan Server configuration for editing.</p>
 </li>
 <li>
-<p>Add a <code>credential-reference</code> to your configuration.</p>
+<p>Add a <code>credential-reference</code> to your configuration where required.</p>
 <div class="olist loweralpha">
 <ol class="loweralpha" type="a">
 <li>
@@ -2158,9 +2559,15 @@ data:
 <div class="listingblock">
 <div class="title">Infinispan.xml</div>
 <div class="content">
-<pre>&lt;credential-store&gt;
-    &lt;credential-reference store="credentials"  alias="postgres_cred"/&gt;
-&lt;/credential-store&gt;</pre>
+<pre>&lt;data-source name="postgres" jndi-name="jdbc/postgres"&gt;
+    &lt;connection-factory driver="org.postgresql.Driver"
+                        username="dbuser"
+                        url="${org.infinispan.server.test.postgres.jdbcUrl}"&gt;
+        &lt;!-- Credential 'postgres_cred' defined in the 'user-secret' Secret is used here as the database password --&gt;
+        &lt;credential-reference store="credentials" alias="postgres_cred"/&gt;
+    &lt;/connection-factory&gt;
+    &lt;connection-pool /&gt;
+&lt;/data-source&gt;</pre>
 </div>
 </div>
 </li>
@@ -2204,17 +2611,35 @@ data:
 <h3 id="cluster-upgrades_upgrading-clusters"><a class="anchor" href="#cluster-upgrades_upgrading-clusters"></a>6.1. Infinispan cluster upgrades</h3>
 <div class="paragraph _abstract">
 <p>The <code>spec.upgrades.type</code> field controls how Infinispan Operator upgrades your Infinispan cluster when new versions become available.
-There are two types of cluster upgrade:</p>
+There are three types of cluster upgrade:</p>
 </div>
 <div class="dlist">
 <dl>
 <dt class="hdlist1"><code>Shutdown</code></dt>
 <dd>
-<p>Upgrades Infinispan clusters with service downtime. This is the default upgrade type.</p>
+<p>Upgrades Infinispan clusters, with service downtime, by bringing down the original cluster and bringing up a new one in its place. This is the default upgrade type.</p>
+</dd>
+<dt class="hdlist1"><code>InPlaceRolling</code></dt>
+<dd>
+<p>Upgrades Infinispan cluster pods to new patch releases individually, using a StatefulSet RollingUpdate.</p>
 </dd>
 <dt class="hdlist1"><code>HotRodRolling</code></dt>
 <dd>
-<p>Upgrades Infinispan clusters without service downtime.</p>
+<p>Upgrades Infinispan versions, without service downtime, by deploying a new cluster in parallel to the original and transitioning all traffic to it.</p>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The Operator does not automatically upgrade clusters to a new Infinispan server version. In order to trigger an upgrade, you must explicitly change the <code>spec.version</code> element to a new version.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 </dd>
 </dl>
 </div>
@@ -2235,7 +2660,38 @@ There are two types of cluster upgrade:</p>
 </li>
 </ol>
 </div>
-<h4 id="_hot_rod_rolling_upgrades" class="discrete">Hot Rod rolling upgrades</h4>
+<h4 id="_inplacerolling_upgrades" class="discrete">InPlaceRolling upgrades</h4>
+<div class="paragraph">
+<p>To perform a rolling upgrade, Infinispan Operator does the following:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Checks if the Infinispan version supports rolling upgrades.</p>
+</li>
+<li>
+<p>Checks whether the current version and target version have matching major and minor versions.</p>
+</li>
+<li>
+<p>If the conditions above are met, the Operator will upgrade server pods one by one using a StatefulSet RollingUpdate.</p>
+</li>
+</ol>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+===
+When upgrading between different major or minor versions of the server, the "Shutdown" or "HotRodRolling" upgrade type is required. This must be configured in the CR spec at the the same time as the new version.
+===
+</td>
+</tr>
+</table>
+</div>
+<h4 id="_hotrodrolling_upgrades" class="discrete">HotRodRolling upgrades</h4>
 <div class="paragraph">
 <p>To perform a Hot Rod rolling upgrade, Infinispan Operator does the following:</p>
 </div>
@@ -2283,9 +2739,6 @@ In the event that the upgrade does not complete successfully, passivation can re
 <div class="title">Prerequisites</div>
 <ul>
 <li>
-<p>The Infinispan Operator version you have installed supports the Infinispan target version.</p>
-</li>
-<li>
 <p>If required, configure a persistent cache store to preserve your data during the upgrade.</p>
 <div class="admonitionblock important">
 <table>
@@ -2316,7 +2769,7 @@ This results in data loss if you do not configure a persistent cache store.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>spec:
-  version: 15.2.2
+  version: 16.0.8
   upgrades:
     type: Shutdown</code></pre>
 </div>
@@ -2327,12 +2780,45 @@ This results in data loss if you do not configure a persistent cache store.</p>
 </li>
 </ol>
 </div>
-<div class="paragraph">
-<p>When new Infinispan version becomes available, you must manually change the value in the <code>spec.version</code> field to trigger the upgrade.</p>
+</div>
+<div class="sect2">
+<h3 id="upgrading-clusters-inplace_upgrading-clusters"><a class="anchor" href="#upgrading-clusters-inplace_upgrading-clusters"></a>6.3. Upgrading Infinispan clusters using InPlace rolling strategy</h3>
+<div class="paragraph _abstract">
+<p>Upgrading Infinispan clusters using InPlace rolling strategy with no service downtime.</p>
+</div>
+<div class="ulist">
+<div class="title">Prerequisites</div>
+<ul>
+<li>
+<p>Upgrading to a new Infinispan server patch release</p>
+</li>
+</ul>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Specify the Infinispan version number in the <code>spec.version</code> field.</p>
+</li>
+<li>
+<p>Ensure that <code>InPlaceRolling</code> is set as the value for the <code>spec.upgrades.type</code> field.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code>spec:
+  version: 16.0.8
+  upgrades:
+    type: InPlaceRolling</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Apply your changes, if necessary.</p>
+</li>
+</ol>
 </div>
 </div>
 <div class="sect2">
-<h3 id="upgrading-clusters-rolling_upgrading-clusters"><a class="anchor" href="#upgrading-clusters-rolling_upgrading-clusters"></a>6.3. Performing Hot Rod rolling upgrades for Infinispan clusters</h3>
+<h3 id="upgrading-clusters-rolling_upgrading-clusters"><a class="anchor" href="#upgrading-clusters-rolling_upgrading-clusters"></a>6.4. Performing Hot Rod rolling upgrades for Infinispan clusters</h3>
 <div class="paragraph _abstract">
 <p>Performing Hot Rod rolling upgrades lets you move to a new Infinispan version without service disruption.
 However, this upgrade type requires additional capacity and temporarily results in two Infinispan clusters with different versions running concurrently.</p>
@@ -2356,7 +2842,7 @@ However, this upgrade type requires additional capacity and temporarily results 
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code>spec:
-  version: 15.2.2
+  version: 16.0.8
   upgrades:
     type: HotRodRolling</code></pre>
 </div>
@@ -2367,11 +2853,8 @@ However, this upgrade type requires additional capacity and temporarily results 
 </li>
 </ol>
 </div>
-<div class="paragraph">
-<p>When new Infinispan version becomes available, you must manually change the value in the <code>spec.version</code> field to trigger the upgrade.</p>
-</div>
 <div class="sect3">
-<h4 id="recovering_rolling_upgrades_upgrading-clusters"><a class="anchor" href="#recovering_rolling_upgrades_upgrading-clusters"></a>6.3.1. Recovering from a failed Hot Rod rolling upgrade</h4>
+<h4 id="recovering_rolling_upgrades_upgrading-clusters"><a class="anchor" href="#recovering_rolling_upgrades_upgrading-clusters"></a>6.4.1. Recovering from a failed Hot Rod rolling upgrade</h4>
 <div class="paragraph _abstract">
 <p>You can roll back a failed Hot Rod rolling upgrade to the previous version if the original cluster is still present.</p>
 </div>
@@ -2503,7 +2986,7 @@ metadata:
     infinispan.org/monitoring: 'true'
 spec:
   replicas: 6
-  version: 15.2.2
+  version: 16.0.8
   upgrades:
     type: Shutdown
   service:
@@ -2547,17 +3030,18 @@ spec:
   configMapName: "my-cluster-config"
   configListener:
     enabled: true
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app: infinispan-pod
-              clusterName: infinispan
-              infinispan_cr: infinispan
-          topologyKey: "kubernetes.io/hostname"</code></pre>
+  scheduling:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: infinispan-pod
+                clusterName: infinispan
+                infinispan_cr: infinispan
+            topologyKey: "kubernetes.io/hostname"</code></pre>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -2640,7 +3124,7 @@ You should do this only if you do not need declarative Kubernetes representation
 <td class="tableblock halign-left valign-top"><p class="tableblock">Configures the logging level for the <code>ConfigListener</code> deployments. The default level is <code>info</code>. You can change it to <code>debug</code> or  <code>error</code>.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spec.affinity</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>spec.scheduling.affinity</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Configures anti-affinity strategies that guarantee Infinispan availability.</p></td>
 </tr>
 </tbody>
@@ -3004,7 +3488,39 @@ spec:
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-logging-pattern_services"><a class="anchor" href="#configuring-logging-pattern_services"></a>7.8. Adjusting log pattern</h3>
+<h3 id="configuring-pod-termination-grace-periodservices"><a class="anchor" href="#configuring-pod-termination-grace-periodservices"></a>7.8. Configuring pod termination grace period</h3>
+<div class="paragraph _abstract">
+<p>Optionally configure the <code>TerminationGracePeriodSeconds</code> of the Infinispan pods.</p>
+</div>
+<div class="paragraph">
+<p>The Infinispan Operator relies on the Kubernetes default <code>TerminationGracePeriodSeconds</code> unless a value is explicitly provided.
+We only recommend providing your own value once you have determined that the default value do not match your requirements.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Configure probe values using the <code>spec.service.container.terminationGracePeriodSeconds</code> field:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-yaml" data-lang="yaml">spec:
+  service:
+    container:
+      terminationGracePeriodSeconds: 60</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Apply your <code>Infinispan</code> CR.</p>
+<div class="paragraph">
+<p>If your cluster is running, Infinispan Operator restarts the Infinispan pods in order for the changes to take effect.</p>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="configuring-logging-pattern_services"><a class="anchor" href="#configuring-logging-pattern_services"></a>7.9. Adjusting log pattern</h3>
 <div class="paragraph _abstract">
 <p>To customize the log display for Infinispan log traces, update the log pattern.
 If no custom pattern is set, the default format is:
@@ -3038,7 +3554,7 @@ If no custom pattern is set, the default format is:
 </div>
 </div>
 <div class="sect2">
-<h3 id="configuring-logging-levels_services"><a class="anchor" href="#configuring-logging-levels_services"></a>7.9. Adjusting log levels</h3>
+<h3 id="configuring-logging-levels_services"><a class="anchor" href="#configuring-logging-levels_services"></a>7.10. Adjusting log levels</h3>
 <div class="paragraph _abstract">
 <p>Change levels for different Infinispan logging categories when you need to debug issues.
 You can also adjust log levels to reduce the number of messages for certain categories to minimize the use of container resources.</p>
@@ -3072,7 +3588,7 @@ You can also adjust log levels to reduce the number of messages for certain cate
 </ol>
 </div>
 <div class="sect3">
-<h4 id="logging-levels_services"><a class="anchor" href="#logging-levels_services"></a>7.9.1. Logging reference</h4>
+<h4 id="logging-levels_services"><a class="anchor" href="#logging-levels_services"></a>7.10.1. Logging reference</h4>
 <div class="paragraph _abstract">
 <p>Find information about log categories and levels.</p>
 </div>
@@ -3151,7 +3667,7 @@ You can direct GC messages to <code>stdout</code> with the following JVM options
 </div>
 </div>
 <div class="sect2">
-<h3 id="specifying-server-image_services"><a class="anchor" href="#specifying-server-image_services"></a>7.10. Specifying Infinispan Server images</h3>
+<h3 id="specifying-server-image_services"><a class="anchor" href="#specifying-server-image_services"></a>7.11. Specifying Infinispan Server images</h3>
 <div class="paragraph _abstract">
 <p>Specify which Infinispan Server image Infinispan Operator should use to create pods with the <code>spec.image</code> field.</p>
 </div>
@@ -3161,9 +3677,23 @@ You can direct GC messages to <code>stdout</code> with the following JVM options
   image: quay.io/infinispan/server:latest</code></pre>
 </div>
 </div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+===
+When using custom image, specify <code>spec.version</code> of the server within the image as well. Different declared and deployed versions may result in unpredictable behavior.
+===
+</td>
+</tr>
+</table>
+</div>
 </div>
 <div class="sect2">
-<h3 id="adding-custom-labels_services"><a class="anchor" href="#adding-custom-labels_services"></a>7.11. Adding labels and annotations to Infinispan resources</h3>
+<h3 id="adding-custom-labels_services"><a class="anchor" href="#adding-custom-labels_services"></a>7.12. Adding labels and annotations to Infinispan resources</h3>
 <div class="paragraph _abstract">
 <p>Attach key/value labels and annotations to pods and services that Infinispan Operator creates and manages.
 Labels help you identify relationships between objects to better organize and monitor Infinispan resources.
@@ -3233,7 +3763,7 @@ metadata:
 </div>
 </div>
 <div class="sect2">
-<h3 id="adding-labels-annotations-env_services"><a class="anchor" href="#adding-labels-annotations-env_services"></a>7.12. Adding labels and annotations with environment variables</h3>
+<h3 id="adding-labels-annotations-env_services"><a class="anchor" href="#adding-labels-annotations-env_services"></a>7.13. Adding labels and annotations with environment variables</h3>
 <div class="paragraph _abstract">
 <p>Set environment variables for Infinispan Operator to add labels and annotations that automatically propagate to all Infinispan pods and services.</p>
 </div>
@@ -3292,7 +3822,7 @@ metadata:
 </div>
 </div>
 <div class="sect2">
-<h3 id="defining-environment-variables_services"><a class="anchor" href="#defining-environment-variables_services"></a>7.13. Defining environment variables in the Infinispan Operator subscription</h3>
+<h3 id="defining-environment-variables_services"><a class="anchor" href="#defining-environment-variables_services"></a>7.14. Defining environment variables in the Infinispan Operator subscription</h3>
 <div class="paragraph _abstract">
 <p>You can define environment variables in your Infinispan Operator subscription either when you create or edit the subscription.</p>
 </div>
@@ -5807,43 +6337,71 @@ Securing cross-site connections is optional if you use a <code>NodePort</code> o
 </tr>
 </table>
 </div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Have a PKCS12 keystore that Infinispan can use to encrypt and decrypt RELAY messages.</p>
-<div class="paragraph">
-<p>You must provide a keystore for relay pods and router pods to secure cross-site connections.<br>
-The keystore can be the same for relay pods and router pods or you can provide separate keystores for each.<br>
-You can also use the same keystore for each Infinispan cluster or a unique keystore for each cluster.</p>
-</div>
-</li>
-<li>
-<p>Have a PKCS12 trust store that contains part of the certificate chain or root CA certificate that verifies public certificates for Infinispan relay pods and router pods.</p>
-</li>
-</ul>
-</div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Create cross-site encryption secrets.</p>
+<p>Create the key store and trust store using Keytool (certificate management utility included with Java).</p>
 <div class="olist loweralpha">
 <ol class="loweralpha" type="a">
 <li>
-<p>Create keystore secrets.</p>
+<p>Generate a self-signed certificate.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">keytool -genkey -alias server -keyalg RSA -storetype PKCS12 -keystore ./keystore.p12 -validity &lt;days&gt; -storepass &lt;password&gt;</code></pre>
+</div>
+</div>
 </li>
 <li>
-<p>Create trust store secrets.</p>
+<p>Export the certificate from the key store, so that it can be present in the trust store</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">keytool -export -alias server -keystore ./keystore.p12 -storetype PKCS12 -rfc -file ~/server_cert.pem -storepass &lt;password&gt;</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Create the trust store and import the certificate</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">keytool -importcert -alias server -keystore ./truststore.p12 -storetype PKCS12 -file ~/server_cert.pem -storepass &lt;password&gt; -noprompt</code></pre>
+</div>
+</div>
 </li>
 </ol>
 </div>
 </li>
 <li>
-<p>Modify the <code>Infinispan</code> CR for each Infinispan cluster to specify the secret name for the <code>encryption.transportKeyStore.secretName</code> and <code>encryption.routerKeyStore.secretName</code> fields.</p>
+<p>Create cross-site encryption secret for each Infinispan cluster.</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Create keystore secrets.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">oc create secret generic keystore-tls-secret \
+--from-file=keystore.p12=./keystore.p12 \
+--from-literal=password=&lt;password&gt; \
+--from-literal=type=pkcs12</code></pre>
+</div>
+</div>
 </li>
 <li>
-<p>Configure any other fields to encrypt RELAY messages as required and then apply the changes.</p>
+<p>Create trust store secrets.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-bash" data-lang="bash">oc create secret generic truststore-tls-secret \
+--from-file=truststore.p12=./truststore.p12 \
+--from-literal=password=&lt;password&gt; \
+--from-literal=type=pkcs12</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>Modify the Infinispan CR for each Infinispan cluster to specify the secret name for the <code>encryption.transportKeyStore.secretName</code> and <code>encryption.routerKeyStore.secretName</code> fields.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">apiVersion: infinispan.org/v1
@@ -5864,12 +6422,12 @@ spec:
         encryption:
           protocol: TLSv1.3
           transportKeyStore:
-            secretName: transport-tls-secret
-            alias: transport
+            secretName: keystore-tls-secret
+            alias: server
             filename: keystore.p12
           routerKeyStore:
-            secretName: router-tls-secret
-            alias: router
+            secretName: keystore-tls-secret
+            alias: server
             filename: keystore.p12
           trustStore:
             secretName: truststore-tls-secret
@@ -5880,6 +6438,22 @@ spec:
 </div>
 </li>
 </ol>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The procedure describes the easier way to encrypt the communication.
+More complex setups are possible in the CR, for example, by setting different certificates for Infinispan Pod and Gossip Router Pod.
+Ensure the truststore contains all the required certificate chain for mutual TLS authentication.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="sect3">
 <h4 id="cross-site-encryption-resources_cross-site"><a class="anchor" href="#cross-site-encryption-resources_cross-site"></a>13.7.1. Resources for configuring cross-site encryption</h4>
@@ -6143,7 +6717,7 @@ spec:
 <h2 id="monitoring-services"><a class="anchor" href="#monitoring-services"></a>14. Monitoring Infinispan services</h2>
 <div class="sectionbody">
 <div class="paragraph _abstract">
-<p>Infinispan exposes metrics that can be used by Prometheus and Grafana for monitoring and visualizing the cluster state.</p>
+<p>Infinispan exposes metrics that can be used by Prometheus for monitoring and visualizing the cluster state.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -6301,209 +6875,7 @@ metadata:
 </div>
 </div>
 <div class="sect2">
-<h3 id="creating-grafana-dashboards_monitor"><a class="anchor" href="#creating-grafana-dashboards_monitor"></a>14.2. Creating Grafana data sources</h3>
-<div class="paragraph _abstract">
-<p>Create a <code>GrafanaDatasource</code> CR so you can visualize Infinispan metrics in Grafana dashboards.</p>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Have an <code>oc</code> client.</p>
-</li>
-<li>
-<p>Have <code>cluster-admin</code> access to OpenShift Container Platform.</p>
-</li>
-<li>
-<p>Enable monitoring for user-defined projects on OpenShift Container Platform.</p>
-</li>
-<li>
-<p>Install the Grafana Operator from the <strong>alpha</strong> channel and create a <code>Grafana</code> CR.</p>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Create a <code>ServiceAccount</code> that lets Grafana read Infinispan metrics from Prometheus.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: infinispan-monitoring</code></pre>
-</div>
-</div>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>Apply the <code>ServiceAccount</code>.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc apply -f service-account.yaml</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Grant <code>cluster-monitoring-view</code> permissions to the <code>ServiceAccount</code>.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc adm policy add-cluster-role-to-user cluster-monitoring-view -z infinispan-monitoring</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
-</li>
-<li>
-<p>Create a Grafana data source.</p>
-<div class="olist loweralpha">
-<ol class="loweralpha" type="a">
-<li>
-<p>Retrieve the token for the <code>ServiceAccount</code>.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc serviceaccounts get-token infinispan-monitoring</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Define a <code>GrafanaDataSource</code> that includes the token in the <code>spec.datasources.secureJsonData.httpHeaderValue1</code> field, as in the following example:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>apiVersion: integreatly.org/v1alpha1
-kind: GrafanaDataSource
-metadata:
-  name: grafanadatasource
-spec:
-  name: datasource.yaml
-  datasources:
-    - access: proxy
-      editable: true
-      isDefault: true
-      jsonData:
-        httpHeaderName1: Authorization
-        timeInterval: 5s
-        tlsSkipVerify: true
-      name: Prometheus
-      secureJsonData:
-        httpHeaderValue1: &gt;-
-          Bearer
-          eyJhbGciOiJSUzI1NiIsImtpZCI6Imc4O...
-      type: prometheus
-      url: 'https://thanos-querier.openshift-monitoring.svc.cluster.local:9091'</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
-</li>
-<li>
-<p>Apply the <code>GrafanaDataSource</code>.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc apply -f grafana-datasource.yaml</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<div class="title">Next steps</div>
-<p>Enable Grafana dashboards with the Infinispan Operator configuration properties.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="configuring-grafana-dashboards_monitor"><a class="anchor" href="#configuring-grafana-dashboards_monitor"></a>14.3. Configuring Infinispan dashboards</h3>
-<div class="paragraph _abstract">
-<p>Infinispan Operator provides global configuration properties that let you configure Grafana dashboards for Infinispan clusters.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>You can modify global configuration properties while Infinispan Operator is running.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="ulist">
-<div class="title">Prerequisites</div>
-<ul>
-<li>
-<p>Infinispan Operator must watch the namespace where the Grafana Operator is running.</p>
-</li>
-</ul>
-</div>
-<div class="olist arabic">
-<div class="title">Procedure</div>
-<ol class="arabic">
-<li>
-<p>Create a <code>ConfigMap</code> named <code>infinispan-operator-config</code> in the Infinispan Operator namespace.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: infinispan-operator-config
-data:
-  grafana.dashboard.namespace: infinispan
-  grafana.dashboard.name: infinispan
-  grafana.dashboard.monitoring.key: middleware</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Specify the namespace of your Infinispan cluster with the <code>data.grafana.dashboard.namespace</code> property.</p>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Deleting the value for this property removes the dashboard.
-Changing the value moves the dashboard to that namespace.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</li>
-<li>
-<p>Specify a name for the dashboard with the <code>data.grafana.dashboard.name</code> property.</p>
-</li>
-<li>
-<p>If necessary, specify a monitoring key with the <code>data.grafana.dashboard.monitoring.key</code> property.</p>
-</li>
-<li>
-<p>Create <code>infinispan-operator-config</code> or update the configuration.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc apply -f infinispan-operator-config.yaml</code></pre>
-</div>
-</div>
-</li>
-<li>
-<p>Open the Grafana UI, which is available at:</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlight nowrap"><code>oc get routes grafana-route -o jsonpath=https://"{.spec.host}"</code></pre>
-</div>
-</div>
-</li>
-</ol>
-</div>
-</div>
-<div class="sect2">
-<h3 id="enabling-jmx_monitor"><a class="anchor" href="#enabling-jmx_monitor"></a>14.4. Enabling JMX remote ports for Infinispan clusters</h3>
+<h3 id="enabling-jmx_monitor"><a class="anchor" href="#enabling-jmx_monitor"></a>14.2. Enabling JMX remote ports for Infinispan clusters</h3>
 <div class="paragraph">
 <p>Enable JMX remote ports to expose Infinispan MBeans and to integrate Infinispan with external monitoring systems such as Cryostat.</p>
 </div>
@@ -6569,7 +6941,7 @@ spec:
 </div>
 </div>
 <div class="sect2">
-<h3 id="deploying-cryostat_monitor"><a class="anchor" href="#deploying-cryostat_monitor"></a>14.5. Setting up JFR recordings with Cryostat</h3>
+<h3 id="deploying-cryostat_monitor"><a class="anchor" href="#deploying-cryostat_monitor"></a>14.3. Setting up JFR recordings with Cryostat</h3>
 <div class="paragraph">
 <p>Enable JDK Flight Recorder (JFR) monitoring for your Infinispan clusters that run on Kubernetes.</p>
 </div>
@@ -6787,7 +7159,7 @@ Anti-affinity works by distributing Infinispan nodes across Kubernetes nodes, en
 <div class="title">Procedure</div>
 <ol class="arabic">
 <li>
-<p>Add the <code>spec.affinity</code> block to your <code>Infinispan</code> CR.</p>
+<p>Add the <code>spec.scheduling.affinity</code> block to your <code>Infinispan</code> CR.</p>
 </li>
 <li>
 <p>Configure anti-affinity strategies as necessary.</p>
@@ -6826,22 +7198,23 @@ Anti-affinity works by distributing Infinispan nodes across Kubernetes nodes, en
 </table>
 <h5 id="_schedule_pods_on_different_kubernetes_nodes" class="discrete">Schedule pods on different Kubernetes nodes</h5>
 <div class="paragraph">
-<p>The following is the anti-affinity strategy that Infinispan Operator uses if you do not configure the <code>spec.affinity</code> field in your <code>Infinispan</code> CR:</p>
+<p>The following is the anti-affinity strategy that Infinispan Operator uses if you do not configure the <code>spec.scheduling.affinity</code> field in your <code>Infinispan</code> CR:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">spec:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app: infinispan-pod
-              clusterName: &lt;cluster_name&gt;
-              infinispan_cr: &lt;cluster_name&gt;
-          topologyKey: "kubernetes.io/hostname"</code></pre>
+  scheduling:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: infinispan-pod
+                clusterName: &lt;cluster_name&gt;
+                infinispan_cr: &lt;cluster_name&gt;
+            topologyKey: "kubernetes.io/hostname"</code></pre>
 </div>
 </div>
 <h6 id="_requiring_different_nodes" class="discrete">Requiring different nodes</h6>
@@ -6851,15 +7224,16 @@ Anti-affinity works by distributing Infinispan nodes across Kubernetes nodes, en
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">spec:
-  affinity:
-    podAntiAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchLabels:
-            app: infinispan-pod
-            clusterName: &lt;cluster_name&gt;
-            infinispan_cr: &lt;cluster_name&gt;
-        topologyKey: "topology.kubernetes.io/hostname"</code></pre>
+  scheduling:
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app: infinispan-pod
+              clusterName: &lt;cluster_name&gt;
+              infinispan_cr: &lt;cluster_name&gt;
+          topologyKey: "topology.kubernetes.io/hostname"</code></pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -6883,25 +7257,26 @@ Anti-affinity works by distributing Infinispan nodes across Kubernetes nodes, en
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">spec:
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app: infinispan-pod
-              clusterName: &lt;cluster_name&gt;
-              infinispan_cr: &lt;cluster_name&gt;
-          topologyKey: "topology.kubernetes.io/zone"
-      - weight: 90
-        podAffinityTerm:
-          labelSelector:
-            matchLabels:
-              app: infinispan-pod
-              clusterName: &lt;cluster_name&gt;
-              infinispan_cr: &lt;cluster_name&gt;
-          topologyKey: "kubernetes.io/hostname"</code></pre>
+  scheduling:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: infinispan-pod
+                clusterName: &lt;cluster_name&gt;
+                infinispan_cr: &lt;cluster_name&gt;
+            topologyKey: "topology.kubernetes.io/zone"
+        - weight: 90
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: infinispan-pod
+                clusterName: &lt;cluster_name&gt;
+                infinispan_cr: &lt;cluster_name&gt;
+            topologyKey: "kubernetes.io/hostname"</code></pre>
 </div>
 </div>
 <h6 id="_requiring_multiple_zones" class="discrete">Requiring multiple zones</h6>
@@ -6911,15 +7286,16 @@ Anti-affinity works by distributing Infinispan nodes across Kubernetes nodes, en
 <div class="listingblock">
 <div class="content">
 <pre class="highlight nowrap"><code class="language-yaml" data-lang="yaml">spec:
-  affinity:
-    podAntiAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchLabels:
-            app: infinispan-pod
-            clusterName: &lt;cluster_name&gt;
-            infinispan_cr: &lt;cluster_name&gt;
-        topologyKey: "topology.kubernetes.io/zone"</code></pre>
+  scheduling:
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app: infinispan-pod
+              clusterName: &lt;cluster_name&gt;
+              infinispan_cr: &lt;cluster_name&gt;
+          topologyKey: "topology.kubernetes.io/zone"</code></pre>
 </div>
 </div>
 </div>
@@ -8096,7 +8472,7 @@ spec:
         claimName: datagrid-libs
   containers:
     - name: lib-pv-container
-      image: quay.io/infinispan/server:15.2.2
+      image: quay.io/infinispan/server:16.0.8
       volumeMounts:
         - mountPath: /tmp/libs
           name: lib-pv-storage</code></pre>
@@ -8779,7 +9155,7 @@ For example, configure a <code>LoadBalancer</code> service or create a <code>Rou
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-07-23 08:25:54 UTC
+Last updated 2026-04-20 17:56:20 UTC
 </div>
 </div>
 <script>
