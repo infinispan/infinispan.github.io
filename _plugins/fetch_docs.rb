@@ -71,7 +71,8 @@ end
 def injectAnalytics(target)
    cwd = File.expand_path File.dirname(__FILE__)
    puts "Injecting analytics into #{target}"
-   %x( find #{target} -name "*.html" -exec sed -i -f #{cwd}/inject-analytics.sed '{}' '\;' )
+   sed_i = RUBY_PLATFORM =~ /darwin/ ? "sed -i ''" : "sed -i"
+   %x( find #{target} -name "*.html" -exec #{sed_i} -f #{cwd}/inject-analytics.sed '{}' '\;' )
 end
 
 def extract_maven_artifact(artifact, target, ext)
@@ -89,7 +90,11 @@ def get_maven_docs(htmlArtifact, javadocArtifact, pdfArtifact, docroot, docbase,
   extract_maven_artifact(htmlArtifact, target, ".zip")
   if javadocArtifact != nil
     extract_maven_artifact(javadocArtifact, "#{target}/apidocs", ".jar")
-    injectAnalytics("#{target}/apidocs")
+    unless ENV.fetch("SKIP_ANALYTICS_INJECTION", "false").upcase == "TRUE"
+      injectAnalytics("#{target}/apidocs")
+    else
+      puts "Skipping analytics injection for #{target}/apidocs (SKIP_ANALYTICS_INJECTION=true)"
+    end
   end
   if pdfArtifact != nil
     extract_maven_artifact(pdfArtifact, target, ".zip")
@@ -125,7 +130,7 @@ end
 def fetch_github_docs(github_url, branch, target_dir, verbose)
   zip_url = "#{github_url}/archive/#{branch}.zip"
   tmp_prefix = File.basename(target_dir)
-  %x( wget -nv #{zip_url} -O _#{tmp_prefix}tmp.zip)
+  %x( wget -q #{zip_url} -O _#{tmp_prefix}tmp.zip)
   %x( unzip -o _#{tmp_prefix}tmp.zip "*documentation/*" -d _#{tmp_prefix}tmp)
   Dir.glob("_#{tmp_prefix}tmp/**/*.asciidoc").each do |f|
     %x( asciidoctor #{f} )
@@ -183,7 +188,7 @@ else
       docs_version = vcfg["docs_version"]
       github = project["github"]
       url = "#{github}/archive/#{vcfg["version"]}.zip"
-      %x( wget -nv #{url} -O _tmp.zip)
+      %x( wget -q #{url} -O _tmp.zip)
       %x( unzip -o _tmp.zip "*-Source/documentation/*" -d _tmp)
       %x( mkdir -p docs/hotrod-clients/#{short_name}/docs )
       %x( rm _tmp/*/documentation/.gitignore )
@@ -232,7 +237,7 @@ else
   if operator && operator["doc_branches"]
     operator["doc_branches"].each do |branch|
       zip_url = "#{operator["github"]}/archive/#{branch}.zip"
-      %x( wget -nv #{zip_url} -O _optmp.zip)
+      %x( wget -q #{zip_url} -O _optmp.zip)
       %x( unzip -o _optmp.zip "*documentation/*" -d _optmp)
       Dir.glob("_optmp/**/*.asciidoc").each do |f|
         %x( asciidoctor #{f} )
@@ -257,7 +262,7 @@ else
   if helm && helm["doc_branches"]
     helm["doc_branches"].each do |branch|
       zip_url = "#{helm["github"]}/archive/#{branch}.zip"
-      %x( wget -nv #{zip_url} -O _charttmp.zip)
+      %x( wget -q #{zip_url} -O _charttmp.zip)
       %x( unzip -o _charttmp.zip "*documentation/*" -d _charttmp)
       Dir.glob("_charttmp/**/*.asciidoc").each do |f|
         %x( asciidoctor #{f} )
@@ -275,8 +280,9 @@ else
   gen_versions_xml_file("docs/infinispan-operator/versions.xml", operatorDocIndex)
   gen_versions_xml_file("docs/helm-chart/versions.xml", helmChartDocIndex)
   gen_versions_xml_file("docs/versions.xml", coreDocIndex)
-end
 
-system('find . -regex "\./docs/[0-9].*html$" -exec sed -i -e "s|^<head>$|<head><meta name=\"robots\" content=\"noindex\">|" {} \;')
-system('find . -regex "\./docs/infinispan-operator/[0-9].*html$" -exec sed -i -e "s|^<head>$|<head><meta name=\"robots\" content=\"noindex\">|" {} \;')
+  sed_i = RUBY_PLATFORM =~ /darwin/ ? "sed -i ''" : "sed -i"
+  system("find . -regex \"\\./docs/[0-9].*html$\" -exec #{sed_i} -e \"s|^<head>$|<head><meta name=\\\"robots\\\" content=\\\"noindex\\\">|\" {} \\;")
+  system("find . -regex \"\\./docs/infinispan-operator/[0-9].*html$\" -exec #{sed_i} -e \"s|^<head>$|<head><meta name=\\\"robots\\\" content=\\\"noindex\\\">|\" {} \\;")
+end
 puts "Time elapsed #{Time.now - beginning} seconds"
