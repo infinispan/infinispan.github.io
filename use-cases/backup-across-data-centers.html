@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPD7V946LB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-GPD7V946LB');
+  </script>
+  <title>Backup Across Data Centers</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.7.2/css/all.css" integrity="sha384-nRgPTkuX86pH8yjPJUAFuASXQSSl2/bBUiNV47vSYpKFxHJhbcrGnmlYpYJMeD7a" crossorigin="anonymous">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.css">
+  <link rel="stylesheet" href="/assets/css/cookieconsent.css">
+  <link rel="alternate" type="application/rss+xml"
+        title="Infinispan's RSS Feed"
+        href="/feed.xml" />
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body class="use-case-single">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li>
+        <a href="/ai/" class=""><i class="fas fa-wand-magic-sparkles" style="margin-right: 4px;"></i>Infinispan for AI</a>
+      </li>
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="active">Use Cases</a>
+      </li>
+      <li class="dropdown">
+        <span href="/community/">Community <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/community/" class="">Community</a></li>
+          <li><a href="/blog/" class="">Blog</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    <div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/use-cases">Use Cases</a>  <i class="fas fa-chevron-right"></i> Backup Across Data Centers
+    </div>
+  </div>
+</div>
+
+<div class="component-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m">
+    <h2 id="backup-across-data-centers">Backup Across Data Centers</h2>
+
+<p>Infinispan clusters running in different geographical locations can form global clusters to back up your data across sites. If sites go offline, clients can immediately switch to an available cluster, making sure data center faults do not cause service interruptions.</p>
+
+<h3 id="cross-site-topologies">Cross-site topologies</h3>
+
+<h4 id="active-active">Active-active</h4>
+
+<p>Both sites accept reads and writes. Infinispan replicates changes bidirectionally. Best for global applications where users connect to the nearest data center.</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<div class="mermaid">
+flowchart LR
+    subgraph Site_A["Site A (US East)"]
+        A1[Node 1] --- A2[Node 2]
+        A2 --- A3[Node 3]
+    end
+    subgraph Site_B["Site B (EU West)"]
+        B1[Node 1] --- B2[Node 2]
+        B2 --- B3[Node 3]
+    end
+    Site_A -- "replicate ⇄" --&gt; Site_B
+    Site_B -- "replicate ⇄" --&gt; Site_A
+    U1[Users US] --&gt; Site_A
+    U2[Users EU] --&gt; Site_B
+</div>
+
+<h4 id="active-passive">Active-passive</h4>
+
+<p>One site handles all traffic, the other maintains a hot standby. On failure, clients failover to the backup site. Simpler to reason about, lower replication overhead.</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<div class="mermaid">
+flowchart LR
+    subgraph Primary["Primary Site (Active)"]
+        P1[Node 1] --- P2[Node 2]
+        P2 --- P3[Node 3]
+    end
+    subgraph Backup["Backup Site (Standby)"]
+        S1[Node 1] --- S2[Node 2]
+        S2 --- S3[Node 3]
+    end
+    Primary -- "replicate →" --&gt; Backup
+    Users[All Users] --&gt; Primary
+    Users -. "failover" .-&gt; Backup
+</div>
+
+<h3 id="conflict-resolution">Conflict resolution</h3>
+
+<p>When concurrent writes happen at different sites with asynchronous replication, conflicts are inevitable. Infinispan detects and resolves them automatically:</p>
+
+<ul>
+  <li><strong>Last-write-wins</strong> — the most recent update takes precedence based on timestamps.</li>
+  <li><strong>Custom merge policies</strong> — implement your own conflict resolution logic for domain-specific requirements.</li>
+</ul>
+
+<p>Data consistency is guaranteed even across sites — your data is always there and always accurate, no matter where you’re running.</p>
+
+<h3 id="kubernetes-and-hybrid-cloud">Kubernetes and hybrid cloud</h3>
+
+<p>When using the Infinispan Operator with Kubernetes environments such as Red Hat OpenShift, cross-site replication makes your data ready for hybrid and multi-cloud deployments:</p>
+
+<ul>
+  <li><strong>Multi-cluster</strong> — replicate between Kubernetes clusters in different regions or cloud providers.</li>
+  <li><strong>Hybrid</strong> — connect on-premises Infinispan clusters with cloud-based ones.</li>
+  <li><strong>Disaster recovery</strong> — automatic failover when an entire data center goes down.</li>
+</ul>
+
+<h3 id="included-in-the-open-source-edition">Included in the open source edition</h3>
+
+<p>Cross-site replication is fully available in the community distribution. No enterprise license required — unlike some competing products that gate this feature behind a commercial offering.</p>
+
+<h3 id="learn-more">Learn more</h3>
+
+<ul>
+  <li><a href="https://infinispan.org/docs/stable/titles/xsite/xsite.html">Cross-site replication documentation</a></li>
+  <li><a href="https://infinispan.org/docs/infinispan-operator/main/operator.html">Kubernetes Operator</a></li>
+  <li><a href="https://infinispan.org/docs/stable/titles/server/server.html">Server documentation</a></li>
+</ul>
+
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo" alt="Infinispan"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <div class="grid__item width-4-12 width-12-12-m footer-about">
+      <p>Infinispan is released under the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache 2.0</a> open source license. The source code is available on <a href='https://github.com/infinispan' target='_blank'>GitHub</a>.</p>
+      <div class="footer-thanks">
+        <b>Thanks to</b>
+        <div class="thanks-logos">
+          <a href="https://zulip.com" target="_blank"><img src="/assets/images/footer/zulip.png" title="Zulip" alt="Zulip"></a>
+          <a href="https://weblate.org" target="_blank"><img src="/assets/images/footer/weblate.png" title="Weblate" alt="Weblate"></a>
+        </div>
+      </div>
+    </div>
+
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Navigation</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/" >Home</a></li>
+          
+            
+            <li><a href="/features" >Features</a></li>
+          
+            
+            <li><a href="/ai" >AI</a></li>
+          
+            
+            <li><a href="/documentation" >Docs</a></li>
+          
+            
+            <li><a href="/tutorials" >Tutorials</a></li>
+          
+            
+            <li><a href="/use-cases" >Use Cases</a></li>
+          
+            
+            <li><a href="/download" >Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Get Help</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/documentation" >Documentation</a></li>
+          
+            
+            <li><a href="/tutorials" >Guides</a></li>
+          
+            
+            <li><a href="https://stackoverflow.com/questions/tagged/infinispan" target="_blank">Stack Overflow</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan/discussions" target="_blank">GitHub Discussions</a></li>
+          
+            
+            <li><a href="https://infinispan.zulipchat.com" target="_blank">Zulip Chat</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Contribute</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan" target="_blank">Source Code</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan/issues" target="_blank">Submit a Bug</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan.github.io" target="_blank">Website Source</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/blog" >Blog</a></li>
+          
+            
+            <li><a href="https://twitter.com/infinispan" target="_blank">X / Twitter</a></li>
+          
+            
+            <li><a href="https://www.facebook.com/infinispan/" target="_blank">Facebook</a></li>
+          
+            
+            <li><a href="https://www.youtube.com/@InfinispanProject" target="_blank">YouTube</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan" target="_blank">GitHub</a></li>
+          
+        </ul>
+      </div>
+    
+  </div>
+</div>
+
+  <div class="content-slim cf-footer">
+  <div class="cf-flexcontainer">
+    <div class="cf-logo-footer">
+      <a href="https://www.commonhaus.org/" target="_blank"><img src="https://raw.githubusercontent.com/commonhaus/artwork/main/foundation/brand/svg/CF_logo_horizontal_single_reverse.svg" alt="Commonhaus Foundation"></a>
+    </div>
+    <div class="cf-license">
+      Copyright &copy; Infinispan. All rights reserved. For details on trademarks, please visit the <a href="https://www.commonhaus.org/policies/trademark-policy/">Trademark Policy</a> and <a href="https://www.commonhaus.org/trademarks/">Trademark List</a>. Trademarks of third parties are owned by their respective holders and their mention here does not suggest any endorsement or association.
+    </div>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+  <script src="/assets/javascript/clipboard.min.js" type="text/javascript"></script>
+  <script src="/assets/javascript/copy.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>
