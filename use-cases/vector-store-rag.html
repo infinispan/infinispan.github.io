@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPD7V946LB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-GPD7V946LB');
+  </script>
+  <title>Vector Store for RAG</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.7.2/css/all.css" integrity="sha384-nRgPTkuX86pH8yjPJUAFuASXQSSl2/bBUiNV47vSYpKFxHJhbcrGnmlYpYJMeD7a" crossorigin="anonymous">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.css">
+  <link rel="stylesheet" href="/assets/css/cookieconsent.css">
+  <link rel="alternate" type="application/rss+xml"
+        title="Infinispan's RSS Feed"
+        href="/feed.xml" />
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body class="use-case-single">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li>
+        <a href="/ai/" class=""><i class="fas fa-wand-magic-sparkles" style="margin-right: 4px;"></i>Infinispan for AI</a>
+      </li>
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="active">Use Cases</a>
+      </li>
+      <li class="dropdown">
+        <span href="/community/">Community <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/community/" class="">Community</a></li>
+          <li><a href="/blog/" class="">Blog</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    <div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/use-cases">Use Cases</a>  <i class="fas fa-chevron-right"></i> Vector Store for RAG
+    </div>
+  </div>
+</div>
+
+<div class="component-wrapper">
+  <div class="grid__item width-2-12 side-nav">
+    <ul>
+  <li><a href="/use-cases/side-caching.html">Side-caching</a></li>
+  <li><a href="/use-cases/replace-redis-with-infinispan.html">Redis drop-in replacement</a></li>
+  <li><a href="/use-cases/replace-memcached-with-infinispan.html">Memcached drop-in replacement</a></li>
+  <li><a href="/use-cases/semantic-caching.html">Semantic Caching for LLMs</a></li>
+  <li><a href="/use-cases/vector-store-rag.html">Vector Store for RAG</a></li>
+  <li><a href="/use-cases/agentic-caching.html">Agentic AI Caching</a></li>
+  <li><a href="/use-cases/conversation-memory.html">Conversation Memory Store</a></li>
+  <li><a href="/use-cases/mcp-server.html">MCP Server for AI Agents</a></li>
+</ul>
+  </div>
+  <div class="grid__item width-8-12 width-12-12-m">
+    <h2 id="vector-store-for-rag">Vector Store for RAG</h2>
+
+<h3 id="why">Why?</h3>
+
+<p>Large Language Models are powerful, but they can hallucinate and lack knowledge of your private data.
+<strong>Retrieval-Augmented Generation (RAG)</strong> solves this by retrieving relevant documents from a vector store
+and injecting them into the LLM prompt as context.</p>
+
+<p>Infinispan is an excellent vector store for RAG because:</p>
+
+<ul>
+  <li><strong>Distributed vector indexes</strong> scale across your cluster — no single-node bottleneck.</li>
+  <li><strong>kNN similarity search</strong> finds the most relevant document chunks in sub-millisecond time.</li>
+  <li><strong>In-memory speed</strong> — embeddings are stored in memory for the fastest possible retrieval.</li>
+  <li><strong>Combined with full-text search</strong> — Infinispan’s Ickle query language supports both vector similarity and traditional full-text search in the same query, enabling hybrid search.</li>
+  <li><strong>Persistence</strong> — optionally persist your embeddings to disk so you don’t need to re-index after restarts.</li>
+</ul>
+
+<p>RAG with Infinispan works in two phases:</p>
+
+<p><strong>Phase 1: Ingestion</strong> — split your documents into chunks, compute embeddings, and store them in Infinispan.</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<div class="mermaid">
+flowchart LR
+    A[Documents] --&gt; B[Chunk / Split]
+    B --&gt; C[Embedding Model]
+    C --&gt; D[Infinispan Vector Store]
+</div>
+
+<p><strong>Phase 2: Retrieval &amp; Generation</strong> — embed the user’s question, search Infinispan for similar chunks, and pass them to the LLM.</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<div class="mermaid">
+sequenceDiagram
+    participant User
+    participant App as Application
+    participant Embed as Embedding Model
+    participant ISPN as Infinispan
+    participant LLM as LLM
+
+    User-&gt;&gt;App: Ask a question
+    App-&gt;&gt;Embed: Embed the question
+    Embed--&gt;&gt;App: Question embedding
+    App-&gt;&gt;ISPN: kNN search (top-k similar chunks)
+    ISPN--&gt;&gt;App: Relevant document chunks
+    App-&gt;&gt;LLM: Question + retrieved context
+    LLM--&gt;&gt;App: Grounded answer
+    App--&gt;&gt;User: Response
+</div>
+
+<h3 id="quarkus--langchain4j">Quarkus + LangChain4j</h3>
+
+<p>Add the dependencies:</p>
+
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;dependency&gt;</span>
+    <span class="nt">&lt;groupId&gt;</span>io.quarkiverse.langchain4j<span class="nt">&lt;/groupId&gt;</span>
+    <span class="nt">&lt;artifactId&gt;</span>quarkus-langchain4j-infinispan<span class="nt">&lt;/artifactId&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</code></pre></div></div>
+
+<p>Configure in <code class="language-plaintext highlighter-rouge">application.properties</code>:</p>
+
+<div class="language-properties highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="py">quarkus.langchain4j.infinispan.dimension</span><span class="p">=</span><span class="s">384</span>
+<span class="py">quarkus.langchain4j.infinispan.cache-name</span><span class="p">=</span><span class="s">document-embeddings</span>
+<span class="py">quarkus.langchain4j.infinispan.similarity</span><span class="p">=</span><span class="s">COSINE</span>
+<span class="py">quarkus.langchain4j.infinispan.create-cache</span><span class="p">=</span><span class="s">true</span>
+
+<span class="py">quarkus.infinispan-client.hosts</span><span class="p">=</span><span class="s">localhost:11222</span>
+<span class="py">quarkus.infinispan-client.username</span><span class="p">=</span><span class="s">admin</span>
+<span class="py">quarkus.infinispan-client.password</span><span class="p">=</span><span class="s">password</span>
+</code></pre></div></div>
+
+<p>Ingest documents and build a RAG pipeline:</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@ApplicationScoped</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">DocumentIngestor</span> <span class="o">{</span>
+
+    <span class="nd">@Inject</span>
+    <span class="nc">EmbeddingStore</span><span class="o">&lt;</span><span class="nc">TextSegment</span><span class="o">&gt;</span> <span class="n">embeddingStore</span><span class="o">;</span>
+
+    <span class="nd">@Inject</span>
+    <span class="nc">EmbeddingModel</span> <span class="n">embeddingModel</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">ingest</span><span class="o">(</span><span class="nc">List</span><span class="o">&lt;</span><span class="nc">Document</span><span class="o">&gt;</span> <span class="n">documents</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">EmbeddingStoreIngestor</span> <span class="n">ingestor</span> <span class="o">=</span> <span class="nc">EmbeddingStoreIngestor</span><span class="o">.</span><span class="na">builder</span><span class="o">()</span>
+            <span class="o">.</span><span class="na">embeddingStore</span><span class="o">(</span><span class="n">embeddingStore</span><span class="o">)</span>
+            <span class="o">.</span><span class="na">embeddingModel</span><span class="o">(</span><span class="n">embeddingModel</span><span class="o">)</span>
+            <span class="o">.</span><span class="na">documentSplitter</span><span class="o">(</span><span class="nc">DocumentSplitters</span><span class="o">.</span><span class="na">recursive</span><span class="o">(</span><span class="mi">500</span><span class="o">,</span> <span class="mi">50</span><span class="o">))</span>
+            <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+
+        <span class="n">ingestor</span><span class="o">.</span><span class="na">ingest</span><span class="o">(</span><span class="n">documents</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>Create an AI service with RAG:</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@RegisterAiService</span>
+<span class="kd">public</span> <span class="kd">interface</span> <span class="nc">ProductAssistant</span> <span class="o">{</span>
+
+    <span class="nd">@SystemMessage</span><span class="o">(</span><span class="s">"You are a product expert. Answer questions using the provided context."</span><span class="o">)</span>
+    <span class="nc">String</span> <span class="nf">answer</span><span class="o">(</span><span class="nd">@UserMessage</span> <span class="nc">String</span> <span class="n">question</span><span class="o">);</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>The Quarkus extension automatically wires the Infinispan embedding store as the content retriever. In dev mode, Dev Services starts Infinispan automatically.</p>
+
+<h3 id="spring-ai">Spring AI</h3>
+
+<p>Add the dependency:</p>
+
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;dependency&gt;</span>
+    <span class="nt">&lt;groupId&gt;</span>org.springframework.ai<span class="nt">&lt;/groupId&gt;</span>
+    <span class="nt">&lt;artifactId&gt;</span>spring-ai-infinispan-store<span class="nt">&lt;/artifactId&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</code></pre></div></div>
+
+<p>Configure in <code class="language-plaintext highlighter-rouge">application.properties</code>:</p>
+
+<div class="language-properties highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="py">spring.ai.vectorstore.infinispan.store-name</span><span class="p">=</span><span class="s">document-embeddings</span>
+<span class="py">spring.ai.vectorstore.infinispan.similarity</span><span class="p">=</span><span class="s">COSINE</span>
+<span class="py">spring.ai.vectorstore.infinispan.create-store</span><span class="p">=</span><span class="s">true</span>
+
+<span class="py">infinispan.remote.server-list</span><span class="p">=</span><span class="s">localhost:11222</span>
+<span class="py">infinispan.remote.auth-username</span><span class="p">=</span><span class="s">admin</span>
+<span class="py">infinispan.remote.auth-password</span><span class="p">=</span><span class="s">password</span>
+</code></pre></div></div>
+
+<p>Ingest documents and perform RAG:</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@Service</span>
+<span class="kd">public</span> <span class="kd">class</span> <span class="nc">RagService</span> <span class="o">{</span>
+
+    <span class="kd">private</span> <span class="kd">final</span> <span class="nc">InfinispanVectorStore</span> <span class="n">vectorStore</span><span class="o">;</span>
+    <span class="kd">private</span> <span class="kd">final</span> <span class="nc">ChatClient</span> <span class="n">chatClient</span><span class="o">;</span>
+
+    <span class="kd">public</span> <span class="nf">RagService</span><span class="o">(</span><span class="nc">InfinispanVectorStore</span> <span class="n">vectorStore</span><span class="o">,</span>
+                      <span class="nc">ChatClient</span><span class="o">.</span><span class="na">Builder</span> <span class="n">chatClientBuilder</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">vectorStore</span> <span class="o">=</span> <span class="n">vectorStore</span><span class="o">;</span>
+        <span class="k">this</span><span class="o">.</span><span class="na">chatClient</span> <span class="o">=</span> <span class="n">chatClientBuilder</span><span class="o">.</span><span class="na">build</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">ingest</span><span class="o">(</span><span class="nc">List</span><span class="o">&lt;</span><span class="nc">Document</span><span class="o">&gt;</span> <span class="n">documents</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">vectorStore</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">documents</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="nc">String</span> <span class="nf">ask</span><span class="o">(</span><span class="nc">String</span> <span class="n">question</span><span class="o">)</span> <span class="o">{</span>
+        <span class="nc">List</span><span class="o">&lt;</span><span class="nc">Document</span><span class="o">&gt;</span> <span class="n">context</span> <span class="o">=</span> <span class="n">vectorStore</span><span class="o">.</span><span class="na">similaritySearch</span><span class="o">(</span>
+            <span class="nc">SearchRequest</span><span class="o">.</span><span class="na">builder</span><span class="o">()</span>
+                <span class="o">.</span><span class="na">query</span><span class="o">(</span><span class="n">question</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">topK</span><span class="o">(</span><span class="mi">5</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">similarityThreshold</span><span class="o">(</span><span class="mf">0.7</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">build</span><span class="o">());</span>
+
+        <span class="nc">String</span> <span class="n">contextText</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="na">stream</span><span class="o">()</span>
+            <span class="o">.</span><span class="na">map</span><span class="o">(</span><span class="nl">Document:</span><span class="o">:</span><span class="n">getText</span><span class="o">)</span>
+            <span class="o">.</span><span class="na">collect</span><span class="o">(</span><span class="nc">Collectors</span><span class="o">.</span><span class="na">joining</span><span class="o">(</span><span class="s">"\n\n"</span><span class="o">));</span>
+
+        <span class="k">return</span> <span class="n">chatClient</span><span class="o">.</span><span class="na">prompt</span><span class="o">()</span>
+            <span class="o">.</span><span class="na">system</span><span class="o">(</span><span class="s">"Answer using the provided context:\n"</span> <span class="o">+</span> <span class="n">contextText</span><span class="o">)</span>
+            <span class="o">.</span><span class="na">user</span><span class="o">(</span><span class="n">question</span><span class="o">)</span>
+            <span class="o">.</span><span class="na">call</span><span class="o">()</span>
+            <span class="o">.</span><span class="na">content</span><span class="o">();</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>Spring AI also supports metadata filtering on search results:</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">List</span><span class="o">&lt;</span><span class="nc">Document</span><span class="o">&gt;</span> <span class="n">filtered</span> <span class="o">=</span> <span class="n">vectorStore</span><span class="o">.</span><span class="na">similaritySearch</span><span class="o">(</span>
+    <span class="nc">SearchRequest</span><span class="o">.</span><span class="na">builder</span><span class="o">()</span>
+        <span class="o">.</span><span class="na">query</span><span class="o">(</span><span class="s">"product specifications"</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">topK</span><span class="o">(</span><span class="mi">5</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">filterExpression</span><span class="o">(</span><span class="s">"category == 'electronics' &amp;&amp; year == 2024"</span><span class="o">)</span>
+        <span class="o">.</span><span class="na">build</span><span class="o">());</span>
+</code></pre></div></div>
+
+<h3 id="langchain4j-standalone-java">LangChain4j (standalone Java)</h3>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nc">InfinispanEmbeddingStore</span> <span class="n">embeddingStore</span> <span class="o">=</span> <span class="nc">InfinispanEmbeddingStore</span><span class="o">.</span><span class="na">builder</span><span class="o">()</span>
+    <span class="o">.</span><span class="na">cacheName</span><span class="o">(</span><span class="s">"document-embeddings"</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">dimension</span><span class="o">(</span><span class="mi">384</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">similarity</span><span class="o">(</span><span class="s">"COSINE"</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">createCache</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">registerSchema</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">infinispanConfigBuilder</span><span class="o">(</span>
+        <span class="k">new</span> <span class="nf">ConfigurationBuilder</span><span class="o">()</span>
+            <span class="o">.</span><span class="na">addServer</span><span class="o">().</span><span class="na">host</span><span class="o">(</span><span class="s">"localhost"</span><span class="o">).</span><span class="na">port</span><span class="o">(</span><span class="mi">11222</span><span class="o">)</span>
+            <span class="o">.</span><span class="na">security</span><span class="o">().</span><span class="na">authentication</span><span class="o">()</span>
+            <span class="o">.</span><span class="na">username</span><span class="o">(</span><span class="s">"admin"</span><span class="o">).</span><span class="na">password</span><span class="o">(</span><span class="s">"password"</span><span class="o">))</span>
+    <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+
+<span class="nc">EmbeddingModel</span> <span class="n">embeddingModel</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">AllMiniLmL6V2QuantizedEmbeddingModel</span><span class="o">();</span>
+
+<span class="c1">// Ingest documents</span>
+<span class="nc">EmbeddingStoreIngestor</span> <span class="n">ingestor</span> <span class="o">=</span> <span class="nc">EmbeddingStoreIngestor</span><span class="o">.</span><span class="na">builder</span><span class="o">()</span>
+    <span class="o">.</span><span class="na">embeddingStore</span><span class="o">(</span><span class="n">embeddingStore</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">embeddingModel</span><span class="o">(</span><span class="n">embeddingModel</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">documentSplitter</span><span class="o">(</span><span class="nc">DocumentSplitters</span><span class="o">.</span><span class="na">recursive</span><span class="o">(</span><span class="mi">500</span><span class="o">,</span> <span class="mi">50</span><span class="o">))</span>
+    <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+
+<span class="n">ingestor</span><span class="o">.</span><span class="na">ingest</span><span class="o">(</span><span class="nc">FileSystemDocumentLoader</span><span class="o">.</span><span class="na">loadDocuments</span><span class="o">(</span><span class="s">"/path/to/docs"</span><span class="o">));</span>
+
+<span class="c1">// Build RAG-powered assistant</span>
+<span class="nc">EmbeddingStoreContentRetriever</span> <span class="n">retriever</span> <span class="o">=</span> <span class="nc">EmbeddingStoreContentRetriever</span><span class="o">.</span><span class="na">builder</span><span class="o">()</span>
+    <span class="o">.</span><span class="na">embeddingStore</span><span class="o">(</span><span class="n">embeddingStore</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">embeddingModel</span><span class="o">(</span><span class="n">embeddingModel</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">maxResults</span><span class="o">(</span><span class="mi">5</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">minScore</span><span class="o">(</span><span class="mf">0.7</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+
+<span class="kd">interface</span> <span class="nc">Assistant</span> <span class="o">{</span>
+    <span class="nc">String</span> <span class="nf">chat</span><span class="o">(</span><span class="nc">String</span> <span class="n">userMessage</span><span class="o">);</span>
+<span class="o">}</span>
+
+<span class="nc">Assistant</span> <span class="n">assistant</span> <span class="o">=</span> <span class="nc">AiServices</span><span class="o">.</span><span class="na">builder</span><span class="o">(</span><span class="nc">Assistant</span><span class="o">.</span><span class="na">class</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">chatModel</span><span class="o">(</span><span class="n">chatModel</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">contentRetriever</span><span class="o">(</span><span class="n">retriever</span><span class="o">)</span>
+    <span class="o">.</span><span class="na">build</span><span class="o">();</span>
+
+<span class="nc">String</span> <span class="n">answer</span> <span class="o">=</span> <span class="n">assistant</span><span class="o">.</span><span class="na">chat</span><span class="o">(</span><span class="s">"What are the product specifications?"</span><span class="o">);</span>
+</code></pre></div></div>
+
+<h3 id="langchain-python">LangChain Python</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pip <span class="nb">install </span>langchain-community langchain-huggingface
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">langchain_community.vectorstores</span> <span class="kn">import</span> <span class="n">InfinispanVS</span>
+<span class="kn">from</span> <span class="n">langchain_huggingface</span> <span class="kn">import</span> <span class="n">HuggingFaceEmbeddings</span>
+<span class="kn">from</span> <span class="n">langchain.text_splitter</span> <span class="kn">import</span> <span class="n">RecursiveCharacterTextSplitter</span>
+<span class="kn">from</span> <span class="n">langchain.chains</span> <span class="kn">import</span> <span class="n">RetrievalQA</span>
+
+<span class="n">embeddings</span> <span class="o">=</span> <span class="nc">HuggingFaceEmbeddings</span><span class="p">(</span>
+    <span class="n">model_name</span><span class="o">=</span><span class="sh">"</span><span class="s">sentence-transformers/all-MiniLM-L12-v2</span><span class="sh">"</span>
+<span class="p">)</span>
+
+<span class="c1"># Split documents
+</span><span class="n">text_splitter</span> <span class="o">=</span> <span class="nc">RecursiveCharacterTextSplitter</span><span class="p">(</span>
+    <span class="n">chunk_size</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">chunk_overlap</span><span class="o">=</span><span class="mi">50</span>
+<span class="p">)</span>
+<span class="n">chunks</span> <span class="o">=</span> <span class="n">text_splitter</span><span class="p">.</span><span class="nf">split_documents</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+<span class="c1"># Store in Infinispan
+</span><span class="n">vectorstore</span> <span class="o">=</span> <span class="n">InfinispanVS</span><span class="p">.</span><span class="nf">from_documents</span><span class="p">(</span>
+    <span class="n">chunks</span><span class="p">,</span>
+    <span class="n">embedding</span><span class="o">=</span><span class="n">embeddings</span><span class="p">,</span>
+    <span class="n">auto_config</span><span class="o">=</span><span class="bp">True</span>
+<span class="p">)</span>
+
+<span class="c1"># Build RAG chain
+</span><span class="n">retriever</span> <span class="o">=</span> <span class="n">vectorstore</span><span class="p">.</span><span class="nf">as_retriever</span><span class="p">(</span>
+    <span class="n">search_kwargs</span><span class="o">=</span><span class="p">{</span><span class="sh">"</span><span class="s">k</span><span class="sh">"</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="n">qa_chain</span> <span class="o">=</span> <span class="n">RetrievalQA</span><span class="p">.</span><span class="nf">from_chain_type</span><span class="p">(</span>
+    <span class="n">llm</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span>
+    <span class="n">retriever</span><span class="o">=</span><span class="n">retriever</span><span class="p">,</span>
+    <span class="n">return_source_documents</span><span class="o">=</span><span class="bp">True</span>
+<span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">qa_chain</span><span class="p">.</span><span class="nf">invoke</span><span class="p">({</span><span class="sh">"</span><span class="s">query</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">What are the product specs?</span><span class="sh">"</span><span class="p">})</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="sh">"</span><span class="s">result</span><span class="sh">"</span><span class="p">])</span>
+</code></pre></div></div>
+
+<h3 id="requirements">Requirements</h3>
+
+<ol>
+  <li>Infinispan Server 15.0 or later.</li>
+  <li>An embedding model (local or API-based).</li>
+  <li>An LLM provider (OpenAI, Ollama, etc.).</li>
+  <li>Documents to index (PDF, text, HTML, etc.).</li>
+</ol>
+
+<h3 id="further-reading">Further reading</h3>
+
+<ul>
+  <li><a href="https://github.com/infinispan-demos/infinispan-langchain-demo">Infinispan LangChain Demo</a></li>
+  <li><a href="https://docs.langchain4j.dev/integrations/embedding-stores/infinispan">LangChain4j Infinispan Embedding Store</a></li>
+  <li><a href="https://docs.quarkiverse.io/quarkus-langchain4j/dev/rag-infinispan-store.html">Quarkus LangChain4j RAG with Infinispan</a></li>
+  <li><a href="https://python.langchain.com/docs/integrations/vectorstores/infinispanvs">LangChain Python InfinispanVS</a></li>
+  <li><a href="https://docs.spring.io/spring-ai/reference/api/vectordbs/infinispan.html">Spring AI Infinispan Vector Store</a></li>
+  <li><a href="https://infinispan.org/docs/stable/titles/query/query.html">Infinispan Vector Search Documentation</a></li>
+</ul>
+
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo.png" class="project-logo" title="Infinispan Logo" alt="Infinispan"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <p class="grid__item width-3-12">Infinispan is released under the Apache 2.0 open source license. Learn more about the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache Software License 2.0</a>.<br/><br/>This website built with <a href='https://jekyllrb.com/' target='_blank'>Jekyll</a> is hosted on <a href='https://pages.github.com/' target='_blank'>Github Pages</a> and is completely open source. If you want to make it better, <a href='https://github.com/infinispan/infinispan.github.io' target='_blank'>fork the website</a> and show us what you’ve got.</p>
+
+    
+      <div class="width-1-12 project-links">
+        <b>Navigation</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="/" >Home</a></li>
+          
+            
+            <li><a href="/features" >Features</a></li>
+          
+            
+            <li><a href="/documentation" >Docs</a></li>
+          
+            
+            <li><a href="/tutorials" >Tutorials</a></li>
+          
+            
+            <li><a href="/videos" >Videos</a></li>
+          
+            
+            <li><a href="/use-cases" >Use Cases</a></li>
+          
+            
+            <li><a href="/community" >Community</a></li>
+          
+            
+            <li><a href="/download" >Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Contribute</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan/issues" target="_blank">Submit a Bug</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan" target="_blank">Write Code</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-1-12 project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links width-1-12">
+          
+            
+            <li><a href="/blog" >Blog</a></li>
+          
+            
+            <li><a href="https://twitter.com/infinispan" target="_blank">Twitter</a></li>
+          
+        </ul>
+      </div>
+    
+
+    <div class="width-6-12 more-links">
+      <div class="grid-wrapper">
+        <div class="width-6-12">
+          <b>A Member of</b><br/>
+          <a href="https://www.commonhaus.org/" target="_blank"><img src="/assets/images/CF_logo_horizontal.svg" title="Commonhaus Foundation"></a><br/>
+        </div>
+        <div class="width-6-12">
+          <b>Thanks to</b><br/>
+          <a href="https://zulip.com" target="_blank"><img src="/assets/images/footer/zulip.png" title="Zulip" alt="Zulip"></a>
+          <a href="https://weblate.org" target="_blank"><img src="/assets/images/footer/weblate.png" title="Weblate" alt="Weblate"></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div class="content-slim redhat-footer">
+  <div class="grid-wrapper">
+    <span class="cookie-preferences">
+      <a href="#" data-cc="show-preferencesModal">Manage cookie preferences</a>
+    </span>
+    <span class="licence">
+      <i class="fab fa-creative-commons"></i><i class="fab fa-creative-commons-by"></i> <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank">CC by 3.0</a>
+    </span>
+    <span class="redhat">
+      a Red Hat sponsored project   
+    </span>
+    <span class="redhat-logo">
+      <a href="https://www.redhat.com/" target="_blank"><img src="/assets/images/redhat_reversed.svg"></a>
+    </span>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+  <script src="/assets/javascript/clipboard.min.js" type="text/javascript"></script>
+  <script src="/assets/javascript/copy.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>
