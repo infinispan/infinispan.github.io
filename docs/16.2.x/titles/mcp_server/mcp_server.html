@@ -539,9 +539,24 @@ $(addBlockSwitches);
 <ul class="sectlevel1">
 <li><a href="#mcp_server">1. Model Context Protocol Endpoint</a>
 <ul class="sectlevel2">
-<li><a href="#mcp_tools">1.1. MCP Tools</a>
+<li><a href="#using_the_cli_as_an_mcp_stdio_transport_bridge">1.1. Using the CLI as an MCP stdio transport bridge</a>
 <ul class="sectlevel3">
-<li><a href="#available_tools">1.1.1. Available Tools</a>
+<li><a href="#prerequisites">1.1.1. Prerequisites</a></li>
+<li><a href="#cli_command">1.1.2. CLI command</a></li>
+<li><a href="#configuring_mcp_clients">1.1.3. Configuring MCP clients</a>
+<ul class="sectlevel4">
+<li><a href="#claude_code">Claude Code</a></li>
+<li><a href="#claude_desktop">Claude Desktop</a></li>
+<li><a href="#cursor">Cursor</a></li>
+<li><a href="#other_mcp_clients">Other MCP clients</a></li>
+</ul>
+</li>
+<li><a href="#connecting_to_secured_servers">1.1.4. Connecting to secured servers</a></li>
+</ul>
+</li>
+<li><a href="#mcp_tools">1.2. MCP Tools</a>
+<ul class="sectlevel3">
+<li><a href="#available_tools">1.2.1. Available Tools</a>
 <ul class="sectlevel4">
 <li><a href="#cache_operations">Cache Operations</a>
 <ul class="sectlevel5">
@@ -556,39 +571,59 @@ $(addBlockSwitches);
 <li><a href="#schema_operations">Schema Operations</a>
 <ul class="sectlevel5">
 <li><a href="#getschemas">getSchemas</a></li>
+<li><a href="#registerschema">registerSchema</a></li>
+</ul>
+</li>
+<li><a href="#cache_introspection">Cache Introspection</a>
+<ul class="sectlevel5">
+<li><a href="#getcacheconfiguration">getCacheConfiguration</a></li>
+<li><a href="#getcachestats">getCacheStats</a></li>
+</ul>
+</li>
+<li><a href="#cluster_operations">Cluster Operations</a>
+<ul class="sectlevel5">
+<li><a href="#getclusterinfo">getClusterInfo</a></li>
 </ul>
 </li>
 <li><a href="#counter_operations">Counter Operations</a>
 <ul class="sectlevel5">
+<li><a href="#createcounter">createCounter</a></li>
 <li><a href="#getcounternames">getCounterNames</a></li>
 <li><a href="#getcounter">getCounter</a></li>
 <li><a href="#increment">increment</a></li>
 <li><a href="#decrement">decrement</a></li>
 </ul>
 </li>
+<li><a href="#jvm_diagnostics">JVM Diagnostics</a>
+<ul class="sectlevel5">
+<li><a href="#getjvmmemory">getJvmMemory</a></li>
+<li><a href="#getjvmthreads">getJvmThreads</a></li>
+<li><a href="#getjvminfo">getJvmInfo</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#mcp_resources">1.2. MCP Resources</a>
+</ul>
+</li>
+<li><a href="#mcp_resources">1.3. MCP Resources</a>
 <ul class="sectlevel3">
-<li><a href="#available_resources">1.2.1. Available Resources</a>
+<li><a href="#available_resources">1.3.1. Available Resources</a>
 <ul class="sectlevel4">
 <li><a href="#server_log">Server Log</a></li>
 <li><a href="#audit_log">Audit Log</a></li>
 <li><a href="#rest_access_log">REST Access Log</a></li>
 </ul>
 </li>
-<li><a href="#resource_parameters">1.2.2. Resource Parameters</a>
+<li><a href="#resource_parameters">1.3.2. Resource Parameters</a>
 <ul class="sectlevel4">
 <li><a href="#lines_parameter">lines Parameter</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#mcp_resource_templates">1.3. MCP Resource Templates</a>
+<li><a href="#mcp_resource_templates">1.4. MCP Resource Templates</a>
 <ul class="sectlevel3">
-<li><a href="#available_resource_templates">1.3.1. Available Resource Templates</a>
+<li><a href="#available_resource_templates">1.4.1. Available Resource Templates</a>
 <ul class="sectlevel4">
 <li><a href="#cache_value_template">Cache Value Template</a></li>
 <li><a href="#counter_value_template">Counter Value Template</a></li>
@@ -597,9 +632,9 @@ $(addBlockSwitches);
 </li>
 </ul>
 </li>
-<li><a href="#mcp_prompts">1.4. MCP Prompts</a>
+<li><a href="#mcp_prompts">1.5. MCP Prompts</a>
 <ul class="sectlevel3">
-<li><a href="#available_prompts">1.4.1. Available Prompts</a>
+<li><a href="#available_prompts">1.5.1. Available Prompts</a>
 <ul class="sectlevel4">
 <li><a href="#find_documentation">find-documentation</a></li>
 <li><a href="#find_documentation_guided">find-documentation-guided</a></li>
@@ -659,14 +694,177 @@ This guide provides details about the features available in Infinispan&#8217;s M
 <div class="paragraph">
 <p>Infinispan server&#8217;s REST connector exposes an endpoint which implements a Model Context Protocol (MCP) server compliant with the <a href="https://modelcontextprotocol.io/specification/2025-03-26">2025-03-26 Specification</a> using the <a href="https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http">Streamable HTTP transport</a>.</p>
 </div>
+<div class="paragraph">
+<p>The Infinispan CLI also provides a stdio transport bridge that allows local MCP clients to communicate with the server.</p>
+</div>
 <div class="sect2">
-<h3 id="mcp_tools"><a class="anchor" href="#mcp_tools"></a>1.1. MCP Tools</h3>
+<h3 id="using_the_cli_as_an_mcp_stdio_transport_bridge"><a class="anchor" href="#using_the_cli_as_an_mcp_stdio_transport_bridge"></a>1.1. Using the CLI as an MCP stdio transport bridge</h3>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The MCP feature is <strong>experimental</strong> and must be explicitly enabled.
+Start Infinispan Server with <code>-Dorg.infinispan.feature.mcp=true</code> before using the CLI MCP bridge.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The Infinispan CLI provides a stdio transport bridge that allows MCP clients to communicate with a running Infinispan server.
+The bridge reads JSON-RPC messages from standard input, forwards them to the server&#8217;s MCP endpoint, and writes responses to standard output.</p>
+</div>
+<div class="paragraph">
+<p>This is the recommended way to connect local MCP clients, such as <a href="https://claude.ai/download">Claude Desktop</a>, <a href="https://claude.com/claude-code">Claude Code</a>, <a href="https://cursor.com">Cursor</a>, or <a href="https://github.com/features/copilot">GitHub Copilot</a>, to an Infinispan server.</p>
+</div>
+<div class="sect3">
+<h4 id="prerequisites"><a class="anchor" href="#prerequisites"></a>1.1.1. Prerequisites</h4>
+<div class="ulist">
+<ul>
+<li>
+<p>A running Infinispan server with the MCP feature enabled (see <a href="#mcp_server">Model Context Protocol Endpoint</a>).</p>
+</li>
+<li>
+<p>The Infinispan CLI installed and available on your system.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="cli_command"><a class="anchor" href="#cli_command"></a>1.1.2. CLI command</h4>
+<div class="paragraph">
+<p>The <code>mcp</code> command starts the stdio transport bridge.
+You can specify the server connection as a URL, a bookmark name, or the special value <code>local</code> which connects to <code><a href="http://localhost:11222" class="bare">http://localhost:11222</a></code> without authentication.</p>
+</div>
+<div class="listingblock">
+<div class="title">Syntax</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">infinispan-cli mcp &lt;server-url|bookmark|local&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Connecting to a local server without authentication</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">bin/infinispan-cli mcp local</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Connecting to a server with a URL</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">bin/infinispan-cli mcp http://myuser:mypassword@myserver:11222</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Connecting using a saved bookmark</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">bin/infinispan-cli mcp mybookmark</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="configuring_mcp_clients"><a class="anchor" href="#configuring_mcp_clients"></a>1.1.3. Configuring MCP clients</h4>
+<div class="paragraph">
+<p>MCP clients that support the stdio transport can be configured to use the Infinispan CLI as a bridge.
+The client launches the CLI process and communicates with it through standard input and output.</p>
+</div>
+<div class="sect4">
+<h5 id="claude_code"><a class="anchor" href="#claude_code"></a>Claude Code</h5>
+<div class="paragraph">
+<p>Create a <code>.mcp.json</code> file in your project directory:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "mcpServers": {
+    "infinispan": {
+      "command": "/path/to/infinispan-server/bin/infinispan-cli",
+      "args": ["mcp", "local"]
+    }
+  }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="claude_desktop"><a class="anchor" href="#claude_desktop"></a>Claude Desktop</h5>
+<div class="paragraph">
+<p>Add the following to your Claude Desktop configuration file (<code>claude_desktop_config.json</code>):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "mcpServers": {
+    "infinispan": {
+      "command": "/path/to/infinispan-server/bin/infinispan-cli",
+      "args": ["mcp", "local"]
+    }
+  }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="cursor"><a class="anchor" href="#cursor"></a>Cursor</h5>
+<div class="paragraph">
+<p>Add the following to your Cursor MCP configuration (<code>.cursor/mcp.json</code>):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "mcpServers": {
+    "infinispan": {
+      "command": "/path/to/infinispan-server/bin/infinispan-cli",
+      "args": ["mcp", "local"]
+    }
+  }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="other_mcp_clients"><a class="anchor" href="#other_mcp_clients"></a>Other MCP clients</h5>
+<div class="paragraph">
+<p>Any MCP client that supports the stdio transport can use the Infinispan CLI bridge.
+Configure the client to launch the CLI with the <code>mcp</code> command and the appropriate connection argument.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="connecting_to_secured_servers"><a class="anchor" href="#connecting_to_secured_servers"></a>1.1.4. Connecting to secured servers</h4>
+<div class="paragraph">
+<p>When connecting to a server that requires authentication, provide credentials in the connection URL:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">bin/infinispan-cli mcp http://admin:password@myserver:11222</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Alternatively, create a bookmark with the <code>bookmark set</code> CLI command and reference it by name:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-bash hljs" data-lang="bash">bin/infinispan-cli bookmark set myserver --url http://myserver:11222 --username admin --password password
+bin/infinispan-cli mcp myserver</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For servers with TLS, use the <code>--trustall</code> option or configure a truststore through a bookmark.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="mcp_tools"><a class="anchor" href="#mcp_tools"></a>1.2. MCP Tools</h3>
 <div class="paragraph">
 <p>Infinispan&#8217;s MCP tools expose operations that allows models to interact with various components, such as caches,
 counters, configurations and metrics.</p>
 </div>
 <div class="sect3">
-<h4 id="available_tools"><a class="anchor" href="#available_tools"></a>1.1.1. Available Tools</h4>
+<h4 id="available_tools"><a class="anchor" href="#available_tools"></a>1.2.1. Available Tools</h4>
 <div class="sect4">
 <h5 id="cache_operations"><a class="anchor" href="#cache_operations"></a>Cache Operations</h5>
 <div class="sect5">
@@ -729,7 +927,8 @@ counters, configurations and metrics.</p>
 <div class="paragraph">
 <p><strong>Parameters</strong>:
 - <code>cacheName</code> (string, required): The name of the cache
-- <code>key</code> (string, required): The key of the entry</p>
+- <code>key</code> (string, required): The key of the entry
+- <code>mediaType</code> (string, optional): The media type for the value (for example, <code>text/plain</code>, <code>application/json</code>). Defaults to <code>text/plain</code></p>
 </div>
 <div class="paragraph">
 <p><strong>Example</strong>:</p>
@@ -741,6 +940,21 @@ counters, configurations and metrics.</p>
   "arguments": {
     "cacheName": "myCache",
     "key": "myKey"
+  }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To retrieve an entry from a Protobuf-encoded cache as JSON:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "getCacheEntry",
+  "arguments": {
+    "cacheName": "people",
+    "key": "john",
+    "mediaType": "application/json"
   }
 }</code></pre>
 </div>
@@ -760,7 +974,8 @@ counters, configurations and metrics.</p>
 - <code>key</code> (string, required): The key of the entry
 - <code>value</code> (string, required): The value of the entry
 - <code>lifespan</code> (number, optional): The lifespan of the entry in milliseconds
-- <code>maxIdle</code> (number, optional): The maximum idle time of the entry in milliseconds</p>
+- <code>maxIdle</code> (number, optional): The maximum idle time of the entry in milliseconds
+- <code>mediaType</code> (string, optional): The media type for the value (for example, <code>text/plain</code>, <code>application/json</code>). Defaults to <code>text/plain</code></p>
 </div>
 <div class="paragraph">
 <p><strong>Example</strong>:</p>
@@ -775,6 +990,22 @@ counters, configurations and metrics.</p>
     "value": "myValue",
     "lifespan": 60000,
     "maxIdle": 30000
+  }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To store a typed entry in a Protobuf-encoded cache:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "setCacheEntry",
+  "arguments": {
+    "cacheName": "people",
+    "key": "john",
+    "value": "{\"_type\":\"Person\",\"name\":\"John Doe\",\"age\":35,\"city\":\"London\"}",
+    "mediaType": "application/json"
   }
 }</code></pre>
 </div>
@@ -862,9 +1093,182 @@ counters, configurations and metrics.</p>
 </div>
 </div>
 </div>
+<div class="sect5">
+<h6 id="registerschema"><a class="anchor" href="#registerschema"></a>registerSchema</h6>
+<div class="paragraph">
+<p>Registers or updates a Protobuf schema.
+The <code>.proto</code> extension is appended automatically if not provided.</p>
+</div>
+<div class="paragraph">
+<p><strong>Description</strong>: Runtime data modification: registers or updates a Protobuf schema</p>
+</div>
+<div class="paragraph">
+<p><strong>Parameters</strong>:
+- <code>schemaName</code> (string, required): The schema name (for example, <code>person.proto</code>)
+- <code>schema</code> (string, required): The Protobuf schema content</p>
+</div>
+<div class="paragraph">
+<p><strong>Example</strong>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "registerSchema",
+  "arguments": {
+    "schemaName": "person.proto",
+    "schema": "message Person {\n  required string name = 1;\n  optional int32 age = 2;\n}"
+  }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="cache_introspection"><a class="anchor" href="#cache_introspection"></a>Cache Introspection</h5>
+<div class="sect5">
+<h6 id="getcacheconfiguration"><a class="anchor" href="#getcacheconfiguration"></a>getCacheConfiguration</h6>
+<div class="paragraph">
+<p>Retrieves the full configuration of a cache in JSON format.</p>
+</div>
+<div class="paragraph">
+<p><strong>Description</strong>: Runtime data retrieval: retrieves the configuration of a cache in JSON format</p>
+</div>
+<div class="paragraph">
+<p><strong>Parameters</strong>:
+- <code>cacheName</code> (string, required): The name of the cache</p>
+</div>
+<div class="paragraph">
+<p><strong>Example</strong>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "getCacheConfiguration",
+  "arguments": {
+    "cacheName": "myCache"
+  }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="getcachestats"><a class="anchor" href="#getcachestats"></a>getCacheStats</h6>
+<div class="paragraph">
+<p>Retrieves statistics for a cache, including hits, misses, evictions, stores, timings, and memory usage.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Statistics must be enabled in the cache configuration for this tool to return meaningful values.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p><strong>Description</strong>: Runtime data retrieval: retrieves statistics for a cache</p>
+</div>
+<div class="paragraph">
+<p><strong>Parameters</strong>:
+- <code>cacheName</code> (string, required): The name of the cache</p>
+</div>
+<div class="paragraph">
+<p><strong>Example</strong>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "getCacheStats",
+  "arguments": {
+    "cacheName": "myCache"
+  }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="cluster_operations"><a class="anchor" href="#cluster_operations"></a>Cluster Operations</h5>
+<div class="sect5">
+<h6 id="getclusterinfo"><a class="anchor" href="#getclusterinfo"></a>getClusterInfo</h6>
+<div class="paragraph">
+<p>Retrieves cluster information including members, coordinator, status, rebalancing state, and sites.</p>
+</div>
+<div class="paragraph">
+<p><strong>Description</strong>: Runtime data retrieval: retrieves cluster information</p>
+</div>
+<div class="paragraph">
+<p><strong>Input Schema</strong>: No parameters required</p>
+</div>
+<div class="paragraph">
+<p><strong>Example</strong>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "getClusterInfo",
+  "arguments": {}
+}</code></pre>
+</div>
+</div>
+</div>
 </div>
 <div class="sect4">
 <h5 id="counter_operations"><a class="anchor" href="#counter_operations"></a>Counter Operations</h5>
+<div class="sect5">
+<h6 id="createcounter"><a class="anchor" href="#createcounter"></a>createCounter</h6>
+<div class="paragraph">
+<p>Creates a counter.</p>
+</div>
+<div class="paragraph">
+<p><strong>Description</strong>: Runtime data modification: creates a counter</p>
+</div>
+<div class="paragraph">
+<p><strong>Parameters</strong>:
+- <code>counterName</code> (string, required): The name of the counter
+- <code>type</code> (string, required): The counter type: <code>WEAK</code>, <code>UNBOUNDED_STRONG</code>, or <code>BOUNDED_STRONG</code>
+- <code>initialValue</code> (number, optional): The initial value. Defaults to zero
+- <code>storage</code> (string, optional): The storage mode: <code>VOLATILE</code> (default, lost on restart) or <code>PERSISTENT</code> (survives restart)
+- <code>upperBound</code> (number, optional): The upper bound (inclusive). Only for <code>BOUNDED_STRONG</code> counters
+- <code>lowerBound</code> (number, optional): The lower bound (inclusive). Only for <code>BOUNDED_STRONG</code> counters</p>
+</div>
+<div class="paragraph">
+<p><strong>Example</strong>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "createCounter",
+  "arguments": {
+    "counterName": "pageViews",
+    "type": "UNBOUNDED_STRONG",
+    "initialValue": 0,
+    "storage": "PERSISTENT"
+  }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To create a bounded counter:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "createCounter",
+  "arguments": {
+    "counterName": "capacity",
+    "type": "BOUNDED_STRONG",
+    "initialValue": 50,
+    "lowerBound": 0,
+    "upperBound": 100
+  }
+}</code></pre>
+</div>
+</div>
+</div>
 <div class="sect5">
 <h6 id="getcounternames"><a class="anchor" href="#getcounternames"></a>getCounterNames</h6>
 <div class="paragraph">
@@ -967,10 +1371,125 @@ counters, configurations and metrics.</p>
 </div>
 </div>
 </div>
+<div class="sect4">
+<h5 id="jvm_diagnostics"><a class="anchor" href="#jvm_diagnostics"></a>JVM Diagnostics</h5>
+<div class="sect5">
+<h6 id="getjvmmemory"><a class="anchor" href="#getjvmmemory"></a>getJvmMemory</h6>
+<div class="paragraph">
+<p>Retrieves heap and non-heap memory usage, garbage collector statistics, and memory pool details.</p>
+</div>
+<div class="paragraph">
+<p><strong>Description</strong>: JVM diagnostics: retrieves heap/non-heap memory usage, garbage collector stats, and memory pool details</p>
+</div>
+<div class="paragraph">
+<p><strong>Input Schema</strong>: No parameters required</p>
+</div>
+<div class="paragraph">
+<p><strong>Response Fields</strong>:
+- <code>heap</code>: used, committed, and max memory in megabytes, plus usage percentage
+- <code>non_heap</code>: used and committed memory in megabytes
+- <code>garbage_collectors</code>: name, collection count, and collection time for each GC
+- <code>memory_pools</code>: name, type, used, and max memory for each pool</p>
+</div>
+<div class="paragraph">
+<p><strong>Example</strong>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "getJvmMemory",
+  "arguments": {}
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="getjvmthreads"><a class="anchor" href="#getjvmthreads"></a>getJvmThreads</h6>
+<div class="paragraph">
+<p>Retrieves thread counts, peak threads, deadlock detection, and optionally a full thread dump.</p>
+</div>
+<div class="paragraph">
+<p><strong>Description</strong>: JVM diagnostics: retrieves thread counts, peak threads, deadlock detection, and optionally a full thread dump</p>
+</div>
+<div class="paragraph">
+<p><strong>Parameters</strong>:
+- <code>threadDump</code> (boolean, optional): Whether to include a full thread dump. Defaults to <code>false</code>. The thread dump can be large.</p>
+</div>
+<div class="paragraph">
+<p><strong>Response Fields</strong>:
+- <code>thread_count</code>: current number of live threads
+- <code>peak_thread_count</code>: peak live thread count since JVM start
+- <code>daemon_thread_count</code>: current number of daemon threads
+- <code>total_started_thread_count</code>: total threads started since JVM start
+- <code>deadlocked_threads</code>: number of deadlocked threads (zero means no deadlocks)
+- <code>deadlock_details</code>: details of deadlocked threads if any are detected
+- <code>thread_dump</code>: full thread dump, included only when <code>threadDump</code> is <code>true</code></p>
+</div>
+<div class="paragraph">
+<p><strong>Example</strong>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "getJvmThreads",
+  "arguments": {}
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To include a full thread dump:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "getJvmThreads",
+  "arguments": {
+    "threadDump": true
+  }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="getjvminfo"><a class="anchor" href="#getjvminfo"></a>getJvmInfo</h6>
+<div class="paragraph">
+<p>Retrieves JVM version, uptime, input arguments, available processors, and operating system information.</p>
+</div>
+<div class="paragraph">
+<p><strong>Description</strong>: JVM diagnostics: retrieves JVM version, uptime, input arguments, available processors, and OS info</p>
+</div>
+<div class="paragraph">
+<p><strong>Input Schema</strong>: No parameters required</p>
+</div>
+<div class="paragraph">
+<p><strong>Response Fields</strong>:
+- <code>jvm_name</code>: JVM implementation name
+- <code>jvm_vendor</code>: JVM vendor
+- <code>jvm_version</code>: JVM version string
+- <code>spec_version</code>: Java specification version
+- <code>uptime_seconds</code>: JVM uptime in seconds
+- <code>start_time</code>: JVM start time in milliseconds since epoch
+- <code>input_arguments</code>: list of JVM input arguments (for example, <code>-Xmx512m</code>)
+- <code>classpath</code>: JVM classpath
+- <code>os</code>: operating system details including name, version, architecture, available processors, and system load average</p>
+</div>
+<div class="paragraph">
+<p><strong>Example</strong>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "name": "getJvmInfo",
+  "arguments": {}
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="mcp_resources"><a class="anchor" href="#mcp_resources"></a>1.2. MCP Resources</h3>
+<h3 id="mcp_resources"><a class="anchor" href="#mcp_resources"></a>1.3. MCP Resources</h3>
 <div class="paragraph">
 <p>The Model Context Protocol (MCP) provides a standardized way for servers to expose resources to clients.
 Resources allow servers to share data that provides context to language models, such as files, database schemas,
@@ -978,7 +1497,7 @@ or application-specific information.
 Each resource is uniquely identified by a URI.</p>
 </div>
 <div class="sect3">
-<h4 id="available_resources"><a class="anchor" href="#available_resources"></a>1.2.1. Available Resources</h4>
+<h4 id="available_resources"><a class="anchor" href="#available_resources"></a>1.3.1. Available Resources</h4>
 <div class="paragraph">
 <p>Infinispan exposes the following predefined resources through the MCP server:</p>
 </div>
@@ -1046,10 +1565,10 @@ Each resource is uniquely identified by a URI.</p>
 <p><strong>MIME Type</strong>: text/plain</p>
 </div>
 <div class="paragraph">
-<p><strong>Description</strong>: PRIMARY SOURCE OF INFORMATION FOR SERVER STATUS/WORKLOAD. Returns info about REST API usage patterns: request rates, errors (4xx/5xx), slow endpoints, client IPs. Useful also for security auditing, i.e. detecting DoS attacks or suspicious activity.</p>
+<p><strong>Description</strong>: PRIMARY SOURCE OF INFORMATION FOR SERVER STATUS/WORKLOAD. Returns info about REST API usage patterns: request rates, errors (4xx/5xx), slow endpoints, client IPs. Useful also for security auditing, that is, detecting DoS attacks or suspicious activity.</p>
 </div>
 <div class="paragraph">
-<p><strong>Usage</strong>: This resource provides access to the REST API access log, which records all HTTP requests to the Infinispan REST endpoint. Analyze this log to understand API usage patterns, identify performance bottlenecks, detect errors, and monitor client activity. It&#8217;s also valuable for security auditing to detect denial-of-service attacks or unusual access patterns.</p>
+<p><strong>Usage</strong>: This resource provides access to the REST API access log, which records all HTTP requests to the Infinispan REST endpoint. Analyze this log to understand API usage patterns, identify performance bottlenecks, detect errors, and monitor client activity. It is also valuable for security auditing to detect denial-of-service attacks or unusual access patterns.</p>
 </div>
 <div class="paragraph">
 <p><strong>Example URI</strong>:</p>
@@ -1062,7 +1581,7 @@ Each resource is uniquely identified by a URI.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="resource_parameters"><a class="anchor" href="#resource_parameters"></a>1.2.2. Resource Parameters</h4>
+<h4 id="resource_parameters"><a class="anchor" href="#resource_parameters"></a>1.3.2. Resource Parameters</h4>
 <div class="sect4">
 <h5 id="lines_parameter"><a class="anchor" href="#lines_parameter"></a>lines Parameter</h5>
 <div class="paragraph">
@@ -1089,13 +1608,13 @@ Each resource is uniquely identified by a URI.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="mcp_resource_templates"><a class="anchor" href="#mcp_resource_templates"></a>1.3. MCP Resource Templates</h3>
+<h3 id="mcp_resource_templates"><a class="anchor" href="#mcp_resource_templates"></a>1.4. MCP Resource Templates</h3>
 <div class="paragraph">
 <p>Resource templates allow servers to expose parameterized resources using URI templates.
 Arguments may be auto-completed through the completion API.</p>
 </div>
 <div class="sect3">
-<h4 id="available_resource_templates"><a class="anchor" href="#available_resource_templates"></a>1.3.1. Available Resource Templates</h4>
+<h4 id="available_resource_templates"><a class="anchor" href="#available_resource_templates"></a>1.4.1. Available Resource Templates</h4>
 <div class="paragraph">
 <p>Infinispan provides the following resource templates that allow dynamic resource access:</p>
 </div>
@@ -1201,12 +1720,12 @@ infinispan+logs://hotrod-access?lines=200</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="mcp_prompts"><a class="anchor" href="#mcp_prompts"></a>1.4. MCP Prompts</h3>
+<h3 id="mcp_prompts"><a class="anchor" href="#mcp_prompts"></a>1.5. MCP Prompts</h3>
 <div class="paragraph">
 <p>The Model Context Protocol (MCP) provides a standardized way for servers to expose prompt templates to clients. Prompts allow servers to provide structured messages and instructions for interacting with language models. Clients can discover available prompts, retrieve their contents, and provide arguments to customize them.</p>
 </div>
 <div class="sect3">
-<h4 id="available_prompts"><a class="anchor" href="#available_prompts"></a>1.4.1. Available Prompts</h4>
+<h4 id="available_prompts"><a class="anchor" href="#available_prompts"></a>1.5.1. Available Prompts</h4>
 <div class="paragraph">
 <p>Infinispan provides the following prompts to help users find relevant documentation:</p>
 </div>
@@ -1223,7 +1742,7 @@ infinispan+logs://hotrod-access?lines=200</code></pre>
 </div>
 <div class="paragraph">
 <p><strong>Arguments</strong>:
-- <code>topic</code> (required): What to search for in the documentation (e.g., 'cache configuration', 'Hot Rod client')
+- <code>topic</code> (required): What to search for in the documentation (for example, 'cache configuration', 'Hot Rod client')
 - <code>context</code> (optional): Additional context about your goal or use case</p>
 </div>
 <div class="paragraph">
@@ -1325,7 +1844,7 @@ The prompt provides direct links to documentation for:</p>
 </div>
 <div class="paragraph">
 <p><strong>Arguments</strong>:
-- <code>topic</code> (required): What to search for in the documentation (e.g., 'cache configuration', 'Hot Rod client')
+- <code>topic</code> (required): What to search for in the documentation (for example, 'cache configuration', 'Hot Rod client')
 - <code>context</code> (optional): Additional context about your goal or use case</p>
 </div>
 <div class="paragraph">
@@ -1366,7 +1885,7 @@ The prompt provides direct links to documentation for:</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-03-24 14:33:57 UTC
+Last updated 2026-04-30 06:40:56 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>

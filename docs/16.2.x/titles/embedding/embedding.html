@@ -871,7 +871,7 @@ artifact you add as a dependency to your project.</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;properties&gt;
-  &lt;version.infinispan&gt;16.2.0.Dev01&lt;/version.infinispan&gt;
+  &lt;version.infinispan&gt;16.2.0.Dev02&lt;/version.infinispan&gt;
 &lt;/properties&gt;
 
 &lt;dependencyManagement&gt;
@@ -1105,20 +1105,26 @@ Specific methods on the <code>keySet</code>, <code>values</code> and <code>entry
 </div>
 <div class="paragraph">
 <div class="title">Mortal and Immortal Data</div>
-<p>Further to simply storing entries, Infinispan&#8217;s cache API allows you to attach mortality information to data.  For example, simply using <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">put(key, value)</a> would create an <em>immortal</em> entry, i.e., an entry that lives in the cache forever, until it is removed (or evicted from memory to prevent running out of memory).  If, however, you put data in the cache using <a href="../../apidocs/org/infinispan/commons/api/BasicCache.html#put(K,V,long,java.util.concurrent.TimeUnit)">put(key, value, lifespan, timeunit)</a> , this creates a <em>mortal</em> entry, i.e., an entry that has a fixed lifespan and expires after that lifespan.</p>
+<p>In addition to storing entries, the Infinispan cache API allows you to attach mortality information to data.
+For example, using <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">put(key, value)</a> would create an <em>immortal</em> entry, that is, an entry that lives in the cache forever, until it is removed (or evicted from memory to prevent running out of memory).
+If, however, you put data in the cache using <a href="../../apidocs/org/infinispan/commons/api/BasicCache.html#put(K,V,long,java.util.concurrent.TimeUnit)">put(key, value, lifespan, timeunit)</a>, this creates a <em>mortal</em> entry, that is, an entry that has a fixed lifespan and expires after that lifespan.</p>
 </div>
 <div class="paragraph">
 <p>In addition to <em>lifespan</em> , Infinispan also supports <em>maxIdle</em> as an additional metric with which to determine expiration.  Any combination of lifespans or maxIdles can be used.</p>
 </div>
 <div class="paragraph">
 <div class="title"><code>putForExternalRead</code> operation</div>
-<p>Infinispan&#8217;s <a href="../../apidocs/org/infinispan/Cache.html">Cache</a> class contains a different 'put' operation called <a href="../../apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> . This operation is particularly useful when Infinispan is used as a temporary cache for data that is persisted elsewhere.  Under heavy read scenarios, contention in the cache should not delay the real transactions at hand, since caching should just be an optimization and not something that gets in the way.</p>
+<p>Infinispan&#8217;s <a href="../../apidocs/org/infinispan/Cache.html">Cache</a> class contains a different 'put' operation called <a href="../../apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> . This operation is particularly useful when Infinispan is used as a temporary cache for data that is persisted elsewhere.  Under heavy read scenarios, contention in the cache should not delay the real transactions at hand, since caching should be an optimization and not something that gets in the way.</p>
 </div>
 <div class="paragraph">
-<p>To achieve this, <code>putForExternalRead()</code> acts as a put call that only operates if the key is not present in the cache, and fails fast and silently if another thread is trying to store the same key at the same time. In this particular scenario, caching data is a way to optimise the system and it&#8217;s not desirable that a failure in caching affects the on-going transaction, hence why failure is handled differently. <code>putForExternalRead()</code> is considered to be a fast operation because regardless of whether it&#8217;s successful or not, it doesn&#8217;t wait for any locks, and so returns to the caller promptly.</p>
+<p>To achieve this, <code>putForExternalRead()</code> acts as a put call that only operates if the key is not present in the cache, and fails fast and silently if another thread is trying to store the same key at the same time.
+In this particular scenario, caching data is a way to optimize the system and it is not desirable that a failure in caching affects the on-going transaction, hence why failure is handled differently.
+<code>putForExternalRead()</code> is considered to be a fast operation because regardless of whether it is successful or not, it does not wait for any locks, and so returns to the caller promptly.</p>
 </div>
 <div class="paragraph">
-<p>To understand how to use this operation, let&#8217;s look at basic example. Imagine a cache of Person instances, each keyed by a PersonId , whose data originates in a separate data store. The following code shows the most common pattern of using <a href="../../apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> within the context of this example:</p>
+<p>To understand how to use this operation, consider a basic example.
+Imagine a cache of Person instances, each keyed by a PersonId, whose data originates in a separate data store.
+The following code shows the most common pattern of using <a href="../../apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> within the context of this example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -1146,7 +1152,8 @@ if (cachedPerson == null) {
 </div>
 </div>
 <div class="paragraph">
-<p>Note that <a href="../../apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> should never be used as a mechanism to update the cache with a new Person instance originating from application execution (i.e. from a transaction that modifies a Person&#8217;s address). When updating cached values, please use the standard <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">put</a> operation, otherwise the possibility of caching inconsistent data is likely.</p>
+<p>Note that <a href="../../apidocs/org/infinispan/Cache.html#putForExternalRead(K,V)">putForExternalRead</a> should never be used as a mechanism to update the cache with a new Person instance originating from application execution (that is, from a transaction that modifies a Person&#8217;s address).
+When updating cached values, use the standard <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">put</a> operation, otherwise the possibility of caching inconsistent data is likely.</p>
 </div>
 <div class="sect3">
 <h4 id="advancedcache_api"><a class="anchor" href="#advancedcache_api"></a>2.3.1. AdvancedCache API</h4>
@@ -1175,10 +1182,12 @@ if (cachedPerson == null) {
 <div class="sect3">
 <h4 id="cache_asynchronous_api"><a class="anchor" href="#cache_asynchronous_api"></a>2.3.2. Asynchronous API</h4>
 <div class="paragraph">
-<p>In addition to synchronous API methods like <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">Cache.put()</a> , <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#remove-java.lang.Object-">Cache.remove()</a> , etc., Infinispan also has an asynchronous, non-blocking API where you can achieve the same results in a non-blocking fashion.</p>
+<p>In addition to synchronous API methods like <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#put-K-V-">Cache.put()</a> and <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#remove-java.lang.Object-">Cache.remove()</a>, Infinispan also has an asynchronous, non-blocking API where you can achieve the same results in a non-blocking fashion.</p>
 </div>
 <div class="paragraph">
-<p>These methods are named in a similar fashion to their blocking counterparts, with "Async" appended. E.g., <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#putAsync(K,V)">Cache.putAsync()</a> , <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#removeAsync(java.lang.Object)">Cache.removeAsync()</a> , etc. These asynchronous counterparts return a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/CompletableFuture.html">CompletableFuture</a> that contains the actual result of the operation.</p>
+<p>These methods are named in a similar fashion to their blocking counterparts, with "Async" appended.
+For example, <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#putAsync(K,V)">Cache.putAsync()</a> and <a href="../../apidocs/org/infinispan/commons/api/AsyncCache.html#removeAsync(java.lang.Object)">Cache.removeAsync()</a>.
+These asynchronous counterparts return a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/CompletableFuture.html">CompletableFuture</a> that contains the actual result of the operation.</p>
 </div>
 <div class="paragraph">
 <p>For example, in a cache parameterized as <code>Cache&lt;String, String&gt;</code>, <code>Cache.put(String key, String value)</code> returns <code>String</code> while <code>Cache.putAsync(String key, String value)</code> returns <code>CompletableFuture&lt;String&gt;</code>.</p>
@@ -2757,7 +2766,7 @@ The transport layer also enables Infinispan nodes to replicate or distribute dat
 <div class="sect2">
 <h3 id="default-jgroups-stacks_cluster-transport"><a class="anchor" href="#default-jgroups-stacks_cluster-transport"></a>5.1. Default JGroups stacks</h3>
 <div class="paragraph">
-<p>Infinispan provides default JGroups stack files, <code>default-jgroups-*.xml</code>, in the <code>default-configs</code> directory inside the <code>infinispan-core-16.2.0.Dev01.jar</code> file.</p>
+<p>Infinispan provides default JGroups stack files, <code>default-jgroups-*.xml</code>, in the <code>default-configs</code> directory inside the <code>infinispan-core-16.2.0.Dev02.jar</code> file.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -4459,7 +4468,7 @@ clm1.defineLock("lock");</code></pre>
 <p><a href="../../apidocs/org/infinispan/lock/configuration/ClusteredLockManagerConfiguration.html">ClusteredLockManagerConfiguration</a></p>
 </li>
 <li>
-<p><a href="../../configuration-schema/infinispan-clustered-locks-config-infinispan-clustered-locks-config-12.0.html.html">Clustered Locks Configuration Schema</a></p>
+<p><a href="{configdocroot}infinispan-clustered-locks-config-16.2.html">Infinispan Clustered Locks Configuration Schema</a></p>
 </li>
 </ul>
 </div>
@@ -4473,8 +4482,8 @@ clm1.defineLock("lock");</code></pre>
 <p>The main benefit of a cache is the ability to very quickly lookup a value
 by its key, even across machines.
 In fact this use alone is probably the reason many users use Infinispan.
-However Infinispan can provide many more benefits that aren&#8217;t immediately apparent.
-Since Infinispan is usually used in a cluster of machines we also have features available that can help utilize the entire cluster for performing the user&#8217;s desired workload.</p>
+However Infinispan can provide many more benefits that are not immediately apparent.
+Since Infinispan is usually used in a cluster of machines, it also provides features that can help utilize the entire cluster for performing the desired workload.</p>
 </div>
 <div class="sect2">
 <h3 id="executing-code-grid_cluster-executor"><a class="anchor" href="#executing-code-grid_cluster-executor"></a>7.1. Cluster Executor</h3>
@@ -4495,7 +4504,7 @@ in both clustered and non clustered configurations.</p>
 </td>
 <td class="content">
 The ClusterExecutor is specifically designed for executing code where the code is not reliant
-upon the data in a cache and is used instead as a way to help users to execute code easily
+upon the data in a cache and is used instead as a way to help users execute code
 in the cluster.
 </td>
 </tr>
@@ -4503,8 +4512,8 @@ in the cluster.
 </div>
 <div class="paragraph">
 <p>This manager was built specifically around Java&#8217;s streaming API, thus all methods take a functional
-interface as an argument. Also since these arguments will be sent to other nodes they need to be serializable.  We even
-used a nice trick to ensure our lambdas are immediately Serializable.  That is by having the arguments implement both
+interface as an argument. Also since these arguments will be sent to other nodes they need to be serializable.  A nice
+trick is used to ensure the lambdas are immediately Serializable.  That is by having the arguments implement both
 Serializable and the real argument type (ie. Runnable or Function).  The JRE will pick the most specific class when
 determining which method to invoke, so in that case your lambdas will always be serializable.
 It is also possible to use <a href="../encoding/encoding.html#protostream_marshalling">ProtoStream marshalling</a> to reduce message size further.</p>
@@ -4537,7 +4546,7 @@ manager.executor().filterTargets(ClusterExecutionPolicy.SAME_RACK).submit(...)</
 be optionally combined with topology based filtering in the previous code snippet.</p>
 </div>
 <div class="paragraph">
-<p>We also allow the target node to be chosen by any means using a <code>Predicate</code> that
+<p>The target node can also be chosen by any means using a <code>Predicate</code> that
 will filter out which nodes can be considered for execution. Note this can also be combined
 with Topology filtering at the same time to allow even more fine control of where you code
 is executed within the cluster.</p>
@@ -4606,13 +4615,13 @@ failover count.</p>
 <p>Pi approximation can greatly benefit from parallel distributed execution via
 Cluster Executor. Recall that the area of the square is \(S_a = 4r^{2}\) and the area of the
 circle is \(C_a=\pi r^2\). Substituting \(r^2\) from the second equation into the first
-one it turns out that \(\pi = 4\frac{C_a}{S_a}\). Now, image that we can shoot very large
-number of darts into a square; if we take ratio of darts that land inside a
-circle over a total number of darts shot, we will approximate the \(\frac{C_a}{S_a}\) value. Since
-we know that \(\pi = 4\frac{C_a}{S_a}\), we can approximate the value of \(\pi\). The
-more darts we shoot, the better approximation we get. In the example below, we
-shoot 1 billion darts, but instead of "shooting" them serially, we parallelize
-the work of dart shooting across the entire Infinispan cluster. Note that, this
+one it turns out that \(\pi = 4\frac{C_a}{S_a}\). Now, imagine shooting a very large
+number of darts into a square; taking the ratio of darts that land inside a
+circle over the total number of darts shot approximates the \(\frac{C_a}{S_a}\) value. Since
+\(\pi = 4\frac{C_a}{S_a}\), this ratio can be used to approximate the value of \(\pi\). The
+more darts you shoot, the better the approximation. In the example below, 1 billion
+darts are shot, but instead of "shooting" them serially, the work is parallelized
+across the entire Infinispan cluster. Note that, this
 works in a cluster of one as well, but likely slower.</p>
 </div>
 <div class="listingblock">
@@ -4704,7 +4713,7 @@ very similar but utilizes the standard JRE APIs to do so.
 Java 8 introduced the concept of a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html">Stream</a>,
 which allows functional-style operations on collections rather than having to procedurally
 iterate over the data yourself. Stream operations can be implemented in a fashion very
-similar to MapReduce. Streams, just like MapReduce allow you to perform processing
+similar to MapReduce. Streams, like MapReduce, allow you to perform processing
 upon the entirety of your cache, possibly a very large data set, but in an efficient way.</p>
 </div>
 <div class="admonitionblock note">
@@ -4722,7 +4731,7 @@ upon the entirety of your cache, possibly a very large data set, but in an effic
 </table>
 </div>
 <div class="paragraph">
-<p>Also, since we can control how the entries are iterated upon, we can more efficiently perform the operations in a cache that is distributed if you want it to perform all the operations across the cluster concurrently.</p>
+<p>Also, since Infinispan can control how the entries are iterated upon, it can more efficiently perform the operations in a distributed cache, allowing all the operations across the cluster to run concurrently.</p>
 </div>
 <div class="paragraph">
 <p>A stream is retrieved from the <a href="../../apidocs/org/infinispan/Cache.html#entrySet--">entrySet</a>,
@@ -4786,9 +4795,9 @@ method on the <code>CacheStream</code>.  This is applied after the key filter bu
 <div class="sect3">
 <h4 id="localinvalidation"><a class="anchor" href="#localinvalidation"></a>8.1.4. Local/Invalidation</h4>
 <div class="paragraph">
-<p>A stream used with a local or invalidation cache can be used just the same way you would use a stream on a
+<p>A stream used with a local or invalidation cache can be used the same way you would use a stream on a
 regular collection. Infinispan handles all the translations, if necessary, behind the scenes and works with all
-the more interesting options (i.e. storeAsBinary and a cache loader).  Only data local to
+the more interesting options (that is, storeAsBinary and a cache loader).  Only data local to
 the node where the stream operation is performed will be used, for example, invalidation only uses local entries.</p>
 </div>
 </div>
@@ -4823,9 +4832,9 @@ data on each node.</p>
 </div>
 <div class="paragraph">
 <p>When you are utilizing a distributed cache, the data can be reshuffled between nodes when a
-new node joins or leaves. Distributed Streams handle this reshuffling of data automatically so you don&#8217;t
+new node joins or leaves. Distributed Streams handle this reshuffling of data automatically so you do not
 have to worry about monitoring when nodes leave or join the cluster.
-Reshuffled entries may be processed a second time, and we keep track of the processed entries at the
+Reshuffled entries may be processed a second time, and Infinispan keeps track of the processed entries at the
 key level or at the segment level (depending on the terminal operation) to limit the amount of
 duplicate processing.</p>
 </div>
@@ -4833,7 +4842,7 @@ duplicate processing.</p>
 <p>It is possible, but highly discouraged, to disable rehash awareness on the stream.  This should only be considered if
 your request can handle only seeing a subset of data if a rehash occurs.  This can be done by invoking
 <a href="../../apidocs/org/infinispan/CacheStream.html#disableRehashAware--">CacheStream.disableRehashAware()</a>
-The performance gain for most operations when a rehash doesn&#8217;t occur is completely negligible.
+The performance gain for most operations when a rehash does not occur is completely negligible.
 The only exceptions are for iterator and forEach, which will use less memory, since they do not have
 to keep track of processed keys.</p>
 </div>
@@ -4857,17 +4866,17 @@ Please rethink disabling rehash awareness unless you really know what you are do
 operations to be sent to the other nodes.</p>
 </div>
 <div class="paragraph">
-<p>The simplest way is to use a CacheStream instance and use a lambda just as you would normally.
+<p>The simplest way is to use a CacheStream instance and use a lambda as you would normally.
 Infinispan overrides all the various Stream intermediate and terminal methods to take
-Serializable versions of the arguments (i.e. SerializableFunction, SerializablePredicate, etc.)
+Serializable versions of the arguments (that is, SerializableFunction, SerializablePredicate, and similar)
 You can find these methods at
 <a href="../../apidocs/org/infinispan/CacheStream.html">CacheStream</a>.
 This relies on the spec to pick the most specific method as defined <a href="https://docs.oracle.com/javase/specs/jls/se8/html/jls-15.html#jls-15.12.2.5">here</a>.</p>
 </div>
 <div class="paragraph">
-<p>In our previous example, we used a <code>Collector</code> to collect all the results into a <code>Map</code>.
+<p>In the previous example, a <code>Collector</code> was used to collect all the results into a <code>Map</code>.
 Unfortunately, the <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Collectors.html">Collectors</a>
-class doesn&#8217;t produce Serializable instances.  Thus, if you need to use these, there are two ways to do so:</p>
+class does not produce Serializable instances.  Thus, if you need to use these, there are two ways to do so:</p>
 </div>
 <div class="paragraph">
 <p>One option would be to use the
@@ -5037,8 +5046,8 @@ interface, the <code>injectCache</code> method must be invoked before the accept
 <div class="sect3">
 <h4 id="distributed_stream_execution"><a class="anchor" href="#distributed_stream_execution"></a>8.1.10. Distributed Stream execution</h4>
 <div class="paragraph">
-<p>Distributed streams execution works in a fashion very similar to MapReduce.  Except, in this case, we are sending zero to many intermediate operations
-(map, filter etc.) and a single terminal operation to the various nodes.  The operation comes down to the following:</p>
+<p>Distributed streams execution works in a fashion very similar to MapReduce.  Except, in this case, zero to many intermediate operations are sent
+(map, filter, and others) and a single terminal operation to the various nodes.  The operation comes down to the following:</p>
 </div>
 <div class="olist arabic">
 <ol class="arabic">
@@ -5093,12 +5102,12 @@ stopping remote and local operations once the final result is known.</p>
 <dd>
 <p>The <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#collect-java.util.stream.Collector-">collect</a>
 method is interesting, in that it can do a few extra steps.  The remote node performs
-everything as normal, except it doesn&#8217;t perform the final
+everything as normal, except it does not perform the final
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Collector.html#finisher--">finisher</a>
 upon the result and instead sends back the fully combined results.  The local thread
 then <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Collector.html#combiner--">combines</a>
 the remote and local result into a value which is then finally finished.  The key
-here to remember is that the final value doesn&#8217;t have to be serializable, but rather
+here to remember is that the final value does not have to be serializable, but rather
 the values produced from the <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Collector.html#supplier--">supplier</a>
 and <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Collector.html#combiner--">combiner</a>
 methods.</p>
@@ -5106,12 +5115,12 @@ methods.</p>
 <dt class="hdlist1">count</dt>
 <dd>
 <p>The <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#count--">count</a>
-method just adds the numbers together from each node.</p>
+method adds the numbers together from each node.</p>
 </dd>
 <dt class="hdlist1">findAny findFirst</dt>
 <dd>
 <p>The <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#findAny--">findAny</a>
-operation returns just the first value they find, whether it was from a remote node
+operation returns the first value found, whether it was from a remote node
 or locally.  Note this supports early termination in that once a value is found it
 will not process others.  Note that, the findFirst method is special since it requires a sorted
 intermediate operation, which is detailed in the
@@ -5129,7 +5138,7 @@ reduction is performed locally to ensure only the min or max across all nodes is
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#reduce-T-java.util.function.BinaryOperator-">2</a> ,
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/stream/Stream.html#reduce-U-java.util.function.BiFunction-java.util.function.BinaryOperator-">3</a> will end up serializing
 the result as much as the accumulator can do.  Then it will accumulate the local and remote results together locally, before combining if you have provided that.  Note that, this means
-a value coming from the combiner doesn&#8217;t have to be Serializable.</p>
+a value coming from the combiner does not have to be Serializable.</p>
 </dd>
 </dl>
 </div>
@@ -5141,7 +5150,7 @@ a value coming from the combiner doesn&#8217;t have to be Serializable.</p>
 <a href="../../apidocs/org/infinispan/CacheStream.html#spliterator--">spliterator</a>
 and <a href="../../apidocs/org/infinispan/CacheStream.html#forEach-java.util.function.Consumer-">forEach</a>
 are unlike the other terminal operators in that the rehash awareness has to keep
-track of what keys per segment have been processed instead of just segments.  This is needed
+track of what keys per segment have been processed instead of only segments.  This is needed
 to guarantee an exactly once (iterator &amp; spliterator) or at least once behavior (forEach)
 even under cluster membership changes.</p>
 </div>
@@ -5160,7 +5169,7 @@ already to reduce chances of processing the same entry again.  Unfortunately, th
 to have an at least once behavior when a node goes down unexpectedly.  In this case, that node could have
 been processing a batch and not yet completed one and those entries that were processed but not
 in a completed batch will be ran again when the rehash failure operation occurs.  Note that, adding a
-node will not cause this issue as the rehash failover doesn&#8217;t occur until all responses are received.</p>
+node will not cause this issue as the rehash failover does not occur until all responses are received.</p>
 </div>
 <div class="paragraph">
 <p>These operations' batch sizes are both controlled by the same value which can be configured by invoking
@@ -5225,8 +5234,8 @@ Then, finally all of those results have a distinct operation performed upon them
 </div>
 <div class="paragraph">
 <p>Word count is a classic, if overused, example
-of MapReduce paradigm. Assume we have a mapping of key &#8594; sentence stored on
-Infinispan nodes. Key is a String, each sentence is also a String, and we have
+of MapReduce paradigm. Assume you have a mapping of key &#8594; sentence stored on
+Infinispan nodes. Key is a String, each sentence is also a String, and you need
 to count occurrence of all words in all sentences available. The implementation
 of such a distributed task could be defined as follows:</p>
 </div>
@@ -5274,12 +5283,12 @@ of such a distributed task could be defined as follows:</p>
 <p>In this case, it is pretty simple to do the word count from the previous example.</p>
 </div>
 <div class="paragraph">
-<p>However, what if we want to find the most frequent word in the example?  If you take a second
+<p>However, what if you want to find the most frequent word in the example?  If you take a second
 to think about this case, you will realize you need to have all words counted  and available
-locally first. Thus, we actually have a few options.</p>
+locally first. Thus, there are actually a few options.</p>
 </div>
 <div class="paragraph">
-<p>We could use a finisher on the collector, which is invoked on the user thread
+<p>You could use a finisher on the collector, which is invoked on the user thread
 after all the results have been collected.
 Some redundant lines have been removed from the previous example.</p>
 </div>
@@ -5310,12 +5319,12 @@ Some redundant lines have been removed from the previous example.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>Unfortunately, the last step is only going to be ran in a single thread, which if we have a lot of
+<p>Unfortunately, the last step is only going to be ran in a single thread, which if there are a lot of
 words, could be quite slow.  Maybe there is another way to parallelize this with Streams.</p>
 </div>
 <div class="paragraph">
-<p>We mentioned before we are in the local node after processing, so we could actually use
-a stream on the map results.  We can therefore use a parallel stream on the results.</p>
+<p>As mentioned before, the processing is on the local node after collection, so you could actually use
+a stream on the map results.  You can therefore use a parallel stream on the results.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -5355,11 +5364,11 @@ a specific word.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>If we carefully note what is serialized and what is not, we notice that only the word along
+<p>If you carefully note what is serialized and what is not, you notice that only the word along
 with the operations are serialized across to other nods as it is captured by the lambda.
 However, the real saving piece is that the cache operation is performed on the primary
 owner, thus reducing the amount of network traffic required to remove these values from the
-cache. The cache is not captured by the lambda, as we provide a special BiConsumer method
+cache. The cache is not captured by the lambda, as Infinispan provides a special BiConsumer method
 override that when invoked on each node passes the cache to the BiConsumer.</p>
 </div>
 <div class="paragraph">
@@ -5367,14 +5376,14 @@ override that when invoked on each node passes the cache to the BiConsumer.</p>
 stream obtains no locks. The cache remove operation will still obtain locks naturally, but
 the value could have changed from what the stream saw. That means that the entry could
 have been changed after the stream read it but the remove actually removed it.
-We have specifically added a new variant which is called <code>LockedStream</code> to address this.</p>
+Infinispan has specifically added a new variant which is called <code>LockedStream</code> to address this.</p>
 </div>
 <div class="paragraph">
 <p><strong>Plenty of other examples</strong></p>
 </div>
 <div class="paragraph">
 <p>The <code>Streams</code> API is a JRE tool and there are lots of examples for using it.
-Just remember that your operations need to be Serializable in some way.</p>
+Remember that your operations need to be Serializable in some way.</p>
 </div>
 </div>
 </div>
@@ -6089,7 +6098,7 @@ Oihana is a girl name</code></pre>
 </div>
 <div class="paragraph">
 <div class="title">CompletableFuture&lt;Collection&lt;V&gt;&gt; get(K key)</div>
-<p>Asynchronous that returns a view collection of the values associated with key in this multimap cache, if any. Any changes to the retrieved collection won&#8217;t change the values in this multimap cache.
+<p>Asynchronous that returns a view collection of the values associated with key in this multimap cache, if any. Any changes to the retrieved collection do not change the values in this multimap cache.
 When this method returns an empty collection, it means the key was not found.</p>
 </div>
 <div class="paragraph">
@@ -6118,7 +6127,7 @@ When this method returns an empty collection, it means the key was not found.</p
 </div>
 <div class="paragraph">
 <div class="title">CompletableFuture&lt;Long&gt; size()</div>
-<p>Asynchronous that returns the number of key-value pairs in the multimap cache. It doesn&#8217;t return the distinct number of keys.</p>
+<p>Asynchronous that returns the number of key-value pairs in the multimap cache. It does not return the distinct number of keys.</p>
 </div>
 <div class="paragraph">
 <div class="title">boolean supportsDuplicates()</div>
@@ -6280,7 +6289,7 @@ is temporary.
 <h4 id="read_only_map_api"><a class="anchor" href="#read_only_map_api"></a>13.1.4. Read-Only Map API</h4>
 <div class="paragraph">
 <p>Read-only operations have the advantage that no locks are acquired
-for the duration of the operation. Here&#8217;s an example on how to the
+for the duration of the operation. The following is an example on how to perform the
 equivalent operation for
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/Map.html#get-java.lang.Object-">Map.get(K)</a>:</p>
 </div>
@@ -6331,22 +6340,22 @@ method returns the key for which this function is being executed.</p>
 <p><a href="../../apidocs/org/infinispan/functional/EntryView.ReadEntryView.html#find()"><code>find()</code></a>
 returns an <code>Optional</code> wrapping the value if present,
 otherwise it returns an empty optional. Unless the value is guaranteed to
-be associated with the key, it&#8217;s recommended to use <code>find()</code> to verify
-whether there&#8217;s a value associated with the key.</p>
+be associated with the key, it is recommended to use <code>find()</code> to verify
+whether there is a value associated with the key.</p>
 </li>
 <li>
 <p><a href="../../apidocs/org/infinispan/functional/EntryView.ReadEntryView.html#get()"><code>get()</code></a>
 returns the value associated with the key. If the key has no value
 associated with it, calling <code>get()</code> throws a <code>NoSuchElementException</code>.
 <code>get()</code> can be considered as a shortcut of <code>ReadEntryView.find().get()</code>
-which should be used only when the caller has guarantees that there&#8217;s
+which should be used only when the caller has guarantees that there is
 definitely a value associated with the key.</p>
 </li>
 <li>
 <p><a href="../../apidocs/org/infinispan/functional/MetaParam.Lookup.html#findMetaParam(java.lang.Class)"><code>findMetaParam(Class&lt;T&gt; type)</code></a>
 allows metadata parameter information
 associated with the cache entry to be looked up, for example: entry
-lifespan, last  accessed time&#8230;&#8203;etc.
+lifespan, and last accessed time.
 See <a href="#meta_parameter">Metadata Parameter Handling</a> to find out more.</p>
 </li>
 </ul>
@@ -6464,7 +6473,7 @@ parameters associated with this key.</p>
 <div class="sect3">
 <h4 id="read_write_map_api"><a class="anchor" href="#read_write_map_api"></a>13.1.6. Read-Write Map API</h4>
 <div class="paragraph">
-<p>The final type of operations we have are read-write operations, and within
+<p>The final type of operations are read-write operations, and within
 this category CAS-like (Compare-And-Swap) operations can be found.
 This type of operations require previous value associated with the key
 to be read and for locks to be acquired before executing the function.
@@ -6472,7 +6481,7 @@ The vast majority of operations within
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/ConcurrentMap.html"><code>ConcurrentMap</code></a>
 and
 <a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java"><code>JCache</code></a>
-APIs fall within this category, and they can easily be implemented using the
+APIs fall within this category, and they can be implemented using the
 <a href="../../apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html">read-write map API</a>
 . Moreover, with
 <a href="../../apidocs/org/infinispan/functional/FunctionalMap.ReadWriteMap.html">read-write map API</a>
@@ -6504,10 +6513,10 @@ readWriteFuture.thenAccept(System.out::println);</code></pre>
 <div class="paragraph">
 <p><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/ConcurrentMap.html#replace-K-V-V-"><code>ConcurrentMap.replace(K, V, V)</code></a>
 is a replace function that compares the
-value present in the map and if it&#8217;s equals to the value passed in as
+value present in the map and if it is equal to the value passed in as
 first parameter, the second value is stored, returning a boolean
 indicating whether the replace was successfully completed. This operation
-can easily be implemented using the read-write map API:</p>
+can be implemented using the read-write map API:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -6565,10 +6574,8 @@ and <a href="#write_only_entry_view">write-only entry views</a>.</p>
 <div class="paragraph">
 <p><a href="../../apidocs/org/infinispan/functional/MetaParam.html">Metadata parameters</a>
 provide extra information about the cache entry, such
-as version information, lifespan, last accessed/used time, etc. Some of
-these can be provided by the user, e.g. version, lifespan, etc., but some
-others are computed internally and can only be queried, e.g. last
-accessed/used time.</p>
+as version information, lifespan, and last accessed/used time.
+Some of these can be provided by the user, such as version and lifespan, but others are computed internally and can only be queried, such as last accessed/used time.</p>
 </div>
 <div class="paragraph">
 <p>The functional map API provides a flexible way to store metadata parameters
@@ -6691,7 +6698,7 @@ CompletableFuture&lt;Void&gt; removeFuture = skiPersistMap.eval("key1", WriteEnt
 </div>
 </div>
 <div class="paragraph">
-<p>Note that there&#8217;s no need for another <a href="../../apidocs/org/infinispan/functional/Param.PersistenceMode.html"><code>Param.PersistenceMode</code></a> option to skip
+<p>Note that there is no need for another <a href="../../apidocs/org/infinispan/functional/Param.PersistenceMode.html"><code>Param.PersistenceMode</code></a> option to skip
 reading from the persistence store, because a write operation can skip
 reading previous value from the store by calling a write-only operation
 via the <a href="../../apidocs/org/infinispan/functional/FunctionalMap.WriteOnlyMap.html">WriteOnlyMap</a>.</p>
@@ -6725,7 +6732,7 @@ that happen in either a read-write or write-only functional map.</p>
 </div>
 <div class="paragraph">
 <p>Listeners for write events cannot distinguish between cache entry
-created and cache entry modify/update events because they don&#8217;t have
+created and cache entry modify/update events because they do not have
 access to the previous value. All they know is that a new non-null
 entry has been written.</p>
 </div>
@@ -6853,7 +6860,7 @@ modifyClose.close();</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>If listening for two or more event types, it&#8217;s better to pass in an
+<p>If listening for two or more event types, it is better to pass in an
 implementation of
 <a href="../../apidocs/org/infinispan/functional/Listeners.WriteListeners.WriteListener.html"><code>ReadWriteListener</code></a>
 interface via the
@@ -6937,7 +6944,7 @@ CompletableFuture&lt;Void&gt; writeFuture = writeOnlyMap.eval("key1", function);
 <div class="paragraph">
 <p>Infinispan provides overloads for all functional methods that make lambdas
 passed directly to the API serializable by default; the compiler automatically selects
-this overload if that&#8217;s possible. Therefore you can call</p>
+this overload if that is possible. Therefore you can call</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -7018,11 +7025,11 @@ future.thenAccept(stored -&gt; System.out.printf("Value was put? %s%n", stored))
 <h4 id="use_cases_for_functional_api"><a class="anchor" href="#use_cases_for_functional_api"></a>13.1.11. Use Cases for Functional API</h4>
 <div class="paragraph">
 <p>This new API is meant to complement existing Key/Value Infinispan API
-offerings, so you&#8217;ll still be able to use
+offerings, so you can still use
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java/util/concurrent/ConcurrentMap.html"><code>ConcurrentMap</code></a>
 or
 <a href="https://github.com/jsr107/jsr107spec/blob/v1.0.0/src/main/java/javax/cache/Cache.java"><code>JCache</code></a>
-standard APIs if that&#8217;s what suits your use case best.</p>
+standard APIs if that is what suits your use case best.</p>
 </div>
 <div class="paragraph">
 <p>The target audience for this new API is either:</p>
@@ -7119,7 +7126,7 @@ and values can stay on the anchor owner, minimizing the amount of traffic.</p>
 <dl>
 <dt class="hdlist1">Only one node can be added at a time</dt>
 <dd>
-<p>An external actor (e.g. a Kubernetes/OpenShift operator, or a human administrator)
+<p>An external actor (for example, a Kubernetes/OpenShift operator, or a human administrator)
 must monitor the load on the current nodes, and add a new node whenever the newest node
 is close to "full".</p>
 </dd>
@@ -7241,7 +7248,7 @@ merge policy is configured automatically and cannot be changed.</p>
 <p>Cluster listeners and client listeners are implemented and receive the correct notifications.</p>
 </div>
 <div class="paragraph">
-<p>Non-clustered embedded listeners currently receive notifications on all the nodes, not just the node
+<p>Non-clustered embedded listeners currently receive notifications on all the nodes, not only the node
 where the value is stored.</p>
 </div>
 </div>
@@ -7259,7 +7266,7 @@ where the value is stored.</p>
 to all the other nodes, which is currently done with <code>N-1</code> unicast RPCs.</p>
 </div>
 <div class="paragraph">
-<p>In theory we could send in parallel one unicast RPC for the value and one multicast RPC for the address,
+<p>In theory it would be possible to send in parallel one unicast RPC for the value and one multicast RPC for the address,
 but that would need additional logic to ignore the address on the anchor owner
 and with TCP multicast RPCs are implemented as parallel unicasts anyway.</p>
 </div>
@@ -7281,9 +7288,9 @@ contains copies of all the keys and their locations, plus the overhead of the ca
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-The number of entries not yet inserted is obviously very hard to estimate.
-In the future we may provide a way to limit the overhead of key location information,
-e.g. by using a distributed cache.
+The number of entries not yet inserted is very hard to estimate.
+In the future Infinispan may provide a way to limit the overhead of key location information,
+for example, by using a distributed cache.
 </td>
 </tr>
 </table>
@@ -7314,7 +7321,7 @@ But for small values, there may not be a visible improvement.</p>
 </div>
 <div class="paragraph">
 <p>The initial state transfer does not block a joiner from starting,
-because it will just ask another node for the anchor owner.
+because it asks another node for the anchor owner.
 However, the remote lookups can be expensive, especially in embedded mode,
 but also in server mode, if the client is not <code>HASH_DISTRIBUTION_AWARE</code>.</p>
 </div>
@@ -7380,7 +7387,7 @@ for a detail example on how to implement this.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-03-24 14:33:57 UTC
+Last updated 2026-04-30 06:40:56 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>

@@ -43,7 +43,7 @@ loadScripts(document, 'script');</script>
 <li><a href="../../../../search.html">Search</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
-<div class="about-language">Infinispan 16.2.0.Dev01</div>
+<div class="about-language">Infinispan 16.2.0.Dev02</div>
 </div>
 </div>
 <div class="sub-nav">
@@ -114,7 +114,25 @@ implements <a href="Hash.html" title="interface in org.infinispan.commons.hash">
 <p>
 Only implementing x64 version, because this should always be faster on 64 bit
 native processors, even 64 bit being ran with a 32 bit OS; this should also
-be as fast or faster than the x86 version on some modern 32 bit processors.</div>
+be as fast or faster than the x86 version on some modern 32 bit processors.
+<p>
+<b>Note:</b> This implementation was ported from an early pre-release draft of
+MurmurHash3 (circa late 2010) and differs from the finalized version in several ways:
+<ul>
+   <li>h1/h2 are initialized by XORing the seed with magic constants
+       (<code>0x9368e53c2f6af274</code> and <code>0x586dcd208f7cd3fd</code>),
+       whereas the final version initializes both to <code>seed</code>.</li>
+   <li>c1/c2 are mutated each round (<code>c = c*5 + additive</code>),
+       whereas the final version keeps them as fixed constants.</li>
+   <li>Rotation amounts differ: this version uses 23/23/41,
+       the final version uses 31/33/27/31.</li>
+   <li>The h1/h2 update uses <code>h*3 + constant</code>,
+       the final version uses <code>h*5 + constant</code>.</li>
+</ul>
+These differences are permanent: the hash function is part of Infinispan's consistent
+hashing protocol and wire format since 5.0. Changing it would break cluster compatibility
+and data distribution. It is <b>not</b> bit-compatible with the canonical
+<code>MurmurHash3_x64_128</code>.</div>
 <dl class="notes">
 <dt>Since:</dt>
 <dd>5.0</dd>
@@ -497,7 +515,7 @@ mechanism of hash calculation after considering the type of the object
 </ul>
 </section>
 <!-- ========= END OF CLASS DATA ========= -->
-<footer role="contentinfo">
+<footer>
 <hr>
 <p class="legal-copy"><small>Copyright © 2009–2026 <a href="https://infinispan.org">infinispan.org</a>. All rights reserved.</small></p>
 </footer>
