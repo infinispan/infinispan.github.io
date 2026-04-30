@@ -1,0 +1,383 @@
+---
+layout: blog
+title: "Vector search quickstart with Infinispan"
+permalink: /blog/:year/:month/:day/vector-search-quickstart
+date: '2026-04-30T00:00:00.000-00:00'
+author: ttarrant
+tags: [ "vector", "knn", "embeddings", "tutorial" ]
+---
+
+= Vector search quickstart with Infinispan
+
+Vector databases have become essential building blocks for AI-powered applications.
+They let you store unstructured data — text, images, audio — as numerical embeddings that capture semantic meaning, and then find similar items using nearest-neighbour search.
+
+Infinispan has supported vector search since version 15, and it does so with a distinctive approach: your data model is defined through *ProtoStream annotations* that generate Protobuf schemas automatically, your queries use the *Ickle query language* that seamlessly combines relational filters, full-text search, and kNN vector predicates, and your schemas can *evolve over time* without breaking existing clients.
+
+This quickstart walks through a complete example — from defining a data model to running hybrid vector+metadata queries — using a catalogue of beers as our dataset.
+If the beer names look familiar, that's because every Infinispan release is named after a beer.
+
+== Defining the data model
+
+In Infinispan, entity classes are plain Java records (or POJOs) annotated with ProtoStream and indexing annotations.
+These annotations serve double duty: they define the Protobuf serialization schema *and* the search index mapping in a single place.
+
+Here is our `Beer` entity:
+
+[source,java]
+----
+@Proto
+@Indexed
+public record Beer(
+   @Keyword(projectable = true, sortable = true)
+   String name,
+
+   @Keyword(projectable = true, normalizer = "lowercase")
+   String style,
+
+   @Keyword(projectable = true, sortable = true, normalizer = "lowercase")
+   String brewery,
+
+   @Keyword(projectable = true, normalizer = "lowercase")
+   String country,
+
+   @Basic(projectable = true, sortable = true)
+   Double abv,
+
+   @Text
+   String description,
+
+   @Vector(dimension = 3, similarity = VectorSimilarity.COSINE)
+   float[] descriptionEmbedding
+) {
+}
+----
+
+A few things to note:
+
+* `@Proto` generates the Protobuf schema from the record fields — no separate `.proto` file to maintain.
+* `@Indexed` enables search indexing for the entity.
+* `@Keyword` fields are stored as exact tokens — ideal for beer names, styles, and brewery names. The `normalizer` option allows case-insensitive matching.
+* `@Text` fields are analyzed with a full-text tokenizer, enabling natural language search across tasting notes and descriptions.
+* `@Vector(dimension = 3, similarity = VectorSimilarity.COSINE)` marks the embedding field for kNN search. The `dimension` must match your vector size — here we use 3 for illustration, but a real embedding model would produce 384 or more dimensions.
+* `@Basic` handles numeric fields like ABV with support for range queries and sorting.
+
+=== Generating the Protobuf schema
+
+ProtoStream generates the schema and the marshaller at compile time.
+All you need is an interface:
+
+[source,java]
+----
+@ProtoSchema(includeClasses = Beer.class, schemaPackageName = "quickstart")
+public interface BeerSchema extends GeneratedSchema {
+   BeerSchema INSTANCE = new BeerSchemaImpl();
+}
+----
+
+The generated `.proto` schema is automatically registered with the server when your client connects.
+This schema can evolve — you can add new fields, deprecate old ones — without breaking clients that are still using the previous version. This is a direct benefit of Protobuf's forwards and backwards compatibility guarantees.
+
+Imagine you later want to add food pairing suggestions or IBU ratings: just add the field to the record, and older clients that don't know about it will continue to work.
+
+== Connecting and storing data
+
+[source,java]
+----
+ConfigurationBuilder builder = new ConfigurationBuilder();
+builder.addServer().host("localhost").port(11222)
+   .security().authentication().username("admin").password("secret");
+
+RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build());
+
+RemoteCache<String, Beer> cache = cacheManager.administration()
+   .getOrCreateCache("beers", new XMLStringConfiguration(
+      "<local-cache>" +
+      "  <indexing storage=\"filesystem\">" +
+      "    <indexed-entities>" +
+      "      <indexed-entity>quickstart.Beer</indexed-entity>" +
+      "    </indexed-entities>" +
+      "  </indexing>" +
+      "</local-cache>"));
+----
+
+Now let's populate the cache with some beers — all named after Infinispan releases.
+
+In a production application you would generate embeddings from a model such as `all-MiniLM-L6-v2` (384 dimensions).
+For this quickstart we use hand-crafted 3-dimensional vectors where each axis captures a flavour profile: *dark/roasty*, *light/crisp*, and *hoppy/craft*.
+Beers of similar style naturally cluster together in this space — stouts near `[1, 0, 0]`, lagers near `[0, 1, 0]`, IPAs near `[0, 0, 1]` — so kNN queries return intuitive results.
+
+[source,java]
+----
+cache.put("beer:1", new Beer(
+   "Guinness", "Stout", "Guinness Brewery", "Ireland", 4.2,
+   "A rich, creamy stout with deep roasted barley flavours, hints of coffee and chocolate, and a velvety smooth finish.",
+   new float[]{0.95f, 0.05f, 0.10f}
+));
+
+cache.put("beer:2", new Beer(
+   "Delirium", "Belgian Strong Ale", "Brouwerij Huyghe", "Belgium", 8.5,
+   "A complex strong blonde ale with fruity esters, spicy phenols, and a warming alcohol presence balanced by a dry finish.",
+   new float[]{0.30f, 0.30f, 0.70f}
+));
+
+cache.put("beer:3", new Beer(
+   "Estrella Galicia", "Lager", "Hijos de Rivera", "Spain", 5.5,
+   "A crisp European lager with a balanced malt backbone, mild hop bitterness, and a clean refreshing finish.",
+   new float[]{0.10f, 0.90f, 0.15f}
+));
+
+cache.put("beer:4", new Beer(
+   "Mahou", "Pilsner", "Mahou San Miguel", "Spain", 5.5,
+   "A golden pilsner with delicate floral hop aromas, light biscuity malt, and a bright effervescent character.",
+   new float[]{0.05f, 0.85f, 0.25f}
+));
+
+cache.put("beer:5", new Beer(
+   "Corona Extra", "Pale Lager", "Grupo Modelo", "Mexico", 4.5,
+   "A light, easy-drinking pale lager with subtle sweetness, a hint of citrus, and a crisp dry finish best enjoyed ice-cold.",
+   new float[]{0.05f, 0.95f, 0.10f}
+));
+
+cache.put("beer:6", new Beer(
+   "Tactical Nuclear Penguin", "Imperial Stout", "BrewDog", "Scotland", 32.0,
+   "An extreme imperial stout aged in whisky casks, intensely smoky with dark chocolate, coffee, and dried fruit notes.",
+   new float[]{0.98f, 0.02f, 0.20f}
+));
+
+cache.put("beer:7", new Beer(
+   "Brahma", "Lager", "Ambev", "Brazil", 4.3,
+   "A light Brazilian lager, smooth and mildly sweet, brewed for easy drinking in warm weather.",
+   new float[]{0.05f, 0.92f, 0.05f}
+));
+
+cache.put("beer:8", new Beer(
+   "Radegast", "Czech Lager", "Radegast Brewery", "Czech Republic", 5.0,
+   "A traditional Czech lager with a prominent Saaz hop aroma, bready malt character, and a crisp bitter finish.",
+   new float[]{0.15f, 0.80f, 0.30f}
+));
+
+cache.put("beer:9", new Beer(
+   "Turia", "Märzen", "Turia Brewery", "Spain", 5.4,
+   "A toasted amber märzen from Valencia with caramel malt sweetness, a nutty aroma, and a smooth medium body.",
+   new float[]{0.60f, 0.40f, 0.15f}
+));
+
+cache.put("beer:10", new Beer(
+   "Hoptimus Prime", "IPA", "Hoptimus Brewing", "USA", 7.5,
+   "An aggressively hopped American IPA bursting with tropical fruit, pine resin, and grapefruit citrus over a sturdy malt backbone.",
+   new float[]{0.10f, 0.15f, 0.95f}
+));
+
+cache.put("beer:11", new Beer(
+   "Pagoa", "Basque Ale", "Pagoa Brewery", "Spain", 5.0,
+   "A craft ale from the Basque Country with earthy hops, a light fruity character, and a balanced malty sweetness.",
+   new float[]{0.25f, 0.35f, 0.60f}
+));
+----
+
+== Querying with Ickle
+
+Before we get to vector search, let's look at what Ickle can do with traditional queries.
+This is where Infinispan stands out: you don't need to learn a separate query syntax for metadata filters and vector search — Ickle handles both.
+
+=== Full-text search
+
+Find beers whose description mentions "chocolate":
+
+[source,java]
+----
+Query<Beer> query = cache.query(
+   "from quickstart.Beer b where b.description : 'chocolate'");
+List<Beer> results = query.list();
+// Returns: Guinness, Tactical Nuclear Penguin
+----
+
+=== Keyword and range filters
+
+Find session beers (under 5% ABV) from Spain:
+
+[source,java]
+----
+Query<Beer> query = cache.query(
+   "from quickstart.Beer b where b.country = 'Spain' and b.abv < 5.0");
+List<Beer> results = query.list();
+----
+
+=== Projections and sorting
+
+Select specific fields and sort by ABV — a good way to build a menu card:
+
+[source,java]
+----
+Query<Object[]> query = cache.query(
+   "select b.name, b.style, b.brewery, b.abv from quickstart.Beer b " +
+   "where b.country = 'Spain' order by b.abv");
+List<Object[]> results = query.list();
+// Turia (5.4), Estrella Galicia (5.5), Mahou (5.5), Pagoa (5.0)
+----
+
+== Vector search (kNN)
+
+Now for the main event.
+Vector search in Ickle uses the `+<->+` operator to express a kNN predicate: find the _k_ nearest neighbours of a given vector.
+
+=== Basic kNN query
+
+Find the 3 beers closest to the "dark roasty" end of our flavour space:
+
+[source,java]
+----
+Query<Beer> query = cache.query(
+   "from quickstart.Beer b where b.descriptionEmbedding <-> [:v]~:k");
+query.setParameter("v", new float[]{0.9f, 0.1f, 0.1f});
+query.setParameter("k", 3);
+
+List<Beer> results = query.list();
+// Returns: Guinness, Tactical Nuclear Penguin, Turia
+----
+
+Both the vector and _k_ are parameterised — you don't need to interpolate values into the query string.
+
+=== Score projection
+
+To see how close each result is to the query vector, project the score:
+
+[source,java]
+----
+Query<Object[]> query = cache.query(
+   "select b.name, b.style, score(b) from quickstart.Beer b " +
+   "where b.descriptionEmbedding <-> [:v]~:k");
+query.setParameter("v", new float[]{0.05f, 0.9f, 0.1f});
+query.setParameter("k", 3);
+
+List<Object[]> results = query.list();
+for (Object[] row : results) {
+   System.out.printf("%-30s %-20s score=%.4f%n", row[0], row[1], row[2]);
+}
+// Corona Extra  score=1.0000
+// Brahma        score=0.9992
+// Estrella      score=0.9985
+----
+
+== Hybrid queries: vector + metadata
+
+This is where Ickle really shines.
+You can combine kNN search with any classic predicate — keyword matches, range filters, full-text search — using a `filtering` clause.
+
+=== "Something like a lager, but not too strong"
+
+Find the 3 beers closest to the "light crisp" vector, but only lagers under 5% ABV:
+
+[source,java]
+----
+Query<Object[]> query = cache.query(
+   "select score(b), b.name, b.style, b.abv from quickstart.Beer b " +
+   "where b.descriptionEmbedding <-> [:v]~:k " +
+   "filtering (b.style = 'Lager' and b.abv < 5.0)");
+query.setParameter("v", new float[]{0.05f, 0.95f, 0.05f});
+query.setParameter("k", 3);
+
+List<Object[]> results = query.list();
+// Returns: Brahma (4.3%)
+----
+
+=== Vector search filtered by country
+
+Find beers from Spain closest to a "toasted malty" profile:
+
+[source,java]
+----
+Query<Object[]> query = cache.query(
+   "select score(b), b.name, b.style, b.abv from quickstart.Beer b " +
+   "where b.descriptionEmbedding <-> [:v]~:k filtering b.country = 'Spain'");
+query.setParameter("v", new float[]{0.7f, 0.3f, 0.1f});
+query.setParameter("k", 3);
+
+List<Object[]> results = query.list();
+// Returns: Turia (0.99), Pagoa (0.80), Estrella Galicia (0.75)
+----
+
+=== Combining full-text and vector search
+
+Find beers whose descriptions mention "citrus" and are closest to the "hoppy craft" vector:
+
+[source,java]
+----
+Query<Object[]> query = cache.query(
+   "select score(b), b.name, b.brewery, b.abv from quickstart.Beer b " +
+   "where b.descriptionEmbedding <-> [:v]~:k " +
+   "filtering b.description : 'citrus'");
+query.setParameter("v", new float[]{0.1f, 0.1f, 0.95f});
+query.setParameter("k", 5);
+
+List<Object[]> results = query.list();
+// Returns: Hoptimus Prime (0.9993), Corona Extra (0.6061)
+----
+
+The filtering clause accepts any valid Ickle predicate — including boolean combinations with `and` / `or` — so you can build arbitrarily complex filters. The filter is applied *before* the kNN search, narrowing the candidate set.
+
+== Why Infinispan for vector search?
+
+If you're evaluating vector databases, here is what sets Infinispan apart:
+
+*Unified query language.*
+Ickle gives you relational queries, full-text search, and vector kNN search in a single language.
+No need for a separate "search module" with its own syntax — the same `cache.query(...)` call handles everything.
+
+*Type-safe data modelling.*
+ProtoStream annotations let you define your schema, serialization, and index mappings in one place.
+The Protobuf schema is generated at compile time, so schema mismatches are caught before they reach production.
+
+*Schema evolution.*
+Protobuf's compatibility guarantees mean you can add new fields (like a vector embedding column) to an existing entity without breaking older clients.
+Roll out vector search incrementally — existing applications keep working while new ones start populating and querying the embedding field.
+
+*Distributed by design.*
+kNN queries work across a distributed cluster.
+Infinispan scatters data across nodes and fans out vector searches in parallel, merging results transparently.
+
+*Multiple access protocols.*
+The same indexed cache is accessible via Hot Rod (Java, C#, JS, Python), REST, and the RESP (Redis-compatible) protocol.
+Your vector search investment is not locked into a single client ecosystem.
+
+== Tuning vector indexing
+
+The `@Vector` annotation exposes HNSW graph parameters that let you trade indexing speed for search accuracy.
+These become important with real embedding models where the dimension is much larger (e.g. 384 or 768):
+
+[source,java]
+----
+@Vector(
+   dimension = 384,                         // match your embedding model
+   similarity = VectorSimilarity.COSINE,
+   beamWidth = 512,                         // graph construction quality (default: 512)
+   maxConnections = 16                      // neighbours per node (default: 16, range: 2-100)
+)
+float[] descriptionEmbedding;
+----
+
+* *`beamWidth`* (efConstruction): higher values build a more accurate graph at the cost of slower indexing.
+* *`maxConnections`* (m): controls memory consumption and search precision. Stay in the 2–100 range.
+* *`similarity`*: choose from `L2` (default, euclidean), `COSINE`, `INNER_PRODUCT`, or `MAX_INNER_PRODUCT` depending on your embedding model's recommendations.
+
+== Run it yourself
+
+A complete runnable version of this quickstart is available in the https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/vector-search[infinispan-simple-tutorials] repository.
+It uses Testcontainers to start an Infinispan server automatically — all you need is Docker and Maven:
+
+[source,bash]
+----
+git clone https://github.com/infinispan/infinispan-simple-tutorials.git
+cd infinispan-simple-tutorials
+mvn -pl infinispan-remote/vector-search compile exec:exec
+----
+
+The tutorial uses the same 3-dimensional hand-crafted vectors shown in this post. To move to a real embedding model, change the `dimension` in `@Vector` and replace the `float[]` literals with vectors from your model — the query patterns stay identical.
+
+== Next steps
+
+* Read the full https://infinispan.org/docs/stable/titles/query/query.html[Query guide] for Ickle syntax details.
+* Explore https://infinispan.org/docs/stable/titles/encoding/encoding.html[ProtoStream encoding] to learn about schema evolution and custom marshallers.
+* Check out the https://infinispan.org/tutorials/[tutorials] for more runnable examples.
+* Join the conversation on https://infinispan.zulipchat.com/[Zulip] or https://github.com/infinispan/infinispan-simple-tutorials/discussions[GitHub Discussions].
