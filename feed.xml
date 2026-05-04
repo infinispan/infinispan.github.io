@@ -1,4 +1,484 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-05-01T00:49:40+00:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Infinispan Joins the OGX Ecosystem as a Vector IO Provider</title><link href="https://infinispan.org/blog/2026/04/17/infinispan-joins-ogx-ecosystem" rel="alternate" type="text/html" title="Infinispan Joins the OGX Ecosystem as a Vector IO Provider" /><published>2026-04-17T10:00:00+00:00</published><updated>2026-04-17T10:00:00+00:00</updated><id>https://infinispan.org/blog/2026/04/17/infinispan-joins-ogx-ecosystem</id><content type="html" xml:base="https://infinispan.org/blog/2026/04/17/infinispan-joins-ogx-ecosystem"><![CDATA[<div id="preamble">
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-05-04T15:29:33+00:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Vector search quickstart with Infinispan</title><link href="https://infinispan.org/blog/2026/04/30/vector-search-quickstart" rel="alternate" type="text/html" title="Vector search quickstart with Infinispan" /><published>2026-04-30T00:00:00+00:00</published><updated>2026-04-30T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/04/30/vector-search-quickstart</id><content type="html" xml:base="https://infinispan.org/blog/2026/04/30/vector-search-quickstart"><![CDATA[<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Vector databases have become essential building blocks for AI-powered applications.
+They let you store unstructured data — text, images, audio — as numerical embeddings that capture semantic meaning, and then find similar items using nearest-neighbour search.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan has supported vector search since version 15, and it does so with a distinctive approach: your data model is defined through <strong>ProtoStream annotations</strong> that generate Protobuf schemas automatically, your queries use the <strong>Ickle query language</strong> that seamlessly combines relational filters, full-text search, and kNN vector predicates, and your schemas can <strong>evolve over time</strong> without breaking existing clients.</p>
+</div>
+<div class="paragraph">
+<p>This quickstart walks through a complete example — from defining a data model to running hybrid vector+metadata queries — using a catalogue of beers as our dataset.
+If the beer names look familiar, that&#8217;s because every Infinispan release is named after a beer.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="defining-the-data-model">Defining the data model</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In Infinispan, entity classes are plain Java records (or POJOs) annotated with ProtoStream and indexing annotations.
+These annotations serve double duty: they define the Protobuf serialization schema <strong>and</strong> the search index mapping in a single place.</p>
+</div>
+<div class="paragraph">
+<p>Here is our <code>Beer</code> entity:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
+@Indexed
+public record Beer(
+   @Keyword(projectable = true, sortable = true)
+   String name,
+
+   @Keyword(projectable = true, normalizer = "lowercase")
+   String style,
+
+   @Keyword(projectable = true, sortable = true, normalizer = "lowercase")
+   String brewery,
+
+   @Keyword(projectable = true, normalizer = "lowercase")
+   String country,
+
+   @Basic(projectable = true, sortable = true)
+   Double abv,
+
+   @Text
+   String description,
+
+   @Vector(dimension = 3, similarity = VectorSimilarity.COSINE)
+   float[] descriptionEmbedding
+) {
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A few things to note:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>@Proto</code> generates the Protobuf schema from the record fields — no separate <code>.proto</code> file to maintain.</p>
+</li>
+<li>
+<p><code>@Indexed</code> enables search indexing for the entity.</p>
+</li>
+<li>
+<p><code>@Keyword</code> fields are stored as exact tokens — ideal for beer names, styles, and brewery names. The <code>normalizer</code> option allows case-insensitive matching.</p>
+</li>
+<li>
+<p><code>@Text</code> fields are analyzed with a full-text tokenizer, enabling natural language search across tasting notes and descriptions.</p>
+</li>
+<li>
+<p><code>@Vector(dimension = 3, similarity = VectorSimilarity.COSINE)</code> marks the embedding field for kNN search. The <code>dimension</code> must match your vector size — here we use 3 for illustration, but a real embedding model would produce 384 or more dimensions.</p>
+</li>
+<li>
+<p><code>@Basic</code> handles numeric fields like ABV with support for range queries and sorting.</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="generating-the-protobuf-schema">Generating the Protobuf schema</h3>
+<div class="paragraph">
+<p>ProtoStream generates the schema and the marshaller at compile time.
+All you need is an interface:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@ProtoSchema(includeClasses = Beer.class, schemaPackageName = "quickstart")
+public interface BeerSchema extends GeneratedSchema {
+   BeerSchema INSTANCE = new BeerSchemaImpl();
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The generated <code>.proto</code> schema is automatically registered with the server when your client connects.
+This schema can evolve — you can add new fields, deprecate old ones — without breaking clients that are still using the previous version. This is a direct benefit of Protobuf&#8217;s forwards and backwards compatibility guarantees.</p>
+</div>
+<div class="paragraph">
+<p>Imagine you later want to add food pairing suggestions or IBU ratings: just add the field to the record, and older clients that don&#8217;t know about it will continue to work.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="connecting-and-storing-data">Connecting and storing data</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
+builder.addServer().host("localhost").port(11222)
+   .security().authentication().username("admin").password("secret");
+
+RemoteCacheManager cacheManager = new RemoteCacheManager(builder.build());
+
+RemoteCache&lt;String, Beer&gt; cache = cacheManager.administration()
+   .getOrCreateCache("beers", new XMLStringConfiguration(
+      "&lt;local-cache&gt;" +
+      "  &lt;indexing storage=\"filesystem\"&gt;" +
+      "    &lt;indexed-entities&gt;" +
+      "      &lt;indexed-entity&gt;quickstart.Beer&lt;/indexed-entity&gt;" +
+      "    &lt;/indexed-entities&gt;" +
+      "  &lt;/indexing&gt;" +
+      "&lt;/local-cache&gt;"));</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now let&#8217;s populate the cache with some beers — all named after Infinispan releases.</p>
+</div>
+<div class="paragraph">
+<p>In a production application you would generate embeddings from a model such as <code>all-MiniLM-L6-v2</code> (384 dimensions).
+For this quickstart we use hand-crafted 3-dimensional vectors where each axis captures a flavour profile: <strong>dark/roasty</strong>, <strong>light/crisp</strong>, and <strong>hoppy/craft</strong>.
+Beers of similar style naturally cluster together in this space — stouts near <code>[1, 0, 0]</code>, lagers near <code>[0, 1, 0]</code>, IPAs near <code>[0, 0, 1]</code> — so kNN queries return intuitive results.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">cache.put("beer:1", new Beer(
+   "Guinness", "Stout", "Guinness Brewery", "Ireland", 4.2,
+   "A rich, creamy stout with deep roasted barley flavours, hints of coffee and chocolate, and a velvety smooth finish.",
+   new float[]{0.95f, 0.05f, 0.10f}
+));
+
+cache.put("beer:2", new Beer(
+   "Delirium", "Belgian Strong Ale", "Brouwerij Huyghe", "Belgium", 8.5,
+   "A complex strong blonde ale with fruity esters, spicy phenols, and a warming alcohol presence balanced by a dry finish.",
+   new float[]{0.30f, 0.30f, 0.70f}
+));
+
+cache.put("beer:3", new Beer(
+   "Estrella Galicia", "Lager", "Hijos de Rivera", "Spain", 5.5,
+   "A crisp European lager with a balanced malt backbone, mild hop bitterness, and a clean refreshing finish.",
+   new float[]{0.10f, 0.90f, 0.15f}
+));
+
+cache.put("beer:4", new Beer(
+   "Mahou", "Pilsner", "Mahou San Miguel", "Spain", 5.5,
+   "A golden pilsner with delicate floral hop aromas, light biscuity malt, and a bright effervescent character.",
+   new float[]{0.05f, 0.85f, 0.25f}
+));
+
+cache.put("beer:5", new Beer(
+   "Corona Extra", "Pale Lager", "Grupo Modelo", "Mexico", 4.5,
+   "A light, easy-drinking pale lager with subtle sweetness, a hint of citrus, and a crisp dry finish best enjoyed ice-cold.",
+   new float[]{0.05f, 0.95f, 0.10f}
+));
+
+cache.put("beer:6", new Beer(
+   "Tactical Nuclear Penguin", "Imperial Stout", "BrewDog", "Scotland", 32.0,
+   "An extreme imperial stout aged in whisky casks, intensely smoky with dark chocolate, coffee, and dried fruit notes.",
+   new float[]{0.98f, 0.02f, 0.20f}
+));
+
+cache.put("beer:7", new Beer(
+   "Brahma", "Lager", "Ambev", "Brazil", 4.3,
+   "A light Brazilian lager, smooth and mildly sweet, brewed for easy drinking in warm weather.",
+   new float[]{0.05f, 0.92f, 0.05f}
+));
+
+cache.put("beer:8", new Beer(
+   "Radegast", "Czech Lager", "Radegast Brewery", "Czech Republic", 5.0,
+   "A traditional Czech lager with a prominent Saaz hop aroma, bready malt character, and a crisp bitter finish.",
+   new float[]{0.15f, 0.80f, 0.30f}
+));
+
+cache.put("beer:9", new Beer(
+   "Turia", "Märzen", "Turia Brewery", "Spain", 5.4,
+   "A toasted amber märzen from Valencia with caramel malt sweetness, a nutty aroma, and a smooth medium body.",
+   new float[]{0.60f, 0.40f, 0.15f}
+));
+
+cache.put("beer:10", new Beer(
+   "Hoptimus Prime", "IPA", "Hoptimus Brewing", "USA", 7.5,
+   "An aggressively hopped American IPA bursting with tropical fruit, pine resin, and grapefruit citrus over a sturdy malt backbone.",
+   new float[]{0.10f, 0.15f, 0.95f}
+));
+
+cache.put("beer:11", new Beer(
+   "Pagoa", "Basque Ale", "Pagoa Brewery", "Spain", 5.0,
+   "A craft ale from the Basque Country with earthy hops, a light fruity character, and a balanced malty sweetness.",
+   new float[]{0.25f, 0.35f, 0.60f}
+));</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="querying-with-ickle">Querying with Ickle</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Before we get to vector search, let&#8217;s look at what Ickle can do with traditional queries.
+This is where Infinispan stands out: you don&#8217;t need to learn a separate query syntax for metadata filters and vector search — Ickle handles both.</p>
+</div>
+<div class="sect2">
+<h3 id="full-text-search">Full-text search</h3>
+<div class="paragraph">
+<p>Find beers whose description mentions "chocolate":</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Beer&gt; query = cache.query(
+   "from quickstart.Beer b where b.description : 'chocolate'");
+List&lt;Beer&gt; results = query.list();
+// Returns: Guinness, Tactical Nuclear Penguin</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="keyword-and-range-filters">Keyword and range filters</h3>
+<div class="paragraph">
+<p>Find session beers (under 5% ABV) from Spain:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Beer&gt; query = cache.query(
+   "from quickstart.Beer b where b.country = 'Spain' and b.abv &lt; 5.0");
+List&lt;Beer&gt; results = query.list();</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="projections-and-sorting">Projections and sorting</h3>
+<div class="paragraph">
+<p>Select specific fields and sort by ABV — a good way to build a menu card:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Object[]&gt; query = cache.query(
+   "select b.name, b.style, b.brewery, b.abv from quickstart.Beer b " +
+   "where b.country = 'Spain' order by b.abv");
+List&lt;Object[]&gt; results = query.list();
+// Turia (5.4), Estrella Galicia (5.5), Mahou (5.5), Pagoa (5.0)</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="vector-search-knn">Vector search (kNN)</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Now for the main event.
+Vector search in Ickle uses the <code>&lt;-&gt;</code> operator to express a kNN predicate: find the <em>k</em> nearest neighbours of a given vector.</p>
+</div>
+<div class="sect2">
+<h3 id="basic-knn-query">Basic kNN query</h3>
+<div class="paragraph">
+<p>Find the 3 beers closest to the "dark roasty" end of our flavour space:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Beer&gt; query = cache.query(
+   "from quickstart.Beer b where b.descriptionEmbedding &lt;-&gt; [:v]~:k");
+query.setParameter("v", new float[]{0.9f, 0.1f, 0.1f});
+query.setParameter("k", 3);
+
+List&lt;Beer&gt; results = query.list();
+// Returns: Guinness, Tactical Nuclear Penguin, Turia</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Both the vector and <em>k</em> are parameterised — you don&#8217;t need to interpolate values into the query string.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="score-projection">Score projection</h3>
+<div class="paragraph">
+<p>To see how close each result is to the query vector, project the score:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Object[]&gt; query = cache.query(
+   "select b.name, b.style, score(b) from quickstart.Beer b " +
+   "where b.descriptionEmbedding &lt;-&gt; [:v]~:k");
+query.setParameter("v", new float[]{0.05f, 0.9f, 0.1f});
+query.setParameter("k", 3);
+
+List&lt;Object[]&gt; results = query.list();
+for (Object[] row : results) {
+   System.out.printf("%-30s %-20s score=%.4f%n", row[0], row[1], row[2]);
+}
+// Corona Extra  score=1.0000
+// Brahma        score=0.9992
+// Estrella      score=0.9985</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="hybrid-queries-vector-metadata">Hybrid queries: vector + metadata</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This is where Ickle really shines.
+You can combine kNN search with any classic predicate — keyword matches, range filters, full-text search — using a <code>filtering</code> clause.</p>
+</div>
+<div class="sect2">
+<h3 id="something-like-a-lager-but-not-too-strong">"Something like a lager, but not too strong"</h3>
+<div class="paragraph">
+<p>Find the 3 beers closest to the "light crisp" vector, but only lagers under 5% ABV:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Object[]&gt; query = cache.query(
+   "select score(b), b.name, b.style, b.abv from quickstart.Beer b " +
+   "where b.descriptionEmbedding &lt;-&gt; [:v]~:k " +
+   "filtering (b.style = 'Lager' and b.abv &lt; 5.0)");
+query.setParameter("v", new float[]{0.05f, 0.95f, 0.05f});
+query.setParameter("k", 3);
+
+List&lt;Object[]&gt; results = query.list();
+// Returns: Brahma (4.3%)</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="vector-search-filtered-by-country">Vector search filtered by country</h3>
+<div class="paragraph">
+<p>Find beers from Spain closest to a "toasted malty" profile:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Object[]&gt; query = cache.query(
+   "select score(b), b.name, b.style, b.abv from quickstart.Beer b " +
+   "where b.descriptionEmbedding &lt;-&gt; [:v]~:k filtering b.country = 'Spain'");
+query.setParameter("v", new float[]{0.7f, 0.3f, 0.1f});
+query.setParameter("k", 3);
+
+List&lt;Object[]&gt; results = query.list();
+// Returns: Turia (0.99), Pagoa (0.80), Estrella Galicia (0.75)</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="combining-full-text-and-vector-search">Combining full-text and vector search</h3>
+<div class="paragraph">
+<p>Find beers whose descriptions mention "citrus" and are closest to the "hoppy craft" vector:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Object[]&gt; query = cache.query(
+   "select score(b), b.name, b.brewery, b.abv from quickstart.Beer b " +
+   "where b.descriptionEmbedding &lt;-&gt; [:v]~:k " +
+   "filtering b.description : 'citrus'");
+query.setParameter("v", new float[]{0.1f, 0.1f, 0.95f});
+query.setParameter("k", 5);
+
+List&lt;Object[]&gt; results = query.list();
+// Returns: Hoptimus Prime (0.9993), Corona Extra (0.6061)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The filtering clause accepts any valid Ickle predicate — including boolean combinations with <code>and</code> / <code>or</code> — so you can build arbitrarily complex filters. The filter is applied <strong>before</strong> the kNN search, narrowing the candidate set.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="why-infinispan-for-vector-search">Why Infinispan for vector search?</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>If you&#8217;re evaluating vector databases, here is what sets Infinispan apart:</p>
+</div>
+<div class="paragraph">
+<p><strong>Unified query language.</strong>
+Ickle gives you relational queries, full-text search, and vector kNN search in a single language.
+No need for a separate "search module" with its own syntax — the same <code>cache.query(&#8230;&#8203;)</code> call handles everything.</p>
+</div>
+<div class="paragraph">
+<p><strong>Type-safe data modelling.</strong>
+ProtoStream annotations let you define your schema, serialization, and index mappings in one place.
+The Protobuf schema is generated at compile time, so schema mismatches are caught before they reach production.</p>
+</div>
+<div class="paragraph">
+<p><strong>Schema evolution.</strong>
+Protobuf&#8217;s compatibility guarantees mean you can add new fields (like a vector embedding column) to an existing entity without breaking older clients.
+Roll out vector search incrementally — existing applications keep working while new ones start populating and querying the embedding field.</p>
+</div>
+<div class="paragraph">
+<p><strong>Distributed by design.</strong>
+kNN queries work across a distributed cluster.
+Infinispan scatters data across nodes and fans out vector searches in parallel, merging results transparently.</p>
+</div>
+<div class="paragraph">
+<p><strong>Multiple access protocols.</strong>
+The same indexed cache is accessible via Hot Rod (Java, C#, JS, Python), REST, and the RESP (Redis-compatible) protocol.
+Your vector search investment is not locked into a single client ecosystem.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="tuning-vector-indexing">Tuning vector indexing</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>@Vector</code> annotation exposes HNSW graph parameters that let you trade indexing speed for search accuracy.
+These become important with real embedding models where the dimension is much larger (e.g. 384 or 768):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Vector(
+   dimension = 384,                         // match your embedding model
+   similarity = VectorSimilarity.COSINE,
+   beamWidth = 512,                         // graph construction quality (default: 512)
+   maxConnections = 16                      // neighbours per node (default: 16, range: 2-100)
+)
+float[] descriptionEmbedding;</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong><code>beamWidth</code></strong> (efConstruction): higher values build a more accurate graph at the cost of slower indexing.</p>
+</li>
+<li>
+<p><strong><code>maxConnections</code></strong> (m): controls memory consumption and search precision. Stay in the 2–100 range.</p>
+</li>
+<li>
+<p><strong><code>similarity</code></strong>: choose from <code>L2</code> (default, euclidean), <code>COSINE</code>, <code>INNER_PRODUCT</code>, or <code>MAX_INNER_PRODUCT</code> depending on your embedding model&#8217;s recommendations.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="run-it-yourself">Run it yourself</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>A complete runnable version of this quickstart is available in the <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/vector-search">infinispan-simple-tutorials</a> repository.
+It uses Testcontainers to start an Infinispan server automatically — all you need is Docker and Maven:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">git clone https://github.com/infinispan/infinispan-simple-tutorials.git
+cd infinispan-simple-tutorials
+mvn -pl infinispan-remote/vector-search compile exec:exec</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The tutorial uses the same 3-dimensional hand-crafted vectors shown in this post. To move to a real embedding model, change the <code>dimension</code> in <code>@Vector</code> and replace the <code>float[]</code> literals with vectors from your model — the query patterns stay identical.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="next-steps">Next steps</h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>Read the full <a href="https://infinispan.org/docs/stable/titles/query/query.html">Query guide</a> for Ickle syntax details.</p>
+</li>
+<li>
+<p>Explore <a href="https://infinispan.org/docs/stable/titles/encoding/encoding.html">ProtoStream encoding</a> to learn about schema evolution and custom marshallers.</p>
+</li>
+<li>
+<p>Check out the <a href="https://infinispan.org/tutorials/">tutorials</a> for more runnable examples.</p>
+</li>
+<li>
+<p>Join the conversation on <a href="https://infinispan.zulipchat.com/">Zulip</a> or <a href="https://github.com/infinispan/infinispan-simple-tutorials/discussions">GitHub Discussions</a>.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>]]></content><author><name>Tristan Tarrant</name></author><category term="vector" /><category term="knn" /><category term="embeddings" /><category term="tutorial" /><summary type="html"><![CDATA[Vector databases have become essential building blocks for AI-powered applications. They let you store unstructured data — text, images, audio — as numerical embeddings that capture semantic meaning, and then find similar items using nearest-neighbour search.]]></summary></entry><entry><title type="html">Infinispan Joins the OGX Ecosystem as a Vector IO Provider</title><link href="https://infinispan.org/blog/2026/04/17/infinispan-joins-ogx-ecosystem" rel="alternate" type="text/html" title="Infinispan Joins the OGX Ecosystem as a Vector IO Provider" /><published>2026-04-17T10:00:00+00:00</published><updated>2026-04-17T10:00:00+00:00</updated><id>https://infinispan.org/blog/2026/04/17/infinispan-joins-ogx-ecosystem</id><content type="html" xml:base="https://infinispan.org/blog/2026/04/17/infinispan-joins-ogx-ecosystem"><![CDATA[<div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
 <p>Infinispan has been integrated into the <a href="https://ogx-ai.github.io/">OGX (Open GenAI Stack)</a>, formerly known as Llama Stack, as a vector IO provider, enabling developers to build RAG (Retrieval-Augmented Generation) applications with distributed vector search.</p>
@@ -1196,33 +1676,4 @@ Thank you for everything!</p>
 <p>See you soon Bilbao, and see you next year Bilbostack! Next time, in San Mamés!</p>
 </div>
 </div>
-</div>]]></content><author><name>Katia Aresti</name></author><category term="infinispan" /><category term="bilbostack" /><category term="conference" /><category term="publicspeaking" /><summary type="html"><![CDATA[This weekend, I had the honor of speaking about In-Memory Databases at BilboStack in Bilbao, Spain. It was a special moment for me because Bilbao is my hometown, where I completed my Software Engineering studies 20 years ago. Public speaking is always a challenge, but presenting in my hometown came with the added pressure of not wanting to disappoint.]]></summary></entry><entry><title type="html">Infinispan joins Commonhaus!</title><link href="https://infinispan.org/blog/2025/01/13/commonhaus-foundation" rel="alternate" type="text/html" title="Infinispan joins Commonhaus!" /><published>2025-01-13T00:00:00+00:00</published><updated>2025-01-13T00:00:00+00:00</updated><id>https://infinispan.org/blog/2025/01/13/commonhaus-foundation</id><content type="html" xml:base="https://infinispan.org/blog/2025/01/13/commonhaus-foundation"><![CDATA[<div id="preamble">
-<div class="sectionbody">
-<div class="paragraph">
-<p>We’re very excited to announce that Infinispan is <a href="https://www.commonhaus.org/activity/223.html">joining the Commonhaus Foundation</a>.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="why-join-a-foundation">Why join a foundation?</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>We want to make it clear that Infinispan&#8217;s roadmap is independent of the company that has funded its development since day 1,
-and we welcome contributors to participate in what we think is a bright future for our project. In the same vein, we&#8217;ve also recently
-<a href="https://infinispan.org/blog/2024/11/29/github-issues">transitioned our issue tracking</a> to a neutral platform.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="why-commonhaus">Why Commonhaus?</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Commonhaus just ticks all the right boxes for us: its lightweight governance is ideal. We get all the benefits of being
-part of an awesome foundation, with all the benefits of running the project on our own terms.</p>
-</div>
-<div class="paragraph">
-<p>Commonhaus is also the home to a number of "friend projects": Hibernate, Quarkus, Debezium, Jackson all play a key role
-in our software and it&#8217;s great that we share a "common home".</p>
-</div>
-</div>
-</div>]]></content><author><name>Tristan Tarrant</name></author><category term="foundation" /><summary type="html"><![CDATA[We’re very excited to announce that Infinispan is joining the Commonhaus Foundation.]]></summary></entry></feed>
+</div>]]></content><author><name>Katia Aresti</name></author><category term="infinispan" /><category term="bilbostack" /><category term="conference" /><category term="publicspeaking" /><summary type="html"><![CDATA[This weekend, I had the honor of speaking about In-Memory Databases at BilboStack in Bilbao, Spain. It was a special moment for me because Bilbao is my hometown, where I completed my Software Engineering studies 20 years ago. Public speaking is always a challenge, but presenting in my hometown came with the added pressure of not wanting to disappoint.]]></summary></entry></feed>
