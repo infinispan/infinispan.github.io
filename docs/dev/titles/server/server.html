@@ -933,15 +933,8 @@ $(addBlockSwitches);
 <li><a href="#gathering-cli-statistics_server">18.3. Gathering resource statistics from the CLI</a></li>
 <li><a href="#jvm-settings-for-server_server">18.4. JVM settings for Infinispan</a>
 <ul class="sectlevel3">
-<li><a href="#garbage_collector_selection">18.4.1. Garbage collector selection</a>
-<ul class="sectlevel4">
-<li><a href="#g1gc_default">G1GC (default)</a></li>
-<li><a href="#zgc">ZGC</a></li>
-<li><a href="#shenandoah">Shenandoah</a></li>
-</ul>
-</li>
-<li><a href="#garbage_collection_logging">18.4.2. Garbage Collection Logging</a></li>
-<li><a href="#heap_dump_on_outofmemoryerror">18.4.3. Heap Dump on OutOfMemoryError</a></li>
+<li><a href="#garbage_collection_logging">18.4.1. Garbage Collection Logging</a></li>
+<li><a href="#heap_dump_on_outofmemoryerror">18.4.2. Heap Dump on OutOfMemoryError</a></li>
 </ul>
 </li>
 <li><a href="#virtual-threads-server">18.5. Virtual Threads Support</a>
@@ -1193,9 +1186,8 @@ For example, to quickly configure CORS without providing a server.yaml file, do 
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-Using <code>JAVA_OPTIONS</code> appends options to those determined by the server launch script.
-You can override specific categories of JVM settings by setting <code>JAVA_OPTS_BASE</code>, <code>JAVA_OPTS_NETWORK</code>, or <code>JAVA_OPTS_MEMORY</code>.
-Setting <code>JAVA_OPTS</code> completely overrides all default JVM settings.
+Using <code>JAVA_OPTIONS</code> will append the options to those determined by the server launch script, such as those that configure
+the JVM memory sizing. You can completely override these options by setting the <code>JAVA_OPTS</code> env variable.
 </td>
 </tr>
 </table>
@@ -14340,84 +14332,8 @@ The loggers available for each endpoint are:</p>
 <div class="sect2">
 <h3 id="jvm-settings-for-server_server"><a class="anchor" href="#jvm-settings-for-server_server"></a>18.4. JVM settings for Infinispan</h3>
 <div class="paragraph">
-<p>You can define Java Virtual Machine (JVM) settings for Infinispan either by editing the <code>server.conf</code> configuration file,
-or by setting specific environment variables.</p>
-</div>
-<h4 id="jvm_option_categories" class="discrete">JVM option categories</h4>
-<div class="paragraph">
-<p>Infinispan splits JVM options into the following environment variables:</p>
-</div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1"><code>JAVA_OPTS_BASE</code></dt>
-<dd>
-<p>Essential JVM flags that you should rarely need to change.
-Includes <code>-Djava.awt.headless=true</code>, <code>-XX:+ExitOnOutOfMemoryError</code>, and <code>--add-modules jdk.incubator.vector</code>.</p>
-</dd>
-<dt class="hdlist1"><code>JAVA_OPTS_NETWORK</code></dt>
-<dd>
-<p>Network-related settings.
-Defaults to <code>-Djava.net.preferIPv4Stack=true</code>.
-Override this variable if you need IPv6 support.</p>
-</dd>
-<dt class="hdlist1"><code>JAVA_OPTS_MEMORY</code></dt>
-<dd>
-<p>Memory configuration including heap size, metaspace, and RAM percentages.</p>
-<div class="paragraph">
-<p>In non-container environments, defaults to <code>-XX:MetaspaceSize=64M -Xms64m -Xmx512m</code>.</p>
-</div>
-<div class="paragraph">
-<p>In container environments, defaults to <code>-XX:MetaspaceSize=64M -XX:InitialRAMPercentage=50 -XX:MinRAMPercentage=70 -XX:MaxRAMPercentage=70 -XX:+UseCompressedOops</code>.</p>
-</div>
-</dd>
-<dt class="hdlist1"><code>JAVA_OPTS_DEBUG</code></dt>
-<dd>
-<p>Debug options such as JPDA settings.
-This variable is only applied when you enable debug mode with the <code>--debug</code> flag or the <code>DEBUG</code> environment variable.
-When debug mode is active, defaults to <code>-agentlib:jdwp=transport=dt_socket,address=8787,server=y,suspend=n</code>.
-You can further control debug behavior with the following flags:</p>
-<div class="dlist">
-<dl>
-<dt class="hdlist1"><code>--debug &lt;port&gt;</code></dt>
-<dd>
-<p>Activate debug mode with an optional argument to override the default port (8787).</p>
-</dd>
-<dt class="hdlist1"><code>--debug-suspend</code></dt>
-<dd>
-<p>Activate debug mode and suspend the JVM until a debugger connects.</p>
-</dd>
-<dt class="hdlist1"><code>--debug-client</code></dt>
-<dd>
-<p>Activate debug mode in client mode, where the JVM connects to a listening debugger instead of waiting for incoming connections.</p>
-</dd>
-<dt class="hdlist1"><code>--debug-server</code></dt>
-<dd>
-<p>Activate debug mode in server mode (the default), where the JVM listens for incoming debugger connections.</p>
-</dd>
-</dl>
-</div>
-</dd>
-<dt class="hdlist1"><code>JAVA_OPTIONS</code></dt>
-<dd>
-<p>Additional options that are appended <em>after</em> all other options.</p>
-</dd>
-</dl>
-</div>
-<div class="paragraph">
-<p>Each variable is independently overridable.
-For example, to change only the memory settings without affecting the base or network configuration:</p>
-</div>
-<div class="listingblock primary">
-<div class="title">Linux</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">export JAVA_OPTS_MEMORY="-XX:MetaspaceSize=128M -Xms512m -Xmx2g"</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">Windows</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">set "JAVA_OPTS_MEMORY=-XX:MetaspaceSize=128M -Xms512m -Xmx2g"</code></pre>
-</div>
+<p>You can define Java Virtual Machine (JVM) settings for Infinispan either by editing the <code>server.conf</code> configuration file, or by setting the <code>JAVA_OPTS</code> and <code>JAVA_OPTIONS</code> environment variables. Set the <code>JAVA_OPTIONS</code> variable if you want to append JVM settings to those that are automatically set by the
+<code>server.conf</code> file. Set the <code>JAVA_OPTS</code> variable if you want to completely override the JVM settings.</p>
 </div>
 <div class="admonitionblock important">
 <table>
@@ -14427,172 +14343,60 @@ For example, to change only the memory settings without affecting the base or ne
 </td>
 <td class="content">
 <div class="paragraph">
-<p>If you are running Infinispan in a container, do not set <code>-Xmx</code> or <code>-Xms</code>, but use the <code>-XX:InitialRAMPercentage</code>, <code>-XX:MinRAMPercentage</code> and <code>-XX:MaxRAMPercentage</code> options instead, since the values are automatically calculated based on the container size.
-Override the <code>JAVA_OPTS_MEMORY</code> variable instead if you need to adjust memory settings in containers.</p>
+<p>If you are running Infinispan in a container do not set <code>Xmx</code> or <code>Xms</code>  because the values are automatically calculated from the container settings to be 70% of the container size.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
-<h4 id="overriding_all_jvm_options" class="discrete">Overriding all JVM options</h4>
-<div class="paragraph">
-<p>Setting the <code>JAVA_OPTS</code> environment variable completely overrides all category variables and uses only the specified value.
-This provides backward compatibility but requires you to include all necessary JVM options.</p>
-</div>
-<div class="listingblock primary">
-<div class="title">Linux</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">export JAVA_OPTS="-Djava.awt.headless=true -XX:+ExitOnOutOfMemoryError -Xmx1024M"</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">Windows</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">set "JAVA_OPTS=-Djava.awt.headless=true -XX:+ExitOnOutOfMemoryError -Xmx1024M"</code></pre>
-</div>
-</div>
 <h4 id="editing_the_configuration_file" class="discrete">Editing the configuration file</h4>
 <div class="paragraph">
-<p>You can edit the default values for each category in the <code>server.conf</code> configuration file.
-The file checks each <code>JAVA_OPTS_*</code> variable independently:</p>
+<p>You can edit the required values in the <code>server.conf</code> configuration file. For example, to set the options to pass to the JVM, edit the following lines:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre>if [ "$JAVA_OPTS" = "" ]; then
-   if [ "$JAVA_OPTS_BASE" = "" ]; then
-     JAVA_OPTS_BASE="..."
-   fi
-   if [ "$JAVA_OPTS_NETWORK" = "" ]; then
-     JAVA_OPTS_NETWORK="..."
-   fi
-   if [ "$JAVA_OPTS_MEMORY" = "" ]; then
-     JAVA_OPTS_MEMORY="..."
-   fi
-   JAVA_OPTS="$JAVA_OPTS_BASE $JAVA_OPTS_NETWORK $JAVA_OPTS_MEMORY $JAVA_OPTIONS"
+   JAVA_OPTS="..."
 else
    echo "JAVA_OPTS already set in environment; overriding default settings with values: $JAVA_OPTS"
 fi</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>To configure Java Platform Debugger Architecture (JPDA) settings for remote socket debugging, uncomment and customize the <code>JAVA_OPTS_DEBUG</code> variable:</p>
+<p>You can uncomment the existing example settings as well. For example, to configure Java Platform Debugger Architecture (JPDA) settings for remote socket debugging, update the file as follows:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>JAVA_OPTS_DEBUG="-agentlib:jdwp=transport=dt_socket,address=8787,server=y,suspend=n"</pre>
+<pre># Sample JPDA settings for remote socket debugging
+JAVA_OPTS="$JAVA_OPTS -agentlib:jdwp=transport=dt_socket,address=8787,server=y,suspend=n"</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Alternatively, you can use the debug flags directly when starting the server:</p>
+<p>Additionally, you can add more settings to <code>JAVA_OPTS</code> like this:</p>
 </div>
 <div class="listingblock">
-<div class="title">Start with debug mode on port 9797</div>
 <div class="content">
-<pre>bin/server.sh --debug 9797</pre>
+<pre>JAVA_OPTS="$JAVA_OPTS &lt;key_1&gt;=&lt;value_1&gt;, ..., &lt;key_N&gt;=&lt;value_N&gt; "</pre>
 </div>
 </div>
-<div class="listingblock">
-<div class="title">Start with debug mode, suspending until a debugger connects</div>
+<h4 id="setting_an_environment_variable" class="discrete">Setting an environment variable</h4>
+<div class="paragraph">
+<p>You can override the settings in <code>server.conf</code> configuration file by setting the <code>JAVA_OPTS</code> environment variable. For example:</p>
+</div>
+<div class="listingblock primary">
+<div class="title">Linux</div>
 <div class="content">
-<pre>bin/server.sh --debug --debug-suspend</pre>
+<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">export JAVA_OPTS="-Xmx1024M"</code></pre>
 </div>
 </div>
-<div class="listingblock">
-<div class="title">Start in client mode, connecting to a debugger listening on port 9797</div>
+<div class="listingblock secondary">
+<div class="title">Windows</div>
 <div class="content">
-<pre>bin/server.sh --debug 9797 --debug-client</pre>
+<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">set JAVA_OPTS="-Xmx1024M"</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="garbage_collector_selection"><a class="anchor" href="#garbage_collector_selection"></a>18.4.1. Garbage collector selection</h4>
-<div class="paragraph">
-<p>The JVM includes several garbage collectors suited to different workloads.
-You can select a garbage collector by including the appropriate flag in <code>JAVA_OPTS_MEMORY</code>.</p>
-</div>
-<div class="sect4">
-<h5 id="g1gc_default"><a class="anchor" href="#g1gc_default"></a>G1GC (default)</h5>
-<div class="paragraph">
-<p>G1 is the default garbage collector and provides a good balance of throughput and latency for most workloads.
-It targets pause times under 200ms by default, which you can adjust with <code>-XX:MaxGCPauseMillis</code>.
-G1 is a generational collector that works well for heaps up to tens of gigabytes.</p>
-</div>
-<div class="listingblock primary">
-<div class="title">Linux</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">export JAVA_OPTS_MEMORY="-XX:+UseG1GC -XX:MaxGCPauseMillis=150 -XX:MetaspaceSize=64M -Xms512m -Xmx4g"</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">Windows</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">set "JAVA_OPTS_MEMORY=-XX:+UseG1GC -XX:MaxGCPauseMillis=150 -XX:MetaspaceSize=64M -Xms512m -Xmx4g"</code></pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="zgc"><a class="anchor" href="#zgc"></a>ZGC</h5>
-<div class="paragraph">
-<p>ZGC is a low-latency garbage collector designed for applications that require sub-millisecond pause times regardless of heap size.
-It handles heaps from hundreds of megabytes to multiple terabytes.
-As of JDK 24 (<a href="https://openjdk.org/jeps/490">JEP 490</a>), ZGC is always generational and the non-generational mode has been removed.
-You only need <code>-XX:+UseZGC</code> to enable it.</p>
-</div>
-<div class="paragraph">
-<p>Choose ZGC when your workload requires consistently low latency, such as latency-sensitive services or deployments with large heaps.</p>
-</div>
-<div class="listingblock primary">
-<div class="title">Linux</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">export JAVA_OPTS_MEMORY="-XX:+UseZGC -XX:MetaspaceSize=64M -Xms1g -Xmx8g"</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">Windows</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">set "JAVA_OPTS_MEMORY=-XX:+UseZGC -XX:MetaspaceSize=64M -Xms1g -Xmx8g"</code></pre>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="shenandoah"><a class="anchor" href="#shenandoah"></a>Shenandoah</h5>
-<div class="paragraph">
-<p>Shenandoah is a low-latency garbage collector with sub-millisecond pause times, similar to ZGC.
-As of JDK 25 (<a href="https://openjdk.org/jeps/521">JEP 521</a>), generational Shenandoah is a production feature that you can enable with <code>-XX:ShenandoahGCMode=generational</code>.
-Generational mode reduces memory footprint and improves sustained throughput compared to the default non-generational mode.</p>
-</div>
-<div class="paragraph">
-<p>Choose Shenandoah for low-latency workloads, particularly on OpenJDK-based distributions.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>Shenandoah is available in OpenJDK builds but is not included in Oracle JDK distributions.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-<div class="listingblock primary">
-<div class="title">Linux</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">export JAVA_OPTS_MEMORY="-XX:+UseShenandoahGC -XX:ShenandoahGCMode=generational -XX:MetaspaceSize=64M -Xms1g -Xmx8g"</code></pre>
-</div>
-</div>
-<div class="listingblock secondary">
-<div class="title">Windows</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">set "JAVA_OPTS_MEMORY=-XX:+UseShenandoahGC -XX:ShenandoahGCMode=generational -XX:MetaspaceSize=64M -Xms1g -Xmx8g"</code></pre>
-</div>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="garbage_collection_logging"><a class="anchor" href="#garbage_collection_logging"></a>18.4.2. Garbage Collection Logging</h4>
+<h4 id="garbage_collection_logging"><a class="anchor" href="#garbage_collection_logging"></a>18.4.1. Garbage Collection Logging</h4>
 <div class="paragraph">
 <p>Infinispan automatically enables garbage collection logs to the <code>$ISPN_HOME/server/log</code> directory.
 Disable the logs by setting the <code>GC_LOG</code> environment variable to <code>false</code> before launching the server.</p>
@@ -14611,7 +14415,7 @@ Disable the logs by setting the <code>GC_LOG</code> environment variable to <cod
 </div>
 </div>
 <div class="sect3">
-<h4 id="heap_dump_on_outofmemoryerror"><a class="anchor" href="#heap_dump_on_outofmemoryerror"></a>18.4.3. Heap Dump on OutOfMemoryError</h4>
+<h4 id="heap_dump_on_outofmemoryerror"><a class="anchor" href="#heap_dump_on_outofmemoryerror"></a>18.4.2. Heap Dump on OutOfMemoryError</h4>
 <div class="paragraph">
 <p>Infinispan enables automatic heap dumps on <code>OutOfMemoryError</code> to the <code>$ISPN_HOME/server/log</code> directory.
 Heap dumps are useful for troubleshooting memory issues. You can use tools such as <code>jhat</code> (included in the JDK),
@@ -14828,7 +14632,7 @@ However, these harnesses require an additional setup phase before running.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-05-04 15:35:40 UTC
+Last updated 2026-04-30 06:40:56 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
