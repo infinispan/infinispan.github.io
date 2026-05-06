@@ -1,0 +1,166 @@
+---
+layout: blog
+title: "Infinispan Hot Rod JS Client 0.14.0: Near Feature Parity with Java"
+permalink: /blog/:year/:month/:day/hotrod-js-client-0.14.0
+date: '2026-05-06T00:00:00.000-00:00'
+author: ttarrant
+tags: [ "hotrod", "javascript", "client", "release" ]
+---
+
+= Infinispan Hot Rod JS Client 0.14.0: Near Feature Parity with Java
+
+We are happy to announce the release of the https://github.com/infinispan/js-client/releases/tag/v0.14.0[Infinispan Hot Rod JS Client 0.14.0].
+This release brings the JavaScript client very close to feature parity with the Java Hot Rod client, with support for near caching, distributed counters, admin operations, and protocol auto-negotiation.
+
+== Protocol auto-negotiation
+
+The client can now automatically negotiate the highest mutually-supported protocol version with the server.
+No more guessing which version to use: just set `version: 'auto'` and the client will pick the best available.
+
+[source,javascript]
+----
+var infinispan = require('infinispan');
+
+var client = await infinispan.client(
+  {port: 11222, host: 'localhost'},
+  {
+    version: 'auto',
+    authentication: {
+      enabled: true,
+      saslMechanism: 'DIGEST-MD5',
+      userName: 'admin',
+      password: 'changeit'
+    }
+  }
+);
+
+// Check which version was negotiated
+console.log('Protocol:', client.getProtocolVersion());  // e.g. '4.1'
+----
+
+== Near caching
+
+Near caching stores recently accessed entries on the client side, dramatically reducing latency for read-heavy workloads.
+The cache uses LRU eviction and is automatically invalidated when entries are modified.
+
+[source,javascript]
+----
+var client = await infinispan.client(
+  {port: 11222, host: 'localhost'},
+  {
+    version: 'auto',
+    nearCache: { maxEntries: 16 },
+    authentication: { /* ... */ }
+  }
+);
+
+await client.put('key', 'value');
+
+// First get: fetches from server and populates the near cache
+var v1 = await client.get('key');
+
+// Second get: served from the local near cache, no server roundtrip
+var v2 = await client.get('key');
+
+// Writes automatically invalidate the near cache
+await client.put('key', 'new-value');
+----
+
+== Distributed counters
+
+Distributed counters are cluster-wide atomic counters, available in two flavors: *strong* (linearizable, optionally bounded) and *weak* (higher concurrency, eventually consistent).
+
+[source,javascript]
+----
+// Strong unbounded counter
+await client.counterCreate('page-views', {
+  type: 'strong',
+  initialValue: 0
+});
+
+// Strong bounded counter
+await client.counterCreate('stock', {
+  type: 'strong',
+  initialValue: 50,
+  lowerBound: 0,
+  upperBound: 1000,
+  storage: 'persistent'
+});
+
+// Weak counter for high-throughput scenarios
+await client.counterCreate('impressions', {
+  type: 'weak',
+  initialValue: 0,
+  concurrencyLevel: 4
+});
+
+// Atomic operations
+var current = await client.counterGet('page-views');
+var updated = await client.counterAddAndGet('page-views', 1);
+var swapped = await client.counterCompareAndSwap('stock', 50, 49);
+await client.counterReset('page-views');
+----
+
+== Admin operations
+
+The `client.admin` namespace provides cache lifecycle management and Protobuf schema administration, enabling full cluster management directly from JavaScript.
+
+[source,javascript]
+----
+// Create a cache from XML configuration
+await client.admin.createCache('sessions',
+  '<local-cache><encoding media-type="text/plain"/></local-cache>'
+);
+
+// Idempotent create: no error if it already exists
+await client.admin.getOrCreateCache('sessions',
+  '<local-cache><encoding media-type="text/plain"/></local-cache>'
+);
+
+// List all caches
+var names = await client.admin.cacheNames();
+
+// Remove a cache
+await client.admin.removeCache('sessions');
+
+// Register a Protobuf schema
+await client.admin.registerSchema('person.proto', `
+  package example;
+  message Person {
+    required string name = 1;
+    optional int32 age = 2;
+  }
+`);
+----
+
+== Protocol 3.1, 4.0, and 4.1 support
+
+This release adds support for Hot Rod protocol versions 3.1, 4.0, and 4.1, each bringing new capabilities:
+
+* *Protocol 3.1* -- Distributed counter operations
+* *Protocol 4.0* -- Previous value with metadata in mutation responses
+* *Protocol 4.1* -- JSON data format support
+
+[source,javascript]
+----
+// Protocol 4.0+: mutation operations can return previous values
+var client = await infinispan.client(
+  {port: 11222, host: 'localhost'},
+  { version: '4.0', authentication: { /* ... */ } }
+);
+
+await client.put('key', 'original');
+var prev = await client.put('key', 'updated', { previous: true });
+console.log(prev);  // 'original'
+----
+
+== Get started
+
+Install the client via npm:
+
+[source,bash]
+----
+npm install infinispan
+----
+
+Check out the full https://github.com/infinispan/js-client[source code and documentation] on GitHub.
