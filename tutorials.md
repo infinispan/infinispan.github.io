@@ -1,6 +1,6 @@
 ---
-layout: tutorials
-title: Tutorials
-subtitle: Infinispan is easy. Let us walk you through it!
+layout: guides-catalog
+title: Infinispan Tutorials
+subtitle: Step-by-step guides to learn Infinispan features
 permalink: /tutorials/
 ---
