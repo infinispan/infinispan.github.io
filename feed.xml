@@ -1,4 +1,198 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-05-05T00:48:00+00:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Vector search quickstart with Infinispan</title><link href="https://infinispan.org/blog/2026/04/30/vector-search-quickstart" rel="alternate" type="text/html" title="Vector search quickstart with Infinispan" /><published>2026-04-30T00:00:00+00:00</published><updated>2026-04-30T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/04/30/vector-search-quickstart</id><content type="html" xml:base="https://infinispan.org/blog/2026/04/30/vector-search-quickstart"><![CDATA[<div id="preamble">
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-05-07T14:44:31+00:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Infinispan Hot Rod JS Client 0.14.0: Near Feature Parity with Java</title><link href="https://infinispan.org/blog/2026/05/06/hotrod-js-client-0.14.0" rel="alternate" type="text/html" title="Infinispan Hot Rod JS Client 0.14.0: Near Feature Parity with Java" /><published>2026-05-06T00:00:00+00:00</published><updated>2026-05-06T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/05/06/hotrod-js-client-0.14.0</id><content type="html" xml:base="https://infinispan.org/blog/2026/05/06/hotrod-js-client-0.14.0"><![CDATA[<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>We are happy to announce the release of the <a href="https://github.com/infinispan/js-client/releases/tag/v0.14.0">Infinispan Hot Rod JS Client 0.14.0</a>.
+This release brings the JavaScript client very close to feature parity with the Java Hot Rod client, with support for near caching, distributed counters, admin operations, and protocol auto-negotiation.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="protocol-auto-negotiation">Protocol auto-negotiation</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The client can now automatically negotiate the highest mutually-supported protocol version with the server.
+No more guessing which version to use: just set <code>version: 'auto'</code> and the client will pick the best available.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">var infinispan = require('infinispan');
+
+var client = await infinispan.client(
+  {port: 11222, host: 'localhost'},
+  {
+    version: 'auto',
+    authentication: {
+      enabled: true,
+      saslMechanism: 'DIGEST-MD5',
+      userName: 'admin',
+      password: 'changeit'
+    }
+  }
+);
+
+// Check which version was negotiated
+console.log('Protocol:', client.getProtocolVersion());  // e.g. '4.1'</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="near-caching">Near caching</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Near caching stores recently accessed entries on the client side, dramatically reducing latency for read-heavy workloads.
+The cache uses LRU eviction and is automatically invalidated when entries are modified.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">var client = await infinispan.client(
+  {port: 11222, host: 'localhost'},
+  {
+    version: 'auto',
+    nearCache: { maxEntries: 16 },
+    authentication: { /* ... */ }
+  }
+);
+
+await client.put('key', 'value');
+
+// First get: fetches from server and populates the near cache
+var v1 = await client.get('key');
+
+// Second get: served from the local near cache, no server roundtrip
+var v2 = await client.get('key');
+
+// Writes automatically invalidate the near cache
+await client.put('key', 'new-value');</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="distributed-counters">Distributed counters</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Distributed counters are cluster-wide atomic counters, available in two flavors: <strong>strong</strong> (linearizable, optionally bounded) and <strong>weak</strong> (higher concurrency, eventually consistent).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">// Strong unbounded counter
+await client.counterCreate('page-views', {
+  type: 'strong',
+  initialValue: 0
+});
+
+// Strong bounded counter
+await client.counterCreate('stock', {
+  type: 'strong',
+  initialValue: 50,
+  lowerBound: 0,
+  upperBound: 1000,
+  storage: 'persistent'
+});
+
+// Weak counter for high-throughput scenarios
+await client.counterCreate('impressions', {
+  type: 'weak',
+  initialValue: 0,
+  concurrencyLevel: 4
+});
+
+// Atomic operations
+var current = await client.counterGet('page-views');
+var updated = await client.counterAddAndGet('page-views', 1);
+var swapped = await client.counterCompareAndSwap('stock', 50, 49);
+await client.counterReset('page-views');</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="admin-operations">Admin operations</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>client.admin</code> namespace provides cache lifecycle management and Protobuf schema administration, enabling full cluster management directly from JavaScript.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">// Create a cache from XML configuration
+await client.admin.createCache('sessions',
+  '&lt;local-cache&gt;&lt;encoding media-type="text/plain"/&gt;&lt;/local-cache&gt;'
+);
+
+// Idempotent create: no error if it already exists
+await client.admin.getOrCreateCache('sessions',
+  '&lt;local-cache&gt;&lt;encoding media-type="text/plain"/&gt;&lt;/local-cache&gt;'
+);
+
+// List all caches
+var names = await client.admin.cacheNames();
+
+// Remove a cache
+await client.admin.removeCache('sessions');
+
+// Register a Protobuf schema
+await client.admin.registerSchema('person.proto', `
+  package example;
+  message Person {
+    required string name = 1;
+    optional int32 age = 2;
+  }
+`);</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="protocol-3-1-4-0-and-4-1-support">Protocol 3.1, 4.0, and 4.1 support</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This release adds support for Hot Rod protocol versions 3.1, 4.0, and 4.1, each bringing new capabilities:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Protocol 3.1</strong>&#8201;&#8212;&#8201;Distributed counter operations</p>
+</li>
+<li>
+<p><strong>Protocol 4.0</strong>&#8201;&#8212;&#8201;Previous value with metadata in mutation responses</p>
+</li>
+<li>
+<p><strong>Protocol 4.1</strong>&#8201;&#8212;&#8201;JSON data format support</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">// Protocol 4.0+: mutation operations can return previous values
+var client = await infinispan.client(
+  {port: 11222, host: 'localhost'},
+  { version: '4.0', authentication: { /* ... */ } }
+);
+
+await client.put('key', 'original');
+var prev = await client.put('key', 'updated', { previous: true });
+console.log(prev);  // 'original'</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="get-started">Get started</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Install the client via npm:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">npm install infinispan</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Check out the full <a href="https://github.com/infinispan/js-client">source code and documentation</a> on GitHub.</p>
+</div>
+</div>
+</div>]]></content><author><name>Tristan Tarrant</name></author><category term="hotrod" /><category term="javascript" /><category term="client" /><category term="release" /><summary type="html"><![CDATA[We are happy to announce the release of the Infinispan Hot Rod JS Client 0.14.0. This release brings the JavaScript client very close to feature parity with the Java Hot Rod client, with support for near caching, distributed counters, admin operations, and protocol auto-negotiation.]]></summary></entry><entry><title type="html">Vector search quickstart with Infinispan</title><link href="https://infinispan.org/blog/2026/04/30/vector-search-quickstart" rel="alternate" type="text/html" title="Vector search quickstart with Infinispan" /><published>2026-04-30T00:00:00+00:00</published><updated>2026-04-30T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/04/30/vector-search-quickstart</id><content type="html" xml:base="https://infinispan.org/blog/2026/04/30/vector-search-quickstart"><![CDATA[<div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
 <p>Vector databases have become essential building blocks for AI-powered applications.
@@ -1533,147 +1727,4 @@ As usual, many improvements, updates and fixes.</p>
 <p>Get them from our <a href="https://infinispan.org/download/">download page</a>.</p>
 </div>
 </div>
-</div>]]></content><author><name>Tristan Tarrant</name></author><category term="release" /><category term="final" /><summary type="html"><![CDATA["Feelin' Blue"]]></summary></entry><entry><title type="html">Bilbostack Conference</title><link href="https://infinispan.org/blog/2025/01/27/bilbostack-2025" rel="alternate" type="text/html" title="Bilbostack Conference" /><published>2025-01-27T00:00:00+00:00</published><updated>2025-01-27T00:00:00+00:00</updated><id>https://infinispan.org/blog/2025/01/27/bilbostack</id><content type="html" xml:base="https://infinispan.org/blog/2025/01/27/bilbostack-2025"><![CDATA[<div id="preamble">
-<div class="sectionbody">
-<div class="paragraph">
-<p>This weekend, I had the honor of speaking about In-Memory Databases at <a href="https://bilbostack.com/">BilboStack</a> in Bilbao, Spain.
-It was a special moment for me because Bilbao is my hometown, where I completed
-my Software Engineering studies 20 years ago. Public speaking
-is always a challenge, but presenting in my hometown came with the added
-pressure of not wanting to disappoint.</p>
-</div>
-<div class="paragraph">
-<p>BilboStack is a 1000-attendees tech event featuring two tracks with four talks each in
-the morning, followed by networking sessions in the afternoon.
-This year marked its 13th edition. <a href="https://www.linkedin.com/posts/bart-farrell_bilbostack-activity-7289558740582748160-P2dl?utm_source=share&amp;utm_medium=member_desktop">Here is a short video of the conference</a>.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="what-did-i-talk-about">What did I talk about?</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>I spoke about In-Memory Databases. One of their main use cases is caching and session replication, so I explained
-the basics of distributed caching.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="/assets/images/blog/2025-bilbostack/title.jpeg" alt="Slide title">
-</div>
-</div>
-<div class="paragraph">
-<p>I covered:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Embedded caching  with a library.</p>
-</li>
-<li>
-<p>Embedded distributed caching, which works across multiple systems.</p>
-</li>
-<li>
-<p>Using an in-memory database to keep applications stateless while managing
-caching through the database, making it easy to scale cpu or memory up or down.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>I also highlighted use cases such as real-time statistics, fast operations,
-and implementing security and backups for cross-site deployments
-(spanning multiple data centers).</p>
-</div>
-<div class="paragraph">
-<p>The talk was very well received, and I got great feedback.
-I kept the content general but also showcased how Infinispan,
-the open-source product I work on, fits these scenarios.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="demo-and-slides">Demo and Slides</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Demo and slides are available in this repository:
-<a href="https://github.com/karesti/bilbostack-2025">GitHub - Bilbo Stack 2025</a>.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="/assets/images/blog/2025-bilbostack/infinispan.jpeg" alt="Slide Infinispan Call">
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="questions">Questions</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>I got many questions, but we did not have time to answer them during the session.
-Here are some of them, others will be answered in more detailed blog posts.</p>
-</div>
-<div class="sect2">
-<h3 id="can-infinispan-be-compared-to-redis">Can Infinispan be compared to Redis?</h3>
-<div class="paragraph">
-<p>Yes, Infinispan is a competitor to Redis and can even act as a drop-in
-replacement. This allows you to continue using your existing applications
-and clients while switching to Infinispan. Tristan Tarrant’s video offers
-a detailed comparison: <a href="https://www.youtube.com/watch?v=Kb46QFigx84&amp;t=1s">Redis vs Infinispan: Battle of the in-memory data stores</a>.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="/assets/images/blog/2025-bilbostack/slide.jpeg" alt="Slide Infinispan Server">
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="is-clear-the-cache-the-new-restart-your-computer">Is "clear the cache" the new "restart your computer"?</h3>
-<div class="paragraph">
-<p>It often feels that way! Caches—whether browser-based or tools like
-Varnish—can trick us into thinking something is broken when it’s not.
-Clearing the cache is often a quick fix.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="can-in-memory-databases-work-with-other-languages-or-visualization-tools">Can in-memory databases work with other languages or visualization tools?</h3>
-<div class="paragraph">
-<p>Absolutely! In-memory databases support multiple programming languages via
-clients or APIs. These databases (e.g., Infinispan, Redis, Couchbase)
-also integrate with popular visualization tools and frameworks.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="on-vector-databases">On Vector Databases</h3>
-<div class="paragraph">
-<p>Vector databases are growing in popularity for AI use cases, but
-in-memory databases like Infinispan have supported similar features for years.
-For example, Infinispan uses Hibernate Search and Lucene for full-text queries, and
-from Lucene 7.2, KNN/ANN searches, and vector indexing is supported too. This makes it easy to integrate with
-tools like <a href="https://github.com/langchain-ai/langchain">LangChain</a> without
-needing a separate vector database.
-For more details, see <a href="https://quarkus.io/blog/granite-rag/">Clement Escoffier’s blog post on the Quarkus blog</a>.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="final-words">Final words</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>BilboStack was amazing! The conference, held in Bilbao, is all in Spanish and
-was very well organized. Everything ran smoothly, and the Basque culture made
-it extra special. There was great food, traditional dances, live music,
-and plenty of chances to meet people and connect.</p>
-</div>
-<div class="paragraph">
-<p>It’s not just a tech event — it’s an experience. The talks aren’t filmed because
-what happens at BilboStack stays there. You really have to be there to enjoy it fully!
-A huge thank you to the organizers for treating us, as speakers, so incredibly well.
-The effort and care they put into making us feel welcome and valued are like nowhere
-else. It was an honor to be part of such a well-organized and thoughtful event.
-Thank you for everything!</p>
-</div>
-<div class="paragraph">
-<p>See you soon Bilbao, and see you next year Bilbostack! Next time, in San Mamés!</p>
-</div>
-</div>
-</div>]]></content><author><name>Katia Aresti</name></author><category term="infinispan" /><category term="bilbostack" /><category term="conference" /><category term="publicspeaking" /><summary type="html"><![CDATA[This weekend, I had the honor of speaking about In-Memory Databases at BilboStack in Bilbao, Spain. It was a special moment for me because Bilbao is my hometown, where I completed my Software Engineering studies 20 years ago. Public speaking is always a challenge, but presenting in my hometown came with the added pressure of not wanting to disappoint.]]></summary></entry></feed>
+</div>]]></content><author><name>Tristan Tarrant</name></author><category term="release" /><category term="final" /><summary type="html"><![CDATA["Feelin' Blue"]]></summary></entry></feed>
