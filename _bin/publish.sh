@@ -14,6 +14,25 @@ if ! [ -x "$(command -v bundle)" ]; then
 fi
 #
 bundle install
+
+# Clone tutorials repo and generate guide metadata
+echo "Building tutorial guides..."
+rm -rf _tmp_tutorials
+git clone --depth 1 --branch main https://github.com/infinispan/infinispan-simple-tutorials.git _tmp_tutorials
+cd _tmp_tutorials
+./mvnw clean package -DskipTests=true
+./mvnw -Pguides -pl docs-maven-plugin package -q
+cd ..
+
+# Copy generated guide data into Jekyll source
+cp _tmp_tutorials/target/guides/index.yaml _data/guides.yaml
+mkdir -p _guides
+cp _tmp_tutorials/target/guides/guides/*.adoc _guides/
+
+# Cleanup
+rm -rf _tmp_tutorials
+echo "Tutorial guides ready."
+
 # Build the site
 bundle exec jekyll build
 

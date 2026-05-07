@@ -1,0 +1,407 @@
+---
+layout: base
+---
+
+<div class="component-slim tutorials-header">
+   <h1>{{ page.title }}</h1>
+   <h2>{{ page.subtitle }}</h2>
+</div>
+
+{% include guides-filter.html %}
+
+<div class="guides-grid" id="guides-grid">
+   {% for guide in site.data.guides.guides %}
+   {% if guide.url %}
+   <a href="{{ guide.url }}" class="guide-card" {% if guide.url contains 'github.com' %}target="_blank" rel="noopener"{% endif %}
+   {% else %}
+   <a href="/tutorials/{{ guide.id }}/" class="guide-card"
+   {% endif %}
+      data-type="{{ guide.type }}"
+      data-mode="{{ guide.mode }}"
+      data-topics="{{ guide.topics | join: ',' }}"
+      data-keywords="{{ guide.keywords | join: ',' }}"
+      data-duration="{{ guide.duration }}"
+      data-title="{{ guide.title | downcase }}"
+      data-summary="{{ guide.summary | downcase }}">
+      <div class="guide-card-header">
+         <span class="guide-type-badge guide-type-{{ guide.type }}">{{ guide.type }}</span>
+         <span class="guide-mode-badge guide-mode-{{ guide.mode }}">{{ guide.mode }}</span>
+         {% if guide.duration %}
+         <span class="guide-duration"><i class="far fa-clock"></i> {{ guide.duration }} min</span>
+         {% endif %}
+      </div>
+      <h3 class="guide-title">{{ guide.title }}</h3>
+      <p class="guide-summary">{{ guide.summary }}</p>
+      <div class="guide-topics">
+         {% for topic in guide.topics %}
+         <span class="guide-topic-tag">{{ topic | replace: "-", " " }}</span>
+         {% endfor %}
+      </div>
+      {% if guide.url contains 'github.com' %}
+      <span class="guide-external"><i class="fab fa-github"></i> View on GitHub</span>
+      {% endif %}
+   </a>
+   {% endfor %}
+</div>
+
+<div class="guides-empty" id="guides-empty" style="display:none;">
+   <p>No tutorials match your filters. Try broadening your search.</p>
+</div>
+
+<script>
+(function() {
+   var searchInput = document.getElementById('guides-search-input');
+   var grid = document.getElementById('guides-grid');
+   var empty = document.getElementById('guides-empty');
+   var cards = grid.querySelectorAll('.guide-card');
+   var filterPills = document.querySelectorAll('.filter-pill');
+   var dropdown = document.getElementById('topic-dropdown');
+   var toggle = document.getElementById('topic-dropdown-toggle');
+   var menu = document.getElementById('topic-dropdown-menu');
+   var menuItems = menu.querySelectorAll('li');
+   var topicChips = document.getElementById('topic-chips');
+   var activeFilter = 'all';
+   var activeTopics = new Set();
+
+   toggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      dropdown.classList.toggle('open');
+   });
+
+   document.addEventListener('click', function() {
+      dropdown.classList.remove('open');
+   });
+
+   menu.addEventListener('click', function(e) {
+      e.stopPropagation();
+   });
+
+   function renderChips() {
+      topicChips.innerHTML = '';
+      activeTopics.forEach(function(topic) {
+         var chip = document.createElement('span');
+         chip.className = 'topic-chip';
+         chip.innerHTML = topic.replace(/-/g, ' ') + '<button class="chip-remove">&times;</button>';
+         chip.querySelector('.chip-remove').addEventListener('click', function() {
+            activeTopics.delete(topic);
+            renderChips();
+            updateMenuItems();
+            filterCards();
+         });
+         topicChips.appendChild(chip);
+      });
+   }
+
+   function updateMenuItems() {
+      menuItems.forEach(function(item) {
+         if (activeTopics.has(item.dataset.topic)) {
+            item.classList.add('disabled');
+         } else {
+            item.classList.remove('disabled');
+         }
+      });
+   }
+
+   function matchesDuration(filter, duration) {
+      var d = parseInt(duration, 10);
+      if (isNaN(d)) return filter === 'long';
+      if (filter === 'quick') return d < 10;
+      if (filter === 'medium') return d >= 10 && d <= 20;
+      if (filter === 'long') return d > 20;
+      return false;
+   }
+
+   function filterCards() {
+      var query = searchInput.value.toLowerCase().trim();
+      var visibleCount = 0;
+      var durationFilters = ['quick', 'medium', 'long'];
+      var isDurationFilter = durationFilters.indexOf(activeFilter) !== -1;
+
+      cards.forEach(function(card) {
+         var matchesFilter;
+         if (activeFilter === 'all') {
+            matchesFilter = true;
+         } else if (isDurationFilter) {
+            matchesFilter = matchesDuration(activeFilter, card.dataset.duration);
+         } else {
+            matchesFilter = card.dataset.mode === activeFilter ||
+               card.dataset.type === activeFilter;
+         }
+         var matchesTopics = true;
+         if (activeTopics.size > 0) {
+            var cardTopics = card.dataset.topics.split(',');
+            matchesTopics = false;
+            activeTopics.forEach(function(topic) {
+               if (cardTopics.indexOf(topic) !== -1) matchesTopics = true;
+            });
+         }
+         var matchesSearch = true;
+         if (query) {
+            var text = card.dataset.title + ' ' + card.dataset.summary + ' ' + card.dataset.keywords;
+            matchesSearch = text.indexOf(query) !== -1;
+         }
+
+         if (matchesFilter && matchesTopics && matchesSearch) {
+            card.style.display = '';
+            visibleCount++;
+         } else {
+            card.style.display = 'none';
+         }
+      });
+
+      empty.style.display = visibleCount === 0 ? '' : 'none';
+   }
+
+   filterPills.forEach(function(pill) {
+      pill.addEventListener('click', function() {
+         filterPills.forEach(function(p) { p.classList.remove('active'); });
+         pill.classList.add('active');
+         activeFilter = pill.dataset.filter;
+         filterCards();
+      });
+   });
+
+   menuItems.forEach(function(item) {
+      item.addEventListener('click', function() {
+         var topic = item.dataset.topic;
+         if (!activeTopics.has(topic)) {
+            activeTopics.add(topic);
+            renderChips();
+            updateMenuItems();
+            filterCards();
+         }
+         dropdown.classList.remove('open');
+      });
+   });
+
+   searchInput.addEventListener('input', filterCards);
+})();
+</script>
+
+<style>
+.guides-filter {
+   max-width: 1200px;
+   margin: 0 auto;
+   padding: 20px;
+}
+.guides-search input {
+   width: 100%;
+   padding: 12px 16px;
+   font-size: 16px;
+   border: 1px solid var(--input-border, #ddd);
+   border-radius: 4px;
+   margin-bottom: 16px;
+   background: var(--input-bg, #fff);
+   color: var(--main-text-color);
+}
+.filter-label {
+   font-weight: bold;
+   margin-right: 8px;
+}
+.guides-filter-row, .guides-topic-filter {
+   margin-bottom: 12px;
+   display: flex;
+   flex-wrap: wrap;
+   align-items: center;
+   gap: 8px;
+}
+.filter-pill {
+   padding: 4px 12px !important;
+   border: 1px solid var(--card-border, #ddd) !important;
+   border-radius: 20px !important;
+   background: var(--card-bg, #fff) !important;
+   color: var(--main-text-color) !important;
+   cursor: pointer;
+   font-size: 13px !important;
+   transition: all 0.2s;
+   line-height: 1.4 !important;
+}
+.filter-pill:hover {
+   border-color: #FF6400 !important;
+   background: var(--card-bg, #fff) !important;
+   color: var(--main-text-color) !important;
+}
+.filter-pill.active {
+   background: #005D8F !important;
+   color: #fff !important;
+   border-color: #005D8F !important;
+}
+.filter-separator {
+   width: 1px;
+   height: 24px;
+   background: var(--card-border, #ddd);
+}
+.topic-dropdown {
+   position: relative;
+}
+.topic-dropdown-toggle {
+   padding: 6px 14px !important;
+   font-size: 14px !important;
+   border: 1px solid var(--card-border, #ddd) !important;
+   border-radius: 20px !important;
+   background: var(--card-bg, #fff) !important;
+   color: var(--main-text-color) !important;
+   cursor: pointer;
+   font-family: inherit;
+   line-height: 1.4 !important;
+   white-space: nowrap;
+}
+.topic-dropdown-toggle i {
+   font-size: 10px;
+   margin-left: 4px;
+}
+.topic-dropdown-toggle:hover {
+   border-color: #FF6400 !important;
+   background: var(--card-bg, #fff) !important;
+   color: var(--main-text-color) !important;
+}
+.topic-dropdown-menu {
+   display: none;
+   position: absolute;
+   top: 100%;
+   left: 0;
+   margin-top: 4px;
+   padding: 6px 0;
+   background: var(--card-bg, #fff);
+   border: 1px solid var(--card-border, #ddd);
+   border-radius: 8px;
+   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+   list-style: none;
+   min-width: 180px;
+   z-index: 100;
+}
+.topic-dropdown.open .topic-dropdown-menu {
+   display: block;
+}
+.topic-dropdown-menu li {
+   padding: 8px 16px;
+   font-size: 14px;
+   cursor: pointer;
+   color: var(--main-text-color);
+   transition: background 0.15s;
+   text-transform: capitalize;
+}
+.topic-dropdown-menu li:hover {
+   background: var(--gray-bg, #f5f5f5);
+}
+.topic-dropdown-menu li.disabled {
+   opacity: 0.4;
+   pointer-events: none;
+}
+.topic-chips {
+   display: inline-flex;
+   flex-wrap: wrap;
+   gap: 6px;
+}
+.topic-chip {
+   display: inline-flex;
+   align-items: center;
+   gap: 4px;
+   padding: 4px 10px;
+   background: #333;
+   color: #fff;
+   border-radius: 20px;
+   font-size: 13px;
+   text-transform: capitalize;
+}
+.chip-remove {
+   background: none !important;
+   border: none !important;
+   color: #fff !important;
+   cursor: pointer;
+   font-size: 16px;
+   line-height: 1;
+   padding: 0 !important;
+   margin-left: 2px;
+   opacity: 0.7;
+}
+.chip-remove:hover {
+   opacity: 1;
+   background: none !important;
+   color: #fff !important;
+}
+.guides-grid {
+   max-width: 1200px;
+   margin: 0 auto;
+   padding: 0 20px 40px;
+   display: grid;
+   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+   gap: 20px;
+}
+.guide-card {
+   border: 1px solid var(--card-border, #e0e0e0);
+   border-radius: 8px;
+   padding: 20px;
+   text-decoration: none;
+   color: inherit;
+   transition: box-shadow 0.2s, border-color 0.2s;
+   display: flex;
+   flex-direction: column;
+}
+.guide-card:hover {
+   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+   border-color: #FF6400;
+}
+.guide-card-header {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   margin-bottom: 12px;
+}
+.guide-type-badge, .guide-mode-badge {
+   padding: 3px 10px;
+   border-radius: 12px;
+   font-size: 11px;
+   font-weight: bold;
+   text-transform: uppercase;
+}
+.guide-type-tutorial { background: #e3f2fd; color: #1565c0; }
+.guide-type-guide { background: #fff3e0; color: #e65100; }
+.guide-type-demo { background: #f3e5f5; color: #7b1fa2; }
+.guide-mode-badge {
+   background: var(--gray-bg, #f0f0f0);
+   color: var(--secondary-text-color, #555);
+}
+.guide-duration {
+   font-size: 13px;
+   color: var(--secondary-text-color, #666);
+   margin-left: auto;
+}
+.guide-title {
+   font-size: 18px;
+   margin: 0 0 8px;
+}
+.guide-summary {
+   font-size: 14px;
+   color: var(--secondary-text-color, #555);
+   flex-grow: 1;
+}
+.guide-topics {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 6px;
+   margin-top: 12px;
+}
+.guide-topic-tag {
+   padding: 2px 8px;
+   background: var(--gray-bg, #f5f5f5);
+   border-radius: 4px;
+   font-size: 12px;
+   color: var(--secondary-text-color, #666);
+}
+.guide-external {
+   display: block;
+   margin-top: 12px;
+   font-size: 13px;
+   color: var(--secondary-text-color, #666);
+}
+.guide-external i {
+   margin-right: 4px;
+}
+.guides-empty {
+   text-align: center;
+   padding: 60px 20px;
+   color: #999;
+   font-size: 16px;
+}
+</style>
