@@ -20,7 +20,7 @@ echo "Building tutorial guides..."
 rm -rf _tmp_tutorials
 git clone --depth 1 --branch main https://github.com/infinispan/infinispan-simple-tutorials.git _tmp_tutorials
 cd _tmp_tutorials
-./mvnw clean package -DskipTests=true
+./mvnw clean install -DskipTests=true
 ./mvnw -Pguides -pl docs-maven-plugin package -q
 cd ..
 
