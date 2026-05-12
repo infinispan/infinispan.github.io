@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Vector Search with Infinispan</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Vector Search with Infinispan
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to store entities with vector embeddings in Infinispan and perform kNN (k-nearest neighbor) vector searches, including hybrid queries that combine vector similarity with full-text search and metadata filters.</p>
 </div>
 </div>
 </div>
@@ -116,83 +115,155 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-define-an-indexed-entity-with-a-vector-field">Step 1: Define an Indexed Entity with a Vector Field</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Use the <code>@Vector</code> annotation to declare a vector field with its dimension and similarity function:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
+@Indexed
+public record Beer(
+      @Keyword(projectable = true, sortable = true)
+      String name,
+
+      @Keyword(projectable = true, normalizer = "lowercase")
+      String style,
+
+      @Keyword(projectable = true, sortable = true, normalizer = "lowercase")
+      String brewery,
+
+      @Keyword(projectable = true, normalizer = "lowercase")
+      String country,
+
+      @Basic(projectable = true, sortable = true)
+      Double abv,
+
+      @Text
+      String description,
+
+      @Vector(dimension = 3, similarity = VectorSimilarity.COSINE)
+      float[] descriptionEmbedding
+) {
+}</code></pre>
 </div>
-</div>
-<div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
+<h2 id="step-2-connect-and-register-the-schema">Step 2: Connect and Register the Schema</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
+<p>Connect to the server and register the Protobuf schema for your entity:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void connect() throws Exception {
+      ConfigurationBuilder builder = TutorialsConnectorHelper.connectionConfig();
+      builder.addContextInitializer(new BeerSchemaImpl());
 
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
+      URI cacheConfigURI = VectorSearchQuickstart.class.getClassLoader()
+            .getResource("indexedCache.xml").toURI();
+      builder.remoteCache(CACHE_NAME).configurationURI(cacheConfigURI);
+
+      cacheManager = TutorialsConnectorHelper.connect(builder);
+      cacheManager.administration().schemas().createOrUpdate(new BeerSchemaImpl());
+      cache = cacheManager.getCache(CACHE_NAME);
    }</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
+<h2 id="step-3-perform-a-knn-vector-search">Step 3: Perform a kNN Vector Search</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
+<p>Use the <code>&lt;&#8594;</code> operator with <code>~:k</code> to find the k nearest neighbors:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
-
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void knnVectorSearch() {
+      System.out.println("=== kNN: 3 beers closest to 'dark roasty' vector [0.9, 0.1, 0.1] ===");
+      Query&lt;Beer&gt; query = cache.query(
+            "from quickstart.Beer b where b.descriptionEmbedding &lt;-&gt; [:v]~:k");
+      query.setParameter("v", new float[]{0.9f, 0.1f, 0.1f});
+      query.setParameter("k", 3);
+      for (Beer beer : query.list()) {
+         System.out.printf("  %-30s %s%n", beer.name(), beer.style());
       }
+      System.out.println();
    }</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
+<h2 id="step-4-run-hybrid-queries">Step 4: Run Hybrid Queries</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Combine vector similarity with metadata filters using the <code>filtering</code> clause, or with full-text filters:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void hybridFilterByStyle() {
+      System.out.println("=== Hybrid: closest to 'refreshing summer beer' [0.05, 0.95, 0.05], only lagers under 5% ABV ===");
+      Query&lt;Object[]&gt; query = cache.query(
+            "select score(b), b.name, b.style, b.abv from quickstart.Beer b " +
+            "where b.descriptionEmbedding &lt;-&gt; [:v]~:k " +
+            "filtering (b.style = 'Lager' and b.abv &lt; 5.0)");
+      query.setParameter("v", new float[]{0.05f, 0.95f, 0.05f});
+      query.setParameter("k", 3);
+      List&lt;Object[]&gt; results = query.list();
+      if (results.isEmpty()) {
+         System.out.println("  (no matches)");
+      }
+      for (Object[] row : results) {
+         System.out.printf("  score=%.4f  %-30s %-10s %.1f%%%n", row[0], row[1], row[2], row[3]);
+      }
+      System.out.println();
+   }
+
+   static void hybridFilterByCountry() {
+      System.out.println("=== Hybrid: closest to 'toasted malty caramel' [0.7, 0.3, 0.1], only Spanish beers ===");
+      Query&lt;Object[]&gt; query = cache.query(
+            "select score(b), b.name, b.style, b.abv from quickstart.Beer b " +
+            "where b.descriptionEmbedding &lt;-&gt; [:v]~:k filtering b.country = 'Spain'");
+      query.setParameter("v", new float[]{0.7f, 0.3f, 0.1f});
+      query.setParameter("k", 3);
+      for (Object[] row : query.list()) {
+         System.out.printf("  score=%.4f  %-30s %-15s %.1f%%%n", row[0], row[1], row[2], row[3]);
+      }
+      System.out.println();
+   }
+
+   static void hybridFullTextAndVector() {
+      System.out.println("=== Hybrid: closest to 'hoppy craft' [0.1, 0.1, 0.95], description mentions 'citrus' ===");
+      Query&lt;Object[]&gt; query = cache.query(
+            "select score(b), b.name, b.brewery, b.abv from quickstart.Beer b " +
+            "where b.descriptionEmbedding &lt;-&gt; [:v]~:k " +
+            "filtering b.description : 'citrus'");
+      query.setParameter("v", new float[]{0.1f, 0.1f, 0.95f});
+      query.setParameter("k", 5);
+      for (Object[] row : query.list()) {
+         System.out.printf("  score=%.4f  %-30s %-20s %.1f%%%n", row[0], row[1], row[2], row[3]);
+      }
+      System.out.println();
+   }</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-5-run-the-tutorial">Step 5: Run the Tutorial</h2>
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:exec</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>The output demonstrates full-text search, keyword/range filters, projections, kNN vector search with score projections, and hybrid queries filtering by style, country, and description text.</p>
 </div>
 </div>
 </div>
@@ -202,10 +273,7 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
-</li>
-<li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../langchain4j/guide.html">Semantic search with LangChain4j</a> for vector search with an AI embedding model</p>
 </li>
 </ul>
 </div>

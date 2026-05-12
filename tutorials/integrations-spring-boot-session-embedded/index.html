@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Spring Boot HTTP Sessions with Embedded Infinispan</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Spring Boot HTTP Sessions with Embedded Infinispan
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to store Spring Boot HTTP sessions in an embedded Infinispan cache using <code>@EnableInfinispanEmbeddedHttpSession</code>, with distributed clustering for session replication across nodes.</p>
 </div>
 </div>
 </div>
@@ -109,76 +108,110 @@ specific roles can perform operations on it.</p>
 <p>Java 17+</p>
 </li>
 <li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
+<p>Spring Boot</p>
 </li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-add-dependencies">Step 1: Add Dependencies</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Add the Infinispan Spring Boot embedded starter, Spring Web, and Spring Session:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
-
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
-   }</code></pre>
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+   &lt;artifactId&gt;infinispan-spring-boot4-starter-embedded&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+   &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+   &lt;artifactId&gt;spring-boot-starter-web&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+   &lt;groupId&gt;org.springframework.session&lt;/groupId&gt;
+   &lt;artifactId&gt;spring-session-core&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
+<h2 id="step-2-enable-embedded-http-sessions-with-clustering">Step 2: Enable Embedded HTTP Sessions with Clustering</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
+<p>Annotate your application with <code>@EnableInfinispanEmbeddedHttpSession</code> and configure a clustered cache for sessions:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@EnableInfinispanEmbeddedHttpSession
+@SpringBootApplication
+public class UserSessionsApp {
 
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
-   }</code></pre>
+    @Bean
+    public InfinispanGlobalConfigurer globalCustomizer() {
+        return () -&gt; GlobalConfigurationBuilder
+              .defaultClusteredBuilder()
+              .metrics().gauges(false).histograms(false)
+              .globalState().disable()
+              .build();
+    }
+
+    @Bean
+    public InfinispanCacheConfigurer cacheConfigurer() {
+        return manager -&gt; {
+            final Configuration ispnConfig = new ConfigurationBuilder()
+                    .clustering()
+                    .cacheMode(CacheMode.DIST_SYNC)
+                    .statistics().disable()
+                    .build();
+
+
+            manager.defineConfiguration("sessions", ispnConfig);
+        };
+    }
+
+    public static void main(String... args) {
+        new SpringApplicationBuilder().sources(UserSessionsApp.class).run(args);
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-3-use-sessions-in-a-rest-controller">Step 3: Use Sessions in a REST Controller</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Store and retrieve session data through a REST controller:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@RestController
+public class UserSessionsController {
+
+    public static final String LATEST_SESSION_VALUE = "latest";
+
+    @Autowired
+    private SpringEmbeddedCacheManager cacheManager;
+
+    @GetMapping("/")
+    public String greeting(@RequestParam(name = "name", required = false, defaultValue = "World") String name,
+                           HttpSession session) {
+        String latest = (String) session.getAttribute(LATEST_SESSION_VALUE);
+        session.setAttribute("latest", name);
+        if(latest == null) {
+            return "Nobody to ciao";
+        }
+        return "ciao " + latest;
+    }
+
+    @GetMapping("/sessions")
+    public Set&lt;?&gt; sessions() {
+        return cacheManager.getCache("sessions").getNativeCache().keySet();
+    }</code></pre>
 </div>
 </div>
 </div>
@@ -188,11 +221,11 @@ specific roles can perform operations on it.</p>
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn spring-boot:run</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>Visit <code><a href="http://localhost:8080/?name=Katia" class="bare">http://localhost:8080/?name=Katia</a></code>. Refresh to see the previous name from the session. Start multiple instances on different ports to see distributed session replication.</p>
 </div>
 </div>
 </div>
@@ -202,10 +235,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p><a href="../session-remote/guide.html">Spring Boot remote sessions</a> for externalized session storage in an Infinispan Server</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../cache-embedded/guide.html">Spring Boot embedded caching</a> for data caching with embedded Infinispan</p>
 </li>
 </ul>
 </div>

@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Transactional Cache Operations</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Transactional Cache Operations
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to configure a transactional remote cache and use <code>TransactionManager</code> to group cache operations into transactions that can be committed or rolled back.</p>
 </div>
 </div>
 </div>
@@ -116,70 +115,77 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-define-a-transactional-cache">Step 1: Define a Transactional Cache</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Create an XML cache definition with transactional settings in <code>simple-tx-cache.xml</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="simple-tx-cache"&gt;
     &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
+    &lt;locking isolation="REPEATABLE_READ"/&gt;
+    &lt;transaction locking="PESSIMISTIC" mode="NON_XA" /&gt;
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-2-configure-and-connect">Step 2: Configure and Connect</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
+<p>Associate the cache with a <code>TransactionManagerLookup</code> and set the transaction mode:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Add a transactional cache on startup
+      URI cacheConfig = InfinispanRemoteTx.class.getClassLoader().getResource("simple-tx-cache.xml").toURI();
+      builder.remoteCache(CACHE_NAME)
+              // The cache that will be created is transactional
+              .configurationURI(cacheConfig)
+              // Use the simple TransactionManager in hot rod client
+              .transactionManagerLookup(RemoteTransactionManagerLookup.getInstance())
+              // The cache will be enlisted as Synchronization
+              .transactionMode(TransactionMode.NON_XA);
+
+      // Connect to the server
+      cacheManager = TutorialsConnectorHelper.connect(builder);
+      cache = cacheManager.getCache(CACHE_NAME);</code></pre>
+</div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
+<h2 id="step-3-commit-and-roll-back-transactions">Step 3: Commit and Roll Back Transactions</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
+<p>Begin a transaction, put entries, and commit. Then begin another transaction, modify entries, and roll back to discard the changes:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Obtain the transaction manager
+      TransactionManager transactionManager = cache.getTransactionManager();
+      // Perform some operations within a transaction and commit it
+      transactionManager.begin();
+      cache.put("key1", "value1");
+      cache.put("key2", "value2");
+      transactionManager.commit();
+      // Display the current cache contents
+      System.out.printf("key1 = %s\nkey2 = %s\n", cache.get("key1"), cache.get("key2"));
 
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
-   }</code></pre>
+      // Perform some operations within a transaction and roll it back
+      // Perform some operations within a transaction and roll it back
+      transactionManager.begin();
+      cache.put("key1", "value3");
+      cache.put("key2", "value4");
+      transactionManager.rollback();
+      // Display the current cache contents
+      System.out.printf("key1 = %s\nkey2 = %s\n", cache.get("key1"), cache.get("key2"));</code></pre>
 </div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
-
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
-   }</code></pre>
-</div>
+<p>After rollback, the values remain <code>value1</code> and <code>value2</code>.</p>
 </div>
 </div>
 </div>
@@ -192,7 +198,18 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>You should see:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>key1 = value1
+key2 = value2
+key1 = value1
+key2 = value2</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The second pair confirms the rollback discarded the changes.</p>
 </div>
 </div>
 </div>
@@ -202,10 +219,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p><a href="../cache/guide.html">Getting started</a> with basic cache operations</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../reactive-api/guide.html">Reactive API</a> for non-blocking operations</p>
 </li>
 </ul>
 </div>

@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Spatial Queries</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Spatial Queries
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to define geospatial entities with <code>@GeoPoint</code> and <code>@GeoField</code> annotations, create indexed caches, and run spatial Ickle queries including within circle, within box, within polygon, distance projections, and spatial ordering.</p>
 </div>
 </div>
 </div>
@@ -116,83 +115,129 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-define-geospatial-entities">Step 1: Define Geospatial Entities</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Use <code>@GeoPoint</code> with <code>@Latitude</code> and <code>@Longitude</code> to define a location on a record:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
+@Indexed
+@GeoPoint(fieldName = "location", projectable = true, sortable = true)
+public record Restaurant(
+      @Keyword(normalizer = "lowercase", projectable = true, sortable = true) String name,
+      @Text String description,
+      @Text String address,
+      @Latitude(fieldName = "location") Double latitude,
+      @Longitude(fieldName = "location") Double longitude,
+      @Basic Float score
+) {
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
+<p>For entities with multiple geo points, use multiple <code>@GeoPoint</code> annotations (see <code>TrainRoute</code>). Alternatively, use <code>@GeoField</code> with <code>LatLng</code> for a simpler mapping:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
+@Indexed
+public record Hiking(@Keyword String name, @GeoField LatLng start, @GeoField LatLng end) {
+
+}</code></pre>
+</div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
+<h2 id="step-2-create-an-indexed-cache-and-run-spatial-queries">Step 2: Create an Indexed Cache and Run Spatial Queries</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
+<p>Configure the cache with indexing enabled for all spatial entities. Then run spatial queries&#8201;&#8212;&#8201;within a circle, within a bounding box, within a polygon, and with distance projections and ordering:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static QueryResult&lt;Restaurant&gt; withinCircle() {
+      Query&lt;Restaurant&gt; query = myCache.query("from tutorial.Restaurant r where r.location " +
+            "within circle(:lat, :lon, :distance)");
+      query.setParameter("lat", MY_COORDINATES.latitude());
+      query.setParameter("lon", MY_COORDINATES.longitude());
+      query.setParameter("distance", 100);
+      QueryResult&lt;Restaurant&gt; queryResult = query.execute();
+      // Print the results
+      System.out.println("COUNT " + queryResult.count().value());
+      System.out.println(queryResult.list());
+      return queryResult;
+   }
 
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
+   static QueryResult&lt;Restaurant&gt; withinBox() {
+      Query&lt;Restaurant&gt; query = myCache.query("from tutorial.Restaurant r where r.location " +
+            "within box(41.91, 12.45, 41.90, 12.46)");
+      QueryResult&lt;Restaurant&gt; queryResult = query.execute();
+      // Print the results
+      System.out.println("COUNT " + queryResult.count().value());
+      System.out.println(queryResult.list());
+      return queryResult;
+   }
+
+   static QueryResult&lt;Restaurant&gt; withinPolygon() {
+      Query&lt;Restaurant&gt; query = myCache.query("from tutorial.Restaurant r where r.location " +
+            "within polygon((41.91, 12.45), (41.91, 12.46), (41.90, 12.46), (41.90, 12.46))");
+      QueryResult&lt;Restaurant&gt; queryResult = query.execute();
+      // Print the results
+      System.out.println("COUNT " + queryResult.count().value());
+      System.out.println(queryResult.list());
+      return queryResult;
+   }
+
+   static List&lt;RestaurantDTO&gt; spatialProjection() {
+      Query&lt;Object[]&gt; query = myCache.query("select r.name, distance(r.location, 41.90847031512531, 12.455633288333539) " +
+            "from tutorial.Restaurant r");
+      QueryResult&lt;Object[]&gt; queryResult = query.execute();
+      List&lt;RestaurantDTO&gt; valueObjects = queryResult.list().stream()
+            .map(r -&gt; new RestaurantDTO((String) r[0], (Double) r[1]))
+            .toList();
+      // Print the results
+      System.out.println("COUNT " + queryResult.count().value());
+      System.out.println(valueObjects);
+      return valueObjects;
+   }
+
+   static QueryResult&lt;Restaurant&gt; spatialOrderBy() {
+      Query&lt;Restaurant&gt; query = myCache.query("from tutorial.Restaurant r where r.location " +
+            "order by distance(r.location, 41.90847031512531, 12.455633288333539)");
+      QueryResult&lt;Restaurant&gt; queryResult = query.execute();
+      // Print the results
+      System.out.println("COUNT " + queryResult.count().value());
+      System.out.println(queryResult.list());
+      return queryResult;
+   }
+
+   static List&lt;RestaurantDTO&gt; spatialProjection_OrderBy() {
+      Query&lt;Object[]&gt; query = myCache.query("select r.name, distance(r.location, 41.90847031512531, 12.455633288333539) " +
+            "from tutorial.Restaurant r where r.location " +
+            "order by distance(r.location, 41.90847031512531, 12.455633288333539)");
+      QueryResult&lt;Object[]&gt; queryResult = query.execute();
+      List&lt;RestaurantDTO&gt; valueObjects = queryResult.list().stream()
+            .map(r -&gt; new RestaurantDTO((String) r[0], (Double) r[1]))
+            .toList();
+      // Print the results
+      System.out.println("COUNT " + queryResult.count().value());
+      System.out.println(valueObjects);
+      return valueObjects;
    }</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
-
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
-   }</code></pre>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
+<h2 id="step-3-run-the-tutorial">Step 3: Run the Tutorial</h2>
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
 </div>
-</div>
-<div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
 </div>
 </div>
 </div>
@@ -202,10 +247,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p><a href="../query/guide.html">Query your data</a> with standard Ickle queries</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../continuous-query/guide.html">Use continuous queries</a> for real-time notifications</p>
 </li>
 </ul>
 </div>

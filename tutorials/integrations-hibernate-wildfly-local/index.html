@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Hibernate L2 Cache with WildFly</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Hibernate L2 Cache with WildFly
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to use Infinispan as the built-in Hibernate L2 cache provider in WildFly, exposed through JAX-RS REST endpoints that step through cache operations one by one.</p>
 </div>
 </div>
 </div>
@@ -106,78 +105,110 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Java 17+</p>
+<p>Java 8+</p>
 </li>
 <li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
+<p>WildFly application server</p>
 </li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-configure-the-persistence-unit">Step 1: Configure the Persistence Unit</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>WildFly ships with Infinispan as its default Hibernate cache provider. Configure <code>META-INF/persistence.xml</code> to use the WildFly JTA datasource and enable caching:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">   &lt;persistence-unit name="events"&gt;
+      &lt;jta-data-source&gt;java:jboss/datasources/ExampleDS&lt;/jta-data-source&gt;
+      &lt;shared-cache-mode&gt;ENABLE_SELECTIVE&lt;/shared-cache-mode&gt;
+      &lt;properties&gt;
+         &lt;!-- Create/drop database in each run --&gt;
+         &lt;property name="hibernate.hbm2ddl.auto" value="create-drop" /&gt;
+         &lt;property name="hibernate.show_sql" value="false" /&gt;
+
+         &lt;!-- Enables second level cache --&gt;
+         &lt;property name="hibernate.cache.use_second_level_cache" value="true"/&gt;
+         &lt;!-- Enable query cache --&gt;
+         &lt;property name="hibernate.cache.use_query_cache" value="true"/&gt;
+
+         &lt;!-- Generate statistics to see effects of second level cache --&gt;
+         &lt;property name="hibernate.generate_statistics" value="true" /&gt;
+
+         &lt;!-- Entity specific configuration, e.g. via property:
+            hibernate.cache.infinispan.&lt;WAR/EAR name&gt;#&lt;PersistenceManager Unit name&gt;.&lt;Entity FQN&gt;.expiration.max_idle
+         --&gt;
+         &lt;property name="hibernate.cache.infinispan.wildfly-local.war#events.org.infinispan.tutorial.simple.hibernate.cache.wildfly.local.model.Person.expiration.max_idle"
+                   value= "1000"/&gt;
+      &lt;/properties&gt;
+   &lt;/persistence-unit&gt;</code></pre>
 </div>
-</div>
-<div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
+<h2 id="step-2-create-the-persistence-manager-ejb">Step 2: Create the Persistence Manager EJB</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
+<p>A stateless EJB handles entity operations within JTA transactions:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Stateless
+@Interceptors(ClearStatistics.class)
+public class PersistenceManager {
 
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
+   @Inject
+   private EntityManager em;
+
+   public void persistEntities() {
+      em.persist(new Event("Caught a pokemon!"));
+      em.persist(new Event("Hatched an egg"));
+      em.persist(new Event("Became a gym leader"));
+   }
+
+   public void findEntity(long id, StringBuilder out) {
+      Event event = em.find(Event.class, id);
+      out.append(String.format("Found entity: %s%n", event));
    }</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
+<h2 id="step-3-expose-cache-steps-as-jax-rs-endpoints">Step 3: Expose Cache Steps as JAX-RS Endpoints</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
+<p>The REST resource exposes each cache operation as a separate GET endpoint:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Path("/")
+public class InfinispanHibernateCacheWildflyLocal {
 
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
+   public static final String EVENT_REGION_NAME = "wildfly-local.war#events." + Event.class.getName();
+   public static final String PERSON_REGION_NAME = "wildfly-local.war#events." + Person.class.getName();
+
+   @Inject
+   private Logger log;
+
+   @Inject
+   private EntityManager em;
+
+   @Inject
+   private PersistenceManager ejb;
+
+   @GET
+   @Path("/hibernate-cache/1")
+   @Produces("application/json")
+   public String step1_persistEntities() {
+      // Persist 3 entities, stats should show 3 second level cache puts
+      ejb.persistEntities();
+      SecondLevelCacheStatistics eventCacheStats = getCacheStatistics(EVENT_REGION_NAME);
+      return printfAssert("Event entity cache puts: %d (expected %d)%n", eventCacheStats.getPutCount(), 3);
    }</code></pre>
 </div>
 </div>
@@ -186,13 +217,26 @@ specific roles can perform operations on it.</p>
 <div class="sect1">
 <h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>Build and deploy the WAR to a running WildFly instance:</p>
+</div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn clean package wildfly:deploy</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>Then call each step in sequence:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">for i in {1..13}; do
+  curl http://localhost:8080/wildfly-local/infinispan/hibernate-cache/$i
+done</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Each endpoint returns the cache statistics for that step, showing puts, hits, misses, and query cache behavior.</p>
 </div>
 </div>
 </div>
@@ -202,10 +246,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p><a href="../local/guide.html">Hibernate L2 cache standalone</a> for the same pattern without an application server</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../spring-local/guide.html">Hibernate L2 cache with Spring Boot</a> for a Spring Boot variant</p>
 </li>
 </ul>
 </div>

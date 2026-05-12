@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Server-Side Tasks</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Server-Side Tasks
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to upload a JavaScript task to the Infinispan Server using the REST API and then execute it remotely through the Hot Rod client with parameters.</p>
 </div>
 </div>
 </div>
@@ -116,69 +115,66 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-create-a-server-task-script">Step 1: Create a Server Task Script</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Define a JavaScript task in <code>src/main/resources/hello.js</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">// mode=local,language=javascript,parameters=[greetee]
+"Hello " + greetee</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
+<p>The comment header declares the execution mode, language, and expected parameters.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
+<h2 id="step-2-upload-the-task-via-rest">Step 2: Upload the Task via REST</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
+<p>Use the Infinispan REST client to upload the script to the server:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
-
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   private static void uploadTask() throws Exception {
+      // Grab the script content from the resources folder
+      String script = getResourceAsString("hello.js", InfinispanServerTasks.class.getClassLoader());
+      // Connect to the locally running Infinispan Server through the REST API
+      RestURI uri = RestURI
+            .create(String.format("http://localhost:%d", ConfigurationProperties.DEFAULT_HOTROD_PORT));
+      RestClientConfigurationBuilder builder = uri.toConfigurationBuilder();
+      builder.security().authentication().username(TutorialsConnectorHelper.USER).password(TutorialsConnectorHelper.PASSWORD);
+      RestClient client = RestClient.forConfiguration(builder.build());
+      RestEntity scriptEntity = RestEntity.create(APPLICATION_JAVASCRIPT, script);
+      CompletionStage&lt;RestResponse&gt; uploadScript = client.tasks()
+            .uploadScript("hello", scriptEntity);
+      uploadScript.toCompletableFuture().get(5, TimeUnit.SECONDS);
    }</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
+<h2 id="step-3-execute-the-task-via-hot-rod">Step 3: Execute the Task via Hot Rod</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
+<p>Execute the uploaded task on a cache with parameters:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Get a cache to execute the task
+      RemoteCache&lt;String, String&gt; execCache = remoteCacheManager.getCache(TutorialsConnectorHelper.TUTORIAL_CACHE_NAME);
 
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
-   }</code></pre>
+      // Create task parameters
+      Map&lt;String, String&gt; parameters = new HashMap&lt;&gt;();
+      parameters.put("greetee", "developer");
+
+      // Execute hello task
+      String greet = execCache.execute("hello", parameters);
+      System.out.printf("Greeting = %s\n", greet);</code></pre>
 </div>
 </div>
 </div>
@@ -192,7 +188,12 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>You should see output like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Greeting = Hello developer</pre>
+</div>
 </div>
 </div>
 </div>
@@ -202,10 +203,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p><a href="../cache/guide.html">Getting started</a> with basic cache operations</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../reactive-api/guide.html">Reactive API</a> for non-blocking operations</p>
 </li>
 </ul>
 </div>

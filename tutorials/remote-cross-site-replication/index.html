@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Cross-Site Replication</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Cross-Site Replication
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to configure a Hot Rod client with backup clusters, perform cache operations across two sites (LON and NYC) with active-passive replication, and manually switch between clusters.</p>
 </div>
 </div>
 </div>
@@ -109,77 +108,66 @@ specific roles can perform operations on it.</p>
 <p>Java 17+</p>
 </li>
 <li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
+<p>Two Infinispan clusters running with cross-site replication enabled (use the provided <code>docker-compose</code> or <code>minikube</code> setup in this module, then run the <code>create-data.sh</code> script)</p>
 </li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-connect-to-the-primary-cluster-and-add-a-backup">Step 1: Connect to the Primary Cluster and Add a Backup</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Configure the client to connect to the default LON cluster and add NYC as a backup cluster:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
-
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
-   }</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      ConfigurationBuilder builder = TutorialsConnectorHelper.connectionConfig();
+      builder.addCluster("NYC").addClusterNodes("localhost:31223");
+      client = TutorialsConnectorHelper.connect(builder);</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
+<h2 id="step-2-create-or-get-the-cross-site-cache">Step 2: Create or Get the Cross-Site Cache</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
+<p>Create the cross-site cache on both clusters:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
-
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
-   }</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      cache = client.administration()
+              // this cache should exist if you start with docker-compose and run the create-data.sh script
+              .getOrCreateCache(XSITE_CACHE, new StringConfiguration("&lt;distributed-cache/&gt;"));
+      client.switchToCluster("NYC");
+      client.administration().getOrCreateCache(XSITE_CACHE, new StringConfiguration("&lt;distributed-cache/&gt;"));
+      client.switchToDefaultCluster();</code></pre>
 </div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-3-put-data-and-switch-clusters">Step 3: Put Data and Switch Clusters</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Put data on LON, switch to NYC to read it (replicated via active-passive), then put data on NYC:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      cache.put("hello", "world");
+      printCluster("LON", cache);
+      System.out.println("hello " + cache.get("hello") + " from LON");
+      printCluster("NYC", cache);
+      System.out.println("hello " + cache.get("hello") + " from NYC");
+      cache.put("hello-nyc", "world");
+      System.out.println("hello-nyc " + cache.get("hello-nyc") + " from NYC");
+      client.switchToDefaultCluster();
+      printCluster("LON", cache);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Data put on LON replicates to NYC, but data put directly on NYC does not replicate back to LON (active-passive).</p>
 </div>
 </div>
 </div>
@@ -192,7 +180,17 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>After running, you can verify:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>LON (<code>localhost:11222/console</code>): contains <code>hello</code> but not <code>hello-nyc</code></p>
+</li>
+<li>
+<p>NYC (<code>localhost:31222/console</code>): contains both <code>hello</code> (replicated) and <code>hello-nyc</code></p>
+</li>
+</ul>
 </div>
 </div>
 </div>
@@ -202,10 +200,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p><a href="../cache/guide.html">Get started</a> with basic remote cache operations</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../near-cache/guide.html">Use near-caching</a> for faster reads</p>
 </li>
 </ul>
 </div>

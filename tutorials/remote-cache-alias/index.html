@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Remote Cache Aliases</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Remote Cache Aliases
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to add aliases to an existing remote cache so you can access the same cache data using alternative names.</p>
 </div>
 </div>
 </div>
@@ -116,75 +115,51 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-connect-and-store-data">Step 1: Connect and Store Data</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Connect to the server, obtain a remote cache, and store a value:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
-
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Connect to the server
+      cacheManager = TutorialsConnectorHelper.connect();
+      // Obtain the remote cache
       cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
-   }</code></pre>
+
+      // Store a value
+      cache.put("key", "value");
+      // Retrieve the value and print it out
+      System.out.printf("key = %s\n", cache.get("key"));</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
+<h2 id="step-2-add-and-use-aliases">Step 2: Add and Use Aliases</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
+<p>Use the admin API to update the <code>aliases</code> configuration attribute. You can then access the same cache data through any of its aliases:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Add aliases to the cache
+      cacheManager.administration().updateConfigurationAttribute(cache.getName(), "aliases", "alias alias2");
 
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
-   }</code></pre>
+      // Retrieve the value through an alias
+      cacheAlias = cacheManager.getCache("alias");
+      if (cacheAlias != null) {
+         System.out.printf("key = %s\n", cacheAlias.get("key"));
+      }</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>The alias points to the same underlying cache, so all data is shared.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
+<h2 id="step-3-run-the-tutorial">Step 3: Run the Tutorial</h2>
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
@@ -192,7 +167,13 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>You should see output like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>key = value
+key = value</pre>
+</div>
 </div>
 </div>
 </div>
@@ -202,10 +183,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p><a href="../cache-admin-api/guide.html">Create caches</a> with the admin API</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../cache/guide.html">Get started</a> with basic cache operations</p>
 </li>
 </ul>
 </div>

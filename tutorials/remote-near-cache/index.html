@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Near-Cache with Bloom Filters</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Near-Cache with Bloom Filters
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to configure a near-cache on the Hot Rod client so that frequently read entries are stored locally, avoiding remote calls. You will also enable bloom filters to reduce the invalidation overhead when entries change on the server.</p>
 </div>
 </div>
 </div>
@@ -116,68 +115,71 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-add-the-hot-rod-client-dependency">Step 1: Add the Hot Rod Client Dependency</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Add the Infinispan Hot Rod client to your <code>pom.xml</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
-
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
-   }</code></pre>
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+   &lt;artifactId&gt;infinispan-client-hotrod&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
+<h2 id="step-2-configure-near-caching-with-bloom-filters">Step 2: Configure Near-Caching with Bloom Filters</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
+<p>Enable near-caching on a specific remote cache. Set the mode to <code>INVALIDATED</code>, configure the maximum number of entries, and turn on bloom filters:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      ConfigurationBuilder builder = TutorialsConnectorHelper.connectionConfig();
+      // Add an additional cache with near caching configuration
+      builder.remoteCache(CACHE_WITH_NEAR_CACHING)
+              .configuration(TutorialsConnectorHelper.TUTORIAL_CACHE_CONFIG.replace("CACHE_NAME", CACHE_WITH_NEAR_CACHING))
+              .nearCacheMode(NearCacheMode.INVALIDATED)
+              .nearCacheMaxEntries(20)
+              .nearCacheUseBloomFilter(true);
 
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
+      // Connect to the server with the near cache configuration for the test cache
+      cacheManager = TutorialsConnectorHelper.connect(builder);</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>NearCacheMode.INVALIDATED</code> keeps the local near-cache consistent by invalidating entries when they change on the server.</p>
+</li>
+<li>
+<p><code>nearCacheMaxEntries</code> limits memory usage on the client.</p>
+</li>
+<li>
+<p><code>nearCacheUseBloomFilter(true)</code> reduces the number of invalidation messages the server sends to the client.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-3-compare-read-performance">Step 3: Compare Read Performance</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Populate both a regular cache and the near-cache, then perform 10,000 random reads on each to see the difference:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void readCache(RemoteCache&lt;Integer, String&gt; cache) {
+      Instant start = Instant.now();
+      Random random = new Random();
+      random.ints(10_000, 1, 20).forEach(num -&gt; cache.get(num));
+      Instant finish = Instant.now();
+      long timeElapsed = Duration.between(start, finish).toMillis();
+      System.out.println(String.format("Time to complete with cache %s is %d milliseconds", cache.getName(), timeElapsed));
    }</code></pre>
 </div>
 </div>
@@ -192,7 +194,7 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>You should see that reads on the near-cache complete significantly faster than reads on the regular cache.</p>
 </div>
 </div>
 </div>
@@ -202,10 +204,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p><a href="../cache/guide.html">Getting started</a> with basic cache operations</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../per-cache-configuration/guide.html">Per-cache configuration</a> using templates and XML</p>
 </li>
 </ul>
 </div>

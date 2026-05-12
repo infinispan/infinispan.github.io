@@ -118,134 +118,118 @@
 <h2 id="step-1-define-your-data-model-with-protobuf-annotations">Step 1: Define Your Data Model with Protobuf Annotations</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan uses Protobuf for serialization. Define your entities as Java records with <code>@Proto</code> and <code>@Indexed</code> annotations:</p>
+<p>Infinispan uses Protobuf for serialization. Define your entities as Java records with <code>@Proto</code> and <code>@Indexed</code> annotations.
+The <code>Person</code> entity uses <code>@Keyword</code> annotations for indexed fields, and the <code>PersonKey</code> record defines a composite key with <code>@Basic</code> projectable fields. A <code>@ProtoSchema</code> interface generates the schema for both:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
 @Indexed(keyEntity = "tutorial.PersonKey")
-public record Person(
-      @Keyword(projectable = true, sortable = true, normalizer = "lowercase")
-      String firstName,
-      @Keyword(projectable = true, sortable = true, normalizer = "lowercase")
-      String lastName,
-      int bornYear,
-      @Keyword(projectable = true, sortable = true, normalizer = "lowercase")
-      String bornIn) {
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Define a key entity for composite keys:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
-@Indexed
-public record PersonKey(
-      @Basic(projectable = true) String id,
-      @Basic(projectable = true) String pseudo) {
-}</code></pre>
+public record Person(@Keyword(projectable = true, sortable = true, normalizer = "lowercase", indexNullAs = "unnamed", norms = false)
+                     String firstName,
+                     @Keyword(projectable = true, sortable = true, normalizer = "lowercase", indexNullAs = "unnamed", norms = false)
+                     String lastName,
+                     int bornYear,
+                     @Keyword(projectable = true, sortable = true, normalizer = "lowercase", indexNullAs = "unnamed", norms = false)
+                     String bornIn
+) {}</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-register-the-protobuf-schema">Step 2: Register the Protobuf Schema</h2>
+<h2 id="step-2-connect-and-create-an-indexed-cache">Step 2: Connect and Create an Indexed Cache</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a <code>@ProtoSchema</code> interface to generate the schema:</p>
+<p>Register the Protobuf context initializer, configure the indexed cache with <code>indexing enabled="true"</code>, and connect:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@ProtoSchema(schemaPackageName = "tutorial",
-      includeClasses = { Person.class, PersonKey.class })
-public interface TutorialSchema extends GeneratedSchema {
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Register it when connecting:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = TutorialsConnectorHelper.connectionConfig();
-builder.addContextInitializer(new TutorialSchemaImpl());
-client = TutorialsConnectorHelper.connect(builder);
-client.administration().schemas().createOrUpdate(new TutorialSchemaImpl());</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void connectToInfinispan() throws Exception {
+      ConfigurationBuilder builder = TutorialsConnectorHelper.connectionConfig();
+
+      // Add the Protobuf serialization context in the client
+      builder.addContextInitializer(new TutorialSchemaImpl());
+
+      // Use indexed cache
+      URI indexedCacheURI = InfinispanRemoteQuery.class.getClassLoader().getResource("indexedCache.xml").toURI();
+      builder.remoteCache(INDEXED_PEOPLE_CACHE).configurationURI(indexedCacheURI);
+
+      // Connect to the server
+      client = TutorialsConnectorHelper.connect(builder);
+
+      // Create and add the Protobuf schema in the server
+      addPersonSchema(client);
+
+      // Get the people cache, create it if needed with the default configuration
+      peopleCache = client.getCache(INDEXED_PEOPLE_CACHE);
+   }</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-create-an-indexed-cache">Step 3: Create an Indexed Cache</h2>
+<h2 id="step-3-run-ickle-queries">Step 3: Run Ickle Queries</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Configure the cache with indexing enabled:</p>
+<p>Query all entries, filter with parameters, use projections, and delete by query:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache statistics="true"&gt;
-   &lt;encoding&gt;
-      &lt;key media-type="application/x-protostream"/&gt;
-      &lt;value media-type="application/x-protostream"/&gt;
-   &lt;/encoding&gt;
-   &lt;indexing enabled="true" storage="filesystem" startup-mode="AUTO"&gt;
-      &lt;indexed-entities&gt;
-         &lt;indexed-entity&gt;tutorial.Person&lt;/indexed-entity&gt;
-      &lt;/indexed-entities&gt;
-   &lt;/indexing&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static List&lt;Person&gt; queryAll() {
+      // Query all
+      Query&lt;Person&gt; query = peopleCache.query("FROM tutorial.Person");
+      List&lt;Person&gt; queryResult = query.execute().list();
+      // Print the results
+      System.out.println("SIZE " + queryResult.size());
+      System.out.println(queryResult);
+      return queryResult;
+   }
+
+   static List&lt;Person&gt; queryWithWhereStatementOnValues() {
+      // Create a query with lastName parameter
+      System.out.println("== Query on values");
+      Query&lt;Person&gt; query = peopleCache.query("FROM tutorial.Person p where p.lastName = :lastName");
+      // Set the parameter value
+      query.setParameter("lastName", "Granger");
+      // Execute the query
+      List&lt;Person&gt; queryResult = query.execute().list();
+      // Print the results
+      System.out.println(queryResult);
+      return queryResult;
+   }
+
+   static List&lt;PersonDTO&gt; queryWithProjection() {
+      // Create a query with projection
+      System.out.println("== Query with key and values projection");
+      Query&lt;Object[]&gt; queryProjection = peopleCache.query("SELECT p.key.pseudo, p.firstName, p.lastName FROM tutorial.Person p where p.bornIn = 'London'");
+      // Execute the queryProjection
+      List&lt;PersonDTO&gt; queryResultProjection = queryProjection.execute().list()
+              .stream()
+              .map(r -&gt; new PersonDTO(r[0] + "", r[1] + " " + r[2]))
+              .toList();
+      // Print the results queryResultProjection
+      System.out.println(queryResultProjection);
+      return queryResultProjection;
+   }
+
+   static List&lt;Person&gt; deleteByQuery() {
+      Query&lt;Person&gt; query = peopleCache.query("DELETE FROM tutorial.Person p where p.key.pseudo = 'dmalfoy'");
+      System.out.println("== DELETE count:" + query.execute().count().value());
+      // Query all
+      query = peopleCache.query("FROM tutorial.Person");
+      List&lt;Person&gt; queryResult = query.execute().list();
+      // Print the results
+      System.out.println("SIZE " + queryResult.size());
+      System.out.println(queryResult);
+      return queryResult;
+   }</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-4-run-ickle-queries">Step 4: Run Ickle Queries</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Query all entries:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Person&gt; query = cache.query("FROM tutorial.Person");
-List&lt;Person&gt; results = query.execute().list();</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Filter with parameters:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Person&gt; query = cache.query(
-      "FROM tutorial.Person p WHERE p.lastName = :lastName");
-query.setParameter("lastName", "Granger");</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Use projections to select specific fields:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Object[]&gt; query = cache.query(
-      "SELECT p.key.pseudo, p.firstName, p.lastName " +
-      "FROM tutorial.Person p WHERE p.bornIn = 'London'");</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Delete by query:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Person&gt; query = cache.query(
-      "DELETE FROM tutorial.Person p WHERE p.key.pseudo = 'dmalfoy'");
-long deleted = query.execute().count().value();</code></pre>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-5-run-the-tutorial">Step 5: Run the Tutorial</h2>
+<h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">

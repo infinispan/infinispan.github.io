@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Authorization and Security with Embedded Infinispan</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Authorization and Security with Embedded Infinispan
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to configure role-based access control (RBAC) on embedded Infinispan caches, define roles with specific permissions, and enforce authorization so that only users with the correct roles can access cache data.</p>
 </div>
 </div>
 </div>
@@ -108,77 +107,87 @@ specific roles can perform operations on it.</p>
 <li>
 <p>Java 17+</p>
 </li>
-<li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
-</li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-add-the-embedded-dependency">Step 1: Add the Embedded Dependency</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Add Infinispan core to your <code>pom.xml</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
-
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
-   }</code></pre>
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+   &lt;artifactId&gt;infinispan-core&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
+<h2 id="step-2-configure-authorization-roles-and-start-the-cache-manager">Step 2: Configure Authorization, Roles, and Start the Cache Manager</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
+<p>Enable authorization on the cache manager, define roles with specific permissions, and start the cache manager under an admin subject that has <code>LIFECYCLE</code> permission. The <code>IdentityRoleMapper</code> maps the principal name directly to the role name:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">        // Setup up a clustered cache manager
+        GlobalConfigurationBuilder global = GlobalConfigurationBuilder.defaultClusteredBuilder();
 
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
-   }</code></pre>
+        // Enable authorization and define the roles and their permissions.
+        global.security().authorization().enable()
+                // Defines how to map a principal to a role.
+                // The identity will simply map the principal name to the role name.
+                // For example, user "admin" will map to role "admin", and so on.
+                .principalRoleMapper(new IdentityRoleMapper())
+                .groupOnlyMapping(false)
+                // Define different roles and associate the permissions.
+                .role(ADMIN_ROLE).permission(AuthorizationPermission.ALL)
+                .role(SECRET_ROLE).permission(AuthorizationPermission.ALL)
+                .role(READ_ONLY_ROLE).permission(AuthorizationPermission.ALL_READ)
+                .role(WRITE_ONLY_ROLE).permission(AuthorizationPermission.ALL_WRITE);
+
+        // Initialize the cache manager
+        // We pass false to not start automatically.
+        // Then we call start using the admin user. The user needs LIFECYCLE permission.
+        dcm = new DefaultCacheManager(global.build(), false);
+        Security.doAs(ADMIN_USER, dcm::start);</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-3-create-caches-with-authorization-and-enforce-access-control">Step 3: Create Caches with Authorization and Enforce Access Control</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Create caches with authorization enabled, restricting a secret cache to specific roles. Wrap cache operations with <code>Security.doAs</code> to execute under a specific user. Unauthorized access throws a <code>SecurityException</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">        // First, create the first cache.
+        // This cache is accessible to any role.
+        ConfigurationBuilder builder1 = new ConfigurationBuilder();
+        builder1.clustering().cacheMode(CacheMode.DIST_SYNC);
+        builder1.security().authorization().enable();
+
+        // We utilize an admin to create the cache.
+        cache = Security.doAs(ADMIN_USER, () -&gt; dcm.administration().withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
+                .getOrCreateCache(CACHE_NAME, builder1.build()));
+
+
+        // Now we create a cache only accessible to users with the secret role.
+        ConfigurationBuilder builder2 = new ConfigurationBuilder();
+        builder2.clustering().cacheMode(CacheMode.DIST_SYNC);
+        // The cache must include both roles so it can be stopped by the admin user as well.
+        builder2.security().authorization().enable().roles(ADMIN_ROLE, SECRET_ROLE);
+
+        // We utilize an admin to create the cache.
+        secretCache = Security.doAs(ADMIN_USER, () -&gt; dcm.administration().withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
+                .getOrCreateCache(SECRET_CACHE_NAME, builder2.build()));</code></pre>
 </div>
 </div>
 </div>
@@ -192,7 +201,7 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>The output shows successful reads from the normal and secret caches with the correct users, and a <code>SecurityException</code> when an unauthorized user attempts to access the secret cache.</p>
 </div>
 </div>
 </div>
@@ -202,10 +211,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p>Add <a href="../metrics/guide.html">Prometheus metrics</a> to monitor your caches</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p>Explore <a href="../cache-distributed/guide.html">distributed caching</a> for multi-node setups</p>
 </li>
 </ul>
 </div>

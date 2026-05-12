@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Quarkus Infinispan Client</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Quarkus Infinispan Client
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to use the Quarkus Infinispan client extension to connect to an Infinispan Server, store indexed Protobuf entities, and perform full-text search queries through a JAX-RS REST resource.</p>
 </div>
 </div>
 </div>
@@ -109,90 +108,142 @@ specific roles can perform operations on it.</p>
 <p>Java 17+</p>
 </li>
 <li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
+<p>Quarkus</p>
+</li>
+<li>
+<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman for Quarkus Dev Services)</p>
 </li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-add-dependencies">Step 1: Add Dependencies</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Add the Quarkus Infinispan client and REST Jackson extensions:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
-
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
-   }</code></pre>
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+   &lt;groupId&gt;io.quarkus&lt;/groupId&gt;
+   &lt;artifactId&gt;quarkus-infinispan-client&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+   &lt;groupId&gt;io.quarkus&lt;/groupId&gt;
+   &lt;artifactId&gt;quarkus-rest-jackson&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
+<h2 id="step-2-define-the-protobuf-entity">Step 2: Define the Protobuf Entity</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
+<p>Create an indexed Protobuf record with <code>@Text</code> fields for full-text search:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
+@Indexed
+public record Character(UUID id, @Text String name, @Text String bio, Archetype archetype) {
 
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-3-configure-the-cache">Step 3: Configure the Cache</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In <code>application.properties</code>, point to the cache configuration and set server coordinates:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-properties hljs" data-lang="properties">quarkus.infinispan-client.cache.characters.configuration-resource=indexedCache.xml
+characters.filename = characters.csv
+
+# Uncomment if you are running a server in local
+# quarkus.infinispan-client.devservices.enabled=false
+# quarkus.infinispan-client.hosts=localhost:11222
+# quarkus.infinispan-client.username=admin
+# quarkus.infinispan-client.password=password
+
+# Assumes a server is running, with admin/password, locally
+%prod.quarkus.infinispan-client.hosts=localhost:11222
+%prod.quarkus.infinispan-client.username=admin
+%prod.quarkus.infinispan-client.password=password</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In dev mode, Quarkus Dev Services automatically starts an Infinispan container.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-4-inject-the-remotecache-and-query">Step 4: Inject the RemoteCache and Query</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Inject the remote cache and perform full-text queries using Ickle:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@ApplicationScoped
+public class CharacterSearch {
+   @Inject
+   @Remote(DataLoader.CHARACTERS_CACHE)
+   RemoteCache&lt;String, Character&gt; characters;
+
+   public Character getById(String id) {
+      return characters.get(id);
+   }
+
+   public CompletionStage&lt;Character&gt; getByIdAsync(String id) {
+      return characters.getAsync(id);
+   }
+
+   /**
+    * Performs a simple full-text query on name and bio
+    *
+    * @param term
+    * @return character names
+    */
+   public Set&lt;String&gt; search(String term) {
+      if (characters == null) {
+         Log.error("Unable to search...");
+         throw new IllegalStateException("Characters store is null. Try restarting the application");
       }
-   }</code></pre>
+      String query = "FROM tutorial.Character c"
+      + " WHERE c.name:'~"+ term + "'"
+      + " OR c.bio: '~" + term + "'";
+
+      List&lt;Character&gt; result = characters.&lt;Character&gt;query(query).execute().list();
+      return result.stream().map(Character::name).collect(Collectors.toSet());
+   }
+
+}</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
+<h2 id="step-5-run-the-tutorial">Step 5: Run the Tutorial</h2>
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn quarkus:dev</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>Then query the REST endpoints:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">curl http://localhost:8080/characters/0
+curl "http://localhost:8080/characters/query?term=dragon"</code></pre>
+</div>
 </div>
 </div>
 </div>
@@ -202,10 +253,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p><a href="../../../infinispan-ai/vector-search/guide.html">Vector search</a> for kNN similarity search on embeddings</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../../../infinispan-remote/query/guide.html">Remote queries</a> for Ickle query basics with the Hot Rod client</p>
 </li>
 </ul>
 </div>

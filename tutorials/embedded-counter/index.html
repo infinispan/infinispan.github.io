@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Clustered Counters with Embedded Infinispan</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Clustered Counters with Embedded Infinispan
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to configure and use Infinispan clustered counters in embedded mode, including strong bounded counters, strong unbounded counters, and weak counters.</p>
 </div>
 </div>
 </div>
@@ -108,83 +107,133 @@ specific roles can perform operations on it.</p>
 <li>
 <p>Java 17+</p>
 </li>
-<li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
-</li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-add-the-counter-dependency">Step 1: Add the Counter Dependency</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Add the Infinispan clustered counter module to your <code>pom.xml</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+   &lt;artifactId&gt;infinispan-clustered-counter&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
 </div>
-</div>
-<div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
+<h2 id="step-2-define-counters-in-the-global-configuration">Step 2: Define Counters in the Global Configuration</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
+<p>Use <code>CounterManagerConfigurationBuilder</code> to define counters when building the global configuration:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Setup up a clustered cache manager
+      GlobalConfigurationBuilder global = GlobalConfigurationBuilder.defaultClusteredBuilder();
+      // Create the counter configuration builder
+      CounterManagerConfigurationBuilder builder = global.addModule(CounterManagerConfigurationBuilder.class);
+      // Create 3 counters.
+      // The first counter is bounded to 10 (upper-bound).
+      builder.addStrongCounter().name("counter-1").upperBound(10).initialValue(1);
+      // The second counter is unbounded
+      builder.addStrongCounter().name("counter-2").initialValue(2);
+      // And finally, the third counter is a weak counter.
+      builder.addWeakCounter().name("counter-3").initialValue(3);
 
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
-   }</code></pre>
+      // Initialize the cache manager
+      cm1 = new DefaultCacheManager(global.build());
+
+      // Retrieve the CounterManager from the CacheManager. Each CacheManager has it own CounterManager
+      counterManager = EmbeddedCounterManagerFactory.asCounterManager(cm1);</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
+<h2 id="step-3-use-strong-counters">Step 3: Use Strong Counters</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
+<p>Strong counters provide consistent values during increment and decrement operations. All methods return <code>CompletableFuture</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // StrongCounter provides the higher consistency. Its value is known during the increment/decrement and it may be bounded.
+      // Bounded counters are aimed for uses cases where a limit is needed.
+      counter1 = counterManager.getStrongCounter("counter-1");
+      // All methods return a CompletableFuture. So you can do other work while the counter value is being computed.
+      counter1.getValue().thenAccept(value -&gt; System.out.println("Counter-1 initial value is " + value)).get();
 
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
-   }</code></pre>
+      // Try to add more than the upper-bound
+      counter1.addAndGet(10).handle((value, throwable) -&gt; {
+         // Value is null since the counter is bounded and we can add 10 to it.
+         System.out.println("Counter-1 Exception is " + throwable.getMessage());
+         return 0;
+      }).get();
+
+      // Check the counter value. It should be the upper-bound (10)
+      counter1.getValue().thenAccept(value -&gt; System.out.println("Counter-1 value is " + value)).get();
+
+      //Decrement the value. Should be 9.
+      counter1.decrementAndGet().handle((value, throwable) -&gt; {
+         // No exception this time.
+         System.out.println("Counter-1 new value is " + value);
+         return value;
+      }).get();
+
+      // Similar to counter-1, counter-2 is a strong counter but it is unbounded. It will never throw the CounterOutOfBoundsException
+      counter2 =  counterManager.getStrongCounter("counter-2");
+
+      // All counters allow a listener to be registered.
+      // The handle can be used to remove the listener
+      counter2.addListener(event -&gt; System.out
+              .println("Counter-2 event: oldValue=" + event.getOldValue() + " newValue=" + event.getNewValue()));
+
+      // Adding MAX_VALUE won't throws an exception. But the all the increments won't have any effect since we can store
+      //any value larger the MAX_VALUE
+      counter2.addAndGet(Long.MAX_VALUE).thenAccept(aLong -&gt; System.out.println("Counter-2 value is " + aLong)).get();
+
+      // Conditional operations are allowed in strong counters
+      counter2.compareAndSet(Long.MAX_VALUE, 0)
+              .thenAccept(aBoolean -&gt; System.out.println("Counter-2 CAS result is " + aBoolean)).get();
+      counter2.getValue().thenAccept(value -&gt; System.out.println("Counter-2 value is " + value)).get();
+
+      // Reset the counter to its initial value (2)
+      counter2.reset().get();
+      counter2.getValue().thenAccept(value -&gt; System.out.println("Counter-2 initial value is " + value)).get();</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
+<h2 id="step-4-use-weak-counters">Step 4: Use Weak Counters</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Weak counters are optimized for speed. Their value is computed lazily:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Retrieve counter-3
+      counter3 = counterManager.getWeakCounter("counter-3");
+      // Weak counter doesn't have its value available during updates. This makes the increment faster than the StrongCounter
+      // Its value is computed lazily and stored locally.
+      // Its main use case is for uses-case where faster increments are needed.
+      counter3.add(5).thenAccept(aVoid -&gt; System.out.println("Adding 5 to counter-3 completed!")).get();
+
+      // Check the counter value.
+      System.out.println("Counter-3 value is " + counter3.getValue());</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-5-run-the-tutorial">Step 5: Run the Tutorial</h2>
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
@@ -192,7 +241,7 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>The output shows counter operations including bounded overflow handling, compare-and-set, reset, and weak counter updates.</p>
 </div>
 </div>
 </div>
@@ -202,10 +251,13 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p>Try <a href="../clusterexec/guide.html">cluster execution</a> for running tasks across nodes</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p>Explore <a href="../lock/guide.html">clustered locks</a> for distributed coordination</p>
+</li>
+<li>
+<p>Use <a href="../cache-distributed/guide.html">distributed caching</a> for data partitioning</p>
 </li>
 </ul>
 </div>

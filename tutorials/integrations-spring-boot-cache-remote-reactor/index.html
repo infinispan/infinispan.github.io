@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Spring Boot Reactive Remote Caching</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Spring Boot Reactive Remote Caching
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to use Spring Boot&#8217;s <code>@EnableCaching</code> with Project Reactor (<code>Mono</code>) and the Infinispan Spring Boot remote starter for reactive caching against an Infinispan Server.</p>
 </div>
 </div>
 </div>
@@ -109,6 +108,9 @@ specific roles can perform operations on it.</p>
 <p>Java 17+</p>
 </li>
 <li>
+<p>Spring Boot</p>
+</li>
+<li>
 <p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
 </li>
 </ul>
@@ -116,83 +118,128 @@ specific roles can perform operations on it.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-add-dependencies">Step 1: Add Dependencies</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Add the Infinispan Spring Boot remote starter with Spring WebFlux:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+   &lt;artifactId&gt;infinispan-spring-boot4-starter-remote&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+   &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+   &lt;artifactId&gt;spring-boot-starter-webflux&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan.protostream&lt;/groupId&gt;
+   &lt;artifactId&gt;protostream-processor&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
 </div>
-</div>
-<div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
+<h2 id="step-2-enable-reactive-caching">Step 2: Enable Reactive Caching</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
+<p>In <code>application.properties</code>, enable the reactive mode:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
+<pre class="highlightjs highlight"><code class="language-properties hljs" data-lang="properties">infinispan.remote.server-list=127.0.0.1:11222
+infinispan.remote.reactive=true</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-3-return-mono-from-cached-methods">Step 3: Return Mono from Cached Methods</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Annotate methods that return <code>Mono</code> with <code>@Cacheable</code>. The Infinispan reactive cache adapter handles the subscription:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Component
+@CacheConfig(cacheNames = Data.BASQUE_NAMES_CACHE)
+public class BasqueNamesRepository {
 
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
+   private static final Logger logger = Logger.getLogger(MethodHandles.lookup().lookupClass().getName());
+   private static Map&lt;String, BasqueName&gt; database  = createDB();
+
+   @Cacheable
+   public Mono&lt;BasqueName&gt; findById(String id) {
+      logger.info("Call database to FIND name by id '" + id + "'");
+      return Mono.fromCallable(() -&gt; database.get(id));
    }</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
+<h2 id="step-4-configure-the-remote-cache-and-schema">Step 4: Configure the Remote Cache and Schema</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
+<p>Register the Protobuf schema and cache configuration:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Configuration
+public class InfinispanConfiguration {
 
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
-   }</code></pre>
+   @Bean
+   @Order(Ordered.HIGHEST_PRECEDENCE)
+   public InfinispanRemoteCacheCustomizer configurer() {
+      return b -&gt; {
+         String host = TutorialsConnectorHelper.HOST;
+         int port = TutorialsConnectorHelper.SINGLE_PORT;
+         if (TutorialsConnectorHelper.INFINISPAN_CONTAINER != null) {
+            port = TutorialsConnectorHelper.INFINISPAN_CONTAINER.getFirstMappedPort();
+         }
+         b.addServer().host(host).port(port);
+         b.security().authentication()
+                 .username(TutorialsConnectorHelper.USER)
+                 .password(TutorialsConnectorHelper.PASSWORD);
+         System.out.println(String.format("Connect to the Infinispan Console " +
+                         "by login to http://localhost:%d with %s and %s", port,
+                 TutorialsConnectorHelper.USER,
+                 TutorialsConnectorHelper.PASSWORD));
+
+
+         URI cacheConfigUri;
+         try {
+            cacheConfigUri = this.getClass().getClassLoader().getResource("basquesNamesCache.xml").toURI();
+         } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+         }
+
+         b.remoteCache(Data.BASQUE_NAMES_CACHE)
+                 .configurationURI(cacheConfigUri);
+
+         b.remoteCache(Data.BASQUE_NAMES_CACHE).marshaller(ProtoStreamMarshaller.class);
+
+         // Add marshaller in the client, the class is generated from the interface in compile time
+         b.addContextInitializer(new BasquesNamesSchemaBuilderImpl());
+      };
+   }
+}</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
+<h2 id="step-5-run-the-tutorial">Step 5: Run the Tutorial</h2>
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn spring-boot:run</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>The application periodically looks up Basque names. Watch the logs: the first lookup for each id logs "Call database", while subsequent lookups return from the Infinispan cache without the log message.</p>
 </div>
 </div>
 </div>
@@ -202,10 +249,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p><a href="../cache-remote/guide.html">Spring Boot remote caching</a> for the non-reactive version</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../cache-embedded/guide.html">Spring Boot embedded caching</a> for caching without a server</p>
 </li>
 </ul>
 </div>

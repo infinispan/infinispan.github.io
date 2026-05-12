@@ -135,8 +135,12 @@
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder global = GlobalConfigurationBuilder.defaultClusteredBuilder();
-DefaultCacheManager cacheManager = new DefaultCacheManager(global.build());</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public void createDefaultCacheManager() {
+      // Setup up a clustered cache manager
+      GlobalConfigurationBuilder global = GlobalConfigurationBuilder.defaultClusteredBuilder();
+      // Initialize the cache manager
+      cm1 = new DefaultCacheManager(global.build());
+   }</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -148,16 +152,22 @@ DefaultCacheManager cacheManager = new DefaultCacheManager(global.build());</cod
 <h2 id="step-3-configure-a-distributed-cache">Step 3: Configure a Distributed Cache</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache with <code>DIST_SYNC</code> mode. In this mode, data is partitioned — each entry is stored on a subset of nodes (by default 2 copies):</p>
+<p>Create a cache with <code>DIST_SYNC</code> mode. In this mode, data is partitioned: each entry is stored on a subset of nodes (by default 2 copies):</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
-builder.clustering().cacheMode(CacheMode.DIST_SYNC);
-
-Cache&lt;String, String&gt; cache = cacheManager.administration()
-      .withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
-      .getOrCreateCache("cache", builder.build());</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public void createAndPopulateTheCache(int size) {
+      //Create cache configuration
+      ConfigurationBuilder builder = new ConfigurationBuilder();
+      builder.clustering().cacheMode(CacheMode.DIST_SYNC);
+      // Create a cache
+      cache = cm1.administration().withFlags(CacheContainerAdmin.AdminFlag.VOLATILE)
+              .getOrCreateCache(DIST_CACHE_NAME, builder.build());
+      // Store the current node address in some random keys
+      for (int i = 0; i &lt; size; i++) {
+         cache.put(UUID.randomUUID().toString(), cm1.getNodeAddress());
+      }
+   }</code></pre>
 </div>
 </div>
 </div>
@@ -170,19 +180,20 @@ Cache&lt;String, String&gt; cache = cacheManager.administration()
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">// Store 10 entries with random keys
-for (int i = 0; i &lt; 10; i++) {
-   cache.put(UUID.randomUUID().toString(), cacheManager.getNodeAddress());
-}
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public void displayCacheContent() {
+      if (cache == null) {
+         System.out.println("The cache is null");
+         return;
+      }
 
-// All entries (cluster-wide view)
-cache.entrySet().forEach(entry -&gt;
-      System.out.printf("%s = %s\n", entry.getKey(), entry.getValue()));
-
-// Only locally-owned entries
-cache.getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL)
-      .entrySet().forEach(entry -&gt;
-            System.out.printf("[local] %s = %s\n", entry.getKey(), entry.getValue()));</code></pre>
+      // Display the current cache contents for the whole cluster
+      cache.entrySet().forEach(entry -&gt; System.out.printf("%s = %s\n", entry.getKey(), entry.getValue()));
+      // Display the current cache contents for this node
+      // Note: By default numOwners=2, so in a cluster with 2 nodes, each node owns all the keys:
+      // some of the keys as "primary owner" and some keys as "backup owner"
+      cache.getAdvancedCache().withFlags(Flag.CACHE_MODE_LOCAL).entrySet()
+              .forEach(entry -&gt; System.out.printf("%s = %s\n", entry.getKey(), entry.getValue()));
+   }</code></pre>
 </div>
 </div>
 </div>

@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Securing Caches with Role-Based Authorization</title>
+  <title>Hibernate L2 Cache with Infinispan (Standalone)</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -87,7 +87,7 @@
   <div class="content">
     <div class="component-slim guide-page">
    <div class="guide-breadcrumb">
-      <a href="/tutorials/">Tutorials</a> &rsaquo; Securing Caches with Role-Based Authorization
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Hibernate L2 Cache with Infinispan (Standalone)
    </div>
 
    <div class="guide-content">
@@ -95,8 +95,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create a cache with role-based authorization so that only users with
-specific roles can perform operations on it.</p>
+<p>How to configure Infinispan as the Hibernate second-level (L2) cache provider in a standalone Java SE application, and observe entity cache puts, hits, misses, and query cache behavior through Hibernate statistics.</p>
 </div>
 </div>
 </div>
@@ -108,91 +107,143 @@ specific roles can perform operations on it.</p>
 <li>
 <p>Java 17+</p>
 </li>
-<li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
-</li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-secured-cache">Step 1: Define a Secured Cache</h2>
+<h2 id="step-1-add-the-infinispan-hibernate-cache-dependency">Step 1: Add the Infinispan Hibernate Cache Dependency</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Create a cache configuration that restricts access to the <code>deployer</code> role:</p>
+<p>Add the Infinispan Hibernate cache module and an in-memory database to your <code>pom.xml</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="securedCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;security&gt;
-        &lt;authorization enabled="true" roles="deployer" /&gt;
-    &lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+   &lt;groupId&gt;org.hibernate.orm&lt;/groupId&gt;
+   &lt;artifactId&gt;hibernate-core&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+   &lt;artifactId&gt;infinispan-hibernate-cache-v66&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+   &lt;groupId&gt;com.h2database&lt;/groupId&gt;
+   &lt;artifactId&gt;h2&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
 </div>
-</div>
-<div class="paragraph">
-<p>Only users with the <code>deployer</code> role can read or write to this cache. Other authenticated users will get an authorization error.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-connect-and-access-caches">Step 2: Connect and Access Caches</h2>
+<h2 id="step-2-configure-the-persistence-unit">Step 2: Configure the Persistence Unit</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect with the default <code>admin</code> credentials:</p>
+<p>In <code>META-INF/persistence.xml</code>, enable the second-level cache and query cache, and set Infinispan as the cache provider:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   public static void connectToInfinispan() throws Exception {
-      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      URI securedCacheConfig = InfinispanAuthorizationCache.class.getClassLoader().getResource("securedCache.xml").toURI();
-      configurationBuilder.remoteCache(SECURED_CACHE).configurationURI(securedCacheConfig);
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">   &lt;persistence-unit name="events"&gt;
+      &lt;shared-cache-mode&gt;ENABLE_SELECTIVE&lt;/shared-cache-mode&gt;
+      &lt;properties&gt;
+         &lt;!-- H2 in-memory database --&gt;
+         &lt;property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/&gt;
+         &lt;property name="hibernate.connection.url" value="jdbc:h2:mem:db1;DB_CLOSE_DELAY=-1;MVCC=TRUE"/&gt;
+         &lt;property name="hibernate.connection.driver_class" value="org.h2.Driver"/&gt;
+         &lt;property name="hibernate.connection.username" value="sa"/&gt;
+         &lt;property name="hibernate.connection.password" value=""/&gt;
 
-      // Connect to Infinispan with an additional cache that is secured with authorization for
-      // deployer role only. We are connecting with 'admin' user that has 'admin' role.
-      cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-      cache = cacheManager.getCache(TUTORIAL_CACHE_NAME);
-      securedCache = cacheManager.getCache(SECURED_CACHE);
-   }</code></pre>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-3-observe-authorization-in-action">Step 3: Observe Authorization in Action</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Access to the unrestricted cache works normally, but accessing the secured cache without the required role throws an exception:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   static void manipulateCache() {
-      // Store a value in a non secured cache
-      cache.put("key", "value");
+         &lt;!-- Create/drop database in each run --&gt;
+         &lt;property name="hibernate.hbm2ddl.auto" value="create-drop" /&gt;
 
-      try {
-         // Store a value in a cache where your role is has not access granted
-         securedCache.put("key", "value");
-      } catch (HotRodClientException ex) {
-         message = ex.getMessage().toLowerCase();
-         System.out.println(ex.getMessage());
-      }
-   }</code></pre>
+         &lt;!-- Enables second level cache --&gt;
+         &lt;property name="hibernate.cache.use_second_level_cache" value="true"/&gt;
+         &lt;!-- Enable query cache --&gt;
+         &lt;property name="hibernate.cache.use_query_cache" value="true"/&gt;
+
+         &lt;!-- Use Infinispan second level cache provider --&gt;
+         &lt;property name="hibernate.cache.region.factory_class"
+                   value="infinispan"/&gt;
+         &lt;!-- Force using local configuration when only using a single node.
+              Otherwise a clustered configuration is loaded. --&gt;
+         &lt;property name="hibernate.cache.infinispan.cfg"
+                   value="org/infinispan/hibernate/cache/commons/builder/infinispan-configs-local.xml"/&gt;
+
+         &lt;!-- Generate statistics to see effects of second level cache --&gt;
+         &lt;property name="hibernate.generate_statistics" value="true" /&gt;
+
+         &lt;!-- Entity specific configuration, e.g. via property:
+                 hibernate.cache.infinispan.&lt;Entity FQN&gt;.expiration.max_idle
+         --&gt;
+         &lt;property name="hibernate.cache.infinispan.org.infinispan.tutorial.simple.hibernate.cache.local.model.Person.expiration.max_idle"
+                   value= "1000"/&gt;
+      &lt;/properties&gt;
+   &lt;/persistence-unit&gt;</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
+<h2 id="step-3-mark-entities-as-cacheable">Step 3: Mark Entities as Cacheable</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Annotate your JPA entities with <code>@Cacheable</code> so they participate in second-level caching:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Entity
+@Cacheable
+public class Event {
+
+   @Id
+   @GeneratedValue
+   private Long id;
+
+   private String name;
+
+   private LocalDateTime timestamp = LocalDateTime.now();</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-4-use-the-entity-manager-and-observe-cache-statistics">Step 4: Use the Entity Manager and Observe Cache Statistics</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Persist, find, update, and query entities. Hibernate statistics reveal L2 cache activity:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Create JPA persistence manager
+      emf = Persistence.createEntityManagerFactory("events");
+
+      CacheRegionStatistics eventCacheStats;
+      CacheRegionStatistics personCacheStats;
+      Statistics stats;
+
+      // Persist 3 entities, stats should show 3 second level cache puts
+      persistEntities();
+      eventCacheStats = getCacheStatistics(Event.class.getName());
+      printfAssert("Event entity cache puts: %d (expected %d)%n", eventCacheStats.getPutCount(), 3);
+
+      // Find one of the persisted entities, stats should show a cache hit
+      findEntity(1L);
+      eventCacheStats = getCacheStatistics(Event.class.getName());
+      printfAssert("Event entity cache hits: %d (expected %d)%n", eventCacheStats.getHitCount(), 1);</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-5-run-the-tutorial">Step 5: Run the Tutorial</h2>
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:exec</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You will see an authorization error message when trying to write to the secured cache, demonstrating that RBAC is enforced.</p>
+<p>The output shows cache puts when entities are persisted, cache hits when entities are found, cache misses after eviction, and query cache behavior on repeated queries.</p>
 </div>
 </div>
 </div>
@@ -202,10 +253,10 @@ specific roles can perform operations on it.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Configure <a href="../security/tls-authorization/guide.html">TLS with client certificate authorization</a></p>
+<p><a href="../spring-local/guide.html">Hibernate L2 cache with Spring Boot</a> for the same pattern in a Spring Boot application</p>
 </li>
 <li>
-<p>Learn about Infinispan&#8217;s built-in roles: <code>admin</code>, <code>deployer</code>, <code>application</code>, <code>observer</code>, <code>monitor</code></p>
+<p><a href="../wildfly-local/guide.html">Hibernate L2 cache with WildFly</a> for a Jakarta EE deployment</p>
 </li>
 </ul>
 </div>
