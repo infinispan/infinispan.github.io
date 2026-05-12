@@ -2,50 +2,112 @@
 layout: base
 ---
 
-<div class="component-slim tutorials-header">
-   <h1>{{ page.title }}</h1>
-   <h2>{{ page.subtitle }}</h2>
-</div>
+<h1>{{ page.title }}</h1>
+<h2>{{ page.subtitle }}</h2>
 
 {% include guides-filter.html %}
 
-<div class="guides-grid" id="guides-grid">
-   {% for guide in site.data.guides.guides %}
-   {% if guide.url %}
-   <a href="{{ guide.url }}" class="guide-card" {% if guide.url contains 'github.com' %}target="_blank" rel="noopener"{% endif %}
-   {% else %}
-   <a href="/tutorials/{{ guide.id }}/" class="guide-card"
-   {% endif %}
-      data-type="{{ guide.type }}"
-      data-mode="{{ guide.mode }}"
-      data-topics="{{ guide.topics | join: ',' }}"
-      data-keywords="{{ guide.keywords | join: ',' }}"
-      data-duration="{{ guide.duration }}"
-      data-title="{{ guide.title | downcase }}"
-      data-summary="{{ guide.summary | downcase }}">
-      <div class="guide-card-header">
-         <span class="guide-type-badge guide-type-{{ guide.type }}">{{ guide.type }}</span>
-         <span class="guide-mode-badge guide-mode-{{ guide.mode }}">{{ guide.mode }}</span>
-         {% if guide.duration %}
-         <span class="guide-duration"><i class="far fa-clock"></i> {{ guide.duration }} min</span>
+<div class="guides-layout">
+   <aside class="guides-sidebar" id="guides-sidebar">
+      <div class="sidebar-section">
+         <h4 class="sidebar-heading">Category</h4>
+         {% assign modes = "remote,embedded,integration,ai" | split: "," %}
+         {% for mode in modes %}
+         {% assign count = 0 %}
+         {% for guide in site.data.guides.guides %}
+         {% if guide.mode == mode %}{% assign count = count | plus: 1 %}{% endif %}
+         {% endfor %}
+         {% if count > 0 %}
+         <label class="sidebar-checkbox">
+            <input type="checkbox" data-filter-type="mode" value="{{ mode }}">
+            <span>{{ mode | capitalize }}</span>
+         </label>
          {% endif %}
-      </div>
-      <h3 class="guide-title">{{ guide.title }}</h3>
-      <p class="guide-summary">{{ guide.summary }}</p>
-      <div class="guide-topics">
-         {% for topic in guide.topics %}
-         <span class="guide-topic-tag">{{ topic | replace: "-", " " }}</span>
          {% endfor %}
       </div>
-      {% if guide.url contains 'github.com' %}
-      <span class="guide-external"><i class="fab fa-github"></i> View on GitHub</span>
-      {% endif %}
-   </a>
-   {% endfor %}
-</div>
 
-<div class="guides-empty" id="guides-empty" style="display:none;">
-   <p>No tutorials match your filters. Try broadening your search.</p>
+      <div class="sidebar-section">
+         <h4 class="sidebar-heading">Estimated Time</h4>
+         <label class="sidebar-checkbox">
+            <input type="checkbox" data-filter-type="duration" value="quick">
+            <span>&lt; 10 min</span>
+         </label>
+         <label class="sidebar-checkbox">
+            <input type="checkbox" data-filter-type="duration" value="medium">
+            <span>10 - 20 min</span>
+         </label>
+         <label class="sidebar-checkbox">
+            <input type="checkbox" data-filter-type="duration" value="long">
+            <span>20+ min</span>
+         </label>
+      </div>
+
+      <div class="sidebar-section">
+         <h4 class="sidebar-heading">Topic</h4>
+         <div class="topic-select-wrapper" id="topic-select-wrapper">
+            <div class="topic-select-input" id="topic-select-input" tabindex="0">
+               <span class="topic-select-placeholder">Select topics...</span>
+            </div>
+            <div class="topic-select-dropdown" id="topic-select-dropdown">
+               {% assign all_topics = "" %}
+               {% for guide in site.data.guides.guides %}
+               {% for topic in guide.topics %}
+               {% unless all_topics contains topic %}
+               {% if all_topics == "" %}{% assign all_topics = topic %}
+               {% else %}{% assign all_topics = all_topics | append: "," | append: topic %}{% endif %}
+               {% endunless %}
+               {% endfor %}
+               {% endfor %}
+               {% assign sorted_topics = all_topics | split: "," | sort %}
+               {% for topic in sorted_topics %}
+               <label class="topic-option">
+                  <input type="checkbox" data-filter-type="topic" value="{{ topic }}">
+                  <span>{{ topic | replace: "-", " " | capitalize }}</span>
+               </label>
+               {% endfor %}
+            </div>
+         </div>
+         <div class="topic-tags" id="topic-tags"></div>
+      </div>
+   </aside>
+
+   <div class="guides-main">
+      <div class="guides-grid" id="guides-grid">
+         {% for guide in site.data.guides.guides %}
+         {% if guide.url %}
+         <a href="{{ guide.url }}" class="guide-card" {% if guide.url contains 'github.com' %}target="_blank" rel="noopener"{% endif %}
+         {% else %}
+         <a href="/tutorials/{{ guide.id }}/" class="guide-card"
+         {% endif %}
+            data-mode="{{ guide.mode }}"
+            data-topics="{{ guide.topics | join: ',' }}"
+            data-keywords="{{ guide.keywords | join: ',' }}"
+            data-duration="{{ guide.duration }}"
+            data-title="{{ guide.title | downcase }}"
+            data-summary="{{ guide.summary | downcase }}">
+            <div class="guide-card-header">
+               {% if guide.duration %}
+               <span class="guide-duration">{{ guide.duration }} min</span>
+               {% endif %}
+            </div>
+            <h3 class="guide-title">{{ guide.title }}</h3>
+            <p class="guide-summary">{{ guide.summary }}</p>
+            <div class="guide-topics">
+               {% for topic in guide.topics %}
+               <span class="guide-topic-tag">{{ topic | replace: "-", " " }}</span>
+               {% endfor %}
+            </div>
+            {% if guide.url contains 'github.com' %}
+            <span class="guide-external"><i class="fab fa-github"></i> View on GitHub</span>
+            {% endif %}
+         </a>
+         {% endfor %}
+      </div>
+
+      <div class="guides-empty" id="guides-empty" style="display:none;">
+         <p>No tutorials match your filters. Try broadening your search.</p>
+      </div>
+   </div>
 </div>
 
 <script>
@@ -54,52 +116,56 @@ layout: base
    var grid = document.getElementById('guides-grid');
    var empty = document.getElementById('guides-empty');
    var cards = grid.querySelectorAll('.guide-card');
-   var filterPills = document.querySelectorAll('.filter-pill');
-   var dropdown = document.getElementById('topic-dropdown');
-   var toggle = document.getElementById('topic-dropdown-toggle');
-   var menu = document.getElementById('topic-dropdown-menu');
-   var menuItems = menu.querySelectorAll('li');
-   var topicChips = document.getElementById('topic-chips');
-   var activeFilter = 'all';
-   var activeTopics = new Set();
+   var sidebarCheckboxes = document.querySelectorAll('.sidebar-checkbox input[type="checkbox"]');
+   var topicCheckboxes = document.querySelectorAll('.topic-option input[type="checkbox"]');
+   var allCheckboxes = document.querySelectorAll('input[data-filter-type]');
 
-   toggle.addEventListener('click', function(e) {
+   var selectInput = document.getElementById('topic-select-input');
+   var dropdown = document.getElementById('topic-select-dropdown');
+   var tagsContainer = document.getElementById('topic-tags');
+
+   selectInput.addEventListener('click', function(e) {
       e.stopPropagation();
       dropdown.classList.toggle('open');
    });
 
-   document.addEventListener('click', function() {
-      dropdown.classList.remove('open');
+   document.addEventListener('click', function(e) {
+      if (!e.target.closest('#topic-select-wrapper')) {
+         dropdown.classList.remove('open');
+      }
    });
 
-   menu.addEventListener('click', function(e) {
-      e.stopPropagation();
-   });
-
-   function renderChips() {
-      topicChips.innerHTML = '';
-      activeTopics.forEach(function(topic) {
-         var chip = document.createElement('span');
-         chip.className = 'topic-chip';
-         chip.innerHTML = topic.replace(/-/g, ' ') + '<button class="chip-remove">&times;</button>';
-         chip.querySelector('.chip-remove').addEventListener('click', function() {
-            activeTopics.delete(topic);
-            renderChips();
-            updateMenuItems();
-            filterCards();
-         });
-         topicChips.appendChild(chip);
-      });
-   }
-
-   function updateMenuItems() {
-      menuItems.forEach(function(item) {
-         if (activeTopics.has(item.dataset.topic)) {
-            item.classList.add('disabled');
-         } else {
-            item.classList.remove('disabled');
+   function updateTopicTags() {
+      tagsContainer.innerHTML = '';
+      var placeholder = selectInput.querySelector('.topic-select-placeholder');
+      var anyChecked = false;
+      topicCheckboxes.forEach(function(cb) {
+         if (cb.checked) {
+            anyChecked = true;
+            var tag = document.createElement('span');
+            tag.className = 'topic-tag';
+            tag.textContent = cb.value.replace(/-/g, ' ');
+            var remove = document.createElement('span');
+            remove.className = 'topic-tag-remove';
+            remove.textContent = '×';
+            remove.addEventListener('click', function() {
+               cb.checked = false;
+               updateTopicTags();
+               filterCards();
+            });
+            tag.appendChild(remove);
+            tagsContainer.appendChild(tag);
          }
       });
+      if (placeholder) placeholder.style.display = anyChecked ? 'none' : '';
+   }
+
+   function getChecked(type) {
+      var values = [];
+      allCheckboxes.forEach(function(cb) {
+         if (cb.dataset.filterType === type && cb.checked) values.push(cb.value);
+      });
+      return values;
    }
 
    function matchesDuration(filter, duration) {
@@ -113,64 +179,53 @@ layout: base
 
    function filterCards() {
       var query = searchInput.value.toLowerCase().trim();
+      var modes = getChecked('mode');
+      var durations = getChecked('duration');
+      var topics = getChecked('topic');
       var visibleCount = 0;
-      var durationFilters = ['quick', 'medium', 'long'];
-      var isDurationFilter = durationFilters.indexOf(activeFilter) !== -1;
 
       cards.forEach(function(card) {
-         var matchesFilter;
-         if (activeFilter === 'all') {
-            matchesFilter = true;
-         } else if (isDurationFilter) {
-            matchesFilter = matchesDuration(activeFilter, card.dataset.duration);
-         } else {
-            matchesFilter = card.dataset.mode === activeFilter ||
-               card.dataset.type === activeFilter;
-         }
-         var matchesTopics = true;
-         if (activeTopics.size > 0) {
-            var cardTopics = card.dataset.topics.split(',');
-            matchesTopics = false;
-            activeTopics.forEach(function(topic) {
-               if (cardTopics.indexOf(topic) !== -1) matchesTopics = true;
+         var show = true;
+
+         if (modes.length > 0 && modes.indexOf(card.dataset.mode) === -1) show = false;
+
+         if (show && durations.length > 0) {
+            var anyDuration = false;
+            durations.forEach(function(d) {
+               if (matchesDuration(d, card.dataset.duration)) anyDuration = true;
             });
-         }
-         var matchesSearch = true;
-         if (query) {
-            var text = card.dataset.title + ' ' + card.dataset.summary + ' ' + card.dataset.keywords;
-            matchesSearch = text.indexOf(query) !== -1;
+            if (!anyDuration) show = false;
          }
 
-         if (matchesFilter && matchesTopics && matchesSearch) {
-            card.style.display = '';
-            visibleCount++;
-         } else {
-            card.style.display = 'none';
+         if (show && topics.length > 0) {
+            var cardTopics = card.dataset.topics.split(',');
+            var anyTopic = false;
+            topics.forEach(function(t) {
+               if (cardTopics.indexOf(t) !== -1) anyTopic = true;
+            });
+            if (!anyTopic) show = false;
          }
+
+         if (show && query) {
+            var text = card.dataset.title + ' ' + card.dataset.summary + ' ' + card.dataset.keywords;
+            if (text.indexOf(query) === -1) show = false;
+         }
+
+         card.style.display = show ? '' : 'none';
+         if (show) visibleCount++;
       });
 
       empty.style.display = visibleCount === 0 ? '' : 'none';
    }
 
-   filterPills.forEach(function(pill) {
-      pill.addEventListener('click', function() {
-         filterPills.forEach(function(p) { p.classList.remove('active'); });
-         pill.classList.add('active');
-         activeFilter = pill.dataset.filter;
-         filterCards();
-      });
+   sidebarCheckboxes.forEach(function(cb) {
+      cb.addEventListener('change', filterCards);
    });
 
-   menuItems.forEach(function(item) {
-      item.addEventListener('click', function() {
-         var topic = item.dataset.topic;
-         if (!activeTopics.has(topic)) {
-            activeTopics.add(topic);
-            renderChips();
-            updateMenuItems();
-            filterCards();
-         }
-         dropdown.classList.remove('open');
+   topicCheckboxes.forEach(function(cb) {
+      cb.addEventListener('change', function() {
+         updateTopicTags();
+         filterCards();
       });
    });
 
@@ -182,150 +237,169 @@ layout: base
 .guides-filter {
    max-width: 1200px;
    margin: 0 auto;
-   padding: 20px;
+   padding: 20px 20px 0;
+}
+.guides-search {
+   position: relative;
+   max-width: 600px;
+   margin: 0 auto 24px;
+}
+.guides-search-icon {
+   position: absolute;
+   left: 14px;
+   top: 50%;
+   transform: translateY(-50%);
+   color: var(--secondary-text-color, #999);
+   font-size: 16px;
 }
 .guides-search input {
    width: 100%;
-   padding: 12px 16px;
+   padding: 12px 16px 12px 42px;
    font-size: 16px;
-   border: 1px solid var(--input-border, #ddd);
-   border-radius: 4px;
-   margin-bottom: 16px;
+   border: 2px solid var(--input-border, #ddd);
+   border-radius: 8px;
    background: var(--input-bg, #fff);
    color: var(--main-text-color);
 }
-.filter-label {
-   font-weight: bold;
-   margin-right: 8px;
+.guides-search input:focus {
+   outline: none;
+   border-color: #005D8F;
 }
-.guides-filter-row, .guides-topic-filter {
-   margin-bottom: 12px;
-   display: flex;
-   flex-wrap: wrap;
-   align-items: center;
-   gap: 8px;
-}
-.filter-pill {
-   padding: 4px 12px !important;
-   border: 1px solid var(--card-border, #ddd) !important;
-   border-radius: 20px !important;
-   background: var(--card-bg, #fff) !important;
-   color: var(--main-text-color) !important;
-   cursor: pointer;
-   font-size: 13px !important;
-   transition: all 0.2s;
-   line-height: 1.4 !important;
-}
-.filter-pill:hover {
-   border-color: #FF6400 !important;
-   background: var(--card-bg, #fff) !important;
-   color: var(--main-text-color) !important;
-}
-.filter-pill.active {
-   background: #005D8F !important;
-   color: #fff !important;
-   border-color: #005D8F !important;
-}
-.filter-separator {
-   width: 1px;
-   height: 24px;
-   background: var(--card-border, #ddd);
-}
-.topic-dropdown {
-   position: relative;
-}
-.topic-dropdown-toggle {
-   padding: 6px 14px !important;
-   font-size: 14px !important;
-   border: 1px solid var(--card-border, #ddd) !important;
-   border-radius: 20px !important;
-   background: var(--card-bg, #fff) !important;
-   color: var(--main-text-color) !important;
-   cursor: pointer;
-   font-family: inherit;
-   line-height: 1.4 !important;
-   white-space: nowrap;
-}
-.topic-dropdown-toggle i {
-   font-size: 10px;
-   margin-left: 4px;
-}
-.topic-dropdown-toggle:hover {
-   border-color: #FF6400 !important;
-   background: var(--card-bg, #fff) !important;
-   color: var(--main-text-color) !important;
-}
-.topic-dropdown-menu {
-   display: none;
-   position: absolute;
-   top: 100%;
-   left: 0;
-   margin-top: 4px;
-   padding: 6px 0;
-   background: var(--card-bg, #fff);
-   border: 1px solid var(--card-border, #ddd);
-   border-radius: 8px;
-   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-   list-style: none;
-   min-width: 180px;
-   z-index: 100;
-}
-.topic-dropdown.open .topic-dropdown-menu {
-   display: block;
-}
-.topic-dropdown-menu li {
-   padding: 8px 16px;
-   font-size: 14px;
-   cursor: pointer;
-   color: var(--main-text-color);
-   transition: background 0.15s;
-   text-transform: capitalize;
-}
-.topic-dropdown-menu li:hover {
-   background: var(--gray-bg, #f5f5f5);
-}
-.topic-dropdown-menu li.disabled {
-   opacity: 0.4;
-   pointer-events: none;
-}
-.topic-chips {
-   display: inline-flex;
-   flex-wrap: wrap;
-   gap: 6px;
-}
-.topic-chip {
-   display: inline-flex;
-   align-items: center;
-   gap: 4px;
-   padding: 4px 10px;
-   background: #333;
-   color: #fff;
-   border-radius: 20px;
-   font-size: 13px;
-   text-transform: capitalize;
-}
-.chip-remove {
-   background: none !important;
-   border: none !important;
-   color: #fff !important;
-   cursor: pointer;
-   font-size: 16px;
-   line-height: 1;
-   padding: 0 !important;
-   margin-left: 2px;
-   opacity: 0.7;
-}
-.chip-remove:hover {
-   opacity: 1;
-   background: none !important;
-   color: #fff !important;
-}
-.guides-grid {
+.guides-layout {
    max-width: 1200px;
    margin: 0 auto;
    padding: 0 20px 40px;
+   display: flex;
+   gap: 40px;
+   align-items: flex-start;
+}
+.guides-sidebar {
+   width: 200px;
+   flex-shrink: 0;
+   position: sticky;
+   top: 20px;
+}
+.sidebar-section {
+   margin-bottom: 24px;
+}
+.sidebar-heading {
+   font-size: 14px;
+   font-weight: 700;
+   text-transform: uppercase;
+   letter-spacing: 0.03em;
+   margin: 0 0 10px;
+   color: var(--main-text-color);
+}
+.sidebar-checkbox {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   padding: 4px 0;
+   cursor: pointer;
+   font-size: 14px;
+   color: var(--main-text-color);
+}
+.sidebar-checkbox input[type="checkbox"] {
+   width: 16px;
+   height: 16px;
+   accent-color: #005D8F;
+   cursor: pointer;
+   flex-shrink: 0;
+}
+.sidebar-checkbox span {
+   text-transform: capitalize;
+}
+/* Topic multi-select dropdown */
+.topic-select-wrapper {
+   position: relative;
+}
+.topic-select-input {
+   border: 1px solid var(--input-border, #ccc);
+   border-radius: 6px;
+   padding: 8px 10px;
+   font-size: 13px;
+   cursor: pointer;
+   background: var(--input-bg, #fff);
+   color: var(--main-text-color);
+}
+.topic-select-placeholder {
+   color: var(--secondary-text-color, #999);
+}
+.topic-select-dropdown {
+   display: none;
+   position: absolute;
+   left: 0;
+   right: 0;
+   top: 100%;
+   margin-top: 4px;
+   background: var(--input-bg, #fff);
+   border: 1px solid var(--input-border, #ccc);
+   border-radius: 6px;
+   max-height: 200px;
+   overflow-y: auto;
+   z-index: 10;
+   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.topic-select-dropdown.open {
+   display: block;
+}
+.topic-option {
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   padding: 6px 10px;
+   cursor: pointer;
+   font-size: 13px;
+   color: var(--main-text-color);
+}
+.topic-option:hover {
+   background: var(--table-hover, rgba(0,93,143,0.05));
+}
+.topic-option input[type="checkbox"] {
+   width: 14px;
+   height: 14px;
+   accent-color: #005D8F;
+   cursor: pointer;
+   flex-shrink: 0;
+}
+.topic-option span {
+   text-transform: capitalize;
+}
+.topic-tags {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 4px;
+   margin-top: 6px;
+}
+.topic-tag {
+   display: inline-flex;
+   align-items: center;
+   gap: 4px;
+   padding: 2px 8px;
+   background: #005D8F;
+   color: #fff;
+   border-radius: 4px;
+   font-size: 11px;
+   font-weight: 600;
+   text-transform: capitalize;
+}
+.topic-tag-remove {
+   cursor: pointer;
+   font-size: 14px;
+   line-height: 1;
+   margin-left: 2px;
+   opacity: 0.8;
+}
+.topic-tag-remove:hover {
+   opacity: 1;
+}
+.guides-main {
+   flex: 1;
+   min-width: 0;
+}
+.guides-grid {
    display: grid;
-   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
    gap: 20px;
 }
 .guide-card {
@@ -343,38 +417,23 @@ layout: base
    border-color: #FF6400;
 }
 .guide-card-header {
-   display: flex;
-   align-items: center;
-   gap: 8px;
-   margin-bottom: 12px;
-}
-.guide-type-badge, .guide-mode-badge {
-   padding: 3px 10px;
-   border-radius: 12px;
-   font-size: 11px;
-   font-weight: bold;
-   text-transform: uppercase;
-}
-.guide-type-tutorial { background: #e3f2fd; color: #1565c0; }
-.guide-type-guide { background: #fff3e0; color: #e65100; }
-.guide-type-demo { background: #f3e5f5; color: #7b1fa2; }
-.guide-mode-badge {
-   background: var(--gray-bg, #f0f0f0);
-   color: var(--secondary-text-color, #555);
+   margin-bottom: 8px;
 }
 .guide-duration {
    font-size: 13px;
    color: var(--secondary-text-color, #666);
-   margin-left: auto;
 }
 .guide-title {
-   font-size: 18px;
+   font-size: 17px;
+   font-weight: 700;
    margin: 0 0 8px;
+   color: var(--main-text-color);
 }
 .guide-summary {
    font-size: 14px;
    color: var(--secondary-text-color, #555);
    flex-grow: 1;
+   line-height: 1.5;
 }
 .guide-topics {
    display: flex;
@@ -383,11 +442,13 @@ layout: base
    margin-top: 12px;
 }
 .guide-topic-tag {
-   padding: 2px 8px;
-   background: var(--gray-bg, #f5f5f5);
+   padding: 3px 10px;
+   background: #005D8F;
+   color: #fff;
    border-radius: 4px;
    font-size: 12px;
-   color: var(--secondary-text-color, #666);
+   font-weight: 600;
+   text-transform: capitalize;
 }
 .guide-external {
    display: block;
@@ -403,5 +464,24 @@ layout: base
    padding: 60px 20px;
    color: #999;
    font-size: 16px;
+}
+@media (max-width: 768px) {
+   .guides-layout {
+      flex-direction: column;
+      gap: 20px;
+   }
+   .guides-sidebar {
+      width: 100%;
+      position: static;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+   }
+   .sidebar-section {
+      margin-bottom: 0;
+   }
+   .guides-grid {
+      grid-template-columns: 1fr;
+   }
 }
 </style>
