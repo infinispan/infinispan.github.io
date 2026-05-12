@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPD7V946LB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-GPD7V946LB');
+  </script>
+  <title>Querying Data with Ickle and Protobuf</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <script src="/assets/javascript/colormode.js" type="text/javascript"></script>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.7.2/css/all.css" integrity="sha384-nRgPTkuX86pH8yjPJUAFuASXQSSl2/bBUiNV47vSYpKFxHJhbcrGnmlYpYJMeD7a" crossorigin="anonymous">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.css" id="hljs-theme">
+  <link rel="stylesheet" href="/assets/css/cookieconsent.css">
+  <link rel="alternate" type="application/rss+xml"
+        title="Infinispan's RSS Feed"
+        href="/feed.xml" />
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body class="guide">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li>
+        <a href="/ai/" class=""><i class="fas fa-wand-magic-sparkles" style="margin-right: 4px;"></i>Infinispan for AI</a>
+      </li>
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/get-started/" class="">Get Started</a></li>
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/tutorials" class="active">Tutorials</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li class="dropdown">
+        <span href="/community/">Community <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/community/" class="">Community</a></li>
+          <li><a href="/blog/" class="">Blog</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+          <li><a href="/experiments" class="">Experiments</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/download/" class="">Download</a>
+      </li>
+      <li class="theme-toggle-item">
+        <span class="modeswitcher" id="theme-toggle">
+          <i class="fas fa-sun"></i>
+          <i class="fas fa-moon"></i>
+          <i class="fas fa-cog"></i>
+        </span>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    <div class="component-slim guide-page">
+   <div class="guide-breadcrumb">
+      <a href="/tutorials/">Tutorials</a> &rsaquo; Querying Data with Ickle and Protobuf
+   </div>
+
+   <div class="guide-content">
+      <div class="sect1">
+<h2 id="what-you-will-learn">What You Will Learn</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>How to define Protobuf schemas with <code>@Proto</code> annotations, create indexed caches, and run Ickle queries including WHERE clauses, projections, and DELETE operations.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="prerequisites">Prerequisites</h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>Java 17+</p>
+</li>
+<li>
+<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-1-define-your-data-model-with-protobuf-annotations">Step 1: Define Your Data Model with Protobuf Annotations</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan uses Protobuf for serialization. Define your entities as Java records with <code>@Proto</code> and <code>@Indexed</code> annotations:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
+@Indexed(keyEntity = "tutorial.PersonKey")
+public record Person(
+      @Keyword(projectable = true, sortable = true, normalizer = "lowercase")
+      String firstName,
+      @Keyword(projectable = true, sortable = true, normalizer = "lowercase")
+      String lastName,
+      int bornYear,
+      @Keyword(projectable = true, sortable = true, normalizer = "lowercase")
+      String bornIn) {
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Define a key entity for composite keys:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
+@Indexed
+public record PersonKey(
+      @Basic(projectable = true) String id,
+      @Basic(projectable = true) String pseudo) {
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-2-register-the-protobuf-schema">Step 2: Register the Protobuf Schema</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Create a <code>@ProtoSchema</code> interface to generate the schema:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@ProtoSchema(schemaPackageName = "tutorial",
+      includeClasses = { Person.class, PersonKey.class })
+public interface TutorialSchema extends GeneratedSchema {
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Register it when connecting:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = TutorialsConnectorHelper.connectionConfig();
+builder.addContextInitializer(new TutorialSchemaImpl());
+client = TutorialsConnectorHelper.connect(builder);
+client.administration().schemas().createOrUpdate(new TutorialSchemaImpl());</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-3-create-an-indexed-cache">Step 3: Create an Indexed Cache</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Configure the cache with indexing enabled:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache statistics="true"&gt;
+   &lt;encoding&gt;
+      &lt;key media-type="application/x-protostream"/&gt;
+      &lt;value media-type="application/x-protostream"/&gt;
+   &lt;/encoding&gt;
+   &lt;indexing enabled="true" storage="filesystem" startup-mode="AUTO"&gt;
+      &lt;indexed-entities&gt;
+         &lt;indexed-entity&gt;tutorial.Person&lt;/indexed-entity&gt;
+      &lt;/indexed-entities&gt;
+   &lt;/indexing&gt;
+&lt;/distributed-cache&gt;</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-4-run-ickle-queries">Step 4: Run Ickle Queries</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Query all entries:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Person&gt; query = cache.query("FROM tutorial.Person");
+List&lt;Person&gt; results = query.execute().list();</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Filter with parameters:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Person&gt; query = cache.query(
+      "FROM tutorial.Person p WHERE p.lastName = :lastName");
+query.setParameter("lastName", "Granger");</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Use projections to select specific fields:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Object[]&gt; query = cache.query(
+      "SELECT p.key.pseudo, p.firstName, p.lastName " +
+      "FROM tutorial.Person p WHERE p.bornIn = 'London'");</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Delete by query:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">Query&lt;Person&gt; query = cache.query(
+      "DELETE FROM tutorial.Person p WHERE p.key.pseudo = 'dmalfoy'");
+long deleted = query.execute().count().value();</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-5-run-the-tutorial">Step 5: Run the Tutorial</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="whats-next">What&#8217;s Next</h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>Try <a href="../spatial-queries/guide.html">spatial queries</a> for geolocation data</p>
+</li>
+<li>
+<p>Add <a href="../continuous-query/guide.html">continuous queries</a> for real-time notifications</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+   </div>
+
+   
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo" alt="Infinispan"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <div class="grid__item width-4-12 width-12-12-m footer-about">
+      <p>Infinispan is released under the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache 2.0</a> open source license. The source code is available on <a href='https://github.com/infinispan' target='_blank'>GitHub</a>.</p>
+      <div class="footer-thanks">
+        <b>Thanks to</b>
+        <div class="thanks-logos">
+          <a href="https://zulip.com" target="_blank"><img src="/assets/images/footer/zulip.png" title="Zulip" alt="Zulip"></a>
+          <a href="https://weblate.org" target="_blank"><img src="/assets/images/footer/weblate.png" title="Weblate" alt="Weblate"></a>
+        </div>
+      </div>
+    </div>
+
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Navigation</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/" >Home</a></li>
+          
+            
+            <li><a href="/get-started" >Get Started</a></li>
+          
+            
+            <li><a href="/features" >Features</a></li>
+          
+            
+            <li><a href="/ai" >AI</a></li>
+          
+            
+            <li><a href="/documentation" >Docs</a></li>
+          
+            
+            <li><a href="/tutorials" >Tutorials</a></li>
+          
+            
+            <li><a href="/use-cases" >Use Cases</a></li>
+          
+            
+            <li><a href="/download" >Download</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Get Help</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/documentation" >Documentation</a></li>
+          
+            
+            <li><a href="/tutorials" >Guides</a></li>
+          
+            
+            <li><a href="https://stackoverflow.com/questions/tagged/infinispan" target="_blank">Stack Overflow</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan/discussions" target="_blank">GitHub Discussions</a></li>
+          
+            
+            <li><a href="https://infinispan.zulipchat.com" target="_blank">Zulip Chat</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Contribute</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan" target="_blank">Source Code</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan/issues" target="_blank">Submit a Bug</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan.github.io" target="_blank">Website Source</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/blog" >Blog</a></li>
+          
+            
+            <li><a href="https://twitter.com/infinispan" target="_blank">X / Twitter</a></li>
+          
+            
+            <li><a href="https://www.facebook.com/infinispan/" target="_blank">Facebook</a></li>
+          
+            
+            <li><a href="https://www.youtube.com/@InfinispanProject" target="_blank">YouTube</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan" target="_blank">GitHub</a></li>
+          
+        </ul>
+      </div>
+    
+  </div>
+</div>
+
+  <div class="content-slim cf-footer">
+  <div class="cf-flexcontainer">
+    <div class="cf-logo-footer">
+      <a href="https://www.commonhaus.org/" target="_blank"><img src="https://raw.githubusercontent.com/commonhaus/artwork/main/foundation/brand/svg/CF_logo_horizontal_single_reverse.svg" alt="Commonhaus Foundation"></a>
+    </div>
+    <div class="cf-license">
+      Copyright &copy; Infinispan. All rights reserved. For details on trademarks, please visit the <a href="https://www.commonhaus.org/policies/trademark-policy/">Trademark Policy</a> and <a href="https://www.commonhaus.org/trademarks/">Trademark List</a>. Trademarks of third parties are owned by their respective holders and their mention here does not suggest any endorsement or association.
+    </div>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+  <script src="/assets/javascript/clipboard.min.js" type="text/javascript"></script>
+  <script src="/assets/javascript/copy.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>
