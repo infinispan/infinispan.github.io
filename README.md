@@ -36,9 +36,10 @@ These instructions will get you a copy of the project up and running on your loc
   `export FORCE_DOCUMENTATION_DOWNLOAD=false`
 9. Optionally, skip injecting Google Analytics into downloaded javadoc pages (speeds up local builds)
   `export SKIP_ANALYTICS_INJECTION=true`
-10. Build the site and make it available on a local server
+10. Optionally, to preview tutorials locally, run `./deploy-guides-local.sh` from the [infinispan-simple-tutorials](https://github.com/infinispan/infinispan-simple-tutorials) repository
+11. Build the site and make it available on a local server
   `bundle exec jekyll serve`
-11. To preview your site, browse to http://localhost:4000
+12. To preview your site, browse to http://localhost:4000
 
 > If you encounter any unexpected errors during the above, please refer to the [troubleshooting](https://jekyllrb.com/docs/troubleshooting/#configuration-problems) page or the [requirements](https://jekyllrb.com/docs/installation/#requirements) page, as you might be missing development headers or other prerequisites.
 
