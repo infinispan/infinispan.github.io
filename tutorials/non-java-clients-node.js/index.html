@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Client Listeners for Cache Events</title>
+  <title>Node.js Hot Rod Client: Getting Started</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -97,12 +97,12 @@
 
    <div class="guide-layout">
       <div class="guide-content">
-         <h1>Client Listeners for Cache Events</h1>
+         <h1>Node.js Hot Rod Client: Getting Started</h1>
          <div class="sect1">
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to register a <code>@ClientListener</code> on a remote cache to receive asynchronous notifications when entries are created or modified.</p>
+<p>How to connect a Node.js Hot Rod client to an Infinispan Server and perform basic cache operations: put, get, and print values.</p>
 </div>
 </div>
 </div>
@@ -112,69 +112,68 @@
 <div class="ulist">
 <ul>
 <li>
-<p>Java 17+</p>
+<p>Node.js</p>
 </li>
 <li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
+<p>An Infinispan Server running on <code>127.0.0.1:11222</code></p>
 </li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-a-client-listener">Step 1: Define a Client Listener</h2>
+<h2 id="step-1-install-dependencies">Step 1: Install Dependencies</h2>
 <div class="sectionbody">
-<div class="paragraph">
-<p>Create a class annotated with <code>@ClientListener</code> and add methods annotated with <code>@ClientCacheEntryCreated</code> and <code>@ClientCacheEntryModified</code>:</p>
-</div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">   @ClientListener
-   public static class MyListener {
-      StringBuilder logTrack = new StringBuilder();
-
-      @ClientCacheEntryCreated
-      public void entryCreated(ClientCacheEntryCreatedEvent&lt;String&gt; event) {
-         String logMessage = String.format("Created %s%n", event.getKey());
-         logTrack.append(logMessage);
-         System.out.printf(logMessage);
-      }
-
-      @ClientCacheEntryModified
-      public void entryModified(ClientCacheEntryModifiedEvent&lt;String&gt; event) {
-         String logMessage = String.format("About to modify %s%n", event.getKey());
-         logTrack.append(logMessage);
-         System.out.printf(logMessage);
-      }
-
-   }</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">npm install</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>After connecting to the server, register the listener on a remote cache with <code>cache.addClientListener(new MyListener())</code>.</p>
+<p>This installs the <code>infinispan</code> Hot Rod client package.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-trigger-events-and-clean-up">Step 2: Trigger Events and Clean Up</h2>
+<h2 id="step-2-connect-and-perform-cache-operations">Step 2: Connect and Perform Cache Operations</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Store and update entries to generate events. Always remove listeners when they are no longer needed:</p>
+<p>Create a client with authentication and connect to the server:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Store some values
-      cache.put("key1", "value1");
-      cache.put("key2", "value2");
-      cache.put("key1", "newValue");
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">var infinispan = require('infinispan');
 
-      // Remote events are asynchronous, so allow a short wait before removing
-      // Remove listener when no longer needed
-      cache.removeClientListener(listener);</code></pre>
+var connected = infinispan.client(
+  {port: 11222, host: '127.0.0.1'},
+  {
+    cacheName: 'my-cache',
+    clientIntelligence: 'BASIC',
+    authentication: {
+      enabled: true,
+      saslMechanism: 'DIGEST-MD5',
+      userName: 'admin',
+      password: 'password'
+    }
+  }
+);</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Remote events are asynchronous, so allow a short wait before shutting down.</p>
+<p>Then put and get a value:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">connected.then(function(client) {
+  client.put('key', 'value').then(function () {
+    return client.get('key').then(function (value) {
+      console.log('key = ' + value);
+    });
+  }).finally(function() {
+    return client.disconnect();
+  });
+});</code></pre>
+</div>
 </div>
 </div>
 </div>
@@ -183,7 +182,7 @@
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">npm start</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -191,25 +190,10 @@
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>Created key1
-Created key2
-About to modify key1</pre>
+<pre>Connected
+key = value
+Disconnected</pre>
 </div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="whats-next">What&#8217;s Next</h2>
-<div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p><a href="/tutorials/remote-continuous-query/">Continuous queries</a> for query-based real-time notifications</p>
-</li>
-<li>
-<p><a href="/tutorials/remote-cache/">Get started</a> with basic cache operations</p>
-</li>
-</ul>
 </div>
 </div>
 </div>
@@ -285,35 +269,13 @@ About to modify key1</pre>
          
       
          
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
             
             
       
       <aside class="guide-sidebar">
          <div class="guide-sidebar-card">
             <h4>Source Code</h4>
-            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/listeners"
+            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/non-java-clients/node.js"
                target="_blank" rel="noopener">
                <i class="fab fa-github"></i> View on GitHub
             </a>

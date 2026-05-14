@@ -6,6 +6,8 @@
    var sidebarCheckboxes = document.querySelectorAll('.sidebar-checkbox input[type="checkbox"]');
    var topicCheckboxes = document.querySelectorAll('.topic-option input[type="checkbox"]');
    var allCheckboxes = document.querySelectorAll('input[data-filter-type]');
+   var languageTabs = document.querySelectorAll('.language-tab');
+   var activeLanguage = 'all';
 
    var selectInput = document.getElementById('topic-select-input');
    var dropdown = document.getElementById('topic-select-dropdown');
@@ -20,6 +22,15 @@
       if (!e.target.closest('#topic-select-wrapper')) {
          dropdown.classList.remove('open');
       }
+   });
+
+   languageTabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+         languageTabs.forEach(function(t) { t.classList.remove('active'); });
+         tab.classList.add('active');
+         activeLanguage = tab.dataset.language;
+         filterCards();
+      });
    });
 
    function updateTopicTags() {
@@ -79,7 +90,9 @@
       cards.forEach(function(card) {
          var show = true;
 
-         if (modes.length > 0 && modes.indexOf(card.dataset.mode) === -1) show = false;
+         if (activeLanguage !== 'all' && card.dataset.language !== activeLanguage) show = false;
+
+         if (show && modes.length > 0 && modes.indexOf(card.dataset.mode) === -1) show = false;
 
          if (show && types.length > 0 && types.indexOf(card.dataset.type) === -1) show = false;
 
