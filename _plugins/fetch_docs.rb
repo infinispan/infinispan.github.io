@@ -232,6 +232,31 @@ else
     end
   end
 
+  # Fetch Hot Rod Go client docs (pre-built docs.zip from GitHub release)
+  go_client = projects["projects"]["go-client"]
+  if go_client
+    github = go_client["github"]
+    # Find the latest release version
+    latest_ver = nil
+    go_client.each do |key, cfg|
+      next if key == "github"
+      next unless cfg.is_a?(Hash) && cfg["version"]
+      latest_ver = cfg["version"]
+    end
+    if latest_ver
+      tag = latest_ver.start_with?("v") ? latest_ver : "v#{latest_ver}"
+      docs_url = "#{github}/releases/download/#{tag}/docs.zip"
+      target = "docs/hotrod-clients/go/latest"
+      puts "    Fetching Go client docs from #{docs_url}" if verbose
+      %x( wget -q #{docs_url} -O _gotmp.zip )
+      if File.exist?("_gotmp.zip") && File.size("_gotmp.zip") > 0
+        FileUtils.mkdir_p target
+        %x( unzip -qo _gotmp.zip -d #{target} )
+      end
+      %x( rm -f _gotmp.zip )
+    end
+  end
+
   # Fetch operator docs
   operator = projects["projects"]["operator"]
   if operator && operator["doc_branches"]
