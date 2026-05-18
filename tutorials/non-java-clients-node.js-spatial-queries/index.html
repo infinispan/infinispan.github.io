@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Remote Counters</title>
+  <title>Spatial Queries with the JavaScript Client</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -97,12 +97,28 @@
 
    <div class="guide-layout">
       <div class="guide-content">
-         <h1>Remote Counters</h1>
-         <div class="sect1">
+         <h1>Spatial Queries with the JavaScript Client</h1>
+         <div id="preamble">
+<div class="sectionbody">
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+The source code for this tutorial is available on <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/non-java-clients/node.js/spatial-queries">GitHub</a>.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create and use distributed counters: bounded strong counters with upper limits, unbounded strong counters with compare-and-set operations, and weak counters optimized for fast increments.</p>
+<p>How to define geospatial Protobuf entities with <code>@GeoPoint</code>, <code>@Latitude</code>, and <code>@Longitude</code> annotations, create indexed caches, and run spatial Ickle queries including within circle, within box, within polygon, distance projections, and spatial ordering.</p>
 </div>
 </div>
 </div>
@@ -112,10 +128,13 @@
 <div class="ulist">
 <ul>
 <li>
-<p>Java 17+</p>
+<p>Node.js 22+</p>
 </li>
 <li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
+<p>An Infinispan Server running on <code>localhost:11222</code></p>
+</li>
+<li>
+<p>The <code>protobufjs</code> npm package (installed via <code>npm install</code>)</p>
 </li>
 </ul>
 </div>
@@ -139,105 +158,146 @@ You can replace <code>docker</code> with <code>podman</code> in the command abov
 </tr>
 </table>
 </div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Tip</div>
-</td>
-<td class="content">
-If no server is running, the tutorial code automatically starts an Infinispan Server using Testcontainers.
-</td>
-</tr>
-</table>
-</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-connect-and-create-a-bounded-strong-counter">Step 1: Connect and Create a Bounded Strong Counter</h2>
+<h2 id="step-1-define-geospatial-protobuf-schemas">Step 1: Define Geospatial Protobuf Schemas</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect to the server, obtain a <code>CounterManager</code>, and define a counter with an upper bound. Attempts to exceed the bound throw an exception:</p>
+<p>Define a <code>Restaurant</code> schema with <code>@GeoPoint</code> to create a spatial index on latitude/longitude:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Connect to the server and obtain the CounterManager
-      cacheManager = TutorialsConnectorHelper.connect();
-      counterManager = RemoteCounterManagerFactory.asCounterManager(cacheManager);
-
-      // Create a bounded strong counter with an upper bound of 10
-      counterManager.defineCounter("counter-1", CounterConfiguration.builder(CounterType.BOUNDED_STRONG)
-              .upperBound(10)
-              .initialValue(1)
-              .build());
-
-      // StrongCounter provides the higher consistency. Its value is known during the increment/decrement and it may be bounded.
-      // Bounded counters are aimed for uses cases where a limit is needed.
-      counter1 = counterManager.getStrongCounter("counter-1");
-      // All methods returns a CompletableFuture. So you can do other work while the counter value is being computed.
-      counter1.getValue().thenAccept(value -&gt; System.out.println("Counter-1 initial value is " + value)).get();</code></pre>
+<pre class="highlightjs highlight"><code class="language-protobuf hljs" data-lang="protobuf">syntax = "proto3";
+package tutorial;
+/**
+ * @TypeId(1000060)
+ * @Indexed
+ * @GeoPoint(fieldName = "location", projectable = true, sortable = true)
+ */
+message Restaurant {
+    /** @Keyword(normalizer = "lowercase", projectable = true, sortable = true) */
+    string name = 1;
+    /** @Text */
+    string description = 2;
+    /** @Text */
+    string address = 3;
+    /** @Latitude(fieldName = "location") */
+    double latitude = 4;
+    /** @Longitude(fieldName = "location") */
+    double longitude = 5;
+    /** @Basic */
+    float score = 6;
+}</code></pre>
 </div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-2-create-an-unbounded-strong-counter">Step 2: Create an Unbounded Strong Counter</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>Unbounded strong counters support compare-and-set, listeners, and reset:</p>
+<p>For entities with multiple geo points, such as a train route with departure and arrival, use multiple <code>@GeoPoint</code> annotations:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Similar to counter-1, counter-2 is a strong counter but it is unbounded. It will never throw the CounterOutOfBoundsException
-      counterManager.defineCounter("counter-2", CounterConfiguration.builder(CounterType.UNBOUNDED_STRONG)
-              .initialValue(2)
-              .build());
-
-      counter2 = counterManager.getStrongCounter("counter-2");
-
-      // All counters allow a listener to be registered.
-      // The handle can be used to remove the listener
-      counter2.addListener(event -&gt; System.out
-              .println("Counter-2 event: oldValue=" + event.getOldValue() + " newValue=" + event.getNewValue()));
-
-      // Adding MAX_VALUE won't throws an exception. But the all the increments won't have any effect since we can store
-      //any value larger the MAX_VALUE
-      counter2.addAndGet(Long.MAX_VALUE).thenAccept(aLong -&gt; System.out.println("Counter-2 value is " + aLong)).get();
-
-      // Conditional operations are allowed in strong counters
-      counter2.compareAndSet(Long.MAX_VALUE, 0)
-              .thenAccept(aBoolean -&gt; System.out.println("Counter-2 CAS result is " + aBoolean)).get();
-      counter2.getValue().thenAccept(value -&gt; System.out.println("Counter-2 value is " + value)).get();
-
-      // Reset the counter to its initial value (2)
-      counter2.reset().get();
-      counter2.getValue().thenAccept(value -&gt; System.out.println("Counter-2 initial value is " + value)).get();</code></pre>
+<pre class="highlightjs highlight"><code class="language-protobuf hljs" data-lang="protobuf">/**
+ * @TypeId(1000061)
+ * @Indexed
+ * @GeoPoint(fieldName = "departure", projectable = true, sortable = true)
+ * @GeoPoint(fieldName = "arrival", projectable = true, sortable = true)
+ */
+message TrainRoute {
+    /** @Keyword(normalizer = "lowercase") */
+    string name = 1;
+    /** @Latitude(fieldName = "departure") */
+    double departureLat = 2;
+    /** @Longitude(fieldName = "departure") */
+    double departureLon = 3;
+    /** @Latitude(fieldName = "arrival") */
+    double arrivalLat = 4;
+    /** @Longitude(fieldName = "arrival") */
+    double arrivalLon = 5;
+}</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-create-a-weak-counter">Step 3: Create a Weak Counter</h2>
+<h2 id="step-2-register-schemas-and-create-an-indexed-cache">Step 2: Register Schemas and Create an Indexed Cache</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Weak counters trade consistency for speed. Their value is computed lazily:</p>
+<p>Register the proto schemas on the server, then create an indexed cache listing the entities:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // And finally, the third counter is a weak counter.
-      counterManager.defineCounter("counter-3", CounterConfiguration.builder(CounterType.WEAK)
-              .initialValue(3)
-              .build());
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">// Register schemas
+const metaClient = await ispn.client(addr, {
+    cacheName: '___protobuf_metadata',
+    dataFormat: {keyType: 'text/plain', valueType: 'text/plain'},
+    authentication: { ... }
+});
+await metaClient.put('tutorial/Restaurant.proto', restaurantProto);
 
-      // Retrieve counter-3
-      counter3 = counterManager.getWeakCounter("counter-3");
-      // Weak counter doesn't have its value available during updates. This makes the increment faster than the StrongCounter
-      // Its value is computed lazily and stored locally.
-      // Its main use case is for uses-case where faster increments are needed.
-      counter3.add(5).thenAccept(aVoid -&gt; System.out.println("Adding 5 to counter-3 completed!")).get();
-
-      // Check the counter value.
-      System.out.println("Counter-3 value is " + counter3.getValue());</code></pre>
+// Create indexed cache (schemas must be registered first)
+const adminClient = await ispn.client(addr, { authentication: { ... } });
+await adminClient.admin.getOrCreateCache('spatialCache',
+    '&lt;distributed-cache&gt;' +
+    '&lt;encoding&gt;&lt;key media-type="text/plain"/&gt;&lt;value media-type="application/x-protostream"/&gt;&lt;/encoding&gt;' +
+    '&lt;indexing enabled="true" storage="filesystem" startup-mode="AUTO"&gt;' +
+    '&lt;indexed-entities&gt;&lt;indexed-entity&gt;tutorial.Restaurant&lt;/indexed-entity&gt;&lt;/indexed-entities&gt;' +
+    '&lt;/indexing&gt;&lt;/distributed-cache&gt;');</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-3-run-spatial-queries">Step 3: Run Spatial Queries</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Query restaurants within a 100-metre circle:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const results = await client.query({
+    queryString: 'from tutorial.Restaurant r where r.location within circle(41.908, 12.455, 100)'
+});</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Query within a bounding box (topLeftLat, topLeftLon, bottomRightLat, bottomRightLon):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const results = await client.query({
+    queryString: 'from tutorial.Restaurant r where r.location within box(41.91, 12.45, 41.90, 12.46)'
+});</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Query within a polygon:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const results = await client.query({
+    queryString: 'from tutorial.Restaurant r where r.location within polygon((41.91, 12.45), (41.91, 12.46), (41.90, 12.46), (41.90, 12.46))'
+});</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Project the distance from a reference point:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const results = await client.query({
+    queryString: 'select r.name, distance(r.location, 41.908, 12.455) from tutorial.Restaurant r'
+});
+results.forEach(row =&gt; console.log(`${row[0]}: ${Math.round(row[1])}m`));</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Order results by distance:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const results = await client.query({
+    queryString: 'from tutorial.Restaurant r where r.location order by distance(r.location, 41.908, 12.455)'
+});</code></pre>
 </div>
 </div>
 </div>
@@ -247,11 +307,51 @@ If no server is running, the tutorial code automatically starts an Infinispan Se
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">npm run spatial-queries</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You should see output showing counter values, bound exceptions, listener events, and compare-and-set results.</p>
+<p>You should see output like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Registered Restaurant and TrainRoute schemas.
+Added 7 restaurants in Rome.
+
+Added 4 train routes.
+
+=== Within circle (100m radius) ===
+Found 2 restaurants:
+  La Locanda di Pietro
+  Trattoria Pizzeria Gli Archi
+
+=== Within box ===
+Found 6 restaurants:
+  ...
+
+=== Within polygon ===
+Found 6 restaurants:
+  ...
+
+=== Distance projection ===
+  La Locanda di Pietro: 66m
+  Trattoria Pizzeria Gli Archi: 70m
+  ...
+
+=== Order by distance ===
+  La Locanda di Pietro
+  Trattoria Pizzeria Gli Archi
+  Magazzino Scipioni
+  ...
+
+=== Train routes departing near Bologna (300km) ===
+Found 3 routes:
+  Bologna-Selva
+  Milan-Como
+  Bologna-Venice
+
+Cache cleared.</pre>
+</div>
 </div>
 </div>
 </div>
@@ -261,10 +361,10 @@ If no server is running, the tutorial code automatically starts an Infinispan Se
 <div class="ulist">
 <ul>
 <li>
-<p><a href="/tutorials/remote-cache/">Get started</a> with basic cache operations</p>
+<p><a href="/tutorials/javascript-query/">Ickle queries</a> for standard query operations</p>
 </li>
 <li>
-<p><a href="/tutorials/remote-multimap/">Use multimap caches</a> for multiple values per key</p>
+<p><a href="/tutorials/javascript-cache/">Basic cache operations</a> for standard cache usage</p>
 </li>
 </ul>
 </div>
@@ -360,29 +460,13 @@ If no server is running, the tutorial code automatically starts an Infinispan Se
          
       
          
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
             
             
       
       <aside class="guide-sidebar">
          <div class="guide-sidebar-card">
             <h4>Source Code</h4>
-            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/counter"
+            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/non-java-clients/node.js/spatial-queries"
                target="_blank" rel="noopener">
                <i class="fab fa-github"></i> View on GitHub
             </a>

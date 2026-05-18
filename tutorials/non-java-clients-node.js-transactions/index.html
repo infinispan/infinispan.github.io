@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Remote Counters</title>
+  <title>Transactions with the JavaScript Client</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -97,12 +97,12 @@
 
    <div class="guide-layout">
       <div class="guide-content">
-         <h1>Remote Counters</h1>
+         <h1>Transactions with the JavaScript Client</h1>
          <div class="sect1">
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create and use distributed counters: bounded strong counters with upper limits, unbounded strong counters with compare-and-set operations, and weak counters optimized for fast increments.</p>
+<p>How to use the JavaScript Hot Rod client&#8217;s transaction manager to group cache operations into atomic units that are either committed or rolled back together. You will also learn how read-then-write transactions track entry versions for conflict detection.</p>
 </div>
 </div>
 </div>
@@ -112,10 +112,10 @@
 <div class="ulist">
 <ul>
 <li>
-<p>Java 17+</p>
+<p>Node.js 22+</p>
 </li>
 <li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
+<p>An Infinispan Server running on <code>localhost:11222</code></p>
 </li>
 </ul>
 </div>
@@ -139,119 +139,142 @@ You can replace <code>docker</code> with <code>podman</code> in the command abov
 </tr>
 </table>
 </div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Tip</div>
-</td>
-<td class="content">
-If no server is running, the tutorial code automatically starts an Infinispan Server using Testcontainers.
-</td>
-</tr>
-</table>
-</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-connect-and-create-a-bounded-strong-counter">Step 1: Connect and Create a Bounded Strong Counter</h2>
+<h2 id="step-1-create-a-transactional-cache">Step 1: Create a Transactional Cache</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect to the server, obtain a <code>CounterManager</code>, and define a counter with an upper bound. Attempts to exceed the bound throw an exception:</p>
+<p>Transactional caches require <code>NON_XA</code> mode and <code>PESSIMISTIC</code> locking in their configuration:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Connect to the server and obtain the CounterManager
-      cacheManager = TutorialsConnectorHelper.connect();
-      counterManager = RemoteCounterManagerFactory.asCounterManager(cacheManager);
-
-      // Create a bounded strong counter with an upper bound of 10
-      counterManager.defineCounter("counter-1", CounterConfiguration.builder(CounterType.BOUNDED_STRONG)
-              .upperBound(10)
-              .initialValue(1)
-              .build());
-
-      // StrongCounter provides the higher consistency. Its value is known during the increment/decrement and it may be bounded.
-      // Bounded counters are aimed for uses cases where a limit is needed.
-      counter1 = counterManager.getStrongCounter("counter-1");
-      // All methods returns a CompletableFuture. So you can do other work while the counter value is being computed.
-      counter1.getValue().thenAccept(value -&gt; System.out.println("Counter-1 initial value is " + value)).get();</code></pre>
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">await adminClient.admin.getOrCreateCache('txCache',
+    '&lt;distributed-cache&gt;' +
+    '&lt;encoding&gt;&lt;key media-type="text/plain"/&gt;&lt;value media-type="text/plain"/&gt;&lt;/encoding&gt;' +
+    '&lt;transaction mode="NON_XA" locking="PESSIMISTIC"/&gt;' +
+    '&lt;/distributed-cache&gt;');</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-create-an-unbounded-strong-counter">Step 2: Create an Unbounded Strong Counter</h2>
+<h2 id="step-2-begin-put-and-commit">Step 2: Begin, Put, and Commit</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Unbounded strong counters support compare-and-set, listeners, and reset:</p>
+<p>Get the transaction manager from the client, begin a transaction, put values, and commit. Puts are buffered locally until commit, when they are sent to the server atomically via the Hot Rod <code>PREPARE_TX</code> operation:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Similar to counter-1, counter-2 is a strong counter but it is unbounded. It will never throw the CounterOutOfBoundsException
-      counterManager.defineCounter("counter-2", CounterConfiguration.builder(CounterType.UNBOUNDED_STRONG)
-              .initialValue(2)
-              .build());
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const tm = client.getTransactionManager();
+await tm.begin();
 
-      counter2 = counterManager.getStrongCounter("counter-2");
+await client.put('key1', 'value1');
+await client.put('key2', 'value2');
 
-      // All counters allow a listener to be registered.
-      // The handle can be used to remove the listener
-      counter2.addListener(event -&gt; System.out
-              .println("Counter-2 event: oldValue=" + event.getOldValue() + " newValue=" + event.getNewValue()));
-
-      // Adding MAX_VALUE won't throws an exception. But the all the increments won't have any effect since we can store
-      //any value larger the MAX_VALUE
-      counter2.addAndGet(Long.MAX_VALUE).thenAccept(aLong -&gt; System.out.println("Counter-2 value is " + aLong)).get();
-
-      // Conditional operations are allowed in strong counters
-      counter2.compareAndSet(Long.MAX_VALUE, 0)
-              .thenAccept(aBoolean -&gt; System.out.println("Counter-2 CAS result is " + aBoolean)).get();
-      counter2.getValue().thenAccept(value -&gt; System.out.println("Counter-2 value is " + value)).get();
-
-      // Reset the counter to its initial value (2)
-      counter2.reset().get();
-      counter2.getValue().thenAccept(value -&gt; System.out.println("Counter-2 initial value is " + value)).get();</code></pre>
+await tm.commit();</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>During a transaction, <code>get()</code> returns locally buffered values before falling back to the server:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">await tm.begin();
+await client.put('key1', 'value1');
+const v = await client.get('key1'); // returns 'value1' from local buffer
+await tm.commit();</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-create-a-weak-counter">Step 3: Create a Weak Counter</h2>
+<h2 id="step-3-rollback">Step 3: Rollback</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Weak counters trade consistency for speed. Their value is computed lazily:</p>
+<p>Roll back a transaction to discard all buffered changes:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // And finally, the third counter is a weak counter.
-      counterManager.defineCounter("counter-3", CounterConfiguration.builder(CounterType.WEAK)
-              .initialValue(3)
-              .build());
-
-      // Retrieve counter-3
-      counter3 = counterManager.getWeakCounter("counter-3");
-      // Weak counter doesn't have its value available during updates. This makes the increment faster than the StrongCounter
-      // Its value is computed lazily and stored locally.
-      // Its main use case is for uses-case where faster increments are needed.
-      counter3.add(5).thenAccept(aVoid -&gt; System.out.println("Adding 5 to counter-3 completed!")).get();
-
-      // Check the counter value.
-      System.out.println("Counter-3 value is " + counter3.getValue());</code></pre>
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">await tm.begin();
+await client.put('key4', 'should-not-exist');
+await tm.rollback();
+// key4 does not exist on the server</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
+<h2 id="step-4-read-then-write">Step 4: Read-then-Write</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>When you read a key inside a transaction, the client records its version. On commit, the server verifies that the version has not changed, providing conflict detection:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">await tm.begin();
+const current = await client.get('counter');       // version recorded
+await client.put('counter', String(parseInt(current) + 1));
+await tm.commit();                                  // server checks version</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-5-remove-within-a-transaction">Step 5: Remove within a Transaction</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Removes are also buffered and applied atomically on commit:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">await tm.begin();
+await client.remove('temp');
+const v = await client.get('temp'); // returns undefined (locally removed)
+await tm.commit();
+// 'temp' is removed from the server</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-6-run-the-tutorial">Step 6: Run the Tutorial</h2>
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">npm run transactions</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You should see output showing counter values, bound exceptions, listener events, and compare-and-set results.</p>
+<p>You should see output like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>=== Commit transaction ===
+Put 3 keys (buffered locally).
+Get key1 within tx: value1
+Transaction committed.
+  key1 = value1
+  key2 = value2
+  key3 = value3
+
+=== Rollback transaction ===
+Put key4 (buffered locally).
+Transaction rolled back.
+  key4 = undefined
+
+=== Read-then-write transaction ===
+Read counter within tx: 0
+Transaction committed.
+  counter = 1
+
+=== Remove within transaction ===
+Get temp within tx after remove: undefined
+Transaction committed.
+  temp = undefined
+
+Cache cleared.</pre>
+</div>
 </div>
 </div>
 </div>
@@ -261,10 +284,10 @@ If no server is running, the tutorial code automatically starts an Infinispan Se
 <div class="ulist">
 <ul>
 <li>
-<p><a href="/tutorials/remote-cache/">Get started</a> with basic cache operations</p>
+<p><a href="/tutorials/javascript-cache/">Basic cache operations</a> for standard CRUD usage</p>
 </li>
 <li>
-<p><a href="/tutorials/remote-multimap/">Use multimap caches</a> for multiple values per key</p>
+<p><a href="/tutorials/javascript-query/">Ickle queries</a> for standard query operations</p>
 </li>
 </ul>
 </div>
@@ -362,27 +385,13 @@ If no server is running, the tutorial code automatically starts an Infinispan Se
          
       
          
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
             
             
       
       <aside class="guide-sidebar">
          <div class="guide-sidebar-card">
             <h4>Source Code</h4>
-            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/counter"
+            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/non-java-clients/node.js/transactions"
                target="_blank" rel="noopener">
                <i class="fab fa-github"></i> View on GitHub
             </a>

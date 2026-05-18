@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Remote Counters</title>
+  <title>Schema Management with the JavaScript Client</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -97,12 +97,12 @@
 
    <div class="guide-layout">
       <div class="guide-content">
-         <h1>Remote Counters</h1>
+         <h1>Schema Management with the JavaScript Client</h1>
          <div class="sect1">
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create and use distributed counters: bounded strong counters with upper limits, unbounded strong counters with compare-and-set operations, and weak counters optimized for fast increments.</p>
+<p>How to register Protobuf schemas on the Infinispan Server using the internal <code>___protobuf_metadata</code> cache, retrieve them, and check for validation errors.</p>
 </div>
 </div>
 </div>
@@ -112,10 +112,10 @@
 <div class="ulist">
 <ul>
 <li>
-<p>Java 17+</p>
+<p>Node.js 22+</p>
 </li>
 <li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
+<p>An Infinispan Server running on <code>localhost:11222</code></p>
 </li>
 </ul>
 </div>
@@ -139,106 +139,70 @@ You can replace <code>docker</code> with <code>podman</code> in the command abov
 </tr>
 </table>
 </div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Tip</div>
-</td>
-<td class="content">
-If no server is running, the tutorial code automatically starts an Infinispan Server using Testcontainers.
-</td>
-</tr>
-</table>
-</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-connect-and-create-a-bounded-strong-counter">Step 1: Connect and Create a Bounded Strong Counter</h2>
+<h2 id="step-1-connect-to-the-metadata-cache">Step 1: Connect to the Metadata Cache</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect to the server, obtain a <code>CounterManager</code>, and define a counter with an upper bound. Attempts to exceed the bound throw an exception:</p>
+<p>Connect directly to the internal <code>___protobuf_metadata</code> cache with text/plain encoding:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Connect to the server and obtain the CounterManager
-      cacheManager = TutorialsConnectorHelper.connect();
-      counterManager = RemoteCounterManagerFactory.asCounterManager(cacheManager);
-
-      // Create a bounded strong counter with an upper bound of 10
-      counterManager.defineCounter("counter-1", CounterConfiguration.builder(CounterType.BOUNDED_STRONG)
-              .upperBound(10)
-              .initialValue(1)
-              .build());
-
-      // StrongCounter provides the higher consistency. Its value is known during the increment/decrement and it may be bounded.
-      // Bounded counters are aimed for uses cases where a limit is needed.
-      counter1 = counterManager.getStrongCounter("counter-1");
-      // All methods returns a CompletableFuture. So you can do other work while the counter value is being computed.
-      counter1.getValue().thenAccept(value -&gt; System.out.println("Counter-1 initial value is " + value)).get();</code></pre>
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const client = await ispn.client({port: 11222, host: '127.0.0.1'}, {
+    cacheName: '___protobuf_metadata',
+    dataFormat: {
+        keyType: 'text/plain',
+        valueType: 'text/plain'
+    },
+    authentication: { ... }
+});</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-create-an-unbounded-strong-counter">Step 2: Create an Unbounded Strong Counter</h2>
+<h2 id="step-2-register-a-schema">Step 2: Register a Schema</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Unbounded strong counters support compare-and-set, listeners, and reset:</p>
+<p>Put the <code>.proto</code> file content with the schema name as the key:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Similar to counter-1, counter-2 is a strong counter but it is unbounded. It will never throw the CounterOutOfBoundsException
-      counterManager.defineCounter("counter-2", CounterConfiguration.builder(CounterType.UNBOUNDED_STRONG)
-              .initialValue(2)
-              .build());
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const personProto = `syntax = "proto3";
+package tutorial;
 
-      counter2 = counterManager.getStrongCounter("counter-2");
+/* @Indexed */
+message Person {
+    /* @Keyword(projectable = true, sortable = true, normalizer = "lowercase") */
+    string firstName = 1;
+    /* @Keyword(projectable = true, sortable = true, normalizer = "lowercase") */
+    string lastName = 2;
+    /* @Basic(projectable = true, sortable = true) */
+    int32 bornYear = 3;
+    /* @Keyword(projectable = true, sortable = true, normalizer = "lowercase") */
+    string bornIn = 4;
+}`;
 
-      // All counters allow a listener to be registered.
-      // The handle can be used to remove the listener
-      counter2.addListener(event -&gt; System.out
-              .println("Counter-2 event: oldValue=" + event.getOldValue() + " newValue=" + event.getNewValue()));
-
-      // Adding MAX_VALUE won't throws an exception. But the all the increments won't have any effect since we can store
-      //any value larger the MAX_VALUE
-      counter2.addAndGet(Long.MAX_VALUE).thenAccept(aLong -&gt; System.out.println("Counter-2 value is " + aLong)).get();
-
-      // Conditional operations are allowed in strong counters
-      counter2.compareAndSet(Long.MAX_VALUE, 0)
-              .thenAccept(aBoolean -&gt; System.out.println("Counter-2 CAS result is " + aBoolean)).get();
-      counter2.getValue().thenAccept(value -&gt; System.out.println("Counter-2 value is " + value)).get();
-
-      // Reset the counter to its initial value (2)
-      counter2.reset().get();
-      counter2.getValue().thenAccept(value -&gt; System.out.println("Counter-2 initial value is " + value)).get();</code></pre>
+await client.put('person.proto', personProto);</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-create-a-weak-counter">Step 3: Create a Weak Counter</h2>
+<h2 id="step-3-retrieve-and-validate">Step 3: Retrieve and Validate</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Weak counters trade consistency for speed. Their value is computed lazily:</p>
+<p>Retrieve the schema by key. Check for errors in the <code>.errors</code> suffix key:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // And finally, the third counter is a weak counter.
-      counterManager.defineCounter("counter-3", CounterConfiguration.builder(CounterType.WEAK)
-              .initialValue(3)
-              .build());
-
-      // Retrieve counter-3
-      counter3 = counterManager.getWeakCounter("counter-3");
-      // Weak counter doesn't have its value available during updates. This makes the increment faster than the StrongCounter
-      // Its value is computed lazily and stored locally.
-      // Its main use case is for uses-case where faster increments are needed.
-      counter3.add(5).thenAccept(aVoid -&gt; System.out.println("Adding 5 to counter-3 completed!")).get();
-
-      // Check the counter value.
-      System.out.println("Counter-3 value is " + counter3.getValue());</code></pre>
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const schema = await client.get('person.proto');
+const errors = await client.get('person.proto.errors');</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>If the schema has validation errors, Infinispan stores the error messages in the <code>person.proto.errors</code> key.</p>
 </div>
 </div>
 </div>
@@ -247,11 +211,25 @@ If no server is running, the tutorial code automatically starts an Infinispan Se
 <div class="sectionbody">
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">npm run schemas</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You should see output showing counter values, bound exceptions, listener events, and compare-and-set results.</p>
+<p>You should see output like:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Registered person.proto schema.
+
+Retrieved schema:
+syntax = "proto3";
+package tutorial;
+...
+
+No schema errors.
+
+Removed person.proto schema.</pre>
+</div>
 </div>
 </div>
 </div>
@@ -261,10 +239,10 @@ If no server is running, the tutorial code automatically starts an Infinispan Se
 <div class="ulist">
 <ul>
 <li>
-<p><a href="/tutorials/remote-cache/">Get started</a> with basic cache operations</p>
+<p><a href="/tutorials/javascript-query/">Ickle queries</a> for querying data using registered schemas</p>
 </li>
 <li>
-<p><a href="/tutorials/remote-multimap/">Use multimap caches</a> for multiple values per key</p>
+<p><a href="/tutorials/javascript-encoding/">Cache encodings</a> for different media type formats</p>
 </li>
 </ul>
 </div>
@@ -356,33 +334,13 @@ If no server is running, the tutorial code automatically starts an Infinispan Se
          
       
          
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
             
             
       
       <aside class="guide-sidebar">
          <div class="guide-sidebar-card">
             <h4>Source Code</h4>
-            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/counter"
+            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/non-java-clients/node.js/schemas"
                target="_blank" rel="noopener">
                <i class="fab fa-github"></i> View on GitHub
             </a>

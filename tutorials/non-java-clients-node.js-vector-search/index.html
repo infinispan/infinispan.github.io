@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Remote Counters</title>
+  <title>Vector Search with the JavaScript Client</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -97,12 +97,12 @@
 
    <div class="guide-layout">
       <div class="guide-content">
-         <h1>Remote Counters</h1>
+         <h1>Vector Search with the JavaScript Client</h1>
          <div class="sect1">
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to create and use distributed counters: bounded strong counters with upper limits, unbounded strong counters with compare-and-set operations, and weak counters optimized for fast increments.</p>
+<p>How to store entities with vector embeddings in Infinispan and perform kNN (k-nearest neighbor) vector searches, including hybrid queries that combine vector similarity with full-text search and metadata filters.</p>
 </div>
 </div>
 </div>
@@ -112,10 +112,13 @@
 <div class="ulist">
 <ul>
 <li>
-<p>Java 17+</p>
+<p>Node.js 22+</p>
 </li>
 <li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
+<p>An Infinispan Server running on <code>localhost:11222</code></p>
+</li>
+<li>
+<p>The <code>protobufjs</code> npm package (installed via <code>npm install</code>)</p>
 </li>
 </ul>
 </div>
@@ -139,119 +142,157 @@ You can replace <code>docker</code> with <code>podman</code> in the command abov
 </tr>
 </table>
 </div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Tip</div>
-</td>
-<td class="content">
-If no server is running, the tutorial code automatically starts an Infinispan Server using Testcontainers.
-</td>
-</tr>
-</table>
-</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-connect-and-create-a-bounded-strong-counter">Step 1: Connect and Create a Bounded Strong Counter</h2>
+<h2 id="step-1-define-a-protobuf-schema-with-a-vector-field">Step 1: Define a Protobuf Schema with a Vector Field</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Connect to the server, obtain a <code>CounterManager</code>, and define a counter with an upper bound. Attempts to exceed the bound throw an exception:</p>
+<p>Use the <code>@Vector</code> annotation to declare a vector field with its dimension and similarity function.
+The 3-dimensional vectors represent taste profiles: dark/roasty, light/crisp, and hoppy/craft:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Connect to the server and obtain the CounterManager
-      cacheManager = TutorialsConnectorHelper.connect();
-      counterManager = RemoteCounterManagerFactory.asCounterManager(cacheManager);
-
-      // Create a bounded strong counter with an upper bound of 10
-      counterManager.defineCounter("counter-1", CounterConfiguration.builder(CounterType.BOUNDED_STRONG)
-              .upperBound(10)
-              .initialValue(1)
-              .build());
-
-      // StrongCounter provides the higher consistency. Its value is known during the increment/decrement and it may be bounded.
-      // Bounded counters are aimed for uses cases where a limit is needed.
-      counter1 = counterManager.getStrongCounter("counter-1");
-      // All methods returns a CompletableFuture. So you can do other work while the counter value is being computed.
-      counter1.getValue().thenAccept(value -&gt; System.out.println("Counter-1 initial value is " + value)).get();</code></pre>
+<pre class="highlightjs highlight"><code class="language-protobuf hljs" data-lang="protobuf">syntax = "proto3";
+package quickstart;
+/**
+ * @TypeId(1000050)
+ * @Indexed
+ */
+message Beer {
+    /** @Keyword(projectable = true, sortable = true) */
+    string name = 1;
+    /** @Keyword(projectable = true, normalizer = "lowercase") */
+    string style = 2;
+    /** @Keyword(projectable = true, sortable = true, normalizer = "lowercase") */
+    string brewery = 3;
+    /** @Keyword(projectable = true, normalizer = "lowercase") */
+    string country = 4;
+    /** @Basic(projectable = true, sortable = true) */
+    double abv = 5;
+    /** @Text */
+    string description = 6;
+    /** @Vector(dimension = 3, similarity = COSINE) */
+    repeated float descriptionEmbedding = 7;
+}</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-2-create-an-unbounded-strong-counter">Step 2: Create an Unbounded Strong Counter</h2>
+<h2 id="step-2-register-the-schema-and-create-an-indexed-cache">Step 2: Register the Schema and Create an Indexed Cache</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Unbounded strong counters support compare-and-set, listeners, and reset:</p>
+<p>Register the schema on the server and create a cache with indexing enabled:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // Similar to counter-1, counter-2 is a strong counter but it is unbounded. It will never throw the CounterOutOfBoundsException
-      counterManager.defineCounter("counter-2", CounterConfiguration.builder(CounterType.UNBOUNDED_STRONG)
-              .initialValue(2)
-              .build());
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">// Register schema
+const metaClient = await ispn.client({port, host}, {
+    ...authOpts,
+    cacheName: '___protobuf_metadata',
+    dataFormat: {keyType: 'text/plain', valueType: 'text/plain'}
+});
+await metaClient.put('quickstart/Beer.proto', beerProto);
 
-      counter2 = counterManager.getStrongCounter("counter-2");
-
-      // All counters allow a listener to be registered.
-      // The handle can be used to remove the listener
-      counter2.addListener(event -&gt; System.out
-              .println("Counter-2 event: oldValue=" + event.getOldValue() + " newValue=" + event.getNewValue()));
-
-      // Adding MAX_VALUE won't throws an exception. But the all the increments won't have any effect since we can store
-      //any value larger the MAX_VALUE
-      counter2.addAndGet(Long.MAX_VALUE).thenAccept(aLong -&gt; System.out.println("Counter-2 value is " + aLong)).get();
-
-      // Conditional operations are allowed in strong counters
-      counter2.compareAndSet(Long.MAX_VALUE, 0)
-              .thenAccept(aBoolean -&gt; System.out.println("Counter-2 CAS result is " + aBoolean)).get();
-      counter2.getValue().thenAccept(value -&gt; System.out.println("Counter-2 value is " + value)).get();
-
-      // Reset the counter to its initial value (2)
-      counter2.reset().get();
-      counter2.getValue().thenAccept(value -&gt; System.out.println("Counter-2 initial value is " + value)).get();</code></pre>
+// Create indexed cache
+const adminClient = await ispn.client({port, host}, {
+    ...authOpts,
+    clientIntelligence: 'BASIC'
+});
+const cacheConfig =
+  '&lt;distributed-cache&gt;' +
+  '&lt;encoding&gt;&lt;key media-type="text/plain"/&gt;&lt;value media-type="application/x-protostream"/&gt;&lt;/encoding&gt;' +
+  '&lt;indexing enabled="true" storage="filesystem" startup-mode="AUTO"&gt;' +
+  '&lt;indexed-entities&gt;&lt;indexed-entity&gt;quickstart.Beer&lt;/indexed-entity&gt;&lt;/indexed-entities&gt;' +
+  '&lt;/indexing&gt;&lt;/distributed-cache&gt;';
+await adminClient.admin.getOrCreateCache('beers', cacheConfig);</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-create-a-weak-counter">Step 3: Create a Weak Counter</h2>
+<h2 id="step-3-populate-data-with-vector-embeddings">Step 3: Populate Data with Vector Embeddings</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Weak counters trade consistency for speed. Their value is computed lazily:</p>
+<p>Store beer entries with hand-crafted 3D vectors that cluster similar styles together:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      // And finally, the third counter is a weak counter.
-      counterManager.defineCounter("counter-3", CounterConfiguration.builder(CounterType.WEAK)
-              .initialValue(3)
-              .build());
-
-      // Retrieve counter-3
-      counter3 = counterManager.getWeakCounter("counter-3");
-      // Weak counter doesn't have its value available during updates. This makes the increment faster than the StrongCounter
-      // Its value is computed lazily and stored locally.
-      // Its main use case is for uses-case where faster increments are needed.
-      counter3.add(5).thenAccept(aVoid -&gt; System.out.println("Adding 5 to counter-3 completed!")).get();
-
-      // Check the counter value.
-      System.out.println("Counter-3 value is " + counter3.getValue());</code></pre>
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const Beer = root.lookupType('.quickstart.Beer');
+const msg = Beer.create({
+    name: 'Guinness', style: 'Stout', brewery: 'Guinness Brewery',
+    country: 'Ireland', abv: 4.2,
+    description: 'A rich, creamy stout with deep roasted barley flavours...',
+    descriptionEmbedding: [0.95, 0.05, 0.10]
+});
+await client.put('beer:1', msg);</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
+<h2 id="step-4-perform-a-knn-vector-search">Step 4: Perform a kNN Vector Search</h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>Use the <code>&lt;&#8594;</code> operator with <code>~k</code> to find the k nearest neighbors.
+Vector values are specified inline in the query:</p>
+</div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const results = await client.query({
+    queryString: 'from quickstart.Beer b where b.descriptionEmbedding &lt;-&gt; [0.9, 0.1, 0.1]~3'
+});</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>You should see output showing counter values, bound exceptions, listener events, and compare-and-set results.</p>
+<p>Add a score projection to see how close each match is:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">const scored = await client.query({
+    queryString: 'select b.name, b.style, score(b) from quickstart.Beer b ' +
+        'where b.descriptionEmbedding &lt;-&gt; [0.05, 0.9, 0.1]~3'
+});</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-5-run-hybrid-queries">Step 5: Run Hybrid Queries</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Combine vector similarity with metadata filters using the <code>filtering</code> clause:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">// Vector + keyword + range filter
+const hybrid = await client.query({
+    queryString: "select score(b), b.name, b.style, b.abv from quickstart.Beer b " +
+        "where b.descriptionEmbedding &lt;-&gt; [0.05, 0.95, 0.05]~3 " +
+        "filtering (b.style = 'Lager' and b.abv &lt; 5.0)"
+});
+
+// Vector + full-text filter
+const textHybrid = await client.query({
+    queryString: "select score(b), b.name, b.brewery, b.abv from quickstart.Beer b " +
+        "where b.descriptionEmbedding &lt;-&gt; [0.1, 0.1, 0.95]~5 " +
+        "filtering b.description : 'citrus'"
+});</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-6-run-the-tutorial">Step 6: Run the Tutorial</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">npm run vector-search</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output demonstrates full-text search, keyword/range filters, projections, kNN vector search with score projections, and hybrid queries filtering by style, country, and description text.</p>
 </div>
 </div>
 </div>
@@ -261,10 +302,10 @@ If no server is running, the tutorial code automatically starts an Infinispan Se
 <div class="ulist">
 <ul>
 <li>
-<p><a href="/tutorials/remote-cache/">Get started</a> with basic cache operations</p>
+<p><a href="/tutorials/node.js-spatial-queries/">Spatial queries</a> for geolocation data</p>
 </li>
 <li>
-<p><a href="/tutorials/remote-multimap/">Use multimap caches</a> for multiple values per key</p>
+<p><a href="/tutorials/node.js-query/">Querying with Ickle</a> for standard queries with filters and projections</p>
 </li>
 </ul>
 </div>
@@ -364,25 +405,13 @@ If no server is running, the tutorial code automatically starts an Infinispan Se
          
       
          
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
             
             
       
       <aside class="guide-sidebar">
          <div class="guide-sidebar-card">
             <h4>Source Code</h4>
-            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/counter"
+            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/non-java-clients/node.js/vector-search"
                target="_blank" rel="noopener">
                <i class="fab fa-github"></i> View on GitHub
             </a>
