@@ -178,6 +178,12 @@ else
     %x( mvn #{MVN_DEPENDENCY_PLUGIN}:unpack -DoutputDirectory=schemas -DmarkersDirectory=. -Dartifact=org.infinispan:infinispan-distribution:#{version}:zip:xsd )
     if Gem::Version.new(version.sub(".Final", "")) >= Gem::Version.new("16.2.1")
       %x( mvn #{MVN_DEPENDENCY_PLUGIN}:unpack -DoutputDirectory=schemas -DmarkersDirectory=. -Dartifact=org.infinispan:infinispan-distribution:#{version}:zip:json )
+      if valias == "stable"
+        Dir.glob("schemas/*-#{minor_str}.json").each do |f|
+          unversioned = f.sub("-#{minor_str}.json", ".json")
+          FileUtils.cp(f, unversioned)
+        end
+      end
     end
   end
 
