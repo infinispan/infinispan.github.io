@@ -659,7 +659,11 @@ $(addBlockSwitches);
 <li><a href="#eviction-passivation_configuring-memory-usage">5.3.5. Passivation with eviction</a></li>
 </ul>
 </li>
-<li><a href="#configuring-container-eviction_configuring-memory-usage">5.4. Configuring container eviction</a></li>
+<li><a href="#configuring-container-eviction_configuring-memory-usage">5.4. Configuring container eviction</a>
+<ul class="sectlevel3">
+<li><a href="#configuring-dynamic-eviction_configuring-memory-usage">5.4.1. Configuring dynamic eviction</a></li>
+</ul>
+</li>
 <li><a href="#expiration_configuring-memory-usage">5.5. Expiration with lifespan and maximum idle</a>
 <ul class="sectlevel3">
 <li><a href="#how-expiration-works_configuring-memory-usage">5.5.1. How expiration works</a></li>
@@ -5459,6 +5463,200 @@ However, this overhead is typically negligible compared to the network overhead 
           evictionContainer: "my-container"</code></pre>
 </div>
 </div>
+<div class="sect3">
+<h4 id="configuring-dynamic-eviction_configuring-memory-usage"><a class="anchor" href="#configuring-dynamic-eviction_configuring-memory-usage"></a>5.4.1. Configuring dynamic eviction</h4>
+<div class="paragraph">
+<p>Dynamic eviction automatically adjusts eviction container capacity in response to JVM memory pressure.
+When the memory monitor detects low memory or excessive garbage collection, Infinispan shrinks the container to free heap space by evicting entries.
+When memory pressure subsides, Infinispan gradually restores the container to its original configured capacity.</p>
+</div>
+<div class="paragraph">
+<p>When using a shared eviction container, size-based eviction (<code>max-size-container</code>) is generally preferred over count-based eviction (<code>max-count-container</code>).
+A shared container may hold entries of varying sizes across different caches, so a count-based limit may not accurately reflect the actual memory usage required.
+Size-based eviction tracks the an approximate size of each entry individually, providing a more accurate representation of memory consumption.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Dynamic eviction is not guaranteed to prevent <code>OutOfMemoryError</code> exceptions.
+It is designed to ease memory pressure during situations such as operations that temporarily require additional memory or a large influx of requests.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Dynamic eviction requires:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A shared eviction container (<code>max-count-container</code> or <code>max-size-container</code>) with <code>dynamic-resize="true"</code>.</p>
+</li>
+<li>
+<p>The memory monitor enabled on the cache container.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<div class="title">How it works</div>
+<p>Infinispan monitors JVM memory using the memory monitor.
+When low memory or high GC pressure is detected, the dynamic resizer transitions through the following states:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Stable</dt>
+<dd>
+<p>Normal operation.
+The container uses its originally configured capacity.</p>
+</dd>
+<dt class="hdlist1">Shrinking</dt>
+<dd>
+<p>Memory pressure detected.
+The container capacity is reduced by 20% of the original capacity per step, down to a floor of 10% of the original capacity.
+A 5-second cooldown between shrink steps prevents rapid thrashing.
+After each garbage collection, Infinispan rechecks whether further shrinking is needed.</p>
+</dd>
+<dt class="hdlist1">Growing</dt>
+<dd>
+<p>Memory pressure has subsided.
+The container capacity is increased by 10% of the original capacity per step, with exponential backoff between steps (starting at 10 seconds, up to 30 seconds).
+If memory pressure returns during growth, Infinispan transitions back to shrinking.
+Growth continues until the container reaches its original configured capacity.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<div class="title">Passivation warning</div>
+<p>When a cache uses a dynamically resized container with passivation enabled, evicted entries must be written to the persistence store.
+Under memory pressure this creates additional memory churn that can reduce the effectiveness of the resize.
+Infinispan logs a warning at startup when this combination is detected.</p>
+</div>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Enable the memory monitor on the cache container.</p>
+</li>
+<li>
+<p>Add the <code>dynamic-resize</code> attribute to your eviction container.</p>
+</li>
+<li>
+<p>Reference the eviction container in your cache configuration.</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
+   &lt;memory-monitor enabled="true"
+                   memory-threshold="0.85"
+                   gc-pressure-threshold="0.20" /&gt;
+   &lt;eviction-containers&gt;
+      &lt;max-size-container name="my-container" size="1GB" dynamic-resize="true"/&gt;
+   &lt;/eviction-containers&gt;
+   ...
+   &lt;distributed-cache name="my-cache"&gt;
+      &lt;memory eviction-container="my-container"/&gt;
+   &lt;/distributed-cache&gt;
+&lt;/cache-container&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "infinispan": {
+    "cacheContainer": {
+      "memoryMonitor": {
+        "enabled": true,
+        "memoryThreshold": 0.85,
+        "gcPressureThreshold": 0.20
+      },
+      "evictionContainers": {
+        "maxSizeContainer": [
+          {
+            "name": "my-container",
+            "size": "1GB",
+            "dynamicResize": true
+          }
+        ]
+      },
+      "distributedCache": {
+        "my-cache": {
+          "memory": {
+            "evictionContainer": "my-container"
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  cacheContainer:
+    memoryMonitor:
+      enabled: true
+      memoryThreshold: 0.85
+      gcPressureThreshold: 0.20
+    evictionContainers:
+      maxSizeContainer:
+        - name: "my-container"
+          size: "1GB"
+          dynamicResize: true
+    distributedCache:
+      "my-cache":
+        memory:
+          evictionContainer: "my-container"</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Dynamic eviction attributes</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Attribute</th>
+<th class="tableblock halign-left valign-top">Default</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dynamic-resize</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>false</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables dynamic resizing of the eviction container based on JVM memory pressure.
+  Requires the memory monitor to be enabled.</p></td>
+</tr>
+</tbody>
+</table>
+<h5 id="programmatic_configuration" class="discrete">Programmatic configuration</h5>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder global = new GlobalConfigurationBuilder();
+global.memoryMonitor()
+      .enabled(true);
+global.containerMemoryConfiguration("my-container")
+      .maxSize("1GB")
+      .dynamicResize(true);
+
+ConfigurationBuilder cache = new ConfigurationBuilder();
+cache.memory()
+     .containerMemory("my-container");</code></pre>
+</div>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="expiration_configuring-memory-usage"><a class="anchor" href="#expiration_configuring-memory-usage"></a>5.5. Expiration with lifespan and maximum idle</h3>
@@ -8795,7 +8993,7 @@ You must install both the Infinispan RocksDB cache store module and the RocksDB 
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">[disconnected]&gt; install org.infinispan:infinispan-cachestore-rocksdb:16.2.0.Dev02
+<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">[disconnected]&gt; install org.infinispan:infinispan-cachestore-rocksdb:16.2.0
 [disconnected]&gt; install org.rocksdb:rocksdbjni:9.11.2</code></pre>
 </div>
 </div>
@@ -8818,7 +9016,7 @@ Newer versions of the library may or may not be compatible.</p>
 </table>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Configuration parameters</caption>
+<caption class="title">Table 2. Configuration parameters</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -9657,7 +9855,7 @@ target.location=/path/to/target/sfs.dat</code></pre>
 <p>Configure source and target cache stores in a <code>StoreMigrator</code> properties.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. Cache Store Type Property</caption>
+<caption class="title">Table 3. Cache Store Type Property</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -9687,7 +9885,7 @@ target.location=/path/to/target/sfs.dat</code></pre>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Common Properties</caption>
+<caption class="title">Table 4. Common Properties</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -9739,7 +9937,7 @@ Infinispan configuration. If the number of segments for a cache store does not m
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. JDBC Properties</caption>
+<caption class="title">Table 5. JDBC Properties</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -9871,7 +10069,7 @@ target.key_to_string_mapper=org.infinispan.persistence.keymappers. DefaultTwoWay
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. RocksDB Properties</caption>
+<caption class="title">Table 6. RocksDB Properties</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -9907,7 +10105,7 @@ source.compression=SNAPPY</pre>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. SingleFileStore Properties</caption>
+<caption class="title">Table 7. SingleFileStore Properties</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -9937,7 +10135,7 @@ target.location=/path/to/sfs.dat</pre>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. SoftIndexFileStore Properties</caption>
+<caption class="title">Table 8. SoftIndexFileStore Properties</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -10410,7 +10608,7 @@ builder.clustering().cacheMode(CacheMode.DIST_SYNC)
 The strategy you configure determines whether you get cache availability or data consistency.</p>
 </div>
 <table class="tableblock frame-all grid-all stripes-even fit-content">
-<caption class="title">Table 8. Partition handling strategies</caption>
+<caption class="title">Table 9. Partition handling strategies</caption>
 <colgroup>
 <col>
 <col>
@@ -10452,7 +10650,7 @@ If a partition does not include all replicas of an entry, Infinispan prevents ca
 You can use one of the merge policies that Infinispan provides or you can create a custom implementation of the <code>EntryMergePolicy</code> API.</p>
 </div>
 <table class="tableblock frame-all grid-all stripes-even fit-content">
-<caption class="title">Table 9. Infinispan merge policies</caption>
+<caption class="title">Table 10. Infinispan merge policies</caption>
 <colgroup>
 <col>
 <col>
@@ -10768,7 +10966,7 @@ crm.resolveConflicts((preferredEntry, otherEntries) -&gt; preferredEntry);</code
 <p>User roles are sets of permissions with different access levels.</p>
 </div>
 <table class="tableblock frame-all grid-all stripes-even fit-content">
-<caption class="title">Table 10. Cache Manager permissions</caption>
+<caption class="title">Table 11. Cache Manager permissions</caption>
 <colgroup>
 <col>
 <col>
@@ -10813,7 +11011,7 @@ crm.resolveConflicts((preferredEntry, otherEntries) -&gt; preferredEntry);</code
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stripes-even fit-content">
-<caption class="title">Table 11. Cache permissions</caption>
+<caption class="title">Table 12. Cache permissions</caption>
 <colgroup>
 <col>
 <col>
@@ -13281,7 +13479,7 @@ public class MyNonBlockingListener {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-04-30 06:40:56 UTC
+Last updated 2026-06-03 06:04:48 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
