@@ -5,6 +5,8 @@ require "fileutils"
 require "optimist"
 require "nokogiri"
 
+MVN_DEPENDENCY_PLUGIN = "org.apache.maven.plugins:maven-dependency-plugin:3.11.0"
+
 opts = Optimist::options do
   version "fetch_docs 0.2.0 (c) The Infinispan team"
   banner <<-EOS
@@ -77,7 +79,7 @@ end
 
 def extract_maven_artifact(artifact, target, ext)
   puts "Downloading #{artifact} to #{target}"
-  %x( mvn org.apache.maven.plugins:maven-dependency-plugin:3.9.0:copy -DoutputDirectory=#{target} -DrepoUrl=https://search.maven.org/artifact/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
+  %x( mvn #{MVN_DEPENDENCY_PLUGIN}:copy -DoutputDirectory=#{target} -DrepoUrl=https://search.maven.org/artifact/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
   %x( unzip -qo #{target}/*#{ext} -d #{target} )
   FileUtils.rm Dir.glob("#{target}/*#{ext}")
 end
@@ -173,7 +175,10 @@ else
     get_maven_docs(html_artifact, javadoc_artifact, nil, "docs", doc_dir, valias)
     vname = if valias != nil then "#{doc_dir} (#{valias})" else doc_dir end
     coreDocIndex.push "#{vname}!#{doc_dir}"
-    %x( mvn org.apache.maven.plugins:maven-dependency-plugin:3.9.0:unpack -DoutputDirectory=schemas -DmarkersDirectory=. -Dartifact=org.infinispan:infinispan-distribution:#{version}:zip:xsd )
+    %x( mvn #{MVN_DEPENDENCY_PLUGIN}:unpack -DoutputDirectory=schemas -DmarkersDirectory=. -Dartifact=org.infinispan:infinispan-distribution:#{version}:zip:xsd )
+    if Gem::Version.new(version.sub(".Final", "")) >= Gem::Version.new("16.2.1")
+      %x( mvn #{MVN_DEPENDENCY_PLUGIN}:unpack -DoutputDirectory=schemas -DmarkersDirectory=. -Dartifact=org.infinispan:infinispan-distribution:#{version}:zip:json )
+    end
   end
 
   # Fetch Hot Rod C++ and .NET client docs from project downloads
