@@ -1,0 +1,515 @@
+---
+layout: blog
+title: "Beyond Per-Cache Eviction: Shared Containers and Memory-Pressure Awareness in Infinispan"
+permalink: /blog/:year/:month/:day/beyond-per-cache-eviction
+date: '2026-06-09T00:00:00.000-00:00'
+author: wburns
+tags: [ "eviction", "memory", "configuration" ]
+---
+
+= Beyond Per-Cache Eviction
+
+== Per-cache memory limits
+
+Up until now, Infinispan has required you to configure memory bounds for each cache individually.
+You decide how much memory each cache is allowed to consume, and the eviction machinery enforces those limits independently.
+
+Suppose you have a node with 4GB of heap available for caching and five caches to fill it.
+You assign each cache its own slice of that budget — say 200MB for some and 300MB for others.
+This works, but it means you need to know upfront how much each cache will need.
+Caches that don't use their full allocation leave memory on the table, while others may be constrained.
+Every time you resize a cache you have to revisit the arithmetic.
+
+This also means that creating a new cache at runtime requires you to carve out a separate memory allocation for it — memory that has to come from somewhere, potentially requiring you to shrink existing caches.
+With shared containers, a new cache can simply join an existing container and immediately share its budget with no reconfiguration needed.
+
+image::per-cache-eviction.svg[Per-cache eviction, align="center"]
+
+Infinispan 16.1 introduced *container eviction* as an alternative approach.
+
+== Container eviction
+
+Container eviction lets you define a single memory boundary that is shared across multiple caches.
+Instead of configuring limits per cache, you create a named eviction container at the cache-container level and reference it from any caches that should share that budget.
+
+Infinispan supports two types of eviction containers:
+
+* `max-size-container` — bounds by total memory (e.g., `100MB`, `1GB`)
+* `max-count-container` — bounds by total entry count (e.g., `1000` entries)
+
+You can define multiple containers if you need different budgets for different groups of caches.
+
+image::container-eviction.svg[Container eviction, align="center"]
+
+In the example below, caches A and B share a `hot` container (400MB) while caches C, D, and E share a `warm` container (900MB):
+
+++++
+<details open>
+<summary><strong>XML</strong></summary>
+++++
+
+[source,xml,options="nowrap"]
+----
+<cache-container>
+   <eviction-containers>
+      <max-size-container name="hot" size="400MB"/>
+      <max-size-container name="warm" size="900MB"/>
+   </eviction-containers>
+
+   <distributed-cache name="cache-a">
+      <memory eviction-container="hot"/>
+   </distributed-cache>
+
+   <distributed-cache name="cache-b">
+      <memory eviction-container="hot"/>
+   </distributed-cache>
+
+   <distributed-cache name="cache-c">
+      <memory eviction-container="warm"/>
+   </distributed-cache>
+
+   <distributed-cache name="cache-d">
+      <memory eviction-container="warm"/>
+   </distributed-cache>
+
+   <distributed-cache name="cache-e">
+      <memory eviction-container="warm"/>
+   </distributed-cache>
+</cache-container>
+----
+
+++++
+</details>
+<details>
+<summary><strong>JSON</strong></summary>
+++++
+
+[source,json,options="nowrap"]
+----
+{
+  "infinispan": {
+    "cacheContainer": {
+      "evictionContainers": {
+        "maxSizeContainer": [
+          {
+            "name": "hot",
+            "size": "400MB"
+          },
+          {
+            "name": "warm",
+            "size": "900MB"
+          }
+        ]
+      },
+      "distributedCache": {
+        "cache-a": {
+          "memory": {
+            "evictionContainer": "hot"
+          }
+        },
+        "cache-b": {
+          "memory": {
+            "evictionContainer": "hot"
+          }
+        },
+        "cache-c": {
+          "memory": {
+            "evictionContainer": "warm"
+          }
+        },
+        "cache-d": {
+          "memory": {
+            "evictionContainer": "warm"
+          }
+        },
+        "cache-e": {
+          "memory": {
+            "evictionContainer": "warm"
+          }
+        }
+      }
+    }
+  }
+}
+----
+
+++++
+</details>
+<details>
+<summary><strong>YAML</strong></summary>
+++++
+
+[source,yaml,options="nowrap"]
+----
+infinispan:
+  cacheContainer:
+    evictionContainers:
+      maxSizeContainer:
+        - name: "hot"
+          size: "400MB"
+        - name: "warm"
+          size: "900MB"
+    distributedCache:
+      "cache-a":
+        memory:
+          evictionContainer: "hot"
+      "cache-b":
+        memory:
+          evictionContainer: "hot"
+      "cache-c":
+        memory:
+          evictionContainer: "warm"
+      "cache-d":
+        memory:
+          evictionContainer: "warm"
+      "cache-e":
+        memory:
+          evictionContainer: "warm"
+----
+
+++++
+</details>
+<details>
+<summary><strong>Java</strong></summary>
+++++
+
+[source,java,options="nowrap"]
+----
+GlobalConfigurationBuilder global = new GlobalConfigurationBuilder();
+global.containerMemoryConfiguration("hot")
+      .maxSize("400MB");
+global.containerMemoryConfiguration("warm")
+      .maxSize("900MB");
+
+ConfigurationBuilder cacheA = new ConfigurationBuilder();
+cacheA.memory().containerMemory("hot");
+
+ConfigurationBuilder cacheB = new ConfigurationBuilder();
+cacheB.memory().containerMemory("hot");
+
+ConfigurationBuilder cacheC = new ConfigurationBuilder();
+cacheC.memory().containerMemory("warm");
+
+ConfigurationBuilder cacheD = new ConfigurationBuilder();
+cacheD.memory().containerMemory("warm");
+
+ConfigurationBuilder cacheE = new ConfigurationBuilder();
+cacheE.memory().containerMemory("warm");
+----
+
+++++
+</details>
+++++
+
+=== Full feature compatibility
+
+Shared containers are not a stripped-down mode — all of Infinispan's regularly supported features continue to work with container eviction.
+Indexing, persistence, transactions, expiration, and listeners all function exactly as they do with per-cache eviction.
+
+This matters most when it comes to persistence.
+We recommend pairing shared containers with a persistence store as a way to automatically alleviate memory pressure while still retaining access to all entries.
+With a store configured, every entry is written through to disk, so when the container evicts an entry to stay within its memory budget the data is still available and can be loaded back on demand.
+
+The Soft-Index File Store (SIFS) is a natural fit here.
+SIFS is Infinispan's default file-based store, and its index is designed to adapt to memory conditions.
+Index nodes are held via soft references, so when memory is plentiful they stay cached in the heap for fast lookups.
+When the JVM comes under memory pressure, the garbage collector can reclaim those soft references and SIFS transparently reloads the index nodes from disk on the next access.
+This makes SIFS an ideal companion to shared container eviction — the store index itself cooperates with the JVM to balance performance and memory usage without any manual tuning.
+
+Here is an example of a shared container with a SIFS store configured for the `my-cache`:
+
+++++
+<details open>
+<summary><strong>XML</strong></summary>
+++++
+
+[source,xml,options="nowrap"]
+----
+<cache-container>
+   <eviction-containers>
+      <max-size-container name="shared" size="1GB"/>
+   </eviction-containers>
+
+   <distributed-cache name="my-cache">
+      <memory eviction-container="shared"/>
+      <persistence>
+         <file-store/>
+      </persistence>
+   </distributed-cache>
+
+   <distributed-cache name="my-other-cache">
+      <memory eviction-container="shared"/>
+   </distributed-cache>
+</cache-container>
+----
+
+++++
+</details>
+<details>
+<summary><strong>JSON</strong></summary>
+++++
+
+[source,json,options="nowrap"]
+----
+{
+  "infinispan": {
+    "cacheContainer": {
+      "evictionContainers": {
+        "maxSizeContainer": [
+          {
+            "name": "shared",
+            "size": "1GB"
+          }
+        ]
+      },
+      "distributedCache": {
+        "my-cache": {
+          "memory": {
+            "evictionContainer": "shared"
+          },
+          "persistence": {
+            "fileStore": {}
+          }
+        },
+        "my-other-cache": {
+          "memory": {
+            "evictionContainer": "shared"
+          }
+        }
+      }
+    }
+  }
+}
+----
+
+++++
+</details>
+<details>
+<summary><strong>YAML</strong></summary>
+++++
+
+[source,yaml,options="nowrap"]
+----
+infinispan:
+  cacheContainer:
+    evictionContainers:
+      maxSizeContainer:
+        - name: "shared"
+          size: "1GB"
+    distributedCache:
+      "my-cache":
+        memory:
+          evictionContainer: "shared"
+        persistence:
+          fileStore: ~
+      "my-other-cache":
+        memory:
+          evictionContainer: "shared"
+----
+
+++++
+</details>
+<details>
+<summary><strong>Java</strong></summary>
+++++
+
+[source,java,options="nowrap"]
+----
+GlobalConfigurationBuilder global = new GlobalConfigurationBuilder();
+global.containerMemoryConfiguration("shared")
+      .maxSize("1GB");
+
+ConfigurationBuilder cache = new ConfigurationBuilder();
+cache.memory()
+     .containerMemory("shared");
+cache.persistence()
+     .addSoftIndexFileStore();
+
+ConfigurationBuilder otherCache = new ConfigurationBuilder();
+otherCache.memory()
+          .containerMemory("shared");
+----
+
+++++
+</details>
+++++
+
+=== Tradeoffs to keep in mind
+
+All caches sharing a container also share the same eviction policy.
+This means that a burst of writes to one cache can cause entries from another cache to be evicted.
+If you need strict control over a specific cache's memory, per-cache eviction is still the right choice.
+
+There is a minor memory overhead per entry.
+Each entry in a shared container is stored with a wrapper that holds the cache name and value, adding two pointers and an object header.
+
+Clearing a cache or removing segments is slower than with per-cache eviction, because Infinispan must iterate through the shared container to find entries belonging to a specific cache.
+In practice, this overhead is typically negligible compared to the network cost of state transfer or rebalancing.
+
+NOTE: Container eviction is configured per node, not cluster-wide.
+
+Infinispan 16.2 takes this a step further with *dynamic eviction* that automatically adapts to JVM memory pressure at runtime.
+
+== Dynamic eviction
+
+Container eviction gives you a fixed memory budget, but what happens when the unexpected hits?
+A sudden spike of large entries, a burst of temporary computation, or a background task that eats into heap — your fixed budget doesn't know about any of it.
+
+Starting in Infinispan 16.2, *dynamic eviction* automatically adjusts your container's capacity in response to real-time JVM memory pressure.
+When the memory monitor detects that the JVM is running low on heap or garbage collection is working too hard, Infinispan shrinks the container to free up space.
+When pressure subsides, it gradually grows the container back to its original configured capacity.
+
+image::dynamic-eviction-states.svg[Dynamic eviction state machine, align="center"]
+
+Dynamic eviction operates in three states:
+
+Stable:: Normal operation. The container uses its full configured capacity.
+Shrinking:: Memory pressure detected. The container capacity is progressively reduced to free heap space. Infinispan shrinks aggressively to respond quickly to pressure.
+Growing:: Pressure has subsided. The container capacity is cautiously restored, with increasing delays between growth steps. If pressure returns during growth, Infinispan immediately switches back to shrinking.
+
+To enable dynamic eviction, you need two things: a memory monitor on the cache container and the `dynamic-resize` attribute on your eviction container.
+
+++++
+<details open>
+<summary><strong>XML</strong></summary>
+++++
+
+[source,xml,options="nowrap"]
+----
+<cache-container>
+   <memory-monitor enabled="true"
+                   memory-threshold="0.85"
+                   gc-pressure-threshold="0.20" />
+   <eviction-containers>
+      <max-size-container name="my-container" size="1GB" dynamic-resize="true"/>
+   </eviction-containers>
+
+   <distributed-cache name="my-cache">
+      <memory eviction-container="my-container"/>
+   </distributed-cache>
+</cache-container>
+----
+
+++++
+</details>
+<details>
+<summary><strong>JSON</strong></summary>
+++++
+
+[source,json,options="nowrap"]
+----
+{
+  "infinispan": {
+    "cacheContainer": {
+      "memoryMonitor": {
+        "enabled": true,
+        "memoryThreshold": 0.85,
+        "gcPressureThreshold": 0.20
+      },
+      "evictionContainers": {
+        "maxSizeContainer": [
+          {
+            "name": "my-container",
+            "size": "1GB",
+            "dynamicResize": true
+          }
+        ]
+      },
+      "distributedCache": {
+        "my-cache": {
+          "memory": {
+            "evictionContainer": "my-container"
+          }
+        }
+      }
+    }
+  }
+}
+----
+
+++++
+</details>
+<details>
+<summary><strong>YAML</strong></summary>
+++++
+
+[source,yaml,options="nowrap"]
+----
+infinispan:
+  cacheContainer:
+    memoryMonitor:
+      enabled: true
+      memoryThreshold: 0.85
+      gcPressureThreshold: 0.20
+    evictionContainers:
+      maxSizeContainer:
+        - name: "my-container"
+          size: "1GB"
+          dynamicResize: true
+    distributedCache:
+      "my-cache":
+        memory:
+          evictionContainer: "my-container"
+----
+
+++++
+</details>
+<details>
+<summary><strong>Java</strong></summary>
+++++
+
+[source,java,options="nowrap"]
+----
+GlobalConfigurationBuilder global = new GlobalConfigurationBuilder();
+global.memoryMonitor()
+      .enabled(true);
+global.containerMemoryConfiguration("my-container")
+      .maxSize("1GB")
+      .dynamicResize(true);
+
+ConfigurationBuilder cache = new ConfigurationBuilder();
+cache.memory()
+     .containerMemory("my-container");
+----
+
+++++
+</details>
+++++
+
+=== Caveats
+
+Dynamic eviction is designed to ease memory pressure, not guarantee prevention of `OutOfMemoryError`.
+It works best for situations like temporary computation spikes or bursts of incoming data.
+
+When using a shared container, prefer `max-size-container` over `max-count-container`.
+A shared container may hold entries of varying sizes across different caches, so a count-based limit may not accurately reflect actual memory consumption.
+
+If you use passivation with a dynamically resized container, be aware that evicted entries must be written to the persistence store.
+Under memory pressure, this creates additional memory churn that can reduce the effectiveness of the resize.
+Infinispan logs a warning at startup when this combination is detected.
+
+=== The memory monitor
+
+At the heart of dynamic eviction is the *memory monitor*, a cache-container-level component that continuously tracks JVM memory health.
+It watches two signals:
+
+* *Memory threshold* — the fraction of old-generation heap in use. When usage exceeds this threshold (default: 85%), the monitor raises a low-memory alert.
+* *GC pressure threshold* — the fraction of time spent in garbage collection over a rolling window (default: 60 seconds). When GC overhead exceeds this threshold (default: 20%), the monitor raises a GC pressure alert.
+
+Dynamic eviction registers as a listener on the memory monitor and reacts to these alerts by shrinking or growing containers.
+But the memory monitor is not exclusive to eviction — it is a general-purpose component available to any Infinispan subsystem.
+
+For example, the query engine already uses the memory monitor.
+Sorted non-indexed queries need to load all matching results into memory before sorting.
+When the memory monitor reports pressure, Infinispan rejects these queries outright rather than risking an `OutOfMemoryError`.
+
+Future Infinispan releases will extend this further, using the memory monitor to adapt additional subsystems under memory pressure.
+The monitor provides a single, consistent view of JVM memory health that any component can subscribe to.
+
+== Getting started
+
+Container eviction is available in Infinispan 16.1 and later.
+Dynamic eviction requires Infinispan 16.2 and later.
+
+For full configuration reference and additional details, see the
+https://infinispan.org/docs/stable/titles/configuring/configuring.html[Infinispan documentation].
