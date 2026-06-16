@@ -102,7 +102,7 @@
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to start an Infinispan Server with the MCP (Model Context Protocol) endpoint enabled and connect AI assistants such as Claude Code or Claude Desktop to manage caches, counters, and schemas through natural language.</p>
+<p>How to start an Infinispan Server with the MCP (Model Context Protocol) endpoint enabled and connect AI assistants such as Claude Code or Claude Desktop using the CLI stdio transport bridge to manage caches, counters, and schemas through natural language.</p>
 </div>
 </div>
 </div>
@@ -133,9 +133,6 @@
 </div>
 </div>
 <div class="paragraph">
-<p>The MCP endpoint is available at <code><a href="http://localhost:11222/rest/v3/mcp" class="bare">http://localhost:11222/rest/v3/mcp</a></code>.</p>
-</div>
-<div class="paragraph">
 <p>The server uses Basic authentication with credentials <code>admin</code> / <code>password</code>.</p>
 </div>
 <div class="admonitionblock tip">
@@ -156,7 +153,14 @@ You can replace <code>docker</code> with <code>podman</code> in the command abov
 <h2 id="step-2-connect-an-mcp-client">Step 2: Connect an MCP Client</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>This folder contains an <code>.mcp.json</code> file pre-configured to connect to the local Infinispan MCP endpoint. Copy it to any project where you want MCP access:</p>
+<p>The Infinispan CLI acts as a stdio transport bridge between MCP clients and the server.
+It reads JSON-RPC messages from standard input, forwards them to the server&#8217;s MCP endpoint, and writes responses to standard output.</p>
+</div>
+<div class="paragraph">
+<p>In this tutorial, the CLI runs inside the Docker container via <code>docker exec</code>.</p>
+</div>
+<div class="paragraph">
+<p>This folder contains an <code>.mcp.json</code> file pre-configured to connect to the local Infinispan MCP endpoint using the CLI stdio bridge. Copy it to any project where you want MCP access:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -168,8 +172,8 @@ You can replace <code>docker</code> with <code>podman</code> in the command abov
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">claude mcp add infinispan --transport http http://localhost:11222/rest/v3/mcp \
-  --header "Authorization: Basic YWRtaW46cGFzc3dvcmQ="</code></pre>
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">claude mcp add infinispan -- \
+  docker exec -i infinispan-mcp /opt/infinispan/bin/cli.sh mcp http://admin:password@localhost:11222</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -180,15 +184,93 @@ You can replace <code>docker</code> with <code>podman</code> in the command abov
 <pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
   "mcpServers": {
     "infinispan": {
-      "type": "http",
-      "url": "http://localhost:11222/rest/v3/mcp",
-      "headers": {
-        "Authorization": "Basic YWRtaW46cGFzc3dvcmQ="
-      }
+      "command": "docker",
+      "args": ["exec", "-i", "infinispan-mcp", "/opt/infinispan/bin/cli.sh", "mcp", "http://admin:password@localhost:11222"]
     }
   }
 }</code></pre>
 </div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+If you have the Infinispan server distribution installed locally, you can point directly to the CLI binary instead of using <code>docker exec</code>. Use <code>"/path/to/infinispan-server/bin/infinispan-cli"</code> as the <code>command</code> and <code>["mcp", "http://admin:password@localhost:11222"]</code> as the <code>args</code>.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="using-cli-bookmarks">Using CLI bookmarks</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Instead of hardcoding URLs and credentials in your MCP configuration, you can use CLI bookmarks.
+A bookmark stores the connection details (URL, credentials, TLS settings) under a name that you can reference in the <code>mcp</code> command.</p>
+</div>
+<div class="paragraph">
+<p>Create a bookmark:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">docker exec infinispan-mcp /opt/infinispan/bin/cli.sh bookmark set myserver \
+  --url http://localhost:11222 --username admin --password password</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or if you have a local CLI installation:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">infinispan-cli bookmark set myserver \
+  --url http://localhost:11222 --username admin --password password</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Then reference the bookmark name in your <code>.mcp.json</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "mcpServers": {
+    "infinispan": {
+      "command": "docker",
+      "args": ["exec", "-i", "infinispan-mcp", "/opt/infinispan/bin/cli.sh", "mcp", "myserver"]
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or with a local CLI installation:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+  "mcpServers": {
+    "infinispan": {
+      "command": "/path/to/infinispan-server/bin/infinispan-cli",
+      "args": ["mcp", "myserver"]
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">
+This is especially useful when connecting to production or secured servers, since credentials and TLS settings are stored in the CLI configuration rather than in project files.
+</td>
+</tr>
+</table>
 </div>
 </div>
 </div>

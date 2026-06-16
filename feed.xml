@@ -1,4 +1,553 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-06-04T14:15:09+00:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Infinispan 16.2</title><link href="https://infinispan.org/blog/2026/06/03/infinispan-16-2" rel="alternate" type="text/html" title="Infinispan 16.2" /><published>2026-06-03T00:00:00+00:00</published><updated>2026-06-03T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/06/03/infinispan-16.2</id><content type="html" xml:base="https://infinispan.org/blog/2026/06/03/infinispan-16-2"><![CDATA[<div id="preamble">
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-06-16T15:53:48+00:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Beyond Per-Cache Eviction</title><link href="https://infinispan.org/blog/2026/06/16/beyond-per-cache-eviction" rel="alternate" type="text/html" title="Beyond Per-Cache Eviction" /><published>2026-06-16T00:00:00+00:00</published><updated>2026-06-16T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/06/16/beyond-per-cache-eviction</id><content type="html" xml:base="https://infinispan.org/blog/2026/06/16/beyond-per-cache-eviction"><![CDATA[<div class="sect1">
+<h2 id="per-cache-memory-limits">Per-cache memory limits</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Up until now, Infinispan has required you to configure memory bounds for each cache individually.
+You decide how much memory each cache is allowed to consume, and the eviction machinery enforces those limits independently.</p>
+</div>
+<div class="paragraph">
+<p>Suppose you have a node with 4GB of heap available for caching and five caches to fill it.
+You assign each cache its own slice of that budget — say 200MB for some and 300MB for others.
+This works, but it means you need to know upfront how much each cache will need.
+Caches that don&#8217;t use their full allocation leave memory on the table, while others may be constrained.
+Every time you resize a cache you have to revisit the arithmetic.</p>
+</div>
+<div class="paragraph">
+<p>This also means that creating a new cache at runtime requires you to carve out a separate memory allocation for it — memory that has to come from somewhere, potentially requiring you to shrink existing caches.
+With shared containers, a new cache can simply join an existing container and immediately share its budget with no reconfiguration needed.</p>
+</div>
+<div class="imageblock text-center">
+<div class="content">
+<img src="/assets/images/blog/per-cache-eviction.svg" alt="Per-cache eviction">
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan 16.1 introduced <strong>container eviction</strong> as an alternative approach.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="container-eviction">Container eviction</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Container eviction lets you define a single memory boundary that is shared across multiple caches.
+Instead of configuring limits per cache, you create a named eviction container at the cache-container level and reference it from any caches that should share that budget.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan supports two types of eviction containers:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>max-size-container</code> — bounds by total memory (e.g., <code>100MB</code>, <code>1GB</code>)</p>
+</li>
+<li>
+<p><code>max-count-container</code> — bounds by total entry count (e.g., <code>1000</code> entries)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>You can define multiple containers if you need different budgets for different groups of caches.</p>
+</div>
+<div class="imageblock text-center">
+<div class="content">
+<img src="/assets/images/blog/container-eviction.svg" alt="Container eviction">
+</div>
+</div>
+<div class="paragraph">
+<p>In the example below, caches A and B share a <code>hot</code> container (400MB) while caches C, D, and E share a <code>warm</code> container (900MB):</p>
+</div>
+<details open>
+<summary><strong>XML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
+   &lt;eviction-containers&gt;
+      &lt;max-size-container name="hot" size="400MB"/&gt;
+      &lt;max-size-container name="warm" size="900MB"/&gt;
+   &lt;/eviction-containers&gt;
+
+   &lt;distributed-cache name="cache-a"&gt;
+      &lt;memory eviction-container="hot"/&gt;
+   &lt;/distributed-cache&gt;
+
+   &lt;distributed-cache name="cache-b"&gt;
+      &lt;memory eviction-container="hot"/&gt;
+   &lt;/distributed-cache&gt;
+
+   &lt;distributed-cache name="cache-c"&gt;
+      &lt;memory eviction-container="warm"/&gt;
+   &lt;/distributed-cache&gt;
+
+   &lt;distributed-cache name="cache-d"&gt;
+      &lt;memory eviction-container="warm"/&gt;
+   &lt;/distributed-cache&gt;
+
+   &lt;distributed-cache name="cache-e"&gt;
+      &lt;memory eviction-container="warm"/&gt;
+   &lt;/distributed-cache&gt;
+&lt;/cache-container&gt;</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>JSON</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "infinispan": {
+    "cacheContainer": {
+      "evictionContainers": {
+        "maxSizeContainer": [
+          {
+            "name": "hot",
+            "size": "400MB"
+          },
+          {
+            "name": "warm",
+            "size": "900MB"
+          }
+        ]
+      },
+      "distributedCache": {
+        "cache-a": {
+          "memory": {
+            "evictionContainer": "hot"
+          }
+        },
+        "cache-b": {
+          "memory": {
+            "evictionContainer": "hot"
+          }
+        },
+        "cache-c": {
+          "memory": {
+            "evictionContainer": "warm"
+          }
+        },
+        "cache-d": {
+          "memory": {
+            "evictionContainer": "warm"
+          }
+        },
+        "cache-e": {
+          "memory": {
+            "evictionContainer": "warm"
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>YAML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  cacheContainer:
+    evictionContainers:
+      maxSizeContainer:
+        - name: "hot"
+          size: "400MB"
+        - name: "warm"
+          size: "900MB"
+    distributedCache:
+      "cache-a":
+        memory:
+          evictionContainer: "hot"
+      "cache-b":
+        memory:
+          evictionContainer: "hot"
+      "cache-c":
+        memory:
+          evictionContainer: "warm"
+      "cache-d":
+        memory:
+          evictionContainer: "warm"
+      "cache-e":
+        memory:
+          evictionContainer: "warm"</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>Java</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder global = new GlobalConfigurationBuilder();
+global.containerMemoryConfiguration("hot")
+      .maxSize("400MB");
+global.containerMemoryConfiguration("warm")
+      .maxSize("900MB");
+
+ConfigurationBuilder cacheA = new ConfigurationBuilder();
+cacheA.memory().containerMemory("hot");
+
+ConfigurationBuilder cacheB = new ConfigurationBuilder();
+cacheB.memory().containerMemory("hot");
+
+ConfigurationBuilder cacheC = new ConfigurationBuilder();
+cacheC.memory().containerMemory("warm");
+
+ConfigurationBuilder cacheD = new ConfigurationBuilder();
+cacheD.memory().containerMemory("warm");
+
+ConfigurationBuilder cacheE = new ConfigurationBuilder();
+cacheE.memory().containerMemory("warm");</code></pre>
+</div>
+</div>
+</details>
+<div class="sect2">
+<h3 id="full-feature-compatibility">Full feature compatibility</h3>
+<div class="paragraph">
+<p>Shared containers are not a stripped-down mode — all of Infinispan&#8217;s regularly supported features continue to work with container eviction.
+Indexing, persistence, transactions, expiration, and listeners all function exactly as they do with per-cache eviction.</p>
+</div>
+<div class="paragraph">
+<p>This matters most when it comes to persistence.
+We recommend pairing shared containers with a persistence store as a way to automatically alleviate memory pressure while still retaining access to all entries.
+With a store configured, every entry is written through to disk, so when the container evicts an entry to stay within its memory budget the data is still available and can be loaded back on demand.</p>
+</div>
+<div class="paragraph">
+<p>The Soft-Index File Store (SIFS) is a natural fit here.
+SIFS is Infinispan&#8217;s default file-based store, and its index is designed to adapt to memory conditions.
+Index nodes are held via soft references, so when memory is plentiful they stay cached in the heap for fast lookups.
+When the JVM comes under memory pressure, the garbage collector can reclaim those soft references and SIFS transparently reloads the index nodes from disk on the next access.
+This makes SIFS an ideal companion to shared container eviction — the store index itself cooperates with the JVM to balance performance and memory usage without any manual tuning.</p>
+</div>
+<div class="paragraph">
+<p>Here is an example of a shared container with a SIFS store configured for the <code>my-cache</code>:</p>
+</div>
+<details open>
+<summary><strong>XML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
+   &lt;eviction-containers&gt;
+      &lt;max-size-container name="shared" size="1GB"/&gt;
+   &lt;/eviction-containers&gt;
+
+   &lt;distributed-cache name="my-cache"&gt;
+      &lt;memory eviction-container="shared"/&gt;
+      &lt;persistence&gt;
+         &lt;file-store/&gt;
+      &lt;/persistence&gt;
+   &lt;/distributed-cache&gt;
+
+   &lt;distributed-cache name="my-other-cache"&gt;
+      &lt;memory eviction-container="shared"/&gt;
+   &lt;/distributed-cache&gt;
+&lt;/cache-container&gt;</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>JSON</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "infinispan": {
+    "cacheContainer": {
+      "evictionContainers": {
+        "maxSizeContainer": [
+          {
+            "name": "shared",
+            "size": "1GB"
+          }
+        ]
+      },
+      "distributedCache": {
+        "my-cache": {
+          "memory": {
+            "evictionContainer": "shared"
+          },
+          "persistence": {
+            "fileStore": {}
+          }
+        },
+        "my-other-cache": {
+          "memory": {
+            "evictionContainer": "shared"
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>YAML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  cacheContainer:
+    evictionContainers:
+      maxSizeContainer:
+        - name: "shared"
+          size: "1GB"
+    distributedCache:
+      "my-cache":
+        memory:
+          evictionContainer: "shared"
+        persistence:
+          fileStore: ~
+      "my-other-cache":
+        memory:
+          evictionContainer: "shared"</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>Java</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder global = new GlobalConfigurationBuilder();
+global.containerMemoryConfiguration("shared")
+      .maxSize("1GB");
+
+ConfigurationBuilder cache = new ConfigurationBuilder();
+cache.memory()
+     .containerMemory("shared");
+cache.persistence()
+     .addSoftIndexFileStore();
+
+ConfigurationBuilder otherCache = new ConfigurationBuilder();
+otherCache.memory()
+          .containerMemory("shared");</code></pre>
+</div>
+</div>
+</details>
+</div>
+<div class="sect2">
+<h3 id="tradeoffs-to-keep-in-mind">Tradeoffs to keep in mind</h3>
+<div class="paragraph">
+<p>All caches sharing a container also share the same eviction policy.
+This means that a burst of writes to one cache can cause entries from another cache to be evicted.
+If you need strict control over a specific cache&#8217;s memory, per-cache eviction is still the right choice.</p>
+</div>
+<div class="paragraph">
+<p>There is a minor memory overhead per entry.
+Each entry in a shared container is stored with a wrapper that holds the cache name and value, adding two pointers and an object header.</p>
+</div>
+<div class="paragraph">
+<p>Clearing a cache or removing segments is slower than with per-cache eviction, because Infinispan must iterate through the shared container to find entries belonging to a specific cache.
+In practice, this overhead is typically negligible compared to the network cost of state transfer or rebalancing.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Container eviction is configured per node, not cluster-wide.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Infinispan 16.2 takes this a step further with <strong>dynamic eviction</strong> that automatically adapts to JVM memory pressure at runtime.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="dynamic-eviction">Dynamic eviction</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Container eviction gives you a fixed memory budget, but what happens when the unexpected hits?
+A sudden spike of large entries, a burst of temporary computation, or a background task that eats into heap — your fixed budget doesn&#8217;t know about any of it.</p>
+</div>
+<div class="paragraph">
+<p>Starting in Infinispan 16.2, <strong>dynamic eviction</strong> automatically adjusts your container&#8217;s capacity in response to real-time JVM memory pressure.
+When the memory monitor detects that the JVM is running low on heap or garbage collection is working too hard, Infinispan shrinks the container to free up space.
+When pressure subsides, it gradually grows the container back to its original configured capacity.</p>
+</div>
+<div class="imageblock text-center">
+<div class="content">
+<img src="/assets/images/blog/dynamic-eviction-states.svg" alt="Dynamic eviction state machine">
+</div>
+</div>
+<div class="paragraph">
+<p>Dynamic eviction operates in three states:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Stable</dt>
+<dd>
+<p>Normal operation. The container uses its full configured capacity.</p>
+</dd>
+<dt class="hdlist1">Shrinking</dt>
+<dd>
+<p>Memory pressure detected. The container capacity is progressively reduced to free heap space. Infinispan shrinks aggressively to respond quickly to pressure.</p>
+</dd>
+<dt class="hdlist1">Growing</dt>
+<dd>
+<p>Pressure has subsided. The container capacity is cautiously restored, with increasing delays between growth steps. If pressure returns during growth, Infinispan immediately switches back to shrinking.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>To enable dynamic eviction, you need two things: a memory monitor on the cache container and the <code>dynamic-resize</code> attribute on your eviction container.</p>
+</div>
+<details open>
+<summary><strong>XML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
+   &lt;memory-monitor enabled="true"
+                   memory-threshold="0.85"
+                   gc-pressure-threshold="0.20" /&gt;
+   &lt;eviction-containers&gt;
+      &lt;max-size-container name="my-container" size="1GB" dynamic-resize="true"/&gt;
+   &lt;/eviction-containers&gt;
+
+   &lt;distributed-cache name="my-cache"&gt;
+      &lt;memory eviction-container="my-container"/&gt;
+   &lt;/distributed-cache&gt;
+&lt;/cache-container&gt;</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>JSON</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "infinispan": {
+    "cacheContainer": {
+      "memoryMonitor": {
+        "enabled": true,
+        "memoryThreshold": 0.85,
+        "gcPressureThreshold": 0.20
+      },
+      "evictionContainers": {
+        "maxSizeContainer": [
+          {
+            "name": "my-container",
+            "size": "1GB",
+            "dynamicResize": true
+          }
+        ]
+      },
+      "distributedCache": {
+        "my-cache": {
+          "memory": {
+            "evictionContainer": "my-container"
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>YAML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  cacheContainer:
+    memoryMonitor:
+      enabled: true
+      memoryThreshold: 0.85
+      gcPressureThreshold: 0.20
+    evictionContainers:
+      maxSizeContainer:
+        - name: "my-container"
+          size: "1GB"
+          dynamicResize: true
+    distributedCache:
+      "my-cache":
+        memory:
+          evictionContainer: "my-container"</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>Java</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder global = new GlobalConfigurationBuilder();
+global.memoryMonitor()
+      .enabled(true);
+global.containerMemoryConfiguration("my-container")
+      .maxSize("1GB")
+      .dynamicResize(true);
+
+ConfigurationBuilder cache = new ConfigurationBuilder();
+cache.memory()
+     .containerMemory("my-container");</code></pre>
+</div>
+</div>
+</details>
+<div class="sect2">
+<h3 id="caveats">Caveats</h3>
+<div class="paragraph">
+<p>Dynamic eviction is designed to ease memory pressure, not guarantee prevention of <code>OutOfMemoryError</code>.
+It works best for situations like temporary computation spikes or bursts of incoming data.</p>
+</div>
+<div class="paragraph">
+<p>When using a shared container, prefer <code>max-size-container</code> over <code>max-count-container</code>.
+A shared container may hold entries of varying sizes across different caches, so a count-based limit may not accurately reflect actual memory consumption.</p>
+</div>
+<div class="paragraph">
+<p>If you use passivation with a dynamically resized container, be aware that evicted entries must be written to the persistence store.
+Under memory pressure, this creates additional memory churn that can reduce the effectiveness of the resize.
+Infinispan logs a warning at startup when this combination is detected.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="the-memory-monitor">The memory monitor</h3>
+<div class="paragraph">
+<p>At the heart of dynamic eviction is the <strong>memory monitor</strong>, a cache-container-level component that continuously tracks JVM memory health.
+It watches two signals:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Memory threshold</strong> — the fraction of old-generation heap in use. When usage exceeds this threshold (default: 85%), the monitor raises a low-memory alert.</p>
+</li>
+<li>
+<p><strong>GC pressure threshold</strong> — the fraction of time spent in garbage collection over a rolling window (default: 60 seconds). When GC overhead exceeds this threshold (default: 20%), the monitor raises a GC pressure alert.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Dynamic eviction registers as a listener on the memory monitor and reacts to these alerts by shrinking or growing containers.
+But the memory monitor is not exclusive to eviction — it is a general-purpose component available to any Infinispan subsystem.</p>
+</div>
+<div class="paragraph">
+<p>For example, the query engine already uses the memory monitor.
+Sorted non-indexed queries need to load all matching results into memory before sorting.
+When the memory monitor reports pressure, Infinispan rejects these queries outright rather than risking an <code>OutOfMemoryError</code>.</p>
+</div>
+<div class="paragraph">
+<p>Future Infinispan releases will extend this further, using the memory monitor to adapt additional subsystems under memory pressure.
+The monitor provides a single, consistent view of JVM memory health that any component can subscribe to.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="getting-started">Getting started</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Container eviction is available in Infinispan 16.1 and later.
+Dynamic eviction requires Infinispan 16.2 and later.</p>
+</div>
+<div class="paragraph">
+<p>For full configuration reference and additional details, see the
+<a href="https://infinispan.org/docs/stable/titles/configuring/configuring.html">Infinispan documentation</a>.</p>
+</div>
+</div>
+</div>]]></content><author><name>William Burns</name></author><category term="eviction" /><category term="memory" /><category term="configuration" /><summary type="html"><![CDATA[Per-cache memory limits]]></summary></entry><entry><title type="html">Infinispan 16.2</title><link href="https://infinispan.org/blog/2026/06/03/infinispan-16-2" rel="alternate" type="text/html" title="Infinispan 16.2" /><published>2026-06-03T00:00:00+00:00</published><updated>2026-06-03T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/06/03/infinispan-16.2</id><content type="html" xml:base="https://infinispan.org/blog/2026/06/03/infinispan-16-2"><![CDATA[<div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
 <p><strong><em>"Arctic Panzer Wolf"</em></strong></p>
@@ -1862,288 +2411,4 @@ since our previous release.</p>
 <p>Get them from our <a href="https://infinispan.org/download/">download page</a>.</p>
 </div>
 </div>
-</div>]]></content><author><name>Tristan Tarrant</name></author><category term="release" /><category term="final" /><summary type="html"><![CDATA[We don&#8217;t usually blog about micros, unless there are important things to mention, and in this case we have a couple of significant changes to share with you.]]></summary></entry><entry><title type="html">Infinispan 16.0 is out!</title><link href="https://infinispan.org/blog/2025/11/10/infinispan-16-0" rel="alternate" type="text/html" title="Infinispan 16.0 is out!" /><published>2025-11-10T00:00:00+00:00</published><updated>2025-11-10T00:00:00+00:00</updated><id>https://infinispan.org/blog/2025/11/10/infinispan-16.0</id><content type="html" xml:base="https://infinispan.org/blog/2025/11/10/infinispan-16-0"><![CDATA[<div id="preamble">
-<div class="sectionbody">
-<div class="paragraph">
-<p><strong><em>"Keep Rollin'"</em></strong></p>
-</div>
-<div class="paragraph">
-<p>Infinispan 16.0 is here, and it is codenamed <a href="https://untappd.com/b/lake-of-bays-brewing-company-keep-rollin/5822804">"Keep Rollin'"</a>.</p>
-</div>
-<div class="paragraph">
-<p>This is a very significant release, as it introduces zero-downtime in-place rolling upgrades: the capability of
-incrementally upgrading individual nodes in a cluster without having to stop operations.</p>
-</div>
-<div class="imageblock text-center">
-<div class="content">
-<img src="/assets/images/blog/keeprollin.jpeg" alt="Keep Rollin'" width="375" height="500">
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="final-not-final">Final not .Final</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Starting with this release, we will no longer be appending <code>.Final</code> to the version number. This release is therefore just <code>16.0.1</code>.
-Why not <code>16.0.0</code> ? Don&#8217;t ask 😀.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="in-place-rolling-upgrades">In-place rolling upgrades</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Starting with Infinispan 16.0, we guarantee that it will be possible to upgrade the nodes of a live Infinispan cluster
-to a newer version with zero downtime.
-This guarantee will initially cover point releases (16.0.x &#8594; 16.0.y), but we will strive to also maintain it across
-minor releases (16.x &#8594; 16.y): for every new release, we will be providing a table of supported upgrade paths to help
-you plan your upgrade strategies.</p>
-</div>
-<div class="sect2">
-<h3 id="clustering">Clustering</h3>
-<div class="paragraph">
-<p>The clustering messages, that Infinispan nodes use to communicate with each other, have been rewritten to use
-<a href="https://protobuf.dev/">Protocol Buffers</a>, via the <a href="https://github.com/infinispan/protostream">ProtoStream</a> serialization
-library. By adopting ProtoBuf&#8217;s <a href="https://protobuf.dev/best-practices/dos-donts/">best practices</a> for schema evolution and
-a number of supporting tools, we can guarantee that incompatibilities cannot be introduced into these messages without
-breaking our builds and tests.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="upgrade-test-harness">Upgrade test harness</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>We have implemented an extensive test harness, integrated into our CI pipelines, that validates that every change that is
-made to Infinispan does not break backwards compatibility. This harness exercises every command,
-supported by coverage reports that help us identify untested code paths.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="console">Console</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Since Infinispan 15.2, the console has used <a href="https://www.patternfly.org/">PatternFly</a> 6 for its interface.
-With this major update, we also added new features for users starting from version 16.0.</p>
-</div>
-<div class="sect2">
-<h3 id="update-at-runtime-cache-configuration">Update at runtime cache configuration</h3>
-<div class="paragraph">
-<p>We have allowed mutating some cache configuration attributes at runtime for a while, and, starting with this release,
-this can also be done from the Web Console.</p>
-</div>
-<div class="paragraph">
-<p>A new menu option is now available for administrators:</p>
-</div>
-<div class="imageblock text-center">
-<div class="content">
-<img src="/assets/images/blog/2025-infinispan-16-release/consoleUpdateCacheConfigRuntime1.png" alt="Edit Runtime Configuration Menu">
-</div>
-</div>
-<div class="paragraph">
-<p>The runtime properties that can be updated will be listed:</p>
-</div>
-<div class="imageblock text-center">
-<div class="content">
-<img src="/assets/images/blog/2025-infinispan-16-release/consoleUpdateCacheConfigRuntime2.png" alt="Edit Runtime Configuration Screen">
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="rolling-upgrade-detection">Rolling Upgrade detection</h3>
-<div class="paragraph">
-<p>From version 16.0 onward, when a rolling upgrade is in progress, the Console
-will display a warning to inform users that the operation is underway.</p>
-</div>
-<div class="imageblock text-center">
-<div class="content">
-<img src="/assets/images/blog/2025-infinispan-16-release/consoleRollingUpgrade.png" alt="Rolling Upgrade Detection">
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="working-behind-a-reverse-proxy">Working behind a Reverse Proxy</h3>
-<div class="paragraph">
-<p>Previously, the console URL could not be configured to work behind a reverse proxy.
-Starting with version 16.0, you can set up Infinispan and the console to run behind one, such as NGINX.
-The <code>X-Forwarded-Prefix</code> header is now supported by both Infinispan and the console to correctly serve the
-console and the REST API.</p>
-</div>
-<div class="exampleblock">
-<div class="content">
-<div class="literalblock">
-<div class="content">
-<pre> location /infinispan/console/ {
-            proxy_pass http://infinispan:11222/console/;
-            proxy_set_header X-Forwarded-Prefix /infinispan;
-}</pre>
-</div>
-</div>
-</div>
-</div>
-<div class="paragraph">
-<p>See the <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/reverse-proxy-infinispan">Reverse Proxy Simple Tutorial</a>
-in the Infinispan Simple Tutorials repository for more details.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="schemas-management-client-api">Schemas Management Client API</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Users can now manage ProtoStream Schemas with a dedicated administration API.</p>
-</div>
-<div class="exampleblock">
-<div class="content">
-<div class="paragraph">
-<p>RemoteSchemasAdmin admin = remoteCacheManager.administration().schemas();
-Optional&lt;Schema&gt; = admin.get("schemaName");</p>
-</div>
-</div>
-</div>
-<div class="paragraph">
-<p>See the <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/schemas">Schemas Simple Tutorial</a>
-in the Infinispan Simple Tutorials repository for more details.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="query">Query</h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="refactoring">Refactoring</h3>
-<div class="paragraph">
-<p>The various query modules have all been aggregated into the single <code>infinispan-query</code> JAR, greatly simplifying our
-dependency tree and paving the way for JPMS encapsulation.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="aggregations">Aggregations</h3>
-<div class="paragraph">
-<p>Previously, only the <strong>count</strong> aggregation query could be executed in an indexed clustered query, providing excellent performance.
-Now, all other aggregation types (such as <strong>sum</strong>, <strong>avg</strong>, and others) work in the same way.
-This improvement comes from the new capabilities in Hibernate Search 8.1, which has been
-integrated into Infinispan’s internal engine.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="server">Server</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>We have introduced several fixes and enhancements to the Infinispan Server.</p>
-</div>
-<div class="sect2">
-<h3 id="server-container-image">Server container image</h3>
-<div class="paragraph">
-<p>The Infinispan Server container image is now built using the bare minimum required components, aiming to provide a
-significantly reduced attack surface.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="server-startup">Server startup</h3>
-<div class="paragraph">
-<p>We have decoupled the server and the cache container start procedure, where they can start concurrently.
-This provides a faster startup time for the server, that can start replying to requests earlier.
-This helps in scenarios where the server receive probe requests for liveness and readiness. Also, this allows
-for better handling when a cache may fail to start allowing other caches to continue operating.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="on-demand-caches">On-demand caches</h3>
-<div class="paragraph">
-<p>The caches associated with dedicated connectors, such as Memcached and RESP, do not create the caches at start.
-These caches are now created on demand at the first access.
-In case these endpoints are not accessed, the caches are never created.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="updated-lua-engine">Updated Lua engine</h3>
-<div class="paragraph">
-<p>We are shipping an updated Lua 5.1 engine, for Redis scripting, that includes a number of CVE fixes that have not been
-applied to the upstream Lua repository. Also, a number of dangerous Lua scripting operations have been disabled.
-The security of your servers is of the highest priority to us.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="jdk-improvements">JDK improvements</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>While Infinispan still requires at least JDK 17, we have made several changes to take advantage of the features
-introduced in newer JDKs, including support for the recently released JDK 25.</p>
-</div>
-<div class="sect2">
-<h3 id="virtual-threads">Virtual threads</h3>
-<div class="paragraph">
-<p>Infinispan by default not utilized Virtual Threads in both Embedded and Server modes. This includes Infinispan
-enabling virtual threads in JGroups by default. Virtual threads are used by the non-blocking and blocking thread
-pools in Embedded mode and the blocking thread pool in Server mode. The latter utilizes Netty event loop for its
-non-blocking thread pool which does not yet support virtual threads.</p>
-</div>
-<div class="paragraph">
-<p>If necessary is possible to disable by setting the <code>org.infinispan.threads.virtual</code> system property to <code>false</code>.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="aot">AOT</h3>
-<div class="paragraph">
-<p>Infinispan Server (and the CLI) can leverage OpenJDK&#8217;s Ahead-of-Time features introduced in
-<a href="https://openjdk.org/jeps/483">JEP 483</a> to decrease startup time and initial memory usage.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="fixes">Fixes</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Lots of these. However, should you find something that doesn&#8217;t work, head over to our
-<a href="https://github.com/infinispan/infinispan/issues">issues</a> and provide any details that help us debug and solve problems.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="deprecations-and-removals">Deprecations and removals</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The old Single File Store has now been completely replaced by the more scalable Soft-Index File Store and cannot be
-configured declaratively any longer.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="documentation">Documentation</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>As usual, many improvements, updates and fixes.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="whats-next">What&#8217;s next?</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Infinispan is adopting timeboxed releases starting with our next release (16.1). See our <a href="https://infinispan.org/roadmap/">roadmap</a>
-for information. We will soon be blogging more about it.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="release-notes">Release notes</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>You can look at the <a href="https://github.com/infinispan/infinispan/releases/tag/16.0.0">release notes</a> to see what was changed
-since our last development build.</p>
-</div>
-<div class="paragraph">
-<p>Get them from our <a href="https://infinispan.org/download/">download page</a>.</p>
-</div>
-</div>
-</div>]]></content><author><name>Tristan Tarrant</name></author><category term="release" /><category term="final" /><summary type="html"><![CDATA["Keep Rollin'"]]></summary></entry></feed>
+</div>]]></content><author><name>Tristan Tarrant</name></author><category term="release" /><category term="final" /><summary type="html"><![CDATA[We don&#8217;t usually blog about micros, unless there are important things to mention, and in this case we have a couple of significant changes to share with you.]]></summary></entry></feed>

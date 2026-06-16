@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPD7V946LB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-GPD7V946LB');
+  </script>
+  <title>Beyond Per-Cache Eviction</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <script src="/assets/javascript/colormode.js" type="text/javascript"></script>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.7.2/css/all.css" integrity="sha384-nRgPTkuX86pH8yjPJUAFuASXQSSl2/bBUiNV47vSYpKFxHJhbcrGnmlYpYJMeD7a" crossorigin="anonymous">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.css" id="hljs-theme">
+  <link rel="stylesheet" href="/assets/css/cookieconsent.css">
+  <link rel="alternate" type="application/rss+xml"
+        title="Infinispan's RSS Feed"
+        href="/feed.xml" />
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body class="blog">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li>
+        <a href="/ai/" class=""><i class="fas fa-wand-magic-sparkles" style="margin-right: 4px;"></i>Infinispan for AI</a>
+      </li>
+      <li class="dropdown">
+        <span href="/learn/">Learn <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/get-started/" class="">Get Started</a></li>
+          <li><a href="/tutorials" class="">Tutorials</a></li>
+          <li><a href="/introduction" class="">Introduction</a></li>
+          <li><a href="/features" class="">Features</a></li>
+          <li><a href="/documentation" class="">Documentation</a></li>
+          <li><a href="/videos" class="">Videos</a></li>
+        </ul>
+      </li>
+      <li>
+        <a href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li class="dropdown">
+        <span href="/community/">Community <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/community/" class="">Community</a></li>
+          <li><a href="/blog/" class="active">Blog</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+          <li><a href="/contribute/" class="">Contribute</a></li>
+        </ul>
+      </li>
+      <li class="dropdown">
+        <span href="/download/">Download <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/downloads/releases" class="">Releases</a></li>
+          <li><a href="/downloads/clients/" class="">Clients</a></li>
+          <li><a href="/downloads/cache-stores/" class="">Cache Stores</a></li>
+        </ul>
+      </li>
+      <li class="theme-toggle-item">
+        <span class="modeswitcher" id="theme-toggle">
+          <i class="fas fa-sun"></i>
+          <i class="fas fa-moon"></i>
+          <i class="fas fa-cog"></i>
+        </span>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    
+<div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right"></i> Beyond Per-Cache Eviction
+    </div>
+  </div>
+</div>
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Beyond Per-Cache Eviction</h1>
+    <div class="post-date">June 16, 2026</div>
+    <div class="post-tags">
+      <a class="tag-pill" href="/blog/tag/eviction">eviction</a><a class="tag-pill" href="/blog/tag/memory">memory</a><a class="tag-pill" href="/blog/tag/configuration">configuration</a>
+    </div>
+    <div class="post-share">
+      <div class="share-icons">
+  <a href="https://www.linkedin.com/shareArticle?mini=true&url=https://infinispan.org/blog/2026/06/16/beyond-per-cache-eviction&title=Beyond+Per-Cache+Eviction" rel="nofollow" target="_blank" title="Share on LinkedIn">
+    <i class="fa-brands fa-linkedin"></i>
+  </a>
+  <a href="https://x.com/intent/tweet?text=Beyond+Per-Cache+Eviction&url=https://infinispan.org/blog/2026/06/16/beyond-per-cache-eviction&via=infinispan" rel="nofollow" target="_blank" title="Share on X">
+    <i class="fa-brands fa-x-twitter"></i>
+  </a>
+  <a href="https://facebook.com/sharer.php?u=https://infinispan.org/blog/2026/06/16/beyond-per-cache-eviction" rel="nofollow" target="_blank" title="Share on Facebook">
+    <i class="fa-brands fa-facebook"></i>
+  </a>
+  <a href="https://www.reddit.com/submit?url=https://infinispan.org/blog/2026/06/16/beyond-per-cache-eviction&title=Beyond+Per-Cache+Eviction" rel="nofollow" target="_blank" title="Share on Reddit">
+    <i class="fa-brands fa-reddit"></i>
+  </a>
+  <a href="mailto:?subject=Beyond+Per-Cache+Eviction&body=Beyond+Per-Cache+Eviction%20https://infinispan.org/blog/2026/06/16/beyond-per-cache-eviction" title="Share via Email">
+    <i class="fa-solid fa-envelope"></i>
+  </a>
+</div>
+
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/wburns.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By William Burns</p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div class="sect1">
+<h2 id="per-cache-memory-limits">Per-cache memory limits</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Up until now, Infinispan has required you to configure memory bounds for each cache individually.
+You decide how much memory each cache is allowed to consume, and the eviction machinery enforces those limits independently.</p>
+</div>
+<div class="paragraph">
+<p>Suppose you have a node with 4GB of heap available for caching and five caches to fill it.
+You assign each cache its own slice of that budget — say 200MB for some and 300MB for others.
+This works, but it means you need to know upfront how much each cache will need.
+Caches that don&#8217;t use their full allocation leave memory on the table, while others may be constrained.
+Every time you resize a cache you have to revisit the arithmetic.</p>
+</div>
+<div class="paragraph">
+<p>This also means that creating a new cache at runtime requires you to carve out a separate memory allocation for it — memory that has to come from somewhere, potentially requiring you to shrink existing caches.
+With shared containers, a new cache can simply join an existing container and immediately share its budget with no reconfiguration needed.</p>
+</div>
+<div class="imageblock text-center">
+<div class="content">
+<img src="/assets/images/blog/per-cache-eviction.svg" alt="Per-cache eviction">
+</div>
+</div>
+<div class="paragraph">
+<p>Infinispan 16.1 introduced <strong>container eviction</strong> as an alternative approach.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="container-eviction">Container eviction</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Container eviction lets you define a single memory boundary that is shared across multiple caches.
+Instead of configuring limits per cache, you create a named eviction container at the cache-container level and reference it from any caches that should share that budget.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan supports two types of eviction containers:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>max-size-container</code> — bounds by total memory (e.g., <code>100MB</code>, <code>1GB</code>)</p>
+</li>
+<li>
+<p><code>max-count-container</code> — bounds by total entry count (e.g., <code>1000</code> entries)</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>You can define multiple containers if you need different budgets for different groups of caches.</p>
+</div>
+<div class="imageblock text-center">
+<div class="content">
+<img src="/assets/images/blog/container-eviction.svg" alt="Container eviction">
+</div>
+</div>
+<div class="paragraph">
+<p>In the example below, caches A and B share a <code>hot</code> container (400MB) while caches C, D, and E share a <code>warm</code> container (900MB):</p>
+</div>
+<details open>
+<summary><strong>XML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
+   &lt;eviction-containers&gt;
+      &lt;max-size-container name="hot" size="400MB"/&gt;
+      &lt;max-size-container name="warm" size="900MB"/&gt;
+   &lt;/eviction-containers&gt;
+
+   &lt;distributed-cache name="cache-a"&gt;
+      &lt;memory eviction-container="hot"/&gt;
+   &lt;/distributed-cache&gt;
+
+   &lt;distributed-cache name="cache-b"&gt;
+      &lt;memory eviction-container="hot"/&gt;
+   &lt;/distributed-cache&gt;
+
+   &lt;distributed-cache name="cache-c"&gt;
+      &lt;memory eviction-container="warm"/&gt;
+   &lt;/distributed-cache&gt;
+
+   &lt;distributed-cache name="cache-d"&gt;
+      &lt;memory eviction-container="warm"/&gt;
+   &lt;/distributed-cache&gt;
+
+   &lt;distributed-cache name="cache-e"&gt;
+      &lt;memory eviction-container="warm"/&gt;
+   &lt;/distributed-cache&gt;
+&lt;/cache-container&gt;</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>JSON</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "infinispan": {
+    "cacheContainer": {
+      "evictionContainers": {
+        "maxSizeContainer": [
+          {
+            "name": "hot",
+            "size": "400MB"
+          },
+          {
+            "name": "warm",
+            "size": "900MB"
+          }
+        ]
+      },
+      "distributedCache": {
+        "cache-a": {
+          "memory": {
+            "evictionContainer": "hot"
+          }
+        },
+        "cache-b": {
+          "memory": {
+            "evictionContainer": "hot"
+          }
+        },
+        "cache-c": {
+          "memory": {
+            "evictionContainer": "warm"
+          }
+        },
+        "cache-d": {
+          "memory": {
+            "evictionContainer": "warm"
+          }
+        },
+        "cache-e": {
+          "memory": {
+            "evictionContainer": "warm"
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>YAML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  cacheContainer:
+    evictionContainers:
+      maxSizeContainer:
+        - name: "hot"
+          size: "400MB"
+        - name: "warm"
+          size: "900MB"
+    distributedCache:
+      "cache-a":
+        memory:
+          evictionContainer: "hot"
+      "cache-b":
+        memory:
+          evictionContainer: "hot"
+      "cache-c":
+        memory:
+          evictionContainer: "warm"
+      "cache-d":
+        memory:
+          evictionContainer: "warm"
+      "cache-e":
+        memory:
+          evictionContainer: "warm"</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>Java</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder global = new GlobalConfigurationBuilder();
+global.containerMemoryConfiguration("hot")
+      .maxSize("400MB");
+global.containerMemoryConfiguration("warm")
+      .maxSize("900MB");
+
+ConfigurationBuilder cacheA = new ConfigurationBuilder();
+cacheA.memory().containerMemory("hot");
+
+ConfigurationBuilder cacheB = new ConfigurationBuilder();
+cacheB.memory().containerMemory("hot");
+
+ConfigurationBuilder cacheC = new ConfigurationBuilder();
+cacheC.memory().containerMemory("warm");
+
+ConfigurationBuilder cacheD = new ConfigurationBuilder();
+cacheD.memory().containerMemory("warm");
+
+ConfigurationBuilder cacheE = new ConfigurationBuilder();
+cacheE.memory().containerMemory("warm");</code></pre>
+</div>
+</div>
+</details>
+<div class="sect2">
+<h3 id="full-feature-compatibility">Full feature compatibility</h3>
+<div class="paragraph">
+<p>Shared containers are not a stripped-down mode — all of Infinispan&#8217;s regularly supported features continue to work with container eviction.
+Indexing, persistence, transactions, expiration, and listeners all function exactly as they do with per-cache eviction.</p>
+</div>
+<div class="paragraph">
+<p>This matters most when it comes to persistence.
+We recommend pairing shared containers with a persistence store as a way to automatically alleviate memory pressure while still retaining access to all entries.
+With a store configured, every entry is written through to disk, so when the container evicts an entry to stay within its memory budget the data is still available and can be loaded back on demand.</p>
+</div>
+<div class="paragraph">
+<p>The Soft-Index File Store (SIFS) is a natural fit here.
+SIFS is Infinispan&#8217;s default file-based store, and its index is designed to adapt to memory conditions.
+Index nodes are held via soft references, so when memory is plentiful they stay cached in the heap for fast lookups.
+When the JVM comes under memory pressure, the garbage collector can reclaim those soft references and SIFS transparently reloads the index nodes from disk on the next access.
+This makes SIFS an ideal companion to shared container eviction — the store index itself cooperates with the JVM to balance performance and memory usage without any manual tuning.</p>
+</div>
+<div class="paragraph">
+<p>Here is an example of a shared container with a SIFS store configured for the <code>my-cache</code>:</p>
+</div>
+<details open>
+<summary><strong>XML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
+   &lt;eviction-containers&gt;
+      &lt;max-size-container name="shared" size="1GB"/&gt;
+   &lt;/eviction-containers&gt;
+
+   &lt;distributed-cache name="my-cache"&gt;
+      &lt;memory eviction-container="shared"/&gt;
+      &lt;persistence&gt;
+         &lt;file-store/&gt;
+      &lt;/persistence&gt;
+   &lt;/distributed-cache&gt;
+
+   &lt;distributed-cache name="my-other-cache"&gt;
+      &lt;memory eviction-container="shared"/&gt;
+   &lt;/distributed-cache&gt;
+&lt;/cache-container&gt;</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>JSON</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "infinispan": {
+    "cacheContainer": {
+      "evictionContainers": {
+        "maxSizeContainer": [
+          {
+            "name": "shared",
+            "size": "1GB"
+          }
+        ]
+      },
+      "distributedCache": {
+        "my-cache": {
+          "memory": {
+            "evictionContainer": "shared"
+          },
+          "persistence": {
+            "fileStore": {}
+          }
+        },
+        "my-other-cache": {
+          "memory": {
+            "evictionContainer": "shared"
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>YAML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  cacheContainer:
+    evictionContainers:
+      maxSizeContainer:
+        - name: "shared"
+          size: "1GB"
+    distributedCache:
+      "my-cache":
+        memory:
+          evictionContainer: "shared"
+        persistence:
+          fileStore: ~
+      "my-other-cache":
+        memory:
+          evictionContainer: "shared"</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>Java</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder global = new GlobalConfigurationBuilder();
+global.containerMemoryConfiguration("shared")
+      .maxSize("1GB");
+
+ConfigurationBuilder cache = new ConfigurationBuilder();
+cache.memory()
+     .containerMemory("shared");
+cache.persistence()
+     .addSoftIndexFileStore();
+
+ConfigurationBuilder otherCache = new ConfigurationBuilder();
+otherCache.memory()
+          .containerMemory("shared");</code></pre>
+</div>
+</div>
+</details>
+</div>
+<div class="sect2">
+<h3 id="tradeoffs-to-keep-in-mind">Tradeoffs to keep in mind</h3>
+<div class="paragraph">
+<p>All caches sharing a container also share the same eviction policy.
+This means that a burst of writes to one cache can cause entries from another cache to be evicted.
+If you need strict control over a specific cache&#8217;s memory, per-cache eviction is still the right choice.</p>
+</div>
+<div class="paragraph">
+<p>There is a minor memory overhead per entry.
+Each entry in a shared container is stored with a wrapper that holds the cache name and value, adding two pointers and an object header.</p>
+</div>
+<div class="paragraph">
+<p>Clearing a cache or removing segments is slower than with per-cache eviction, because Infinispan must iterate through the shared container to find entries belonging to a specific cache.
+In practice, this overhead is typically negligible compared to the network cost of state transfer or rebalancing.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Container eviction is configured per node, not cluster-wide.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Infinispan 16.2 takes this a step further with <strong>dynamic eviction</strong> that automatically adapts to JVM memory pressure at runtime.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="dynamic-eviction">Dynamic eviction</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Container eviction gives you a fixed memory budget, but what happens when the unexpected hits?
+A sudden spike of large entries, a burst of temporary computation, or a background task that eats into heap — your fixed budget doesn&#8217;t know about any of it.</p>
+</div>
+<div class="paragraph">
+<p>Starting in Infinispan 16.2, <strong>dynamic eviction</strong> automatically adjusts your container&#8217;s capacity in response to real-time JVM memory pressure.
+When the memory monitor detects that the JVM is running low on heap or garbage collection is working too hard, Infinispan shrinks the container to free up space.
+When pressure subsides, it gradually grows the container back to its original configured capacity.</p>
+</div>
+<div class="imageblock text-center">
+<div class="content">
+<img src="/assets/images/blog/dynamic-eviction-states.svg" alt="Dynamic eviction state machine">
+</div>
+</div>
+<div class="paragraph">
+<p>Dynamic eviction operates in three states:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">Stable</dt>
+<dd>
+<p>Normal operation. The container uses its full configured capacity.</p>
+</dd>
+<dt class="hdlist1">Shrinking</dt>
+<dd>
+<p>Memory pressure detected. The container capacity is progressively reduced to free heap space. Infinispan shrinks aggressively to respond quickly to pressure.</p>
+</dd>
+<dt class="hdlist1">Growing</dt>
+<dd>
+<p>Pressure has subsided. The container capacity is cautiously restored, with increasing delays between growth steps. If pressure returns during growth, Infinispan immediately switches back to shrinking.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>To enable dynamic eviction, you need two things: a memory monitor on the cache container and the <code>dynamic-resize</code> attribute on your eviction container.</p>
+</div>
+<details open>
+<summary><strong>XML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
+   &lt;memory-monitor enabled="true"
+                   memory-threshold="0.85"
+                   gc-pressure-threshold="0.20" /&gt;
+   &lt;eviction-containers&gt;
+      &lt;max-size-container name="my-container" size="1GB" dynamic-resize="true"/&gt;
+   &lt;/eviction-containers&gt;
+
+   &lt;distributed-cache name="my-cache"&gt;
+      &lt;memory eviction-container="my-container"/&gt;
+   &lt;/distributed-cache&gt;
+&lt;/cache-container&gt;</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>JSON</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "infinispan": {
+    "cacheContainer": {
+      "memoryMonitor": {
+        "enabled": true,
+        "memoryThreshold": 0.85,
+        "gcPressureThreshold": 0.20
+      },
+      "evictionContainers": {
+        "maxSizeContainer": [
+          {
+            "name": "my-container",
+            "size": "1GB",
+            "dynamicResize": true
+          }
+        ]
+      },
+      "distributedCache": {
+        "my-cache": {
+          "memory": {
+            "evictionContainer": "my-container"
+          }
+        }
+      }
+    }
+  }
+}</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>YAML</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
+  cacheContainer:
+    memoryMonitor:
+      enabled: true
+      memoryThreshold: 0.85
+      gcPressureThreshold: 0.20
+    evictionContainers:
+      maxSizeContainer:
+        - name: "my-container"
+          size: "1GB"
+          dynamicResize: true
+    distributedCache:
+      "my-cache":
+        memory:
+          evictionContainer: "my-container"</code></pre>
+</div>
+</div>
+</details>
+<details>
+<summary><strong>Java</strong></summary>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder global = new GlobalConfigurationBuilder();
+global.memoryMonitor()
+      .enabled(true);
+global.containerMemoryConfiguration("my-container")
+      .maxSize("1GB")
+      .dynamicResize(true);
+
+ConfigurationBuilder cache = new ConfigurationBuilder();
+cache.memory()
+     .containerMemory("my-container");</code></pre>
+</div>
+</div>
+</details>
+<div class="sect2">
+<h3 id="caveats">Caveats</h3>
+<div class="paragraph">
+<p>Dynamic eviction is designed to ease memory pressure, not guarantee prevention of <code>OutOfMemoryError</code>.
+It works best for situations like temporary computation spikes or bursts of incoming data.</p>
+</div>
+<div class="paragraph">
+<p>When using a shared container, prefer <code>max-size-container</code> over <code>max-count-container</code>.
+A shared container may hold entries of varying sizes across different caches, so a count-based limit may not accurately reflect actual memory consumption.</p>
+</div>
+<div class="paragraph">
+<p>If you use passivation with a dynamically resized container, be aware that evicted entries must be written to the persistence store.
+Under memory pressure, this creates additional memory churn that can reduce the effectiveness of the resize.
+Infinispan logs a warning at startup when this combination is detected.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="the-memory-monitor">The memory monitor</h3>
+<div class="paragraph">
+<p>At the heart of dynamic eviction is the <strong>memory monitor</strong>, a cache-container-level component that continuously tracks JVM memory health.
+It watches two signals:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Memory threshold</strong> — the fraction of old-generation heap in use. When usage exceeds this threshold (default: 85%), the monitor raises a low-memory alert.</p>
+</li>
+<li>
+<p><strong>GC pressure threshold</strong> — the fraction of time spent in garbage collection over a rolling window (default: 60 seconds). When GC overhead exceeds this threshold (default: 20%), the monitor raises a GC pressure alert.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Dynamic eviction registers as a listener on the memory monitor and reacts to these alerts by shrinking or growing containers.
+But the memory monitor is not exclusive to eviction — it is a general-purpose component available to any Infinispan subsystem.</p>
+</div>
+<div class="paragraph">
+<p>For example, the query engine already uses the memory monitor.
+Sorted non-indexed queries need to load all matching results into memory before sorting.
+When the memory monitor reports pressure, Infinispan rejects these queries outright rather than risking an <code>OutOfMemoryError</code>.</p>
+</div>
+<div class="paragraph">
+<p>Future Infinispan releases will extend this further, using the memory monitor to adapt additional subsystems under memory pressure.
+The monitor provides a single, consistent view of JVM memory health that any component can subscribe to.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="getting-started">Getting started</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Container eviction is available in Infinispan 16.1 and later.
+Dynamic eviction requires Infinispan 16.2 and later.</p>
+</div>
+<div class="paragraph">
+<p>For full configuration reference and additional details, see the
+<a href="https://infinispan.org/docs/stable/titles/configuring/configuring.html">Infinispan documentation</a>.</p>
+</div>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://github.com/infinispan/infinispan/issues" target="_blank">GitHub issues tracker</a>.
+        If you don’t find any, <a href="https://github.com/infinispan/infinispan/issues" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://github.com/infinispan/infinispan/discussions/"
+                       target="_blank">GitHub discussions</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+      <div class="width-12-12 callout orange margin-tb-xs">
+    <div class="grid-wrapper">
+        <div class="width-4-12 width-12-12-m block-image">
+            <img src="/assets/images/blog/authors/wburns.jpg" class="author-img">
+        </div>
+        <div class="width-8-12 width-12-12-m block-content">
+            <h5>William Burns</h5>
+            <p>Will is a core Infinispan engineer. He enjoys streaming data and writing reactive code.</p>
+            <div class="width-3-12 width-6-12-m bio-block">
+                <a href="https://github.com/wburns"><img src="/assets/images/community/icon-github.png"></a>
+                
+                <a href="https://twitter.com/mudokonman"><img src="/assets/images/community/icon-twitter.png"></a>
+                
+                
+            </div>
+        </div>
+    </div>
+</div>
+      
+      <div class="grid__item width-12-12 giscus-container">
+        <script src="https://giscus.app/client.js"
+          data-repo="infinispan/infinispan"
+          data-repo-id="MDEwOlJlcG9zaXRvcnkxMDUwOTQ0"
+          data-category="Blog"
+          data-category-id="DIC_kwDOABAJQM4C8Dj-"
+          data-mapping="og:title"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          crossorigin="anonymous"
+          async>
+        </script>
+      </div>
+    </div>
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo" alt="Infinispan"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <div class="grid__item width-4-12 width-12-12-m footer-about">
+      <p>Infinispan is released under the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache 2.0</a> open source license. The source code is available on <a href='https://github.com/infinispan' target='_blank'>GitHub</a>.</p>
+      <div class="footer-thanks">
+        <b>Thanks to</b>
+        <div class="thanks-logos">
+          <a href="https://zulip.com" target="_blank"><img src="/assets/images/footer/zulip.png" title="Zulip" alt="Zulip"></a>
+          <a href="https://weblate.org" target="_blank"><img src="/assets/images/footer/weblate.png" title="Weblate" alt="Weblate"></a>
+        </div>
+      </div>
+    </div>
+
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Navigation</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/" >Home</a></li>
+          
+            
+            <li><a href="/get-started" >Get Started</a></li>
+          
+            
+            <li><a href="/features" >Features</a></li>
+          
+            
+            <li><a href="/ai" >AI</a></li>
+          
+            
+            <li><a href="/documentation" >Docs</a></li>
+          
+            
+            <li><a href="/tutorials" >Tutorials</a></li>
+          
+            
+            <li><a href="/use-cases" >Use Cases</a></li>
+          
+            
+            <li><a href="/downloads/releases" >Releases</a></li>
+          
+            
+            <li><a href="/downloads/clients" >Clients</a></li>
+          
+            
+            <li><a href="/downloads/cache-stores" >Cache Stores</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Get Help</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/documentation" >Documentation</a></li>
+          
+            
+            <li><a href="/tutorials" >Guides</a></li>
+          
+            
+            <li><a href="https://stackoverflow.com/questions/tagged/infinispan" target="_blank">Stack Overflow</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan/discussions" target="_blank">GitHub Discussions</a></li>
+          
+            
+            <li><a href="https://infinispan.zulipchat.com" target="_blank">Zulip Chat</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Contribute</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan" target="_blank">Source Code</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan/issues" target="_blank">Submit a Bug</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan.github.io" target="_blank">Website Source</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/blog" >Blog</a></li>
+          
+            
+            <li><a href="https://twitter.com/infinispan" target="_blank">X / Twitter</a></li>
+          
+            
+            <li><a href="https://www.facebook.com/infinispan/" target="_blank">Facebook</a></li>
+          
+            
+            <li><a href="https://www.youtube.com/@InfinispanProject" target="_blank">YouTube</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan" target="_blank">GitHub</a></li>
+          
+        </ul>
+      </div>
+    
+  </div>
+</div>
+
+  <div class="content-slim cf-footer">
+  <div class="cf-flexcontainer">
+    <div class="cf-logo-footer">
+      <a href="https://www.commonhaus.org/" target="_blank"><img src="https://raw.githubusercontent.com/commonhaus/artwork/main/foundation/brand/svg/CF_logo_horizontal_single_reverse.svg" alt="Commonhaus Foundation"></a>
+    </div>
+    <div class="cf-license">
+      Copyright &copy; Infinispan. All rights reserved. For details on trademarks, please visit the <a href="https://www.commonhaus.org/policies/trademark-policy/">Trademark Policy</a> and <a href="https://www.commonhaus.org/trademarks/">Trademark List</a>. Trademarks of third parties are owned by their respective holders and their mention here does not suggest any endorsement or association.
+    </div>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+  <script src="/assets/javascript/clipboard.min.js" type="text/javascript"></script>
+  <script src="/assets/javascript/copy.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>
