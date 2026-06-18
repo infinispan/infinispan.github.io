@@ -1,0 +1,57 @@
+name: Blog Discussion
+
+on:
+  push:
+    branches: [develop]
+    paths: ['_posts/**']
+
+permissions:
+  contents: read
+
+jobs:
+  create-discussion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 2
+
+      - name: Create discussions for new posts
+        env:
+          GH_TOKEN: ${{ secrets.API_TOKEN_GITHUB }}
+        run: |
+          REPO_ID="MDEwOlJlcG9zaXRvcnkxMDUwOTQ0"
+          CATEGORY_ID="DIC_kwDOABAJQM4C8Dj-"
+
+          for file in $(git diff --name-only --diff-filter=A HEAD~1 -- '_posts/**'); do
+            echo "Processing $file"
+
+            # Parse frontmatter
+            title=$(sed -n 's/^title: *"\(.*\)"/\1/p' "$file" | head -1)
+            date=$(sed -n "s/^date: *'\([0-9-]*\)T.*/\1/p" "$file" | head -1)
+            permalink=$(sed -n 's|^permalink: */blog/:year/:month/:day/\(.*\)|\1|p' "$file" | head -1)
+
+            if [ -z "$title" ] || [ -z "$date" ] || [ -z "$permalink" ]; then
+              echo "Skipping $file: missing frontmatter fields"
+              continue
+            fi
+
+            year=$(echo "$date" | cut -d- -f1)
+            month=$(echo "$date" | cut -d- -f2)
+            day=$(echo "$date" | cut -d- -f3)
+            url="https://infinispan.org/blog/${year}/${month}/${day}/${permalink}"
+
+            echo "Creating discussion: $title -> $url"
+
+            gh api graphql -f query='
+              mutation($repoId: ID!, $catId: ID!, $title: String!, $body: String!) {
+                createDiscussion(input: {repositoryId: $repoId, categoryId: $catId, title: $title, body: $body}) {
+                  discussion { url }
+                }
+              }' \
+              -f repoId="$REPO_ID" \
+              -f catId="$CATEGORY_ID" \
+              -f title="$title" \
+              -f body="$url"
+          done
