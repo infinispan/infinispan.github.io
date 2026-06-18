@@ -1,0 +1,266 @@
+---
+layout: blog
+title: "Hello, Gophers! Introducing the Infinispan Go Client"
+permalink: /blog/:year/:month/:day/infinispan-go-client
+date: '2026-06-22T00:00:00.000-00:00'
+author: ttarrant
+tags: [ "hotrod", "go", "golang", "client", "release" ]
+---
+
+= Hello, Gophers! Introducing the Infinispan Go Client
+
+If you've ever thought "I wish I could talk to Infinispan from Go," today is your lucky day.
+We're thrilled to announce the https://github.com/infinispan/go-client[Infinispan Go Client] -- a brand-new, pure-Go client that speaks the Hot Rod 4.1 binary protocol and gives you access to all the good stuff: caching, counters, queries, transactions, listeners, and more.
+
+No CGo. No JNI bridges. No funny business. Just `go get` and you're off to the races.
+
+== Fire up a server
+
+First things first: you need an Infinispan server to talk to.
+The fastest way is to grab one with Docker (or Podman -- we don't judge):
+
+[source,bash]
+----
+docker run --name infinispan \
+  -p 11222:11222 \
+  -e USER="admin" \
+  -e PASS="password" \
+  infinispan/server:16.2
+----
+
+Give it a couple of seconds to start up, and you've got a fully functional Infinispan node listening on port 11222. Easy.
+
+== Your first Put and Get
+
+Let's jump straight into code. Create a new Go module and grab the client:
+
+[source,bash]
+----
+mkdir hello-infinispan && cd hello-infinispan
+go mod init hello-infinispan
+go get infinispan.org/go-client/hotrod
+----
+
+Now write a tiny program:
+
+[source,go]
+----
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	"infinispan.org/go-client/hotrod"
+)
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Connect to the server
+	client, err := hotrod.NewClient(ctx, "hotrod://admin:password@localhost:11222")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
+
+	// Grab a cache handle
+	cache := client.Cache("my-cache")
+
+	// Store something
+	err = cache.Put(ctx, []byte("greeting"), []byte("Hello from Go!"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Read it back
+	val, found, err := cache.Get(ctx, []byte("greeting"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	if found {
+		fmt.Println(string(val)) // Hello from Go!
+	}
+}
+----
+
+Run it:
+
+[source,bash]
+----
+go run .
+----
+
+And there you have it -- your Go program just stored and retrieved data from a distributed cache. That's it. No XML. No YAML. Just a URI and you're in.
+
+== What else can it do?
+
+Glad you asked. This isn't a toy client -- it's packed with features. Here's the highlight reel:
+
+=== Entries with TTL and idle timeout
+
+Don't want stale data hanging around? Set a lifespan or a max-idle time on your entries:
+
+[source,go]
+----
+cache.Put(ctx, []byte("session"), []byte("abc123"),
+	hotrod.WithLifespan(30*time.Minute),
+	hotrod.WithMaxIdle(5*time.Minute),
+)
+----
+
+=== Conditional operations
+
+Optimistic locking fans, rejoice. You get compare-and-swap semantics:
+
+[source,go]
+----
+// Only put if the key doesn't exist yet
+ok, _ := cache.PutIfAbsent(ctx, []byte("lock"), []byte("mine"))
+
+// Replace only if the entry hasn't been modified
+meta, _, _ := cache.GetWithMetadata(ctx, []byte("counter"))
+ok, _ = cache.ReplaceIfUnmodified(ctx, []byte("counter"), []byte("42"), meta.Version)
+----
+
+=== Bulk operations
+
+Need to move a lot of data? `PutAll` and `GetAll` are hash-distribution-aware, so they route entries directly to the right nodes:
+
+[source,go]
+----
+entries := map[string][]byte{
+	"key1": []byte("val1"),
+	"key2": []byte("val2"),
+	"key3": []byte("val3"),
+}
+cache.PutAll(ctx, entries)
+
+results, _ := cache.GetAll(ctx, []string{"key1", "key2", "key3"})
+----
+
+=== Event listeners
+
+Want to react when data changes? Register a listener and get notified through a channel:
+
+[source,go]
+----
+listener, _ := cache.AddListener(ctx,
+	hotrod.WithListenerInterests(hotrod.EventCreated, hotrod.EventModified),
+)
+defer cache.RemoveListener(ctx, listener)
+
+for event := range listener.Events {
+	fmt.Printf("Event: %s on key %s\n", event.Type, event.Key)
+}
+----
+
+=== Queries with Ickle
+
+If you're using Protocol Buffers for your values, you can query them with the Ickle query language:
+
+[source,go]
+----
+result, _ := cache.Query(ctx, "FROM example.Person WHERE age > :minAge",
+	hotrod.WithQueryParam("minAge", int32(21)),
+	hotrod.WithQueryMaxResults(10),
+)
+----
+
+And yes, we support *continuous queries* too -- subscribe to a query and get notified as entries join, update, or leave the result set. Think of it as a live view of your data.
+
+=== Distributed counters
+
+Need a cluster-wide atomic counter? We've got strong counters (reliable, optionally bounded) and weak counters (high-throughput, eventually consistent):
+
+[source,go]
+----
+counters := client.Counters()
+counters.Define(ctx, "page-views", &hotrod.CounterConfiguration{
+	Type:         hotrod.CounterStrong,
+	InitialValue: 0,
+	Storage:      hotrod.StoragePersistent,
+})
+
+counter := counters.Counter("page-views")
+newVal, _ := counter.AddAndGet(ctx, 1)
+----
+
+=== Near caching
+
+For read-heavy workloads, the near cache keeps recently accessed entries on the client side with LRU eviction and automatic server-side invalidation via Bloom filters:
+
+[source,go]
+----
+nc, _ := hotrod.NewNearCache(ctx, client, "my-cache",
+	hotrod.WithMaxNearCacheEntries(500),
+)
+// First Get goes to the server; subsequent ones are served locally
+val, found, _ := nc.Get(ctx, []byte("hot-key"))
+----
+
+=== Transactions
+
+When you need atomicity across multiple operations:
+
+[source,go]
+----
+err := client.WithTransaction(ctx, "my-cache", func(tc *hotrod.TxCache) error {
+	tc.Put(ctx, []byte("account-A"), []byte("900"))
+	tc.Put(ctx, []byte("account-B"), []byte("1100"))
+	return nil // commit; return an error to rollback
+})
+----
+
+=== Type-safe caches with Protocol Buffers
+
+Tired of juggling `[]byte`? The typed cache gives you generics-powered, type-safe access with automatic marshalling:
+
+[source,go]
+----
+cache := hotrod.NewTypedCache[string, *pb.Person](
+	client, "people",
+	hotrod.ProtoStreamMarshaller(),
+	func() *pb.Person { return &pb.Person{} },
+)
+
+cache.Put(ctx, "john", &pb.Person{Name: "John", Age: 30})
+person, found, _ := cache.Get(ctx, "john")
+----
+
+=== And there's more
+
+* *Iterators* -- scan through all entries in batches without blowing up your memory
+* *Multimap caches* -- map a single key to multiple values
+* *Cache administration* -- create, configure, and remove caches programmatically
+* *Schema management* -- register and manage Protobuf schemas
+* *Pipelined connections* -- multiple operations fly over a single TCP connection concurrently, so you don't pay a round-trip per request
+* *Smart routing* -- topology-aware and hash-distribution-aware client intelligence, so your requests go straight to the node that owns the data
+* *TLS and mTLS* -- because security isn't optional
+* *SCRAM-SHA-256, PLAIN, OAUTHBEARER, and EXTERNAL auth* -- pick your SASL flavor
+
+== The connection URI
+
+Connecting is as simple as a URI:
+
+[source]
+----
+hotrod://admin:password@server1:11222,server2:11222
+hotrods://admin:password@server:11222?trust_store_file_name=/path/to/ca.pem
+----
+
+Use `hotrod://` for plain connections, `hotrods://` for TLS, and list as many servers as you like -- the client discovers the rest through topology updates.
+
+== Get started
+
+[source,bash]
+----
+go get infinispan.org/go-client/hotrod
+----
+
+Head over to the https://github.com/infinispan/go-client[GitHub repository] for full documentation and examples.
+Our https://infinispan.org/tutorials/?language=go[tutorials] are also packed with Go goodies now, so you can hit the ground running with hands-on, step-by-step guides.
+We'd love to hear your feedback -- open an issue, send a PR, or just say hi. Happy caching, Gophers!
