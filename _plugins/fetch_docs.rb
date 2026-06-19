@@ -134,7 +134,7 @@ def fetch_github_docs(github_url, branch, target_dir, verbose)
   tmp_prefix = File.basename(target_dir)
   %x( wget -q #{zip_url} -O _#{tmp_prefix}tmp.zip)
   %x( unzip -o _#{tmp_prefix}tmp.zip "*documentation/*" -d _#{tmp_prefix}tmp)
-  Dir.glob("_#{tmp_prefix}tmp/**/*.asciidoc").each do |f|
+  Dir.glob("_#{tmp_prefix}tmp/**/*.{asciidoc,adoc}").each do |f|
     %x( asciidoctor #{f} )
   end
   Dir.glob("_#{tmp_prefix}tmp/**/*.html").each do |f|
@@ -187,30 +187,6 @@ else
     end
   end
 
-  # Fetch Hot Rod C++ and .NET client docs from project downloads
-  hotrod = projects["projects"]
-  ["cpp-client", "dotnet-client"].each do |client|
-    project = hotrod[client]
-    next unless project
-    short_name = client.sub("-client", "")
-    project.each do |ver, vcfg|
-      next if ver == "github" || ver == "doc_branches"
-      next unless vcfg.is_a?(Hash) && vcfg["docs_version"]
-      docs_version = vcfg["docs_version"]
-      github = project["github"]
-      url = "#{github}/archive/#{vcfg["version"]}.zip"
-      %x( wget -q #{url} -O _tmp.zip)
-      %x( unzip -o _tmp.zip "*-Source/documentation/*" -d _tmp)
-      %x( mkdir -p docs/hotrod-clients/#{short_name}/docs )
-      %x( rm _tmp/*/documentation/.gitignore )
-      %x( mv _tmp/*/documentation "docs/hotrod-clients/#{short_name}/docs/#{docs_version}" )
-      Dir.glob("docs/hotrod-clients/#{short_name}/docs/**/titles/*.{adoc,asciidoc}").each do |f|
-        %x( asciidoctor -q #{f} )
-      end
-      %x( rm -rf _tmp _tmp.zip )
-    end
-  end
-
   # Fetch simple tutorials
   tutorials = projects["projects"]["simple-tutorials"]
   if tutorials && tutorials["doc_branches"]
@@ -219,52 +195,12 @@ else
     end
   end
 
-  # Fetch Hot Rod JS client docs
-  js_client = projects["projects"]["js-client"]
-  if js_client && js_client["doc_branches"]
-    js_client["doc_branches"].each do |branch|
-      fetch_github_docs(js_client["github"], branch, "docs/hotrod-clients/js/latest", verbose)
-    end
-  end
-
-  # Fetch Hot Rod C++ client docs
-  cpp_client = projects["projects"]["cpp-client"]
-  if cpp_client && cpp_client["doc_branches"]
-    cpp_client["doc_branches"].each do |branch|
-      fetch_github_docs(cpp_client["github"], branch, "docs/hotrod-clients/cpp/latest", verbose)
-    end
-  end
-
-  # Fetch Hot Rod .NET client docs
-  dotnet_client = projects["projects"]["dotnet-client"]
-  if dotnet_client && dotnet_client["doc_branches"]
-    dotnet_client["doc_branches"].each do |branch|
-      fetch_github_docs(dotnet_client["github"], branch, "docs/hotrod-clients/dotnet/latest", verbose)
-    end
-  end
-
-  # Fetch Hot Rod Go client docs (pre-built docs.zip from GitHub release)
-  go_client = projects["projects"]["go-client"]
-  if go_client
-    github = go_client["github"]
-    # Find the latest release version
-    latest_ver = nil
-    go_client.each do |key, cfg|
-      next if key == "github"
-      next unless cfg.is_a?(Hash) && cfg["version"]
-      latest_ver = cfg["version"]
-    end
-    if latest_ver
-      tag = latest_ver.start_with?("v") ? latest_ver : "v#{latest_ver}"
-      docs_url = "#{github}/releases/download/#{tag}/docs.zip"
-      target = "docs/hotrod-clients/go/latest"
-      puts "    Fetching Go client docs from #{docs_url}" if verbose
-      %x( wget -q #{docs_url} -O _gotmp.zip )
-      if File.exist?("_gotmp.zip") && File.size("_gotmp.zip") > 0
-        FileUtils.mkdir_p target
-        %x( unzip -qo _gotmp.zip -d #{target} )
-      end
-      %x( rm -f _gotmp.zip )
+  # Fetch Hot Rod client docs
+  {"js-client" => "js", "cpp-client" => "cpp", "dotnet-client" => "dotnet", "go-client" => "go"}.each do |client, short_name|
+    project = projects["projects"][client]
+    next unless project && project["doc_branches"]
+    project["doc_branches"].each do |branch|
+      fetch_github_docs(project["github"], branch, "docs/hotrod-clients/#{short_name}/latest", verbose)
     end
   end
 
