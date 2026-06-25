@@ -479,8 +479,10 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_using_conditional_operations">2.1.8. Using conditional operations</a></li>
 <li><a href="#_working_with_ephemeral_data">2.1.9. Working with ephemeral data</a></li>
 <li><a href="#_using_distributed_counters">2.1.10. Using distributed counters</a></li>
-<li><a href="#_working_with_queries">2.1.11. Working with queries</a></li>
-<li><a href="#_using_transactions">2.1.12. Using transactions</a></li>
+<li><a href="#_working_with_multimaps">2.1.11. Working with multimaps</a></li>
+<li><a href="#_working_with_queries">2.1.12. Working with queries</a></li>
+<li><a href="#_using_transactions">2.1.13. Using transactions</a></li>
+<li><a href="#_using_operation_flags">2.1.14. Using operation flags</a></li>
 </ul>
 </li>
 <li><a href="#transactions_client-usage-examples">2.2. Transactions</a>
@@ -2368,7 +2370,157 @@ connected.then(function (client) {
 </table>
 </div>
 <div class="sect3">
-<h4 id="_working_with_queries"><a class="anchor" href="#_working_with_queries"></a>2.1.11. Working with queries</h4>
+<h4 id="_working_with_multimaps"><a class="anchor" href="#_working_with_multimaps"></a>2.1.11. Working with multimaps</h4>
+<div class="paragraph">
+<p>Multimaps allow you to associate multiple values with a single key.
+The Hot Rod JS client uses Set semantics by default, which means duplicate values for the same key are not stored.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-javascript" data-lang="javascript">var infinispan = require('infinispan');
+
+var connected = infinispan.client(
+  {port: 11222, host: '127.0.0.1'},
+  {
+    authentication: {
+      enabled: true,
+      saslMechanism: 'SCRAM-SHA-256',
+      userName: 'admin',
+      password: 'changeme'
+    }
+  }
+);
+
+connected.then(function (client) {
+
+  // Store multiple values under the same key.
+  var put = client.multimapPut('colors', 'red');
+  put = put.then(function() {
+    return client.multimapPut('colors', 'green');
+  });
+  put = put.then(function() {
+    return client.multimapPut('colors', 'blue');
+  });
+
+  // Retrieve all values for a key.
+  var get = put.then(function() {
+    return client.multimapGet('colors');
+  });
+  get.then(function(values) {
+    console.log('Colors: ' + values); // ['red', 'green', 'blue']
+  });
+
+  // Check if a key exists in the multimap.
+  var containsKey = get.then(function() {
+    return client.multimapContainsKey('colors');
+  });
+  containsKey.then(function(exists) {
+    console.log('Contains key: ' + exists); // true
+  });
+
+  // Check if a specific value exists anywhere in the multimap.
+  var containsValue = containsKey.then(function() {
+    return client.multimapContainsValue('red');
+  });
+  containsValue.then(function(exists) {
+    console.log('Contains value: ' + exists); // true
+  });
+
+  // Check if a specific key-value pair exists.
+  var containsEntry = containsValue.then(function() {
+    return client.multimapContainsEntry('colors', 'green');
+  });
+  containsEntry.then(function(exists) {
+    console.log('Contains entry: ' + exists); // true
+  });
+
+  // Get the total number of entries across all keys.
+  var size = containsEntry.then(function() {
+    return client.multimapSize();
+  });
+  size.then(function(count) {
+    console.log('Total entries: ' + count); // 3
+  });
+
+  // Remove a single value from a key.
+  var removeEntry = size.then(function() {
+    return client.multimapRemoveEntry('colors', 'red');
+  });
+  removeEntry.then(function(removed) {
+    console.log('Removed entry: ' + removed); // true
+  });
+
+  // Remove all values for a key.
+  var removeKey = removeEntry.then(function() {
+    return client.multimapRemoveKey('colors');
+  });
+  removeKey.then(function(removed) {
+    console.log('Removed key: ' + removed); // true
+  });
+
+  // Disconnect from Infinispan Server.
+  return removeKey.then(function() {
+    return client.disconnect();
+  });
+
+}).catch(function(error) {
+
+  // Log any errors.
+  console.log("Got error: " + error.message);
+
+});</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Available multimap operations</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Method</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>multimapPut(key, value)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adds a value to the collection for the given key.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>multimapGet(key)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns an array of all values for the given key, or an empty array if the key does not exist.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>multimapContainsKey(key)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns <code>true</code> if the key exists in the multimap.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>multimapContainsValue(value)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns <code>true</code> if the value exists for any key in the multimap.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>multimapContainsEntry(key, value)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns <code>true</code> if the key-value pair exists in the multimap.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>multimapSize()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns the total number of entries across all keys.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>multimapRemoveEntry(key, value)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Removes a single value from the given key. Returns <code>true</code> if the entry existed.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>multimapRemoveKey(key)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Removes all values for the given key. Returns <code>true</code> if the key existed.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_working_with_queries"><a class="anchor" href="#_working_with_queries"></a>2.1.12. Working with queries</h4>
 <div class="paragraph">
 <p>Use the <code>query</code> method to perform queries on your caches.
 You must configure Hot Rod JS client to have <code>application/x-protostream</code> data format for values in your caches.</p>
@@ -2474,7 +2626,7 @@ function handleError(err) {
 </div>
 </div>
 <div class="sect3">
-<h4 id="_using_transactions"><a class="anchor" href="#_using_transactions"></a>2.1.12. Using transactions</h4>
+<h4 id="_using_transactions"><a class="anchor" href="#_using_transactions"></a>2.1.13. Using transactions</h4>
 <div class="paragraph">
 <p>Transactions let you group multiple cache operations into an atomic unit.
 The Hot Rod JS client buffers operations locally and sends them to the server on commit.</p>
@@ -2482,6 +2634,79 @@ The Hot Rod JS client buffers operations locally and sends them to the server on
 <div class="paragraph">
 <p>For detailed information, see <a href="#transactions_client-usage-examples">Transactions</a>.</p>
 </div>
+</div>
+<div class="sect3">
+<h4 id="_using_operation_flags"><a class="anchor" href="#_using_operation_flags"></a>2.1.14. Using operation flags</h4>
+<div class="paragraph">
+<p>You can pass Hot Rod protocol flags to control how operations are executed on the server.
+Flags are passed through the <code>flags</code> property in the options object and can be combined with bitwise OR.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight nowrap"><code class="language-javascript" data-lang="javascript">var infinispan = require('infinispan');
+
+// Skip loading from the cache store
+client.put('key', 'value', { flags: infinispan.flags.SKIP_CACHE_LOAD });
+
+// Combine multiple flags
+client.put('key', 'value', {
+  flags: infinispan.flags.SKIP_CACHE_LOAD | infinispan.flags.SKIP_INDEXING
+});
+
+// Combine flags with other options
+client.put('key', 'value', {
+  previous: true,
+  flags: infinispan.flags.SKIP_LISTENER_NOTIFICATION
+});</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Available flags</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Flag</th>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>FORCE_RETURN_VALUE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0001</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns the previous value for write operations. You can also set this with the <code>previous: true</code> option.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEFAULT_LIFESPAN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0002</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uses the cache-configured default lifespan for the entry.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEFAULT_MAXIDLE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0004</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Uses the cache-configured default max idle time for the entry.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SKIP_CACHE_LOAD</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0008</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Skips loading the entry from a configured cache store.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SKIP_INDEXING</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0010</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Skips indexing the entry, so it does not appear in query results.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SKIP_LISTENER_NOTIFICATION</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0020</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Suppresses cache listener notifications for the operation.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 <div class="sect2">
@@ -2658,7 +2883,7 @@ connected.then(function (adminClient) {
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Available transaction operations</caption>
+<caption class="title">Table 5. Available transaction operations</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -2717,7 +2942,7 @@ Discards all buffered modifications.</p></td>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-05-20 08:42:09 UTC
+Last updated 2026-06-20 08:16:01 UTC
 </div>
 </div>
 </body>
