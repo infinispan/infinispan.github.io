@@ -30,6 +30,7 @@
          tab.classList.add('active');
          activeLanguage = tab.dataset.language;
          filterCards();
+         updateUrl();
       });
    });
 
@@ -50,6 +51,7 @@
                cb.checked = false;
                updateTopicTags();
                filterCards();
+               updateUrl();
             });
             tag.appendChild(remove);
             tagsContainer.appendChild(tag);
@@ -126,15 +128,69 @@
    }
 
    sidebarCheckboxes.forEach(function(cb) {
-      cb.addEventListener('change', filterCards);
+      cb.addEventListener('change', function() {
+         filterCards();
+         updateUrl();
+      });
    });
 
    topicCheckboxes.forEach(function(cb) {
       cb.addEventListener('change', function() {
          updateTopicTags();
          filterCards();
+         updateUrl();
       });
    });
 
-   searchInput.addEventListener('input', filterCards);
+   searchInput.addEventListener('input', function() {
+      filterCards();
+      updateUrl();
+   });
+
+   function updateUrl() {
+      var params = new URLSearchParams();
+      if (searchInput.value.trim()) params.set('q', searchInput.value.trim());
+      if (activeLanguage !== 'all') params.set('language', activeLanguage);
+      ['mode', 'type', 'duration', 'topic'].forEach(function(type) {
+         var vals = getChecked(type);
+         if (vals.length > 0) params.set(type, vals.join(','));
+      });
+      var qs = params.toString();
+      var url = window.location.pathname + (qs ? '?' + qs : '');
+      window.history.replaceState(null, '', url);
+   }
+
+   function applyUrlParams() {
+      var params = new URLSearchParams(window.location.search);
+
+      var q = params.get('q');
+      if (q) searchInput.value = q;
+
+      var lang = params.get('language');
+      if (lang) {
+         languageTabs.forEach(function(tab) {
+            tab.classList.remove('active');
+            if (tab.dataset.language === lang) {
+               tab.classList.add('active');
+               activeLanguage = lang;
+            }
+         });
+      }
+
+      ['mode', 'type', 'duration', 'topic'].forEach(function(type) {
+         var val = params.get(type);
+         if (!val) return;
+         var vals = val.split(',');
+         allCheckboxes.forEach(function(cb) {
+            if (cb.dataset.filterType === type && vals.indexOf(cb.value) !== -1) {
+               cb.checked = true;
+            }
+         });
+      });
+
+      if (params.get('topic')) updateTopicTags();
+      if (params.toString()) filterCards();
+   }
+
+   applyUrlParams();
 })();

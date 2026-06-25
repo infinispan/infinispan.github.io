@@ -1,4 +1,329 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-06-25T08:45:13+00:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Hot Rod Dissector for Wireshark</title><link href="https://infinispan.org/blog/2026/06/17/hot-rod-dissector-wireshark" rel="alternate" type="text/html" title="Hot Rod Dissector for Wireshark" /><published>2026-06-17T00:00:00+00:00</published><updated>2026-06-17T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/06/17/hot-rod-dissector-wireshark</id><content type="html" xml:base="https://infinispan.org/blog/2026/06/17/hot-rod-dissector-wireshark"><![CDATA[<div class="paragraph">
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-06-25T16:48:07+00:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Hello, Gophers! Introducing the Infinispan Go Client</title><link href="https://infinispan.org/blog/2026/06/22/infinispan-go-client" rel="alternate" type="text/html" title="Hello, Gophers! Introducing the Infinispan Go Client" /><published>2026-06-22T00:00:00+00:00</published><updated>2026-06-22T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/06/22/infinispan-go-client</id><content type="html" xml:base="https://infinispan.org/blog/2026/06/22/infinispan-go-client"><![CDATA[<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>If you&#8217;ve ever thought "I wish I could talk to Infinispan from Go," today is your lucky day.
+We&#8217;re thrilled to announce the <a href="https://github.com/infinispan/go-client">Infinispan Go Client</a>&#8201;&#8212;&#8201;a brand-new, pure-Go client that speaks the Hot Rod 4.1 binary protocol and gives you access to all the good stuff: caching, counters, queries, transactions, listeners, and more.</p>
+</div>
+<div class="paragraph">
+<p>No CGo. No JNI bridges. No funny business. Just <code>go get</code> and you&#8217;re off to the races.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="fire-up-a-server">Fire up a server</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>First things first: you need an Infinispan server to talk to.
+The fastest way is to grab one with Docker (or Podman&#8201;&#8212;&#8201;we don&#8217;t judge):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker run --name infinispan \
+  -p 11222:11222 \
+  -e USER="admin" \
+  -e PASS="password" \
+  infinispan/server:16.2</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Give it a couple of seconds to start up, and you&#8217;ve got a fully functional Infinispan node listening on port 11222. Easy.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="your-first-put-and-get">Your first Put and Get</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Let&#8217;s jump straight into code. Create a new Go module and grab the client:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mkdir hello-infinispan &amp;&amp; cd hello-infinispan
+go mod init hello-infinispan
+go get infinispan.org/go-client/hotrod</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now write a tiny program:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-go hljs" data-lang="go">package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	"infinispan.org/go-client/hotrod"
+)
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Connect to the server
+	client, err := hotrod.NewClient(ctx, "hotrod://admin:password@localhost:11222")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer client.Close()
+
+	// Grab a cache handle
+	cache := client.Cache("my-cache")
+
+	// Store something
+	err = cache.Put(ctx, []byte("greeting"), []byte("Hello from Go!"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Read it back
+	val, found, err := cache.Get(ctx, []byte("greeting"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	if found {
+		fmt.Println(string(val)) // Hello from Go!
+	}
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Run it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">go run .</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>And there you have it&#8201;&#8212;&#8201;your Go program just stored and retrieved data from a distributed cache. That&#8217;s it. No XML. No YAML. Just a URI and you&#8217;re in.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="what-else-can-it-do">What else can it do?</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Glad you asked. This isn&#8217;t a toy client&#8201;&#8212;&#8201;it&#8217;s packed with features. Here&#8217;s the highlight reel:</p>
+</div>
+<div class="sect2">
+<h3 id="entries-with-ttl-and-idle-timeout">Entries with TTL and idle timeout</h3>
+<div class="paragraph">
+<p>Don&#8217;t want stale data hanging around? Set a lifespan or a max-idle time on your entries:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-go hljs" data-lang="go">cache.Put(ctx, []byte("session"), []byte("abc123"),
+	hotrod.WithLifespan(30*time.Minute),
+	hotrod.WithMaxIdle(5*time.Minute),
+)</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="conditional-operations">Conditional operations</h3>
+<div class="paragraph">
+<p>Optimistic locking fans, rejoice. You get compare-and-swap semantics:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-go hljs" data-lang="go">// Only put if the key doesn't exist yet
+ok, _ := cache.PutIfAbsent(ctx, []byte("lock"), []byte("mine"))
+
+// Replace only if the entry hasn't been modified
+meta, _, _ := cache.GetWithMetadata(ctx, []byte("counter"))
+ok, _ = cache.ReplaceIfUnmodified(ctx, []byte("counter"), []byte("42"), meta.Version)</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="bulk-operations">Bulk operations</h3>
+<div class="paragraph">
+<p>Need to move a lot of data? <code>PutAll</code> and <code>GetAll</code> are hash-distribution-aware, so they route entries directly to the right nodes:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-go hljs" data-lang="go">entries := map[string][]byte{
+	"key1": []byte("val1"),
+	"key2": []byte("val2"),
+	"key3": []byte("val3"),
+}
+cache.PutAll(ctx, entries)
+
+results, _ := cache.GetAll(ctx, []string{"key1", "key2", "key3"})</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="event-listeners">Event listeners</h3>
+<div class="paragraph">
+<p>Want to react when data changes? Register a listener and get notified through a channel:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-go hljs" data-lang="go">listener, _ := cache.AddListener(ctx,
+	hotrod.WithListenerInterests(hotrod.EventCreated, hotrod.EventModified),
+)
+defer cache.RemoveListener(ctx, listener)
+
+for event := range listener.Events {
+	fmt.Printf("Event: %s on key %s\n", event.Type, event.Key)
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="queries-with-ickle">Queries with Ickle</h3>
+<div class="paragraph">
+<p>If you&#8217;re using Protocol Buffers for your values, you can query them with the Ickle query language:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-go hljs" data-lang="go">result, _ := cache.Query(ctx, "FROM example.Person WHERE age &gt; :minAge",
+	hotrod.WithQueryParam("minAge", int32(21)),
+	hotrod.WithQueryMaxResults(10),
+)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>And yes, we support <strong>continuous queries</strong> too&#8201;&#8212;&#8201;subscribe to a query and get notified as entries join, update, or leave the result set. Think of it as a live view of your data.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="distributed-counters">Distributed counters</h3>
+<div class="paragraph">
+<p>Need a cluster-wide atomic counter? We&#8217;ve got strong counters (reliable, optionally bounded) and weak counters (high-throughput, eventually consistent):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-go hljs" data-lang="go">counters := client.Counters()
+counters.Define(ctx, "page-views", &amp;hotrod.CounterConfiguration{
+	Type:         hotrod.CounterStrong,
+	InitialValue: 0,
+	Storage:      hotrod.StoragePersistent,
+})
+
+counter := counters.Counter("page-views")
+newVal, _ := counter.AddAndGet(ctx, 1)</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="near-caching">Near caching</h3>
+<div class="paragraph">
+<p>For read-heavy workloads, the near cache keeps recently accessed entries on the client side with LRU eviction and automatic server-side invalidation via Bloom filters:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-go hljs" data-lang="go">nc, _ := hotrod.NewNearCache(ctx, client, "my-cache",
+	hotrod.WithMaxNearCacheEntries(500),
+)
+// First Get goes to the server; subsequent ones are served locally
+val, found, _ := nc.Get(ctx, []byte("hot-key"))</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="transactions">Transactions</h3>
+<div class="paragraph">
+<p>When you need atomicity across multiple operations:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-go hljs" data-lang="go">err := client.WithTransaction(ctx, "my-cache", func(tc *hotrod.TxCache) error {
+	tc.Put(ctx, []byte("account-A"), []byte("900"))
+	tc.Put(ctx, []byte("account-B"), []byte("1100"))
+	return nil // commit; return an error to rollback
+})</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="type-safe-caches-with-protocol-buffers">Type-safe caches with Protocol Buffers</h3>
+<div class="paragraph">
+<p>Tired of juggling <code>[]byte</code>? The typed cache gives you generics-powered, type-safe access with automatic marshalling:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-go hljs" data-lang="go">cache := hotrod.NewTypedCache[string, *pb.Person](
+	client, "people",
+	hotrod.ProtoStreamMarshaller(),
+	func() *pb.Person { return &amp;pb.Person{} },
+)
+
+cache.Put(ctx, "john", &amp;pb.Person{Name: "John", Age: 30})
+person, found, _ := cache.Get(ctx, "john")</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="and-theres-more">And there&#8217;s more</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Iterators</strong>&#8201;&#8212;&#8201;scan through all entries in batches without blowing up your memory</p>
+</li>
+<li>
+<p><strong>Multimap caches</strong>&#8201;&#8212;&#8201;map a single key to multiple values</p>
+</li>
+<li>
+<p><strong>Cache administration</strong>&#8201;&#8212;&#8201;create, configure, and remove caches programmatically</p>
+</li>
+<li>
+<p><strong>Schema management</strong>&#8201;&#8212;&#8201;register and manage Protobuf schemas</p>
+</li>
+<li>
+<p><strong>Pipelined connections</strong>&#8201;&#8212;&#8201;multiple operations fly over a single TCP connection concurrently, so you don&#8217;t pay a round-trip per request</p>
+</li>
+<li>
+<p><strong>Smart routing</strong>&#8201;&#8212;&#8201;topology-aware and hash-distribution-aware client intelligence, so your requests go straight to the node that owns the data</p>
+</li>
+<li>
+<p><strong>TLS and mTLS</strong>&#8201;&#8212;&#8201;because security isn&#8217;t optional</p>
+</li>
+<li>
+<p><strong>SCRAM-SHA-256, PLAIN, OAUTHBEARER, and EXTERNAL auth</strong>&#8201;&#8212;&#8201;pick your SASL flavor</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="the-connection-uri">The connection URI</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Connecting is as simple as a URI:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">hotrod://admin:password@server1:11222,server2:11222
+hotrods://admin:password@server:11222?trust_store_file_name=/path/to/ca.pem</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Use <code>hotrod://</code> for plain connections, <code>hotrods://</code> for TLS, and list as many servers as you like&#8201;&#8212;&#8201;the client discovers the rest through topology updates.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="get-started">Get started</h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">go get infinispan.org/go-client/hotrod</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Head over to the <a href="https://github.com/infinispan/go-client">GitHub repository</a> for full documentation and examples.
+Our <a href="https://infinispan.org/tutorials/?language=go">tutorials</a> are also packed with Go goodies now, so you can hit the ground running with hands-on, step-by-step guides.
+We&#8217;d love to hear your feedback&#8201;&#8212;&#8201;open an issue, send a PR, or just say hi. Happy caching, Gophers!</p>
+</div>
+</div>
+</div>]]></content><author><name>Tristan Tarrant</name></author><category term="hotrod" /><category term="go" /><category term="golang" /><category term="client" /><category term="release" /><summary type="html"><![CDATA[If you&#8217;ve ever thought "I wish I could talk to Infinispan from Go," today is your lucky day. We&#8217;re thrilled to announce the Infinispan Go Client&#8201;&#8212;&#8201;a brand-new, pure-Go client that speaks the Hot Rod 4.1 binary protocol and gives you access to all the good stuff: caching, counters, queries, transactions, listeners, and more.]]></summary></entry><entry><title type="html">Hot Rod Dissector for Wireshark</title><link href="https://infinispan.org/blog/2026/06/17/hot-rod-dissector-wireshark" rel="alternate" type="text/html" title="Hot Rod Dissector for Wireshark" /><published>2026-06-17T00:00:00+00:00</published><updated>2026-06-17T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/06/17/hot-rod-dissector-wireshark</id><content type="html" xml:base="https://infinispan.org/blog/2026/06/17/hot-rod-dissector-wireshark"><![CDATA[<div class="paragraph">
 <p>Need to debug a Hot Rod conversation? Don&#8217;t do it the hard way anymore—
 grab the right tool and be like Neo: able to decode the Matrix.</p>
 </div>
@@ -2338,41 +2663,4 @@ free use in your products.
 If you need official support, you can get it through supported versions of Infinispan.</p>
 </div>
 </div>
-</div>]]></content><author><name>Katia Aresti</name></author><category term="resp" /><category term="infinispan" /><category term="json" /><category term="lua" /><summary type="html"><![CDATA[In Infinispan 15, we added a variety of commands to help replace your Redis server without changing your code. The 15.2 release also included Lua Scripting and Redis JSON APIs. Key takeaways:]]></summary></entry><entry><title type="html">Infinispan 16.0.5</title><link href="https://infinispan.org/blog/2025/12/18/infinispan-16-0-5" rel="alternate" type="text/html" title="Infinispan 16.0.5" /><published>2025-12-18T00:00:00+00:00</published><updated>2025-12-18T00:00:00+00:00</updated><id>https://infinispan.org/blog/2025/12/18/infinispan-16.0.5</id><content type="html" xml:base="https://infinispan.org/blog/2025/12/18/infinispan-16-0-5"><![CDATA[<div id="preamble">
-<div class="sectionbody">
-<div class="paragraph">
-<p>We don&#8217;t usually blog about micros&#8230;&#8203; but this is the second time in as many days that I have to break with tradition.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="serious-protostream-bug-with-latin1-strings">Serious ProtoStream bug with Latin1 strings</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>If you were using strings that could be represented as Latin1/ISO-8859-1 in your protocol buffer payloads, ProtoStream
-was corrupting them. ASCII and full UTF-8 were fine. We&#8217;ve now fixed this bug. Thanks
-<a href="https://github.com/sf-db">Sergey Filipkov</a> for reporting this.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="java-serialization-failure-to-serialize-some-collections">Java serialization failure to serialize some collections</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Another marshalling bug was affecting Java serialization of some collection types. Thanks <a href="https://github.com/ratoaq2">Rato</a>
-for reporting this</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="release-notes">Release notes</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>You can look at the <a href="https://github.com/infinispan/infinispan/releases/tag/16.0.5">release notes</a> to see what was changed
-since our previous release.</p>
-</div>
-<div class="paragraph">
-<p>Get them from our <a href="https://infinispan.org/download/">download page</a>.</p>
-</div>
-</div>
-</div>]]></content><author><name>Tristan Tarrant</name></author><category term="release" /><category term="final" /><summary type="html"><![CDATA[We don&#8217;t usually blog about micros&#8230;&#8203; but this is the second time in as many days that I have to break with tradition.]]></summary></entry></feed>
+</div>]]></content><author><name>Katia Aresti</name></author><category term="resp" /><category term="infinispan" /><category term="json" /><category term="lua" /><summary type="html"><![CDATA[In Infinispan 15, we added a variety of commands to help replace your Redis server without changing your code. The 15.2 release also included Lua Scripting and Redis JSON APIs. Key takeaways:]]></summary></entry></feed>
