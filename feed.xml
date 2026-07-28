@@ -1,4 +1,140 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-07-28T11:24:32+00:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Hello, Gophers! Introducing the Infinispan Go Client</title><link href="https://infinispan.org/blog/2026/06/22/infinispan-go-client" rel="alternate" type="text/html" title="Hello, Gophers! Introducing the Infinispan Go Client" /><published>2026-06-22T00:00:00+00:00</published><updated>2026-06-22T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/06/22/infinispan-go-client</id><content type="html" xml:base="https://infinispan.org/blog/2026/06/22/infinispan-go-client"><![CDATA[<div id="preamble">
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.4.1">Jekyll</generator><link href="https://infinispan.org/feed.xml" rel="self" type="application/atom+xml" /><link href="https://infinispan.org/" rel="alternate" type="text/html" /><updated>2026-07-28T11:54:02+00:00</updated><id>https://infinispan.org/feed.xml</id><title type="html">Infinispan</title><subtitle>Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.</subtitle><entry><title type="html">Infinispan Hot Rod JS Client 0.16.0: Transactions, Multimaps, and Flags</title><link href="https://infinispan.org/blog/2026/06/29/hotrod-js-client-0-16-0" rel="alternate" type="text/html" title="Infinispan Hot Rod JS Client 0.16.0: Transactions, Multimaps, and Flags" /><published>2026-06-29T00:00:00+00:00</published><updated>2026-06-29T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/06/29/hotrod-js-client-016</id><content type="html" xml:base="https://infinispan.org/blog/2026/06/29/hotrod-js-client-0-16-0"><![CDATA[<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Hot on the heels of 0.15.0, we&#8217;re happy to announce the release of the <a href="https://github.com/infinispan/js-client/releases/tag/v0.16.0">Infinispan Hot Rod JS Client 0.16.0</a>.
+This release brings three new features that round out the client&#8217;s capabilities: transactions, multimap support, and operation flags.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="transactions">Transactions</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Sometimes you need multiple operations to succeed or fail as a unit. The JS client now supports Hot Rod transactions with a simple begin/commit/rollback API:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">var tm = client.getTransactionManager();
+
+await tm.begin();
+try {
+  await client.put('account-A', '900');
+  await client.put('account-B', '1100');
+  await tm.commit();
+} catch (e) {
+  await tm.rollback();
+  throw e;
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>During a transaction, reads go through the local write set first&#8201;&#8212;&#8201;so if you put a value and then get it within the same transaction, you&#8217;ll see your own write.
+Under the hood, the client uses XA-style two-phase commit with version-based conflict detection, so concurrent modifications are caught at commit time.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="multimaps">Multimaps</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Multimaps let you associate multiple values with a single key&#8201;&#8212;&#8201;great for tags, categories, or any one-to-many relationship:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">// Add values to a key
+await client.multimapPut('colors', 'red');
+await client.multimapPut('colors', 'green');
+await client.multimapPut('colors', 'blue');
+
+// Get all values for a key
+var values = await client.multimapGet('colors');
+console.log(values); // ['red', 'green', 'blue']
+
+// Check containment
+await client.multimapContainsEntry('colors', 'red');  // true
+await client.multimapContainsValue('green');           // true
+await client.multimapContainsKey('colors');             // true
+
+// Remove a specific value or the entire key
+await client.multimapRemoveEntry('colors', 'red');
+await client.multimapRemoveKey('colors');
+
+// Total number of key-value pairs across all keys
+var size = await client.multimapSize();</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="operation-flags">Operation flags</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>You can now pass Hot Rod flags to fine-tune how individual operations behave.
+Flags are available as constants on the <code>infinispan</code> module and can be combined with bitwise OR:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">var infinispan = require('infinispan');
+
+// Skip cache store loading
+await client.put('key', 'value', {
+  flags: infinispan.flags.SKIP_CACHE_LOAD
+});
+
+// Combine multiple flags
+await client.put('key', 'value', {
+  flags: infinispan.flags.SKIP_CACHE_LOAD | infinispan.flags.SKIP_INDEXING
+});
+
+// Suppress listener notifications on remove
+await client.remove('key', {
+  flags: infinispan.flags.SKIP_LISTENER_NOTIFICATION
+});</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The available flags are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>FORCE_RETURN_VALUE</code>&#8201;&#8212;&#8201;return the previous value on mutations</p>
+</li>
+<li>
+<p><code>DEFAULT_LIFESPAN</code>&#8201;&#8212;&#8201;use the server-configured default lifespan</p>
+</li>
+<li>
+<p><code>DEFAULT_MAXIDLE</code>&#8201;&#8212;&#8201;use the server-configured default max idle time</p>
+</li>
+<li>
+<p><code>SKIP_CACHE_LOAD</code>&#8201;&#8212;&#8201;don&#8217;t load from the cache store</p>
+</li>
+<li>
+<p><code>SKIP_INDEXING</code>&#8201;&#8212;&#8201;don&#8217;t index the entry</p>
+</li>
+<li>
+<p><code>SKIP_LISTENER_NOTIFICATION</code>&#8201;&#8212;&#8201;don&#8217;t fire listener events</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="get-started">Get started</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Install or update the client via npm:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">npm install infinispan@0.16.0</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Check out the full <a href="https://github.com/infinispan/js-client">source code and documentation</a> on GitHub.</p>
+</div>
+</div>
+</div>]]></content><author><name>Tristan Tarrant</name></author><category term="hotrod" /><category term="javascript" /><category term="client" /><category term="release" /><summary type="html"><![CDATA[Hot on the heels of 0.15.0, we&#8217;re happy to announce the release of the Infinispan Hot Rod JS Client 0.16.0. This release brings three new features that round out the client&#8217;s capabilities: transactions, multimap support, and operation flags.]]></summary></entry><entry><title type="html">Hello, Gophers! Introducing the Infinispan Go Client</title><link href="https://infinispan.org/blog/2026/06/22/infinispan-go-client" rel="alternate" type="text/html" title="Hello, Gophers! Introducing the Infinispan Go Client" /><published>2026-06-22T00:00:00+00:00</published><updated>2026-06-22T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/06/22/infinispan-go-client</id><content type="html" xml:base="https://infinispan.org/blog/2026/06/22/infinispan-go-client"><![CDATA[<div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
 <p>If you&#8217;ve ever thought "I wish I could talk to Infinispan from Go," today is your lucky day.
@@ -2431,236 +2567,4 @@ since our previous release.</p>
 <p>Get them from our <a href="https://infinispan.org/download/">download page</a>.</p>
 </div>
 </div>
-</div>]]></content><author><name>Tristan Tarrant</name></author><category term="release" /><category term="final" /><summary type="html"><![CDATA["Polly Want a Pilsner"]]></summary></entry><entry><title type="html">Infinispan Insights: Supporting Redis JSON and Scripting features with Infinispan</title><link href="https://infinispan.org/blog/2026/01/14/infinispan-resp-json-lua-scripting" rel="alternate" type="text/html" title="Infinispan Insights: Supporting Redis JSON and Scripting features with Infinispan" /><published>2026-01-14T00:00:00+00:00</published><updated>2026-01-14T00:00:00+00:00</updated><id>https://infinispan.org/blog/2026/01/14/infinispan-json-commands-lua-scripting</id><content type="html" xml:base="https://infinispan.org/blog/2026/01/14/infinispan-resp-json-lua-scripting"><![CDATA[<div id="preamble">
-<div class="sectionbody">
-<div class="paragraph">
-<p>In Infinispan 15, we added a variety of commands to help replace your Redis server without changing your code. The 15.2 release also included Lua Scripting and Redis JSON APIs.
-Key takeaways:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Understanding Redis JSON commands</p>
-</li>
-<li>
-<p>The benefits of Lua scripting</p>
-</li>
-<li>
-<p>How and why transition applications from Redis to Infinispan, or use Infinispan as a
-backend while working with Redis clients.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>This article follows up on supporting multiple Redis databases with Infinispan.
-For more details, check out the <a href="https://infinispan.org/blog/2024/10/07/cache-aliases-redis-databases">full article</a>.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="redis-drop-in-replacement-with-infinispan">Redis drop-in replacement with Infinispan</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>A drop-in replacement means you can substitute one technology for another without changing
-application code. This is valuable because:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Minimizes migration effort</strong>: You avoid rewriting logic or changing client libraries significantly.</p>
-</li>
-<li>
-<p><strong>Reduces downtime and risk:</strong> You can swap the backend and test incrementally.</p>
-</li>
-<li>
-<p><strong>Retains existing usage patterns</strong>: Developers can continue using the familiar APIs and data models.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Replacing open-source Redis with Infinispan offers several key benefits, especially
-for Java-based or enterprise-grade systems. Infinispan is fully open source under Apache 2.0,
-avoiding the licensing limitations of Redis modules. It provides advanced clustering, built-in high availability
-(Active-Active cross site replication), and better support for distributed and geo-replicated setups.
-It supports multiple databases even in clustered mode and it offers flexible persistence options like write-through and write-behind.
-Additionally, it includes robust security features such as fine-grained access control and encryption,
-and supports multiple deployment modes including embedded, server, and Kubernetes-native.</p>
-</div>
-<div class="paragraph">
-<p>Let&#8217;s test how this works, now also with JSON commands and Lua scripts.</p>
-</div>
-<div class="sect2">
-<h3 id="running-infinispan-as-usual">Running Infinispan as usual</h3>
-<div class="paragraph">
-<p><a href="https://infinispan.org/get-started/">Get started tutorial</a> is the best place to start.
-Just run the following command with docker or podman.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">podman/docker run -it -p 11222:11222 -e USER="admin" -e PASS="password" quay.io/infinispan/server:latest</code></pre>
-</div>
-</div>
-<div class="sect3">
-<h4 id="running-infinispan-with-the-redis-default-port">Running Infinispan with the Redis default port</h4>
-<div class="paragraph">
-<p>For those want to keep using the <strong>6379</strong> port, run Infinispan providing the following configuration
-file:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">podman/docker run -it -p 6379:6379 -p 11222:11222 -e USER="admin" -e PASS="password" quay.io/infinispan/server:latest -c infinispan-resp.xml</code></pre>
-</div>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Map -p 6379:6379 -p 11222:11222 (you keep the access to the console)</p>
-</li>
-<li>
-<p>Provide -c infinispan-resp.xml configuration file</p>
-</li>
-<li>
-<p>-e USER="admin" -e PASS="password will be used for 11222 port security</p>
-</li>
-</ul>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="using-a-redis-client">Using a Redis client</h3>
-<div class="paragraph">
-<p>Once the server is running, connect to Infinispan using Redis-CLI.
-Use port <strong>11222</strong> instead of the default <strong>6379</strong> if you are running Infinispan as usual.
-Since Infinispan is secured by default, make sure to provide the admin credentials.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">&gt; redis-cli -3 -p 11222 --raw
-127.0.0.1:11222&gt; AUTH admin password
-OK</code></pre>
-</div>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Connect using Protocol 3</p>
-</li>
-<li>
-<p>Use -p 11222 (Infinispan single port)</p>
-</li>
-<li>
-<p>Add --raw option to allow formatting</p>
-</li>
-<li>
-<p>Authenticate with admin/password</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>You can access the Infinispan Server Console as usual in <a href="http://localhost:11222" class="bare">http://localhost:11222</a>, with admin/password credentials.
-Check the (<a href="https://infinispan.org/blog/2024/10/07/cache-aliases-redis-databases">cache aliases tutorial</a> to learn
-more about respCache and how it connects to Redis Databases and cache aliases.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2025-04-11-resp-json-lua/ServerConsole_15_2.png"><img src="/assets/images/blog/2025-04-11-resp-json-lua/ServerConsole_15_2.png" alt="Infinispan Web Console 15.2"></a>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="redis-json-feature">Redis JSON Feature</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>RedisJSON is a powerful extension for managing JSON data directly in Redis.
-If you&#8217;re working with JSON-like data and need fast, efficient access and
-manipulation, RedisJSON is a great tool to use. This is part of the RedisStack
-or Redis Enterprise, and works with the JSON Query engine
-(which is not supported by Infinispan for now).</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">127.0.0.1:11222&gt; JSON.SET doc $ '{"project":"infinispan", "details": {"latest": "16.0", "year": 2025}}'
-OK
-127.0.0.1:11222&gt; JSON.GET doc INDENT "\t" NEWLINE "\n" SPACE " " $
-[
-	{
-		"project": "infinispan",
-		"details": {
-			"latest": "16.0",
-			"year": 2025
-		}
-	}
-]
-127.0.0.1:11222&gt; JSON.OBJKEYS doc $
-project
-details</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>In the console, the REST API currently shows the key, and the value is
-only displayed as the JSON.Bucket. Additional support for displaying more data
-is planned for future Infinispan releases, so we just need to wait a bit for the ability to
-show more content through the REST API.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<a class="image" href="/assets/images/blog/2025-04-11-resp-json-lua/Json_Bucket.png"><img src="/assets/images/blog/2025-04-11-resp-json-lua/Json_Bucket.png" alt="Json RESP cache"></a>
-</div>
-</div>
-<div class="paragraph">
-<p><strong>All JSON commands are implemented for the RESP 3 responses.</strong></p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="scripting-feature">Scripting Feature</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Lua scripting in Redis lets you write small programs in the Lua language
-that run directly on the Redis server. This helps you perform multiple actions
-in one go, saving time and making things faster. You can use it to do complex
-tasks without sending many commands back and forth between the client and server.</p>
-</div>
-<div class="paragraph">
-<p>Since <strong>Infinispan 16.0</strong>, you can now use Lua Scripting to perform these operations.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">127.0.0.1:11222&gt; EVAL "return 'Hello, scripting!'" 0
-Hello, scripting!
-127.0.0.1:11222&gt; EVAL "return ARGV[1]" 0 Hello
-Hello
-127.0.0.1:11222&gt; EVAL "return ARGV[1]" 0 Parameterization!
-Parameterization!
-127.0.0.1:11222&gt; EVAL "redis.call('SET', KEYS[1], ARGV[1]) redis.call('SET', KEYS[2], ARGV[2]) redis.call('SET', KEYS[3], ARGV[3]) return 'SET commands executed'" 3 key1 key2 key3 value1 value2 value3
-SET commands executed
-127.0.0.1:11222&gt; KEYS "*"
-key2
-key3
-key1
-doc</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Technically speaking, when using Infinispan, scripts are stored in an internal
-cache <strong>___script_cache</strong>.
-This cache is handled by Infinispan and manipulating it requires admin permissions.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="conclusions">Conclusions</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>In this tutorial, you’ve learned how to use Infinispan for JSON commands and Scripting from
-version 16.0. Redis Hot Replacement is gaining attention,
-especially with the concerns about Redis' licensing changes in 2024.
-Infinispan, an open-source solution under the Apache 2.0 license,
-is part of the <a href="https://www.commonhaus.org/">Commonhaus foundation</a>, allowing
-free use in your products.
-If you need official support, you can get it through supported versions of Infinispan.</p>
-</div>
-</div>
-</div>]]></content><author><name>Katia Aresti</name></author><category term="resp" /><category term="infinispan" /><category term="json" /><category term="lua" /><summary type="html"><![CDATA[In Infinispan 15, we added a variety of commands to help replace your Redis server without changing your code. The 15.2 release also included Lua Scripting and Redis JSON APIs. Key takeaways:]]></summary></entry></feed>
+</div>]]></content><author><name>Tristan Tarrant</name></author><category term="release" /><category term="final" /><summary type="html"><![CDATA["Polly Want a Pilsner"]]></summary></entry></feed>
