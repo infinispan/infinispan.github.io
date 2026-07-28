@@ -1,0 +1,108 @@
+---
+layout: blog
+title: "Infinispan Hot Rod JS Client 0.16.0: Transactions, Multimaps, and Flags"
+permalink: /blog/:year/:month/:day/hotrod-js-client-0-16-0
+date: '2026-06-29T00:00:00.000-00:00'
+author: ttarrant
+tags: [ "hotrod", "javascript", "client", "release" ]
+---
+
+= Infinispan Hot Rod JS Client 0.16.0: Transactions, Multimaps, and Flags
+
+Hot on the heels of 0.15.0, we're happy to announce the release of the https://github.com/infinispan/js-client/releases/tag/v0.16.0[Infinispan Hot Rod JS Client 0.16.0].
+This release brings three new features that round out the client's capabilities: transactions, multimap support, and operation flags.
+
+== Transactions
+
+Sometimes you need multiple operations to succeed or fail as a unit. The JS client now supports Hot Rod transactions with a simple begin/commit/rollback API:
+
+[source,javascript]
+----
+var tm = client.getTransactionManager();
+
+await tm.begin();
+try {
+  await client.put('account-A', '900');
+  await client.put('account-B', '1100');
+  await tm.commit();
+} catch (e) {
+  await tm.rollback();
+  throw e;
+}
+----
+
+During a transaction, reads go through the local write set first -- so if you put a value and then get it within the same transaction, you'll see your own write.
+Under the hood, the client uses XA-style two-phase commit with version-based conflict detection, so concurrent modifications are caught at commit time.
+
+== Multimaps
+
+Multimaps let you associate multiple values with a single key -- great for tags, categories, or any one-to-many relationship:
+
+[source,javascript]
+----
+// Add values to a key
+await client.multimapPut('colors', 'red');
+await client.multimapPut('colors', 'green');
+await client.multimapPut('colors', 'blue');
+
+// Get all values for a key
+var values = await client.multimapGet('colors');
+console.log(values); // ['red', 'green', 'blue']
+
+// Check containment
+await client.multimapContainsEntry('colors', 'red');  // true
+await client.multimapContainsValue('green');           // true
+await client.multimapContainsKey('colors');             // true
+
+// Remove a specific value or the entire key
+await client.multimapRemoveEntry('colors', 'red');
+await client.multimapRemoveKey('colors');
+
+// Total number of key-value pairs across all keys
+var size = await client.multimapSize();
+----
+
+== Operation flags
+
+You can now pass Hot Rod flags to fine-tune how individual operations behave.
+Flags are available as constants on the `infinispan` module and can be combined with bitwise OR:
+
+[source,javascript]
+----
+var infinispan = require('infinispan');
+
+// Skip cache store loading
+await client.put('key', 'value', {
+  flags: infinispan.flags.SKIP_CACHE_LOAD
+});
+
+// Combine multiple flags
+await client.put('key', 'value', {
+  flags: infinispan.flags.SKIP_CACHE_LOAD | infinispan.flags.SKIP_INDEXING
+});
+
+// Suppress listener notifications on remove
+await client.remove('key', {
+  flags: infinispan.flags.SKIP_LISTENER_NOTIFICATION
+});
+----
+
+The available flags are:
+
+* `FORCE_RETURN_VALUE` -- return the previous value on mutations
+* `DEFAULT_LIFESPAN` -- use the server-configured default lifespan
+* `DEFAULT_MAXIDLE` -- use the server-configured default max idle time
+* `SKIP_CACHE_LOAD` -- don't load from the cache store
+* `SKIP_INDEXING` -- don't index the entry
+* `SKIP_LISTENER_NOTIFICATION` -- don't fire listener events
+
+== Get started
+
+Install or update the client via npm:
+
+[source,bash]
+----
+npm install infinispan@0.16.0
+----
+
+Check out the full https://github.com/infinispan/js-client[source code and documentation] on GitHub.
