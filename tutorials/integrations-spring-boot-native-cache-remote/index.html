@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>SQL Store Persistence</title>
+  <title>Compile a Spring Boot Infinispan Application to a GraalVM Native Image</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -97,12 +97,16 @@
 
    <div class="guide-layout">
       <div class="guide-content">
-         <h1>SQL Store Persistence</h1>
+         <h1>Compile a Spring Boot Infinispan Application to a GraalVM Native Image</h1>
          <div class="sect1">
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to configure SQL table and query stores so that Infinispan caches load and persist data from a relational database. You will define Protobuf entities with <code>@Proto</code> annotations and register the generated schema on the server.</p>
+<p>How to compile a Spring Boot application that uses the Infinispan Hot Rod client into a GraalVM native image.
+The resulting native executable starts in milliseconds and uses a fraction of the memory compared to the JVM.</p>
+</div>
+<div class="paragraph">
+<p>This tutorial builds on the <a href="/tutorials/integrations-spring-boot-cache-remote-schema-auto-registration/">Spring Boot Automatic Protobuf Schema Registration</a> tutorial and adds the configuration needed for GraalVM native image compilation.</p>
 </div>
 </div>
 </div>
@@ -112,15 +116,23 @@
 <div class="ulist">
 <ul>
 <li>
-<p>Java 17+</p>
+<p>Java 21+ with GraalVM (for native compilation)</p>
 </li>
 <li>
-<p>An Infinispan Server running on <code>localhost:11222</code> (or Docker/Podman available for Testcontainers)</p>
+<p>Maven 3.6+</p>
+</li>
+<li>
+<p>Docker or Podman (for running Infinispan Server)</p>
 </li>
 </ul>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-1-start-an-infinispan-server">Step 1: Start an Infinispan Server</h2>
+<div class="sectionbody">
 <div class="paragraph">
-<p>Start an Infinispan Server with Docker or Podman:</p>
+<p>Start an Infinispan Server using Docker or Podman:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -139,14 +151,226 @@ You can replace <code>docker</code> with <code>podman</code> in the command abov
 </tr>
 </table>
 </div>
-<div class="admonitionblock tip">
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-2-add-dependencies">Step 2: Add Dependencies</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In addition to the standard Spring Boot Infinispan starter, add the GraalVM native image metadata module:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+   &lt;artifactId&gt;infinispan-spring-boot4-starter-remote&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+   &lt;artifactId&gt;infinispan-client-hotrod-graalvm&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan.protostream&lt;/groupId&gt;
+   &lt;artifactId&gt;protostream-processor&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>infinispan-client-hotrod-graalvm</code> artifact provides <code>META-INF/native-image/</code> metadata that registers the reflection entries and resource includes needed by the Hot Rod client at native image build time.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-3-define-protobuf-entities-and-schema">Step 3: Define Protobuf Entities and Schema</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Define your Protobuf entities and schema exactly as you would for a JVM application:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
+@Indexed
+public record Character(UUID id, @Text String name, @Text String bio, Archetype archetype) {
+
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@ProtoSchema(schemaPackageName = "tutorial",
+      includeClasses = {Character.class, Archetype.class},
+      dependsOn = {
+            org.infinispan.protostream.types.java.CommonTypes.class
+      })
+public interface AppSchema extends GeneratedSchema {
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-4-register-the-schema-bean-for-native-mode">Step 4: Register the Schema Bean for Native Mode</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Infinispan Spring Boot starter normally discovers <code>GeneratedSchema</code> implementations by scanning the classpath at runtime.
+This classpath scanning does not work in a native image because all classes are compiled ahead-of-time into the binary.</p>
+</div>
+<div class="paragraph">
+<p>To work around this, explicitly register the generated schema implementation as a Spring bean:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Configuration
+@ImportRuntimeHints(NativeConfiguration.InfinispanRuntimeHints.class)
+public class NativeConfiguration {
+
+   @Bean
+   GeneratedSchema appSchema() {
+      return new AppSchemaImpl();
+   }
+
+   static class InfinispanRuntimeHints implements RuntimeHintsRegistrar {
+
+      @Override
+      public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+         hints.resources().registerPattern("*.csv");
+      }
+   }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Key points:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <code>@Bean</code> method returns the annotation-processor-generated <code>AppSchemaImpl</code>.
+The starter&#8217;s auto-configuration picks it up via dependency injection and registers it with the <code>RemoteCacheManager</code>.</p>
+</li>
+<li>
+<p>The <code>RuntimeHintsRegistrar</code> ensures that application-specific resource files loaded at runtime (such as the CSV data file) are included in the native image.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-5-configure-the-native-maven-profile">Step 5: Configure the Native Maven Profile</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Since this project does not use <code>spring-boot-starter-parent</code> as its Maven parent, the native build profile must be configured manually.
+Add the following profile to your <code>pom.xml</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;profiles&gt;
+   &lt;profile&gt;
+      &lt;id&gt;native&lt;/id&gt;
+      &lt;build&gt;
+         &lt;plugins&gt;
+            &lt;plugin&gt;
+               &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+               &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;
+               &lt;executions&gt;
+                  &lt;execution&gt;
+                     &lt;id&gt;process-aot&lt;/id&gt;
+                     &lt;goals&gt;
+                        &lt;goal&gt;process-aot&lt;/goal&gt;
+                     &lt;/goals&gt;
+                  &lt;/execution&gt;
+               &lt;/executions&gt;
+            &lt;/plugin&gt;
+            &lt;plugin&gt;
+               &lt;groupId&gt;org.graalvm.buildtools&lt;/groupId&gt;
+               &lt;artifactId&gt;native-maven-plugin&lt;/artifactId&gt;
+               &lt;extensions&gt;true&lt;/extensions&gt;
+               &lt;executions&gt;
+                  &lt;execution&gt;
+                     &lt;id&gt;add-reachability-metadata&lt;/id&gt;
+                     &lt;goals&gt;
+                        &lt;goal&gt;add-reachability-metadata&lt;/goal&gt;
+                     &lt;/goals&gt;
+                  &lt;/execution&gt;
+               &lt;/executions&gt;
+               &lt;configuration&gt;
+                  &lt;buildArgs&gt;
+                     &lt;buildArg&gt;-H:+AddAllCharsets&lt;/buildArg&gt;
+                  &lt;/buildArgs&gt;
+                  &lt;fallback&gt;false&lt;/fallback&gt;
+               &lt;/configuration&gt;
+            &lt;/plugin&gt;
+         &lt;/plugins&gt;
+      &lt;/build&gt;
+   &lt;/profile&gt;
+&lt;/profiles&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This profile configures:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Spring Boot AOT processing</strong> (<code>process-aot</code>): pre-computes dependency injection, auto-configuration, and <code>@ConfigurationProperties</code> bindings at build time, eliminating the need for reflection at runtime.</p>
+</li>
+<li>
+<p><strong>GraalVM Native Maven Plugin</strong>: compiles the AOT-processed application into a native executable.
+The <code>add-reachability-metadata</code> goal downloads third-party native image metadata from the GraalVM reachability metadata repository.</p>
+</li>
+<li>
+<p><strong><code>-H:+AddAllCharsets</code></strong>: includes all character set support, required by the Infinispan client for certain encoding operations.</p>
+</li>
+<li>
+<p><strong><code>fallback=false</code></strong>: ensures a true native image is built; the build fails rather than silently falling back to a JVM-based executable.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-6-build-and-run-in-jvm-mode">Step 6: Build and Run in JVM Mode</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>First verify that the application works on the JVM:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn spring-boot:run</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Then test the REST endpoints:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">curl http://localhost:8080/characters/0
+curl "http://localhost:8080/characters/query?term=Felix"</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-7-build-the-native-image">Step 7: Build the Native Image</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Build the native executable using the <code>native</code> profile:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn -Pnative native:compile</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
 <table>
 <tr>
 <td class="icon">
-<div class="title">Tip</div>
+<div class="title">Note</div>
 </td>
 <td class="content">
-If no server is running, the tutorial code automatically starts an Infinispan Server using Testcontainers.
+Native image compilation requires significantly more time and memory than a regular build.
+Expect 2-5 minutes depending on your machine.
+Ensure at least 4GB of RAM is available for the build process.
 </td>
 </tr>
 </table>
@@ -154,88 +378,60 @@ If no server is running, the tutorial code automatically starts an Infinispan Se
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-define-the-data-model">Step 1: Define the Data Model</h2>
+<h2 id="step-8-run-the-native-executable">Step 8: Run the Native Executable</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Define your entities as Java records with <code>@Proto</code> annotations. For example, the <code>Author</code> entity:</p>
+<p>Run the compiled native executable:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
-public record Author(int id, String isbn, String name, String country) {}</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">./target/infinispan-spring-boot-native-cache-remote</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>The <code>Book</code> entity follows the same pattern with fields like <code>isbn</code>, <code>title</code>, <code>authorName</code>, and <code>country</code>. A <code>@ProtoSchema</code> interface generates the Protobuf schema for both entities.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-2-configure-the-sql-table-store">Step 2: Configure the SQL Table Store</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Define the cache with a <code>table-jdbc-store</code> that maps directly to a database table:</p>
+<p>You should see the application start in well under a second.
+The same REST endpoints are available:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="sqlTableCache"&gt;
-    &lt;encoding media-type="application/x-protostream"/&gt;
-    &lt;persistence&gt;
-        &lt;table-jdbc-store
-                read-only="true"
-                shared="false"
-                dialect="H2"
-                table-name="AUTHORS"&gt;
-            &lt;connection-pool connection-url="jdbc:h2:tcp://localhost:9123/~/example;DB_CLOSE_DELAY=-1"
-                             username="infinispan"
-                             password="secret"
-                             driver="org.h2.Driver"/&gt;
-            &lt;schema message-name="Author" package="library" embedded-key="true"/&gt;
-        &lt;/table-jdbc-store&gt;
-    &lt;/persistence&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">curl http://localhost:8080/characters/0
+curl "http://localhost:8080/characters/query?term=Felix"</code></pre>
 </div>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-3-connect-register-the-schema-and-read-data">Step 3: Connect, Register the Schema, and Read Data</h2>
+<h2 id="how-it-works">How It Works</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Register the Protobuf context initializer, load cache configurations from XML, and upload the schema to the server:</p>
+<p>Three layers work together to make the native image functional:</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">      ConfigurationBuilder configurationBuilder = TutorialsConnectorHelper.connectionConfig();
-      configurationBuilder.addContextInitializer(new TechLibrarySchemaImpl());
-      URI authorsCacheURI = SQLStoreLibraryMain.class.getClassLoader().getResource("sqlTableCache.xml").toURI();
-      URI booksCacheURI = SQLStoreLibraryMain.class.getClassLoader().getResource("sqlQueryCache.xml").toURI();
-      configurationBuilder.remoteCache(AUTHORS_CACHE).configurationURI(authorsCacheURI);
-      configurationBuilder.remoteCache(BOOKS_CACHE).configurationURI(booksCacheURI);
-
-      RemoteCacheManager cacheManager = TutorialsConnectorHelper.connect(configurationBuilder);
-
-      ProtostreamSchemaUploader schemaUploader = new ProtostreamSchemaUploader(cacheManager);
-      System.out.println("Register proto schema in the server...");
-      schemaUploader.registerSchema();</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The caches automatically load data from the database tables. You can read them with <code>cacheManager.getCache(cacheName).values()</code>.</p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-4-run-the-tutorial">Step 4: Run the Tutorial</h2>
-<div class="sectionbody">
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn package exec:java</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The tutorial starts an embedded H2 database, populates it, and displays the cached data loaded from the SQL store.</p>
-</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Layer</th>
+<th class="tableblock halign-left valign-top">What it covers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Spring Boot AOT</strong> (<code>process-aot</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All Spring annotations, dependency injection wiring, <code>@ConfigurationProperties</code>, auto-configuration evaluation</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong><code>infinispan-client-hotrod-graalvm</code></strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hot Rod client internals: SASL authentication providers (Elytron), consistent hashing, event listeners, ProtoStream <code>.proto</code> resource files</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong><code>NativeConfiguration</code></strong> (this tutorial)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Application-specific: <code>GeneratedSchema</code> bean registration (workaround for classpath scanning), application resource files</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 <div class="sect1">
@@ -244,10 +440,10 @@ public record Author(int id, String isbn, String name, String country) {}</code>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="/tutorials/remote-cache/">Getting started</a> with basic cache operations</p>
+<p><a href="/tutorials/integrations-spring-boot-cache-remote-schema-auto-registration/">Spring Boot Automatic Protobuf Schema Registration</a> for the JVM-only version of this tutorial</p>
 </li>
 <li>
-<p><a href="/tutorials/remote-query/">Query your data</a> with Ickle queries</p>
+<p><a href="/tutorials/integrations-quarkus-infinispan-client-example/">Quarkus Infinispan Client</a> for the same pattern with Quarkus</p>
 </li>
 </ul>
 </div>
@@ -319,109 +515,13 @@ public record Author(int id, String isbn, String name, String country) {}</code>
          
       
          
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
             
             
       
       <aside class="guide-sidebar">
          <div class="guide-sidebar-card">
             <h4>Source Code</h4>
-            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-remote/persistence/sql-store"
+            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/integrations/spring-boot/native-cache-remote"
                target="_blank" rel="noopener">
                <i class="fab fa-github"></i> View on GitHub
             </a>
