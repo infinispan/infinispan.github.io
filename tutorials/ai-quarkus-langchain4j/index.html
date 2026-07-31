@@ -9,7 +9,7 @@
     gtag('js', new Date());
     gtag('config', 'G-GPD7V946LB');
   </script>
-  <title>Quarkus Infinispan Client</title>
+  <title>RAG Chatbot with Quarkus LangChain4j and Infinispan</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
@@ -97,12 +97,32 @@
 
    <div class="guide-layout">
       <div class="guide-content">
-         <h1>Quarkus Infinispan Client</h1>
+         <h1>RAG Chatbot with Quarkus LangChain4j and Infinispan</h1>
          <div class="sect1">
 <h2 id="what-you-will-learn">What You Will Learn</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>How to use the Quarkus Infinispan client extension to connect to an Infinispan Server, store indexed Protobuf entities, and perform full-text search queries through a JAX-RS REST resource.</p>
+<p>How to build a Retrieval Augmented Generation (RAG) chatbot using Quarkus,
+with Infinispan as the vector embedding store and Ollama as the local chat model.</p>
+</div>
+<div class="paragraph">
+<p>This tutorial shows what Quarkus adds on top of plain LangChain4j:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Zero-config Infinispan</strong> via DevServices (no manual server setup)</p>
+</li>
+<li>
+<p><strong>CDI injection</strong> of the embedding store (no builder boilerplate)</p>
+</li>
+<li>
+<p><strong>Declarative AI services</strong> with <code>@RegisterAiService</code> (no manual prompt assembly)</p>
+</li>
+<li>
+<p><strong>Easy RAG</strong> for automatic document ingestion and retrieval augmentation</p>
+</li>
+</ul>
 </div>
 </div>
 </div>
@@ -115,143 +135,255 @@
 <p>Java 17+</p>
 </li>
 <li>
-<p>Quarkus</p>
+<p>Maven 3.9+</p>
+</li>
+<li>
+<p>Docker or Podman (for DevServices to start Infinispan and Ollama)</p>
 </li>
 </ul>
 </div>
-<div class="paragraph">
-<p>You don&#8217;t need an Infinispan Server running, use Quarkus Dev Services.</p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+Both Infinispan Server and Ollama are started automatically by Quarkus DevServices.
+No manual setup is needed.
+</td>
+</tr>
+</table>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-1-add-dependencies">Step 1: Add Dependencies</h2>
+<h2 id="step-1-the-ai-service">Step 1: The AI Service</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Add the Quarkus Infinispan client and REST Jackson extensions:</p>
+<p>Define a declarative AI service interface. Quarkus automatically wires it to the
+chat model and the RAG retrieval augmentor:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
-   &lt;groupId&gt;io.quarkus&lt;/groupId&gt;
-   &lt;artifactId&gt;quarkus-infinispan-client&lt;/artifactId&gt;
-&lt;/dependency&gt;
-&lt;dependency&gt;
-   &lt;groupId&gt;io.quarkus&lt;/groupId&gt;
-   &lt;artifactId&gt;quarkus-rest-jackson&lt;/artifactId&gt;
-&lt;/dependency&gt;</code></pre>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-2-define-the-protobuf-entity">Step 2: Define the Protobuf Entity</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Create an indexed Protobuf record with <code>@Text</code> fields for full-text search:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Proto
-@Indexed
-public record Character(UUID id, @Text String name, @Text String bio, Archetype archetype) {
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@RegisterAiService
+@RequestScoped
+public interface InfinispanAssistant {
 
+   @SystemMessage("""
+         You are an Infinispan expert assistant.
+         Answer questions about Infinispan using the provided context.
+         If you don't know the answer, say so.
+         """)
+   String chat(@UserMessage String question);
 }</code></pre>
 </div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="step-3-configure-the-cache">Step 3: Configure the Cache</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>In <code>application.properties</code>, point to the cache configuration and set server coordinates:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-properties hljs" data-lang="properties">quarkus.infinispan-client.cache.characters.configuration-resource=indexedCache.xml
-characters.filename = characters.csv
-
-# Uncomment if you are running a server in local
-# quarkus.infinispan-client.devservices.enabled=false
-# quarkus.infinispan-client.hosts=localhost:11222
-# quarkus.infinispan-client.username=admin
-# quarkus.infinispan-client.password=password
-
-# Assumes a server is running, with admin/password, locally
-%prod.quarkus.infinispan-client.hosts=localhost:11222
-%prod.quarkus.infinispan-client.username=admin
-%prod.quarkus.infinispan-client.password=password</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>In dev mode, Quarkus Dev Services automatically starts an Infinispan container.</p>
+<p><code>@RegisterAiService</code> tells Quarkus to create a CDI bean that handles embedding retrieval,
+prompt augmentation, and chat model invocation. No manual wiring needed.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="step-4-inject-the-remotecache-and-query">Step 4: Inject the RemoteCache and Query</h2>
+<h2 id="step-2-the-rest-endpoint">Step 2: The REST Endpoint</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Inject the remote cache and perform full-text queries using Ickle:</p>
+<p>Expose the AI service through a REST endpoint:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@ApplicationScoped
-public class CharacterSearch {
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Path("/chat")
+public class InfinispanAssistantResource {
+
    @Inject
-   @Remote(DataLoader.CHARACTERS_CACHE)
-   RemoteCache&lt;String, Character&gt; characters;
+   InfinispanAssistant assistant;
 
-   public Character getById(String id) {
-      return characters.get(id);
+   @GET
+   @Produces(MediaType.TEXT_PLAIN)
+   public String chat(@QueryParam("question") String question) {
+      return assistant.chat(question);
    }
-
-   public CompletionStage&lt;Character&gt; getByIdAsync(String id) {
-      return characters.getAsync(id);
-   }
-
-   /**
-    * Performs a simple full-text query on name and bio
-    *
-    * @param term
-    * @return character names
-    */
-   public Set&lt;String&gt; search(String term) {
-      if (characters == null) {
-         Log.error("Unable to search...");
-         throw new IllegalStateException("Characters store is null. Try restarting the application");
-      }
-      String query = "FROM tutorial.Character c"
-      + " WHERE c.name:'~"+ term + "'"
-      + " OR c.bio: '~" + term + "'";
-
-      List&lt;Character&gt; result = characters.&lt;Character&gt;query(query).execute().list();
-      return result.stream().map(Character::name).collect(Collectors.toSet());
-   }
-
 }</code></pre>
 </div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-3-configuration">Step 3: Configuration</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>application.properties</code> configures the embedding store dimension, the Ollama chat model,
+and the Easy RAG document ingestion:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-properties hljs" data-lang="properties"># Infinispan Embedding Store
+quarkus.langchain4j.infinispan.dimension=384
+
+# Ollama Chat Model
+quarkus.langchain4j.ollama.chat-model.model-id=llama3.2
+
+# Easy RAG: ingest documents from classpath
+quarkus.langchain4j.easy-rag.path=docs
+quarkus.langchain4j.easy-rag.path-type=classpath
+quarkus.langchain4j.easy-rag.max-segment-size=200
+quarkus.langchain4j.easy-rag.max-overlap-size=50
+quarkus.langchain4j.easy-rag.max-results=3</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Key points:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <code>dimension=384</code> matches the AllMiniLmL6V2 in-process embedding model</p>
+</li>
+<li>
+<p>Easy RAG automatically loads <code>.txt</code> files from the <code>docs/</code> classpath directory at startup,
+splits them into chunks, embeds them, and stores them in Infinispan</p>
+</li>
+<li>
+<p>No Infinispan connection configuration is needed in dev mode. Quarkus DevServices
+starts an Infinispan Server container automatically</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-4-the-knowledge-base">Step 4: The Knowledge Base</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Place text files in <code>src/main/resources/docs/</code>. This tutorial includes Infinispan FAQ files
+covering cache modes, vector search, client protocols, and more.</p>
+</div>
+<div class="paragraph">
+<p>Easy RAG reads these files at startup, chunks them into segments, embeds each segment
+using the in-process ONNX model, and stores the embeddings in Infinispan.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="step-5-run-the-tutorial">Step 5: Run the Tutorial</h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>Start the application in Quarkus dev mode:</p>
+</div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn quarkus:dev</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Then query the REST endpoints:</p>
+<p>Quarkus DevServices will automatically start:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>An Infinispan Server container (for the embedding store)</p>
+</li>
+<li>
+<p>An Ollama container with the <code>llama3.2</code> model (for chat)</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+The first startup may take a few minutes while Ollama downloads the model.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="step-6-ask-questions">Step 6: Ask Questions</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Query the chatbot using curl:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">curl http://localhost:8080/characters/0
-curl "http://localhost:8080/characters/query?term=dragon"</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">curl "http://localhost:8080/chat?question=What+cache+modes+does+Infinispan+support?"</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>The RAG pipeline automatically:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Embeds your question using the in-process ONNX model</p>
+</li>
+<li>
+<p>Searches Infinispan for the most relevant document chunks</p>
+</li>
+<li>
+<p>Includes those chunks as context in the prompt sent to Ollama</p>
+</li>
+<li>
+<p>Returns the generated answer</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Try more questions:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">curl "http://localhost:8080/chat?question=How+does+Infinispan+vector+search+work?"
+curl "http://localhost:8080/chat?question=What+client+protocols+does+Infinispan+support?"</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="quarkus-vs-plain-langchain4j">Quarkus vs Plain LangChain4j</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Compare this tutorial with the <a href="/tutorials/ai-langchain4j/">plain LangChain4j tutorial</a>:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Plain LangChain4j</th>
+<th class="tableblock halign-left valign-top">Quarkus LangChain4j</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manual <code>InfinispanEmbeddingStore.builder()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CDI <code>@Inject EmbeddingStore</code> with zero builder code</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manual Hot Rod connection configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DevServices auto-starts Infinispan</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Procedural embed/store/search calls</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>@RegisterAiService</code> declarative AI service</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manual embedding + search + prompt assembly</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Easy RAG handles ingestion and retrieval</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>public static void main</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">REST endpoint with live reload via <code>quarkus:dev</code></p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 <div class="sect1">
@@ -260,10 +392,10 @@ curl "http://localhost:8080/characters/query?term=dragon"</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="/tutorials/ai-vector-search/">Vector search</a> for kNN similarity search on embeddings</p>
+<p>Try <a href="/tutorials/ai-langchain4j/">semantic search with LangChain4j</a> for direct embedding store usage</p>
 </li>
 <li>
-<p><a href="/tutorials/remote-query/">Remote queries</a> for Ickle query basics with the Hot Rod client</p>
+<p>Try <a href="/tutorials/ai-vector-search/">vector search</a> for native Infinispan vector queries without LangChain4j</p>
 </li>
 </ul>
 </div>
@@ -279,61 +411,13 @@ curl "http://localhost:8080/characters/query?term=dragon"</code></pre>
          
       
          
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
-      
-         
             
             
       
       <aside class="guide-sidebar">
          <div class="guide-sidebar-card">
             <h4>Source Code</h4>
-            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/integrations/quarkus/infinispan-client-example"
+            <a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-ai/quarkus-langchain4j"
                target="_blank" rel="noopener">
                <i class="fab fa-github"></i> View on GitHub
             </a>
