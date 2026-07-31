@@ -1,0 +1,56 @@
+name: Update blog post dates
+
+on:
+  push:
+    branches: [develop]
+    paths: ['_posts/**']
+
+permissions:
+  contents: write
+
+jobs:
+  fix-dates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.API_TOKEN_GITHUB }}
+
+      - name: Update stale post dates
+        run: |
+          today=$(date -u +%Y-%m-%d)
+          changed=false
+
+          for file in $(git diff --name-only --diff-filter=A HEAD~1 -- '_posts/**'); do
+            [ -f "$file" ] || continue
+
+            post_date=$(sed -n "s/^date: *'\([0-9-]*\)T.*/\1/p" "$file" | head -1)
+            [ -z "$post_date" ] && continue
+
+            if [ "$post_date" \>= "$today" ] 2>/dev/null || [ "$post_date" = "$today" ]; then
+              continue
+            fi
+
+            echo "Updating $file: $post_date -> $today"
+
+            sed -i "s/^date: '${post_date}T/date: '${today}T/" "$file"
+
+            dir=$(dirname "$file")
+            base=$(basename "$file")
+            if echo "$base" | grep -q "^${post_date}"; then
+              newbase=$(echo "$base" | sed "s/^${post_date}/${today}/")
+              git mv "$file" "${dir}/${newbase}"
+            fi
+
+            changed=true
+          done
+
+          if [ "$changed" = true ]; then
+            git config user.name "Infinispan"
+            git config user.email "infinispan@infinispan.org"
+            git add -A
+            git commit -m "Update blog post dates to ${today}"
+            git push origin develop
+          fi
