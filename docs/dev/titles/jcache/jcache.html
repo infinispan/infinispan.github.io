@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.26">
-<title>Using the Memcached protocol endpoint with Infinispan</title>
+<title>JCache (JSR-107) with Infinispan</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -454,7 +454,6 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="/assets/javascript/cookieconsent.umd.js"></script>
 <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
 <script src="../../js/js.js"></script>
-<link rel="canonical" href="https://infinispan.org/docs/stable/titles/memcached/memcached.html">
 <style>
 .hidden {
     display: none;
@@ -534,26 +533,21 @@ $(addBlockSwitches);
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
-<h1>Using the Memcached protocol endpoint with Infinispan</h1>
+<h1>JCache (JSR-107) with Infinispan</h1>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
-<li><a href="#memcached_server">1. Memcached Server</a>
+<li><a href="#jcache">1. Using the JCache (JSR-107) API</a>
 <ul class="sectlevel2">
-<li><a href="#memcached_client_encoding">1.1. Client Encoding</a></li>
-<li><a href="#memcached_client_protocol_detection">1.2. Protocol detection</a></li>
-<li><a href="#memcached_client_security">1.3. Security</a>
+<li><a href="#jcache-dependencies_jcache">1.1. JCache Dependencies</a></li>
+<li><a href="#jcache-creating-caches_jcache">1.2. Creating and Using JCache Caches</a></li>
+<li><a href="#jcache-read-write-through_jcache">1.3. Configuring Read-Through and Write-Through</a>
 <ul class="sectlevel3">
-<li><a href="#text_protocol">1.3.1. Text protocol</a></li>
-<li><a href="#binary_protocol">1.3.2. Binary protocol</a></li>
-<li><a href="#flush_all">1.3.3. Flush All</a></li>
+<li><a href="#read_through">1.3.1. Read-through</a></li>
+<li><a href="#write_through">1.3.2. Write-through</a></li>
 </ul>
 </li>
-<li><a href="#unsupported_features">1.4. Unsupported Features</a>
-<ul class="sectlevel3">
-<li><a href="#individual_statistics">1.4.1. Individual Statistics</a></li>
-</ul>
-</li>
+<li><a href="#jcache-store-behavior_jcache">1.4. JCache Read-Through and Write-Through Behavior</a></li>
 </ul>
 </li>
 </ul>
@@ -563,137 +557,370 @@ $(addBlockSwitches);
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>Infinispan Server provides a Memcached endpoint that you can enable alongside the Hot Rod and REST endpoints.
-This guide provides details about interacting with remote caches with Memcached clients.</p>
+<p>Infinispan implements the JCache API (also known as JSR-107 and <code>javax.cache</code>).</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="memcached_server"><a class="anchor" href="#memcached_server"></a>1. Memcached Server</h2>
+<h2 id="jcache"><a class="anchor" href="#jcache"></a>1. Using the JCache (JSR-107) API</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The Infinispan server distribution contains a server module that implements the Memcached <a href="http://github.com/memcached/memcached/blob/master/doc/protocol.txt">text</a> and <a href="https://github.com/memcached/memcached/wiki/BinaryProtocolRevamped">binary</a> protocols. This allows Memcached clients to connect with one or several Infinispan backed Memcached servers. These servers can be standalone like Memcached, where each server acts independently and does not communicate with others. They can also be clustered, where the servers replicate or distribute their contents to other Infinispan backed Memcached servers, providing clients with failover capabilities.</p>
+<p>Infinispan provides a fully compliant implementation of the JCache (JSR-107) specification, the standard Java API for temporary caching.
+You can use the JCache API as a portable caching layer that works across different cache providers.</p>
 </div>
 <div class="paragraph">
-<p>The Memcached endpoint is enabled by default on the single-port endpoint. Memcached client connections will automatically be detected and routed to the internal connector.</p>
+<p>By coding against the <code>javax.cache</code> API, your application remains portable across JCache-compliant implementations.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The JCache specification (JSR-107) is no longer under active development.
+It was not part of Java EE, has not been adopted by Jakarta EE, and the expert group is no longer active.
+While Infinispan continues to support the JCache API, no further evolution of the specification is expected.</p>
+</div>
+<div class="paragraph">
+<p>For new projects, consider using the Infinispan native caching API or other actively maintained alternatives, which offer richer functionality and continued development.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="sect2">
-<h3 id="memcached_client_encoding"><a class="anchor" href="#memcached_client_encoding"></a>1.1. Client Encoding</h3>
+<h3 id="jcache-dependencies_jcache"><a class="anchor" href="#jcache-dependencies_jcache"></a>1.1. JCache Dependencies</h3>
 <div class="paragraph">
-<p>The Memcached text protocol assumes data values read and written by clients are raw bytes.</p>
+<p>Add the following dependencies to your <code>pom.xml</code> to use the JCache API with Infinispan:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+  &lt;artifactId&gt;infinispan-jcache&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;javax.cache&lt;/groupId&gt;
+  &lt;artifactId&gt;cache-api&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>It is not possible for a Memcached client to negotiate the data type to obtain data from the server or send data in different formats. The server can optionally be configured to handle values encoded with a certain Media Type. By setting the <code>client-encoding</code> attribute in the <code>memcached-connector</code> element, the server will return content in this configured format, and clients can also send data in this format.</p>
-</div>
-<div class="paragraph">
-<p><code>client-encoding</code> is useful when a single cache is accessed from multiple remote endpoints such as Rest, HotRod, or Memcached. This also allows users to customize the response and request to Memcached text clients. For information about interoperability between endpoints, see the endpoint interoperability documentation.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="memcached_client_protocol_detection"><a class="anchor" href="#memcached_client_protocol_detection"></a>1.2. Protocol detection</h3>
-<div class="paragraph">
-<p>The Infinispan Memcached connector supports both manual and automatic protocol configuration by setting the <code>protocol</code> attribute in the <code>memcached-connector</code> element to one of <code>TEXT</code>, <code>BINARY</code> and <code>AUTO</code>. Automatic detection depends on whether the Memcached connector is on a dedicated socket binding or is part of a single port endpoint. Detection of text protocol clients in a single port endpoint requires authentication, in order to disambiguate the request from other protocols.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="memcached_client_security"><a class="anchor" href="#memcached_client_security"></a>1.3. Security</h3>
-<div class="paragraph">
-<p>The Infinispan Memcached connector supports authentication for both the text and binary protocols. Because the two
-variants implement authentication in a different way, the supported mechanisms depend on the protocol in use.</p>
-</div>
-<div class="sect3">
-<h4 id="text_protocol"><a class="anchor" href="#text_protocol"></a>1.3.1. Text protocol</h4>
-<div class="paragraph">
-<p>Authentication in the Memcached text protocol is performed by an initial <code>set</code> command where the key is ignored and the value is a concatenation of the username and the password separated by a space. This authentication scheme requires a security realm that supports plain-text.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="binary_protocol"><a class="anchor" href="#binary_protocol"></a>1.3.2. Binary protocol</h4>
-<div class="paragraph">
-<p>Authentication in the Memcached binary protocol is performed via dedicated operations which wrap the SASL challenge/response scheme. This authentication scheme works with all the Infinispan security realm implementations.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="flush_all"><a class="anchor" href="#flush_all"></a>1.3.3. Flush All</h4>
-<div class="paragraph">
-<p>Even in a clustered environment, the <code>flush_all</code> command clears only the Infinispan Memcached server where the call lands. There is  no attempt to propagate this flush to other nodes in the cluster. This is done so that the <code>flush_all</code> with delay use case can be reproduced with the Infinispan Memcached server. The aim of passing a delay to <code>flush_all</code> is so that different Memcached servers can be flushed at different times, and hence avoid overloading the database with requests as a result of all Memcached servers being empty. For more information, see the <a href="http://github.com/memcached/memcached/blob/master/doc/protocol.txt">Memcached text protocol section about <code>flush_all</code></a> .</p>
-</div>
+<p>When these dependencies are on the classpath, Infinispan is automatically discovered as the JCache caching provider through the standard <code>java.util.ServiceLoader</code> mechanism.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="unsupported_features"><a class="anchor" href="#unsupported_features"></a>1.4. Unsupported Features</h3>
+<h3 id="jcache-creating-caches_jcache"><a class="anchor" href="#jcache-creating-caches_jcache"></a>1.2. Creating and Using JCache Caches</h3>
 <div class="paragraph">
-<p>This section details features of the Memcached text protocol that are currently not supported by the Infinispan based Memcached implementation.</p>
+<p>Create a JCache cache using the standard <code>javax.cache</code> API with Infinispan as the caching provider.</p>
 </div>
-<div class="sect3">
-<h4 id="individual_statistics"><a class="anchor" href="#individual_statistics"></a>1.4.1. Individual Statistics</h4>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Obtain a <code>CachingProvider</code> and <code>CacheManager</code>.</p>
+</li>
+<li>
+<p>Configure a cache with <code>MutableConfiguration</code>.</p>
+</li>
+<li>
+<p>Create the cache and perform operations.</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import javax.cache.Cache;
+import javax.cache.CacheManager;
+import javax.cache.Caching;
+import javax.cache.configuration.MutableConfiguration;
+import javax.cache.spi.CachingProvider;
+
+// Obtain the JCache CachingProvider. Infinispan is automatically
+// discovered when infinispan-jcache is on the classpath.
+CachingProvider cachingProvider = Caching.getCachingProvider();
+CacheManager cacheManager = cachingProvider.getCacheManager();
+
+// Configure a cache with key and value types.
+MutableConfiguration&lt;String, String&gt; configuration = new MutableConfiguration&lt;&gt;();
+configuration.setTypes(String.class, String.class);
+
+// Create a named cache with the configuration.
+Cache&lt;String, String&gt; cache = cacheManager.createCache("myCache", configuration);</code></pre>
+</div>
+</div>
 <div class="paragraph">
-<p>There are differences between the original Memcached implementation, which is C/C++ based, and the Infinispan implementation, which is Java based. There are some general purpose statistics that are not supported. For these unsupported statistics, Infinispan Memcached server always returns <code>0</code>.</p>
+<p>After you create a cache, you can store and retrieve values:</p>
 </div>
-<div class="ulist">
-<div class="title">Unsupported statistics</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">// Store a value
+cache.put("key", "value");
+
+// Retrieve the value
+String value = cache.get("key");
+System.out.printf("key = %s%n", value);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When you are finished, close the <code>CacheManager</code> and <code>CachingProvider</code> to release resources:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">cacheManager.close();
+cachingProvider.close();</code></pre>
+</div>
+</div>
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
 <ul>
 <li>
-<p>pointer_size</p>
-</li>
-<li>
-<p>rusage_user</p>
-</li>
-<li>
-<p>rusage_system</p>
-</li>
-<li>
-<p>bytes</p>
-</li>
-<li>
-<p>curr_connections</p>
-</li>
-<li>
-<p>total_connections</p>
-</li>
-<li>
-<p>connection_structures</p>
-</li>
-<li>
-<p>auth_cmds</p>
-</li>
-<li>
-<p>auth_errors</p>
-</li>
-<li>
-<p>limit_maxbytes</p>
-</li>
-<li>
-<p>threads</p>
-</li>
-<li>
-<p>conn_yields</p>
-</li>
-<li>
-<p>reclaimed</p>
+<p><a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-embedded/jcache">JCache simple tutorial on GitHub</a></p>
 </li>
 </ul>
 </div>
+</div>
+<div class="sect2">
+<h3 id="jcache-read-write-through_jcache"><a class="anchor" href="#jcache-read-write-through_jcache"></a>1.3. Configuring Read-Through and Write-Through</h3>
 <div class="paragraph">
-<div class="title">Statistic settings</div>
-<p>Statistics setting is not supported.</p>
+<p>JCache supports read-through and write-through caching to automatically load and persist cache entries using a <code>CacheLoader</code> and <code>CacheWriter</code>.</p>
+</div>
+<div class="sect3">
+<h4 id="read_through"><a class="anchor" href="#read_through"></a>1.3.1. Read-through</h4>
+<div class="paragraph">
+<p>With read-through enabled, Infinispan invokes the <code>CacheLoader</code> to load entries from an external store on cache misses.
+Read-through is only triggered by <code>get()</code>, <code>getAll()</code>, and <code>invoke()</code> operations.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import javax.cache.Cache;
+import javax.cache.CacheManager;
+import javax.cache.Caching;
+import javax.cache.configuration.FactoryBuilder;
+import javax.cache.configuration.MutableConfiguration;
+import javax.cache.spi.CachingProvider;
+
+CachingProvider cachingProvider = Caching.getCachingProvider();
+CacheManager cacheManager = cachingProvider.getCacheManager();
+
+MutableConfiguration&lt;String, String&gt; configuration = new MutableConfiguration&lt;&gt;();
+configuration.setTypes(String.class, String.class);
+configuration.setReadThrough(true);
+configuration.setCacheLoaderFactory(
+      FactoryBuilder.factoryOf(MyCacheLoader.class));
+
+Cache&lt;String, String&gt; cache = cacheManager.createCache("readThroughCache", configuration);</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="write_through"><a class="anchor" href="#write_through"></a>1.3.2. Write-through</h4>
+<div class="paragraph">
+<p>With write-through enabled, Infinispan invokes the <code>CacheWriter</code> to persist entries to an external store on cache mutations.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import javax.cache.Cache;
+import javax.cache.CacheManager;
+import javax.cache.Caching;
+import javax.cache.configuration.FactoryBuilder;
+import javax.cache.configuration.MutableConfiguration;
+import javax.cache.spi.CachingProvider;
+
+CachingProvider cachingProvider = Caching.getCachingProvider();
+CacheManager cacheManager = cachingProvider.getCacheManager();
+
+MutableConfiguration&lt;String, String&gt; configuration = new MutableConfiguration&lt;&gt;();
+configuration.setTypes(String.class, String.class);
+configuration.setWriteThrough(true);
+configuration.setCacheWriterFactory(
+      FactoryBuilder.factoryOf(MyCacheWriter.class));
+
+Cache&lt;String, String&gt; cache = cacheManager.createCache("writeThroughCache", configuration);</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>In the Infinispan JCache implementation, <code>CacheLoader</code> and <code>CacheWriter</code> instances are integrated as Infinispan persistence stores internally.
+If the underlying Infinispan cache already has a persistence store configured, write operations persist to that store regardless of the <code>isWriteThrough()</code> setting.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="jcache-store-behavior_jcache"><a class="anchor" href="#jcache-store-behavior_jcache"></a>1.4. JCache Read-Through and Write-Through Behavior</h3>
+<div class="paragraph">
+<p>When using the JCache (JSR-107) API with Infinispan, read-through and write-through interact with the underlying persistence layer through <code>CacheLoader</code> and <code>CacheWriter</code> adapters.</p>
 </div>
 <div class="paragraph">
-<div class="title">Settings with Arguments Parameter</div>
-<p>Infinispan Memcached server does not support passing any arguments to the <code>stats</code> command. If any parameters are passed, the Infinispan Memcached server responds with  <code>CLIENT_ERROR</code> .</p>
+<p>Read-through uses <code>CacheLoader</code> to load entries from an external store on cache misses.
+Write-through uses <code>CacheWriter</code> to persist entries to an external store on cache mutations.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Read-through and write-through behavior is not fully consistent across all JCache operations.
+The following table documents the current behavior of each operation for reference.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. JCache operation store behavior</caption>
+<colgroup>
+<col style="width: 27.2727%;">
+<col style="width: 18.1818%;">
+<col style="width: 18.1818%;">
+<col style="width: 36.3637%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Operation</th>
+<th class="tableblock halign-left valign-top">Read-through (CacheLoader)</th>
+<th class="tableblock halign-left valign-top">Write-through (CacheWriter)</th>
+<th class="tableblock halign-left valign-top">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>get(K)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conditional on <code>isReadThrough()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CacheLoader called for missing entries</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>getAll(Set)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conditional on <code>isReadThrough()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Same as <code>get()</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>containsKey(K)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spec: "only the cache is checked"</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>put(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>getAndPut(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>putAll(Map)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conditional on <code>isWriteThrough()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>isWriteThrough()</code> changes load + error handling, not persistence</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>putIfAbsent(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>remove(K)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>remove(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>getAndRemove(K)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>replace(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>replace(K, V, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>getAndReplace(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>removeAll(Set)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>isWriteThrough()</code> only changes error handling strategy</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>removeAll()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Direct cache API; bypasses functional map</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>invoke(K, EntryProcessor)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conditional on <code>isReadThrough()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read-through via <code>getValue()</code>; write-through via <code>setValue()</code>/<code>remove()</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>invokeAll(Set, EntryProcessor)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conditional on <code>isReadThrough()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Same as <code>invoke()</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clear()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spec: "without notifying listeners or CacheWriters"; clears both cache and store</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>"Always enabled" in the write-through column means that writes always go to the store regardless of the <code>isWriteThrough()</code> setting.
+This applies both when a JCache <code>CacheWriterFactory</code> is configured and when a persistence store is defined directly in the Infinispan configuration (for example, file-based, JDBC, or RocksDB stores).</p>
 </div>
 <div class="paragraph">
-<div class="title">Delete Hold Time Parameter</div>
-<p>As Memcached no longer honors the optional hold time parameter for the delete command, the Infinispan based Memcached server does not implement the feature.</p>
+<p>Conditional operations such as <code>putIfAbsent</code>, <code>replace</code>, and <code>remove(K, V)</code> only trigger write-through when the mutation actually occurs.
+For example, <code>replace(K, V)</code> only writes to the store if the entry already exists in memory.</p>
 </div>
 <div class="paragraph">
-<div class="title">Verbosity Command</div>
-<p>The verbosity command is not supported because Infinispan logging cannot be simplified to defining the logging level alone.</p>
-</div>
-<div class="paragraph">
-<div class="title">Meta protocol</div>
-<p>The Memcached meta protocol, introduced in Memcached 1.6, is not supported.</p>
-</div>
+<p>None of these conditional or previous-value-returning operations (<code>getAndPut</code>, <code>getAndRemove</code>, <code>getAndReplace</code>, <code>putIfAbsent</code>, <code>replace</code>, <code>remove(K, V)</code>) trigger read-through.
+Their existence and value checks only see entries currently in memory.
+This is consistent with the JSR-107 specification, which restricts read-through to <code>get()</code>, <code>getAll()</code>, and <code>invoke()</code>.</p>
 </div>
 </div>
 </div>
