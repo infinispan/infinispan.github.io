@@ -3,6 +3,13 @@
 # Fail fast on errors
 set -e
 
+# Recover if a previous run was interrupted while on the publish branch,
+# which may have left the working tree empty
+if [ "$(git symbolic-ref -q --short HEAD)" = "_site_publish" ]; then
+    git checkout -f develop
+fi
+git branch -D _site_publish 2>/dev/null || true
+
 rm -rf _site
 mkdir _site
 # Put bundles in a known path
@@ -10,7 +17,7 @@ bundle config set path $HOME/.bundle
 # Update gems
 if ! [ -x "$(command -v bundle)" ]; then
     echo "Bundler missing"
-    gem install bundler:2.5.1
+    gem install bundler:4.0.20
 fi
 #
 bundle install
@@ -36,12 +43,15 @@ echo "Tutorial guides ready."
 # Build the site
 bundle exec jekyll build
 
-# Workflow only fetches develop, we need to fetch also master
-git fetch origin master
-git checkout -f master
-git pull --rebase
-
-cp -r _site/* .
+# Rebuild master as a single orphan commit so no history is preserved
+git checkout --orphan _site_publish
+git rm -rf .
+# Restore .gitignore (deleted above) so build artifacts are not committed
+git checkout develop -- .gitignore
+cp -r _site/. .
 git add -A
-git commit -a -m "Published master to GitHub pages."
-git push origin master && git checkout develop
+git commit -m "Published master to GitHub pages."
+git push --force origin _site_publish:master
+git checkout develop
+git branch -D _site_publish
+git branch -f master origin/master || true

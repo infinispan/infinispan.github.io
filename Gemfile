@@ -38,4 +38,4 @@ gem "wdm", "~> 0.1.0" if Gem.win_platform?
 #gem "github-pages", group: :jekyll_plugins
 
 gem "webrick", "~> 1.8"
-
+gem "asciidoctor-tabs", "1.0.0.beta.6"

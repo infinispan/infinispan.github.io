@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require "yaml"
+require "json"
 require "fileutils"
 require "optimist"
 require "nokogiri"
@@ -18,6 +19,8 @@ where [options] are:
 EOS
 
   opt :verbose, "Be verbose", :default => false
+  opt :skip_infinispan, "Skip Infinispan docs", :default => false
+  opt :skip_clients, "Skip Hot Rod clients docs", :default => false
 end
 
 beginning = Time.now
@@ -72,14 +75,15 @@ end
 
 def injectAnalytics(target)
    cwd = File.expand_path File.dirname(__FILE__)
-   puts "Injecting analytics into #{target}"
+   puts "    💉 Injecting analytics into #{target}"
    sed_i = RUBY_PLATFORM =~ /darwin/ ? "sed -i ''" : "sed -i"
    %x( find #{target} -name "*.html" -exec #{sed_i} -f #{cwd}/inject-analytics.sed '{}' '\;' )
 end
 
 def extract_maven_artifact(artifact, target, ext)
-  puts "Downloading #{artifact} to #{target}"
+  puts "    ⬇️ Downloading #{artifact}"
   %x( mvn #{MVN_DEPENDENCY_PLUGIN}:copy -DoutputDirectory=#{target} -DrepoUrl=https://search.maven.org/artifact/ -Dartifact=#{artifact} -Dmdep.stripVersion=true)
+  puts "    📦 Extracting to #{target}"
   %x( unzip -qo #{target}/*#{ext} -d #{target} )
   FileUtils.rm Dir.glob("#{target}/*#{ext}")
 end
@@ -104,7 +108,7 @@ def get_maven_docs(htmlArtifact, javadocArtifact, pdfArtifact, docroot, docbase,
 
   if docalias != nil
     aliastarget = File.expand_path("#{docroot}/#{docalias}")
-    puts "    Alias #{docalias}"
+    puts "    🥸 Alias #{docalias}"
     FileUtils.rm_rf aliastarget
     FileUtils.cp_r(target, aliastarget)
   end
@@ -132,10 +136,13 @@ end
 def fetch_github_docs(github_url, branch, target_dir, verbose)
   zip_url = "#{github_url}/archive/#{branch}.zip"
   tmp_prefix = File.basename(target_dir)
+  puts "    ⬇️ Downloading #{zip_url}"
   %x( wget -q #{zip_url} -O _#{tmp_prefix}tmp.zip)
+  puts "    📦 Extracting to #{target_dir}"
   %x( unzip -o _#{tmp_prefix}tmp.zip "*documentation/*" -d _#{tmp_prefix}tmp)
+  puts "    ⚙️ Processing asciidoc"
   Dir.glob("_#{tmp_prefix}tmp/**/*.{asciidoc,adoc}").each do |f|
-    %x( asciidoctor #{f} )
+    %x( asciidoctor -r asciidoctor-tabs --doctype book --backend html5 -a brandname=Infinispan -a community -a topics=../topics -a stories=../stories #{f} )
   end
   Dir.glob("_#{tmp_prefix}tmp/**/*.html").each do |f|
     %x( cp -r #{f} _#{tmp_prefix}tmp )
@@ -156,6 +163,7 @@ else
   helmChartDocIndex = Array.new
 
   # Fetch infinispan core docs
+  stable_doc_dir = nil
   infinispan = projects["projects"]["infinispan"]
   infinispan.each do |minor, cfg|
     next if minor == "github"
@@ -167,12 +175,13 @@ else
     minor_str = minor_to_s(minor)
     doc_dir = "#{minor_str}.x"
 
-    puts "Processing infinispan #{doc_dir}"
+    puts "📄 Infinispan #{doc_dir}"
 
     html_artifact = "org.infinispan:infinispan-docs:#{version}:zip:html"
     javadoc_artifact = cfg.fetch("docs_javadoc", true) ? "org.infinispan:infinispan-javadoc-all:#{version}:jar:javadoc" : nil
 
     get_maven_docs(html_artifact, javadoc_artifact, nil, "docs", doc_dir, valias)
+    stable_doc_dir = doc_dir if valias == "stable"
     vname = if valias != nil then "#{doc_dir} (#{valias})" else doc_dir end
     coreDocIndex.push "#{vname}!#{doc_dir}"
     %x( mvn #{MVN_DEPENDENCY_PLUGIN}:unpack -DoutputDirectory=schemas -DmarkersDirectory=. -Dartifact=org.infinispan:infinispan-distribution:#{version}:zip:xsd )
@@ -191,16 +200,18 @@ else
   tutorials = projects["projects"]["simple-tutorials"]
   if tutorials && tutorials["doc_branches"]
     tutorials["doc_branches"].each do |branch|
+      puts "📄 Simple tutorials #{branch}"
       fetch_github_docs(tutorials["github"], branch, "tutorials/simple", verbose)
     end
   end
 
   # Fetch Hot Rod client docs
-  {"js-client" => "js", "cpp-client" => "cpp", "dotnet-client" => "dotnet", "go-client" => "go"}.each do |client, short_name|
-    project = projects["projects"][client]
-    next unless project && project["doc_branches"]
+  projects["projects"].each do |name, project|
+    next unless name.end_with?("-client") && project && project["doc_branches"]
     project["doc_branches"].each do |branch|
-      fetch_github_docs(project["github"], branch, "docs/hotrod-clients/#{short_name}/latest", verbose)
+      puts "📄 #{name} #{branch}"
+      target = "docs/hotrod-clients/#{name}/latest"
+      fetch_github_docs(project["github"], branch, target, verbose)
     end
   end
 
@@ -252,6 +263,38 @@ else
   gen_versions_xml_file("docs/infinispan-operator/versions.xml", operatorDocIndex)
   gen_versions_xml_file("docs/helm-chart/versions.xml", helmChartDocIndex)
   gen_versions_xml_file("docs/versions.xml", coreDocIndex)
+
+  # Generate doc-index.json from the stable version's doc-index.yml
+  if stable_doc_dir
+    yml_path = "docs/#{stable_doc_dir}/doc-index.yml"
+    if File.exist?(yml_path)
+      doc_index = YAML.load_file(yml_path)
+      File.write("docs/doc-index.json", JSON.pretty_generate(doc_index))
+      puts "Generated docs/doc-index.json from #{yml_path}"
+    else
+      puts "Warning: #{yml_path} not found, doc-index.json not generated"
+    end
+  end
+
+  # Replace all per-project js/js.js and js/toc.js with the shared data-driven version
+  shared_js = File.expand_path("assets/javascript/docs.js")
+  shared_css = File.expand_path("docs/stable/css/css.css") if stable_doc_dir
+  if File.exist?(shared_js)
+    Dir.glob("docs/**/js/{js,toc}.js").each do |f|
+      FileUtils.cp(shared_js, f, :verbose => verbose)
+    end
+    # Ensure client/operator/helm docs have js/ and css/ with shared files
+    Dir.glob("docs/{hotrod-clients/**/latest,infinispan-operator/*,helm-chart/*}").select { |d| File.directory?(d) }.each do |d|
+      js_dir = "#{d}/js"
+      css_dir = "#{d}/css"
+      FileUtils.mkdir_p(js_dir)
+      FileUtils.mkdir_p(css_dir)
+      FileUtils.cp(shared_js, "#{js_dir}/toc.js", :verbose => verbose)
+      FileUtils.cp(shared_js, "#{js_dir}/js.js", :verbose => verbose)
+      FileUtils.cp(shared_css, "#{css_dir}/toc.css", :verbose => verbose) if shared_css && File.exist?(shared_css)
+    end
+    puts "Replaced per-project sidebar JS/CSS with shared versions"
+  end
 
   sed_i = RUBY_PLATFORM =~ /darwin/ ? "sed -i ''" : "sed -i"
   system("find . -regex \"\\./docs/[0-9].*html$\" -exec #{sed_i} -e \"s|^<head>$|<head><meta name=\\\"robots\\\" content=\\\"noindex\\\">|\" {} \\;")
