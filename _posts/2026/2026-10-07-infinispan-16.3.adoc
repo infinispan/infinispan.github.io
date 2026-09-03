@@ -1,0 +1,123 @@
+---
+layout: blog
+title: "Infinispan 16.3: FIXME"
+permalink: /blog/:year/:month/:day/infinispan-16-3
+date: '2026-10-07T00:00:00.000-00:00'
+author: ttarrant
+tags: [ "release", "final" ]
+---
+
+= Infinispan 16.3
+
+*_"CODENAME"_*
+
+Our link:/roadmap/[4-month brewing process] has, yet again, come to completion.
+We are proud to present Infinispan 16.3 "CODENAME", brewed by experts (us !) using the finest ingredients, for all you fine palates out there.
+
+[caption="CODENAME"]
+image::/assets/images/blog/16.3.png[Codename, 406, 696, align="center"]
+
+The main theme for this release is "robustness": we've been investigating several areas, especially in "fragile" conditions, such as scaling up/down, startup,
+shutdown, split-brains, huge caches and clusters with large number of caches, etc, with the following goals:
+
+* improve reliability, addressing more failure conditions encountered by our users
+* optimize resource usage by optimizing algorithms and increasing concurrency in certain operations
+* better recovery in situations where data was inevitably lost or corrupted
+
+This task is obviously open-ended, so look for more improvements in future releases.
+
+== Conflict detection and resolution
+
+link:https://github.com/infinispan/infinispan/issues/16887[[#16887\]]
+link:https://github.com/infinispan/infinispan/issues/17620[[#17620\]]
+
+== Concurrent cache start
+    
+User caches are now started concurrently without blocking the cache manager
+start. As soon as a cache is started it is ready to serve requests, without
+having to wait for other caches.
+
+link:https://github.com/infinispan/infinispan/issues/16900[[#16900\]]
+
+== Get optimizations
+    
+Introduce an optimized interceptor chain for get and getCacheEntry
+operations that skips interceptors not participating in read commands.
+
+Benchmarks show 23-36% improvement on pure get operations across `LOCAL`
+and `DIST_SYNC` cache modes, with no regressions on put paths.
+    
+link:https://github.com/infinispan/infinispan/issues/17698[[#17698\]]
+
+== Transaction table management
+
+Avoid creating objects for already completed TXs.
+Create a shared instance to avoid unnecessary allocation per request.
+
+link:https://github.com/infinispan/infinispan/issues/17801[[#17801\]]
+link:https://github.com/infinispan/infinispan/issues/17687[[#17687\]]
+
+
+== Logging 
+
+Logging excessive failures under load has an amplification effect which can deteriorate performance even more. Also, log flooding makes it hard to identify the root cause of the failures. For this reason, several improvements have been made to reduce the amount of logging:
+
+link:https://github.com/infinispan/infinispan/issues/17801[[#17801\]] FREQUENT category and burst filter
+link:https://github.com/infinispan/infinispan/issues/17669[[#17669\]] Reduce RemoteException noise in logs
+link:https://github.com/infinispan/infinispan/issues/17662[[#17662\]] Reduce excessive logging for lock timeout
+
+
+== Update by query
+
+link:https://github.com/infinispan/infinispan/issues/14542[[#14542\]]
+
+== Peek
+
+A `CacheEntry<K, V> cache.peek(K key)` method was added that retrieves a cache
+entry without updating its last access timestamp, preventing the max-idle 
+expiration from being reset
+link:https://github.com/infinispan/infinispan/issues/17532[[#17532\]]
+
+== Security enhancements
+
+=== Brute-force authentication protection
+
+Security realms which handle username/password credentials (properties, ldap) are now automatically wrapped by a brute-force authentication protection mechanism: repeated failed attempts to authenticate a user will result in temporary lockdowns. link:https://github.com/infinispan/infinispan/issues/18001[[#18001\]]
+
+=== Post-Quantum Cryptography configuration
+
+TLS named groups, used by Post-Quantum Cryptography (PQC) algorithms, can be fine-tuned to cater for specific restrictions. This feature requires JDK 27 or JDK 25.0.4. link:https://github.com/infinispan/infinispan/issues/17842[[#17842\]]
+
+== Console enhancements
+
+== CLI enhancements
+
+=== Zero local authentication
+
+=== Install with dependencies
+
+== Operator enhancements
+
+=== Schema CRD
+
+link:https://github.com/infinispan/infinispan-operator/issues/2379[[#2379\]]
+
+== Architecture documentation
+
+The Infinispan documentation now includes a link:https://infinispan.org/docs/stable/titles/architecture/architecture.html[detailed architecture] document that describes in detail the various components and algorithms doing the dirty work behind the scenes.
+
+
+== Backwards compatibility
+
+Infinispan 16.3 is fully backwards compatible with 16.x deployments and can be upgraded in-place.
+
+== The next release
+
+According to our link:/roadmap/[roadmap], our next release will be 16.4, and it will happen on 2026-06-03.
+
+== Release notes
+
+You can look at the https://github.com/infinispan/infinispan/releases/tag/16.3.0[release notes] to see what was changed
+since our previous release.
+
+Get them from our https://infinispan.org/download/[download page].
