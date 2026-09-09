@@ -110,63 +110,6 @@ public class SemanticCache {
 
 In dev mode, Quarkus Dev Services starts an Infinispan container automatically — no manual setup needed.
 
-### Spring AI
-
-Add the Spring AI Infinispan vector store starter:
-
-```xml
-<dependency>
-    <groupId>org.springframework.ai</groupId>
-    <artifactId>spring-ai-infinispan-store</artifactId>
-</dependency>
-```
-
-Configure in `application.properties`:
-
-```properties
-spring.ai.vectorstore.infinispan.store-name=semantic-cache
-spring.ai.vectorstore.infinispan.similarity=COSINE
-spring.ai.vectorstore.infinispan.create-store=true
-
-infinispan.remote.server-list=localhost:11222
-infinispan.remote.auth-username=admin
-infinispan.remote.auth-password=password
-```
-
-Implement semantic caching with the auto-configured `InfinispanVectorStore`:
-
-```java
-@Service
-public class SemanticCache {
-
-    private final InfinispanVectorStore vectorStore;
-
-    private static final double SIMILARITY_THRESHOLD = 0.95;
-
-    public SemanticCache(InfinispanVectorStore vectorStore) {
-        this.vectorStore = vectorStore;
-    }
-
-    public String getOrCompute(String prompt, Function<String, String> llmCall) {
-        List<Document> results = vectorStore.similaritySearch(
-            SearchRequest.builder()
-                .query(prompt)
-                .topK(1)
-                .similarityThreshold(SIMILARITY_THRESHOLD)
-                .build());
-
-        if (!results.isEmpty()) {
-            return results.getFirst().getText();
-        }
-
-        String response = llmCall.apply(prompt);
-        vectorStore.add(List.of(new Document(response,
-            Map.of("prompt", prompt))));
-        return response;
-    }
-}
-```
-
 ### LangChain4j (standalone Java)
 
 Add the dependencies:
@@ -259,5 +202,4 @@ def semantic_cache_query(prompt, llm):
 * [LangChain4j Infinispan Embedding Store](https://docs.langchain4j.dev/integrations/embedding-stores/infinispan)
 * [Quarkus LangChain4j Infinispan Extension](https://docs.quarkiverse.io/quarkus-langchain4j/dev/rag-infinispan-store.html)
 * [LangChain Python InfinispanVS](https://python.langchain.com/docs/integrations/vectorstores/infinispanvs)
-* [Spring AI Infinispan Vector Store](https://docs.spring.io/spring-ai/reference/api/vectordbs/infinispan.html)
 * [Infinispan Vector Search Documentation](https://infinispan.org/docs/stable/titles/query/query.html)

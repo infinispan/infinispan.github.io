@@ -111,80 +111,6 @@ public interface ProductAssistant {
 
 The Quarkus extension automatically wires the Infinispan embedding store as the content retriever. In dev mode, Dev Services starts Infinispan automatically.
 
-### Spring AI
-
-Add the dependency:
-
-```xml
-<dependency>
-    <groupId>org.springframework.ai</groupId>
-    <artifactId>spring-ai-infinispan-store</artifactId>
-</dependency>
-```
-
-Configure in `application.properties`:
-
-```properties
-spring.ai.vectorstore.infinispan.store-name=document-embeddings
-spring.ai.vectorstore.infinispan.similarity=COSINE
-spring.ai.vectorstore.infinispan.create-store=true
-
-infinispan.remote.server-list=localhost:11222
-infinispan.remote.auth-username=admin
-infinispan.remote.auth-password=password
-```
-
-Ingest documents and perform RAG:
-
-```java
-@Service
-public class RagService {
-
-    private final InfinispanVectorStore vectorStore;
-    private final ChatClient chatClient;
-
-    public RagService(InfinispanVectorStore vectorStore,
-                      ChatClient.Builder chatClientBuilder) {
-        this.vectorStore = vectorStore;
-        this.chatClient = chatClientBuilder.build();
-    }
-
-    public void ingest(List<Document> documents) {
-        vectorStore.add(documents);
-    }
-
-    public String ask(String question) {
-        List<Document> context = vectorStore.similaritySearch(
-            SearchRequest.builder()
-                .query(question)
-                .topK(5)
-                .similarityThreshold(0.7)
-                .build());
-
-        String contextText = context.stream()
-            .map(Document::getText)
-            .collect(Collectors.joining("\n\n"));
-
-        return chatClient.prompt()
-            .system("Answer using the provided context:\n" + contextText)
-            .user(question)
-            .call()
-            .content();
-    }
-}
-```
-
-Spring AI also supports metadata filtering on search results:
-
-```java
-List<Document> filtered = vectorStore.similaritySearch(
-    SearchRequest.builder()
-        .query("product specifications")
-        .topK(5)
-        .filterExpression("category == 'electronics' && year == 2024")
-        .build());
-```
-
 ### LangChain4j (standalone Java)
 
 ```java
@@ -289,5 +215,4 @@ print(result["result"])
 * [LangChain4j Infinispan Embedding Store](https://docs.langchain4j.dev/integrations/embedding-stores/infinispan)
 * [Quarkus LangChain4j RAG with Infinispan](https://docs.quarkiverse.io/quarkus-langchain4j/dev/rag-infinispan-store.html)
 * [LangChain Python InfinispanVS](https://python.langchain.com/docs/integrations/vectorstores/infinispanvs)
-* [Spring AI Infinispan Vector Store](https://docs.spring.io/spring-ai/reference/api/vectordbs/infinispan.html)
 * [Infinispan Vector Search Documentation](https://infinispan.org/docs/stable/titles/query/query.html)

@@ -87,51 +87,6 @@ public class CachedWeatherTool {
 
 The `computeIfAbsent` method atomically checks the cache and populates it on a miss — with a 30-minute TTL so weather data stays fresh.
 
-### Spring AI
-
-Add the Infinispan Spring Boot starter:
-
-```xml
-<dependency>
-    <groupId>org.infinispan</groupId>
-    <artifactId>infinispan-spring-boot3-starter-remote</artifactId>
-</dependency>
-```
-
-Configure in `application.properties`:
-
-```properties
-infinispan.remote.server-list=localhost:11222
-infinispan.remote.auth-username=admin
-infinispan.remote.auth-password=password
-```
-
-Implement cached function calling:
-
-```java
-@Service
-public class CachedToolService {
-
-    private final RemoteCacheManager cacheManager;
-
-    public CachedToolService(RemoteCacheManager cacheManager) {
-        this.cacheManager = cacheManager;
-    }
-
-    @Description("Get the current weather for a city")
-    public String getWeather(String city) {
-        RemoteCache<String, String> cache = cacheManager
-            .getCache("tool-results");
-
-        String cacheKey = "weather:" + city.toLowerCase();
-
-        return cache.computeIfAbsent(cacheKey, k -> {
-            return weatherClient.getCurrentWeather(city);
-        }, 30, TimeUnit.MINUTES);
-    }
-}
-```
-
 ### LangChain4j (standalone Java)
 
 ```java
