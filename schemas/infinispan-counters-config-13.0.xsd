@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" version="1.0"
+           targetNamespace="urn:infinispan:config:counters:13.0"
+           xmlns:tns="urn:infinispan:config:counters:13.0"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+    <xs:element name="counters" type="tns:counters"/>
+
+    <xs:complexType name="counters">
+        <xs:sequence>
+            <xs:choice maxOccurs="unbounded">
+                <xs:element name="strong-counter" type="tns:strong-counter">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Configures strong consistent counters.
+                            The value of a strong counter is stored in a single key for consistency.
+                            During updates to the counter, the value is known. Updates to the counter value are performed under the key lock.
+                            Reads of the current value of the counter do not acquire any lock.
+                            Strong counters allow bounded values and atomic operations.
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:element>
+                <xs:element name="weak-counter" type="tns:weak-counter">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Configures weak consistent counters.
+                            The value of a weak counter is stored in multiple keys.
+                            Each key stores a partial state of the counter value and can be updated concurrently.
+                            During updates to the counter, the value is not known.
+                            Retrieving values for weak counters does not always return the most current value.
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:element>
+            </xs:choice>
+        </xs:sequence>
+        <xs:attribute name="num-owners" type="xs:positiveInteger" default="2">
+            <xs:annotation>
+                <xs:documentation>
+                    Specifies how many copies of the counter's value to create on the cluster.
+                    A smaller number results in faster update operations but supports a lower number of node crashes.
+                    You must specify a positive number as the value.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="reliability" type="tns:reliability" default="AVAILABLE">
+            <xs:annotation>
+                <xs:documentation>
+                    Controls how to handle counters when network partitions split clusters.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+    </xs:complexType>
+
+    <xs:complexType name="strong-counter">
+        <xs:complexContent>
+            <xs:extension base="tns:counter">
+                <xs:attribute name="lower-bound" type="xs:int">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Sets the lower bound, inclusively, for strong consistent counters.
+                            You must specify a value that is less than or equal to the "initial-value".
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="upper-bound" type="xs:int">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Sets the upper bound, inclusively, for strong consistent counters.
+                            You must specify a value that is greater than or equal to the "initial-value".
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+                <xs:attribute name="lifespan" type="xs:long" default="-1">
+                    <xs:annotation>
+                        <xs:documentation>
+                          (Experimental) Specifies the maximum amount of time, in milliseconds, that strong counters can remain in the cluster.
+                          Counters are removed from the cluster when they exceed the lifespan and are reset to their initial values.
+                          Setting a value of 0 (zero) or -1 means counters are never removed.
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="weak-counter">
+        <xs:complexContent>
+            <xs:extension base="tns:counter">
+                <xs:attribute name="concurrency-level" type="xs:positiveInteger" default="16">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Sets the maximum number of concurrent updates to weak counter values.
+                            You must specify a positive number as the value.
+                        </xs:documentation>
+                    </xs:annotation>
+                </xs:attribute>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="counter" abstract="true">
+        <xs:attribute name="name" type="xs:ID" use="required">
+            <xs:annotation>
+                <xs:documentation>
+                    Specifies a unique name for each counter.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="initial-value" type="xs:int" default="0">
+            <xs:annotation>
+                <xs:documentation>
+                    Specifies the initial value for counters.
+                    For bounded counters, the initial value must be between the upper-bound and lower-bound.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="storage" type="tns:storage" default="VOLATILE">
+            <xs:annotation>
+                <xs:documentation>
+                    Controls how to store counters when you restart and stop clusters.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+    </xs:complexType>
+
+    <xs:simpleType name="storage">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="VOLATILE">
+                <xs:annotation>
+                    <xs:documentation>
+                        Counter values are permanently deleted when clusters restart or stop.
+                        Both the value and configuration of on-demand counters are deleted and must be created again.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="PERSISTENT">
+                <xs:annotation>
+                    <xs:documentation>
+                        Counter values are saved in persistent storage and are available after clusters restart or stop.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="reliability">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="AVAILABLE">
+                <xs:annotation>
+                    <xs:documentation>
+                        All partitions can read and update counter values.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="CONSISTENT">
+                <xs:annotation>
+                    <xs:documentation>
+                        The primary partition can read and update counter values.
+                        Other partitions can read values only if the counters are available in the partition.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+        </xs:restriction>
+    </xs:simpleType>
+</xs:schema>
