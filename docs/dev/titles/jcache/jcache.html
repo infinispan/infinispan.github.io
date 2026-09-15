@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.26">
-<title>Infinispan cache configuration cheat sheet</title>
+<title>JCache (JSR-107) with Infinispan</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -567,422 +567,215 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 }
 </style>
 </head>
-<body class="book">
+<body class="book toc2 toc-left">
 <div id="header">
-<h1>Infinispan cache configuration cheat sheet</h1>
+<h1>JCache (JSR-107) with Infinispan</h1>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#jcache">1. Using the JCache (JSR-107) API</a>
+<ul class="sectlevel2">
+<li><a href="#jcache-dependencies_jcache">1.1. JCache Dependencies</a></li>
+<li><a href="#jcache-creating-caches_jcache">1.2. Creating and Using JCache Caches</a></li>
+<li><a href="#jcache-read-write-through_jcache">1.3. Configuring Read-Through and Write-Through</a>
+<ul class="sectlevel3">
+<li><a href="#read_through">1.3.1. Read-through</a></li>
+<li><a href="#write_through">1.3.2. Write-through</a></li>
+</ul>
+</li>
+<li><a href="#jcache-store-behavior_jcache">1.4. JCache Read-Through and Write-Through Behavior</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 <div id="content">
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>Use the following information and configuration examples as a quick reference for creating and configuring Infinispan caches.</p>
+<p>Infinispan implements the JCache API (also known as JSR-107 and <code>javax.cache</code>).</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="clustered_cache_modes"><a class="anchor" href="#clustered_cache_modes"></a>1. Clustered cache modes</h2>
+<h2 id="jcache"><a class="anchor" href="#jcache"></a>1. Using the JCache (JSR-107) API</h2>
 <div class="sectionbody">
-<div class="dlist">
-<dl>
-<dt class="hdlist1">Distributed</dt>
-<dd>
-<p>Distributed caches offer linear scalability and efficient memory usage by creating fewer copies of each entry across the cluster.
-Distributed caches store a number of copies for each cache entry, which is equal to the <strong>Number of owners</strong> that you configure.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache /&gt;</code></pre>
-</div>
-</div>
-</dd>
-<dt class="hdlist1">Replicated</dt>
-<dd>
-<p>Replicated caches offer fault tolerance and guarantees against data loss by creating a copy of all entries on each node in the cluster.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;replicated-cache /&gt;</code></pre>
-</div>
-</div>
-</dd>
-</dl>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="cluster_replication"><a class="anchor" href="#cluster_replication"></a>2. Cluster replication</h2>
-<div class="sectionbody">
-<div class="dlist">
-<dl>
-<dt class="hdlist1">Synchronous replication</dt>
-<dd>
-<p>Helps to keep your data consistent but adds latency to cluster traffic, which reduces throughput for cache writes.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache mode="SYNC" /&gt;</code></pre>
-</div>
-</div>
-</dd>
-<dt class="hdlist1">Asynchronous replication</dt>
-<dd>
-<p>Reduces latency and increases the speed of write operations but because Infinispan replicates entries from primary owners, asynchronous replication provides a lower guarantee against data loss.
-Cluster topology changes and network errors might also lead to data inconsistency with asynchronous replication.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache mode="ASYNC" /&gt;</code></pre>
-</div>
-</div>
-</dd>
-</dl>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="cache_configuration_options"><a class="anchor" href="#cache_configuration_options"></a>3. Cache configuration options</h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="encoding"><a class="anchor" href="#encoding"></a>3.1. Encoding</h3>
 <div class="paragraph">
-<p>A format, identified by a media type, that Infinispan uses to store keys and values in caches.</p>
+<p>Infinispan provides a fully compliant implementation of the JCache (JSR-107) specification, the standard Java API for temporary caching.
+You can use the JCache API as a portable caching layer that works across different cache providers.</p>
 </div>
-<div class="admonitionblock tip">
+<div class="paragraph">
+<p>By coding against the <code>javax.cache</code> API, your application remains portable across JCache-compliant implementations.</p>
+</div>
+<div class="admonitionblock important">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-tip" title="Tip"></i>
+<i class="fa icon-important" title="Important"></i>
 </td>
 <td class="content">
-Infinispan recommends the <code>application/x-protostream</code> media type. Protobuf provides excellent performance as well as interoperability between client applications in different programming languages for both Hot Rod and REST endpoints. Your cache encoding must be compatible with the Hot Rod client marshaller.
+<div class="paragraph">
+<p>The JCache specification (JSR-107) is no longer under active development.
+It was not part of Java EE, has not been adopted by Jakarta EE, and the expert group is no longer active.
+While Infinispan continues to support the JCache API, no further evolution of the specification is expected.</p>
+</div>
+<div class="paragraph">
+<p>For new projects, consider using the Infinispan native caching API or other actively maintained alternatives, which offer richer functionality and continued development.</p>
+</div>
 </td>
 </tr>
 </table>
 </div>
+<div class="sect2">
+<h3 id="jcache-dependencies_jcache"><a class="anchor" href="#jcache-dependencies_jcache"></a>1.1. JCache Dependencies</h3>
+<div class="paragraph">
+<p>Add the following dependencies to your <code>pom.xml</code> to use the JCache API with Infinispan:</p>
+</div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache mode="SYNC"&gt;
-  &lt;encoding&gt;
-    &lt;key media-type="application/x-protostream"/&gt;
-    &lt;value media-type="application/x-protostream"/&gt;
-  &lt;/encoding&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+  &lt;artifactId&gt;infinispan-jcache&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;javax.cache&lt;/groupId&gt;
+  &lt;artifactId&gt;cache-api&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>When these dependencies are on the classpath, Infinispan is automatically discovered as the JCache caching provider through the standard <code>java.util.ServiceLoader</code> mechanism.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="expiration"><a class="anchor" href="#expiration"></a>3.2. Expiration</h3>
+<h3 id="jcache-creating-caches_jcache"><a class="anchor" href="#jcache-creating-caches_jcache"></a>1.2. Creating and Using JCache Caches</h3>
 <div class="paragraph">
-<p>Controls how long Infinispan keeps entries in a cache and takes effect across clusters.</p>
+<p>Create a JCache cache using the standard <code>javax.cache</code> API with Infinispan as the caching provider.</p>
 </div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1">Lifespan</dt>
-<dd>
-<p>The maximum amount of time, in milliseconds, that cache entries can exist.
-If you set the value to -1, entries never expire.
-Lifespan uses a <code>creation</code> timestamp and the value for the <code>lifespan</code> property to determine when entries expire.
-The creation time for cache entries provides a value that is consistent across clustered caches.</p>
-</dd>
-<dt class="hdlist1">Max-idle</dt>
-<dd>
-<p>The maximum amount of time, in milliseconds, that cache entries can remain idle.
-If no operations are performed on entries within the maximum idle time, the entries expire across the cluster.
-If you set the value to -1, entries never expire.</p>
-</dd>
-</dl>
-</div>
-<div class="paragraph">
-<p>Maximum idle uses a <code>last used</code> timestamp and the value for the <code>max-idle</code> property to determine when entries expire.
-The last access time for entries is not always the same on all nodes.
-To ensure that entries have the same relative access times across clusters, Infinispan sends touch commands to all owners when keys are accessed.
-This synchronous behavior increases the latency of client requests.</p>
-</div>
-<div class="admonitionblock tip">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-tip" title="Tip"></i>
-</td>
-<td class="content">
-The Infinispan team recommends that you set the <code>lifespan</code> property to a value that is at least double the value of the <code>max-idle</code> property. Configuring <code>max-idle</code> close to <code>lifespan</code> has performance drawbacks.
-</td>
-</tr>
-</table>
+<div class="olist arabic">
+<div class="title">Procedure</div>
+<ol class="arabic">
+<li>
+<p>Obtain a <code>CachingProvider</code> and <code>CacheManager</code>.</p>
+</li>
+<li>
+<p>Configure a cache with <code>MutableConfiguration</code>.</p>
+</li>
+<li>
+<p>Create the cache and perform operations.</p>
+</li>
+</ol>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;expiration lifespan="5000"
-              max-idle="1000" /&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import javax.cache.Cache;
+import javax.cache.CacheManager;
+import javax.cache.Caching;
+import javax.cache.configuration.MutableConfiguration;
+import javax.cache.spi.CachingProvider;
+
+// Obtain the JCache CachingProvider. Infinispan is automatically
+// discovered when infinispan-jcache is on the classpath.
+CachingProvider cachingProvider = Caching.getCachingProvider();
+CacheManager cacheManager = cachingProvider.getCacheManager();
+
+// Configure a cache with key and value types.
+MutableConfiguration&lt;String, String&gt; configuration = new MutableConfiguration&lt;&gt;();
+configuration.setTypes(String.class, String.class);
+
+// Create a named cache with the configuration.
+Cache&lt;String, String&gt; cache = cacheManager.createCache("myCache", configuration);</code></pre>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="statistics"><a class="anchor" href="#statistics"></a>3.3. Statistics</h3>
 <div class="paragraph">
-<p>Collect statistics for your cache.
-Keep disabled for optimal performance.</p>
+<p>After you create a cache, you can store and retrieve values:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache statistics="true" /&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">// Store a value
+cache.put("key", "value");
+
+// Retrieve the value
+String value = cache.get("key");
+System.out.printf("key = %s%n", value);</code></pre>
 </div>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="infinispan_capabilities"><a class="anchor" href="#infinispan_capabilities"></a>4. Infinispan capabilities</h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="bounded_caches"><a class="anchor" href="#bounded_caches"></a>4.1. Bounded caches</h3>
-<div class="sect3">
-<h4 id="eviction"><a class="anchor" href="#eviction"></a>4.1.1. Eviction</h4>
-<div class="paragraph">
-<p>Eviction controls the amount of data that Infinispan keeps in memory and takes effect on each node. Control the size of the data container in one of the following ways:</p>
-</div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1">Max size</dt>
-<dd>
-<p>Maximum size in bytes of the data container.
-Eviction occurs when the approximate memory usage of the data container exceeds the maximum size.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;memory max-size="12MB" when-full="REMOVE"/&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-</dd>
-<dt class="hdlist1">Max count</dt>
-<dd>
-<p>Maximum number of entries.
-Eviction occurs after the container size exceeds the maximum count.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-	&lt;memory max-count="124" when-full="REMOVE"/&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-</dd>
-</dl>
-</div>
-<div class="sect4">
-<h5 id="eviction_strategies"><a class="anchor" href="#eviction_strategies"></a>Eviction strategies</h5>
-<div class="dlist">
-<dl>
-<dt class="hdlist1">REMOVE</dt>
-<dd>
-<p>Infinispan performs eviction. This is the default strategy when you define a size for the data container. Because not all nodes evict the same entries you should use eviction with persistent storage to avoid data inconsistency.</p>
-</dd>
-<dt class="hdlist1">EXCEPTION</dt>
-<dd>
-<p>Infinispan throws an exception instead of evicting entries.</p>
-</dd>
-</dl>
 </div>
 <div class="paragraph">
-<p>If no strategy is defined, but <code>max-count</code> or <code>max-size</code> is configured, <code>REMOVE</code> is used.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="indexed_caches"><a class="anchor" href="#indexed_caches"></a>4.2. Indexed caches</h3>
-<div class="paragraph">
-<p>Create indexes of values in your caches for faster queries and full-text search capabilities.</p>
-</div>
-<div class="sect3">
-<h4 id="index_storage"><a class="anchor" href="#index_storage"></a>4.2.1. Index storage</h4>
-<div class="dlist">
-<dl>
-<dt class="hdlist1">Persistent</dt>
-<dd>
-<p>On the host file system, which is the default and persists indexes between restarts.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;indexing storage="filesystem"&gt;
-    &lt;!-- Indexing configuration goes here. --&gt;
-  &lt;/indexing&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-</dd>
-<dt class="hdlist1">Volatile</dt>
-<dd>
-<p>In JVM heap memory, which means that indexes do not survive restarts.
-Store indexes in JVM heap memory for small data sets only.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;indexing storage="local-heap"&gt;
-    &lt;!-- Indexing configuration goes here. --&gt;
-  &lt;/indexing&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-</dd>
-</dl>
-</div>
-</div>
-<div class="sect3">
-<h4 id="index_reader"><a class="anchor" href="#index_reader"></a>4.2.2. Index reader</h4>
-<div class="paragraph">
-<p>The index reader provides access to the indexes to perform queries.
-As the index content changes, Infinispan needs to refresh the reader so that search results are up to date.</p>
+<p>When you are finished, close the <code>CacheManager</code> and <code>CachingProvider</code> to release resources:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;indexing storage="filesystem" path="${java.io.tmpdir}/baseDir"&gt;
-    &lt;!-- Sets an interval of one second for the index reader. --&gt;
-    &lt;index-reader refresh-interval="1s"/&gt;
-    &lt;!-- Additional indexing configuration goes here. --&gt;
-  &lt;/indexing&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">cacheManager.close();
+cachingProvider.close();</code></pre>
 </div>
 </div>
-</div>
-<div class="sect3">
-<h4 id="index_writer"><a class="anchor" href="#index_writer"></a>4.2.3. Index writer</h4>
-<div class="paragraph">
-<p>The index writer constructs an index composed of one or more segments (sub-indexes) that can be merged over time to improve performance.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;indexing storage="filesystem" path="${java.io.tmpdir}/baseDir"&gt;
-    &lt;index-writer commit-interval="2s"
-                  low-level-trace="false"
-                  max-buffered-entries="32"
-                  queue-count="1"
-                  queue-size="10000"
-                  ram-buffer-size="400"&gt;
-      &lt;index-merge calibrate-by-deletes="true"
-                   factor="3"
-                   max-entries="2000"
-                   min-size="10"
-                   max-size="20"/&gt;
-    &lt;/index-writer&gt;
-    &lt;!-- Additional indexing configuration goes here. --&gt;
-  &lt;/indexing&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="authorization"><a class="anchor" href="#authorization"></a>4.3. Authorization</h3>
-<div class="paragraph">
-<p>Secure your deployment by restricting user access to data.</p>
-</div>
-<div class="sect3">
-<h4 id="default_set_of_roles"><a class="anchor" href="#default_set_of_roles"></a>4.3.1. Default set of roles</h4>
-<div class="ulist">
+<div class="ulist _additional-resources">
+<div class="title">Additional resources</div>
 <ul>
 <li>
-<p>Observer</p>
-</li>
-<li>
-<p>Application</p>
-</li>
-<li>
-<p>Admin</p>
-</li>
-<li>
-<p>Monitor</p>
-</li>
-<li>
-<p>Deployer</p>
+<p><a href="https://github.com/infinispan/infinispan-simple-tutorials/tree/main/infinispan-embedded/jcache">JCache simple tutorial on GitHub</a></p>
 </li>
 </ul>
 </div>
+</div>
+<div class="sect2">
+<h3 id="jcache-read-write-through_jcache"><a class="anchor" href="#jcache-read-write-through_jcache"></a>1.3. Configuring Read-Through and Write-Through</h3>
+<div class="paragraph">
+<p>JCache supports read-through and write-through caching to automatically load and persist cache entries using a <code>CacheLoader</code> and <code>CacheWriter</code>.</p>
+</div>
+<div class="sect3">
+<h4 id="read_through"><a class="anchor" href="#read_through"></a>1.3.1. Read-through</h4>
+<div class="paragraph">
+<p>With read-through enabled, Infinispan invokes the <code>CacheLoader</code> to load entries from an external store on cache misses.
+Read-through is only triggered by <code>get()</code>, <code>getAll()</code>, and <code>invoke()</code> operations.</p>
+</div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-	&lt;security&gt;
-    &lt;!--Specify one or more user roles --&gt;
-		&lt;authorization roles="observer application admin monitor"/&gt;
-	&lt;/security&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import javax.cache.Cache;
+import javax.cache.CacheManager;
+import javax.cache.Caching;
+import javax.cache.configuration.FactoryBuilder;
+import javax.cache.configuration.MutableConfiguration;
+import javax.cache.spi.CachingProvider;
+
+CachingProvider cachingProvider = Caching.getCachingProvider();
+CacheManager cacheManager = cachingProvider.getCacheManager();
+
+MutableConfiguration&lt;String, String&gt; configuration = new MutableConfiguration&lt;&gt;();
+configuration.setTypes(String.class, String.class);
+configuration.setReadThrough(true);
+configuration.setCacheLoaderFactory(
+      FactoryBuilder.factoryOf(MyCacheLoader.class));
+
+Cache&lt;String, String&gt; cache = cacheManager.createCache("readThroughCache", configuration);</code></pre>
 </div>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="backups"><a class="anchor" href="#backups"></a>4.4. Backups</h3>
-<div class="paragraph">
-<p>Define backup locations for cache data and modify state transfer properties.</p>
-</div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1">Backup strategies</dt>
-<dd>
-<p>Specifies the type of strategy that Infinispan uses to back up data to a different cluster. Infinispan can use either a <strong>synchronous</strong> or <strong>asynchronous</strong> strategy.
-Infinispan performs conflict resolution with the asynchronous backup strategy.</p>
-</dd>
-<dt class="hdlist1">Remote site</dt>
-<dd>
-<p>Specifies the name of the remote site that backs up data to the local cache.</p>
-</dd>
-<dt class="hdlist1">Remote cache</dt>
-<dd>
-<p>Specifies the name of the remote cache that uses the local cache as a backup.</p>
-</dd>
-<dt class="hdlist1">Timeout</dt>
-<dd>
-<p>Specifies the timeout, in milliseconds, for synchronous and asynchronous backup operations.</p>
-</dd>
-</dl>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 50%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Cluster LON</th>
-<th class="tableblock halign-left valign-top">Cluster NYC</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;backups&gt;
-    &lt;backup site="NYC"
-            strategy="ASYNC"
-            timeout="10s" /&gt;
-  &lt;/backups&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div></div></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="eu-customers"&gt;
-  &lt;backups&gt;
-    &lt;backup site="LON"
-            strategy="ASYNC" /&gt;
-  &lt;/backups&gt;
-    &lt;!-- Defines the local cache as a backup for a remote cache with a different name. --&gt;
-  &lt;backup-for remote-cache="customers"
-              remote-site="LON" /&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div></div></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect2">
-<h3 id="transactions"><a class="anchor" href="#transactions"></a>4.5. Transactions</h3>
 <div class="sect3">
-<h4 id="transaction_mode"><a class="anchor" href="#transaction_mode"></a>4.5.1. Transaction mode</h4>
+<h4 id="write_through"><a class="anchor" href="#write_through"></a>1.3.2. Write-through</h4>
 <div class="paragraph">
-<p>Configure the mode that Infinispan uses when carrying out transactions to ensure that the cache state is consistent.</p>
+<p>With write-through enabled, Infinispan invokes the <code>CacheWriter</code> to persist entries to an external store on cache mutations.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">import javax.cache.Cache;
+import javax.cache.CacheManager;
+import javax.cache.Caching;
+import javax.cache.configuration.FactoryBuilder;
+import javax.cache.configuration.MutableConfiguration;
+import javax.cache.spi.CachingProvider;
+
+CachingProvider cachingProvider = Caching.getCachingProvider();
+CacheManager cacheManager = cachingProvider.getCacheManager();
+
+MutableConfiguration&lt;String, String&gt; configuration = new MutableConfiguration&lt;&gt;();
+configuration.setTypes(String.class, String.class);
+configuration.setWriteThrough(true);
+configuration.setCacheWriterFactory(
+      FactoryBuilder.factoryOf(MyCacheWriter.class));
+
+Cache&lt;String, String&gt; cache = cacheManager.createCache("writeThroughCache", configuration);</code></pre>
+</div>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -991,240 +784,179 @@ Infinispan performs conflict resolution with the asynchronous backup strategy.</
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-Enabling transaction mode for the cache to ensure consistency for conditional operations, such as <code>putIfAbsent</code> or <code>remove</code>, that require consistent cache data across the cluster.
+<div class="paragraph">
+<p>In the Infinispan JCache implementation, <code>CacheLoader</code> and <code>CacheWriter</code> instances are integrated as Infinispan persistence stores internally.
+If the underlying Infinispan cache already has a persistence store configured, write operations persist to that store regardless of the <code>isWriteThrough()</code> setting.</p>
+</div>
 </td>
 </tr>
 </table>
 </div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1">NON_XA</dt>
-<dd>
-<p>Cache will enlist within transactions as a <code>javax.transaction.Synchronization</code>.</p>
-</dd>
-<dt class="hdlist1">NON_DURABLE_XA</dt>
-<dd>
-<p>Cache will enlist within transactions as a <code>javax.transaction.xa.XAResource</code>, without recovery.</p>
-</dd>
-<dt class="hdlist1">FULL_XA</dt>
-<dd>
-<p>Cache will enlist within transactions as a <code>javax.transaction.xa.XAResource</code>, with recovery.</p>
-</dd>
-</dl>
-</div>
-</div>
-<div class="sect3">
-<h4 id="locking_mode"><a class="anchor" href="#locking_mode"></a>4.5.2. Locking mode</h4>
-<div class="paragraph">
-<p>Configure how Infinispan locks keys to perform write operations for transactions.
-Locking keys adds contention that increases latency for write operations.
-You can adjust the amount of contention by using optimistic or pessimistic locking.</p>
-</div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1">Optimistic</dt>
-<dd>
-<p>Infinispan locks keys when it invokes the <code>commit()</code> method.
-Keys are locked for shorter periods of time which reduces overall latency but makes transaction recovery less efficient.</p>
-</dd>
-<dt class="hdlist1">Pessimistic</dt>
-<dd>
-<p>Infinispan locks keys when it invokes the <code>put()</code> method.
-Keys are locked for longer periods of time, which increases latency but makes transaction recovery more efficient.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="deee" mode="SYNC"&gt;
-	&lt;transaction
-          &lt;!-- Transaction mode --&gt;
-                mode="NON_XA"
-          &lt;!-- Locking mode --&gt;
-                locking="OPTIMISTIC"/&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-</dd>
-</dl>
-</div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="persistence"><a class="anchor" href="#persistence"></a>4.6. Persistence</h3>
+<h3 id="jcache-store-behavior_jcache"><a class="anchor" href="#jcache-store-behavior_jcache"></a>1.4. JCache Read-Through and Write-Through Behavior</h3>
 <div class="paragraph">
-<p>Configure non-volatile storage so entries remain available after the cluster restarts.</p>
+<p>When using the JCache (JSR-107) API with Infinispan, read-through and write-through interact with the underlying persistence layer through <code>CacheLoader</code> and <code>CacheWriter</code> adapters.</p>
 </div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1">Passivation</dt>
-<dd>
-<p>Infinispan writes entries to persistent storage when it evicts those entries from memory. Passivation ensures that only a single copy of an entry is maintained, either in-memory or in a cache store, and prevents unnecessary and expensive writes to persistent storage.</p>
-</dd>
-</dl>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-  &lt;persistence passivation="true"&gt;
-    &lt;!-- Persistence configuration goes here. --&gt;
-  &lt;/persistence&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-<div class="dlist">
-<div class="title">Persistent storage configuration</div>
-<dl>
-<dt class="hdlist1">File store</dt>
-<dd>
-<p>File-based cache store on the local host filesystem. For clustered caches, file-based cache stores are unique to each Infinispan node.</p>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
-	&lt;persistence passivation="false"&gt;
-		&lt;file-store&gt;
-			&lt;data path="path/to/data"/&gt;
-			&lt;index path="path/to/index"/&gt;
-		&lt;/file-store&gt;
-	&lt;/persistence&gt;
-&lt;/distributed-cache&gt;</code></pre>
-</div>
-</div>
-</dd>
-<dt class="hdlist1">Remote store</dt>
-<dd>
-<p>Remote cache stores use the Hot Rod protocol to store data on Infinispan clusters.</p>
-</dd>
-<dt class="hdlist1">Table SQL store</dt>
-<dd>
-<p>Load entries from a single database table.
-Ensure that the appropriate JDBC driver is available to the Infinispan cluster.</p>
-</dd>
-<dt class="hdlist1">Query SQL store</dt>
-<dd>
-<p>Use SQL queries to load entries from one or more database tables, including sub-columns.
-You can also perform insert, update, and delete operations. You must ensure that the appropriate JDBC driver is available to the Infinispan cluster.</p>
-</dd>
-<dt class="hdlist1">JDBC string-based store</dt>
-<dd>
-<p>Use a relational database for persistent storage through a JDBC connection.
-Ensure that the appropriate JDBC driver is available to the Infinispan cluster.</p>
-</dd>
-<dt class="hdlist1">RocksDB store</dt>
-<dd>
-<p>A RocksDB cache store uses two databases; one as a primary store and another to hold expired entries.</p>
-</dd>
-<dt class="hdlist1">Custom store</dt>
-<dd>
-<p>Use a custom cache store that you implement with the Infinispan Persistence SPI.</p>
-</dd>
-</dl>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="configuration_formats"><a class="anchor" href="#configuration_formats"></a>5. Configuration formats</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>You can create Infinispan configuration in  XML, JSON, or YAML format.</p>
+<p>Read-through uses <code>CacheLoader</code> to load entries from an external store on cache misses.
+Write-through uses <code>CacheWriter</code> to persist entries to an external store on cache mutations.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache owners="2"
-                   mode="SYNC"
-                   statistics="true"&gt;
-  &lt;encoding media-type="application/x-protostream"/&gt;
-  &lt;locking isolation="REPEATABLE_READ"/&gt;
-  &lt;transaction mode="FULL_XA"
-               locking="OPTIMISTIC"/&gt;
-  &lt;expiration lifespan="5s"
-              max-idle="1s" /&gt;
-  &lt;memory max-count="1000000"
-          when-full="REMOVE"/&gt;
-  &lt;indexing enabled="true"
-            storage="local-heap"&gt;
-    &lt;index-reader refresh-interval="1s"/&gt;
-    &lt;indexed-entities&gt;
-      &lt;indexed-entity&gt;org.infinispan.Person&lt;/indexed-entity&gt;
-    &lt;/indexed-entities&gt;
-  &lt;/indexing&gt;
-  &lt;persistence passivation="false"&gt;
-    &lt;!-- Persistent storage configuration. --&gt;
-  &lt;/persistence&gt;
-&lt;/distributed-cache&gt;</code></pre>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Read-through and write-through behavior is not fully consistent across all JCache operations.
+The following table documents the current behavior of each operation for reference.</p>
 </div>
+</td>
+</tr>
+</table>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
-  "distributed-cache": {
-    "owners": 2,
-    "mode": "SYNC",
-    "statistics": true,
-    "encoding": {
-      "media-type": "application/x-protostream"
-    },
-    "locking": {
-      "isolation": "REPEATABLE_READ"
-    },
-    "transaction": {
-      "mode": "FULL_XA",
-      "locking": "OPTIMISTIC"
-    },
-    "expiration": {
-      "lifespan": 5000,
-      "max-idle": 1000
-    },
-    "memory": {
-      "max-count": 1000000,
-      "when-full": "REMOVE"
-    },
-    "indexing": {
-      "enabled": true,
-      "storage": "local-heap",
-      "indexed-entities": [
-        "org.infinispan.Person"
-      ],
-      "index-reader": {
-        "refresh-interval": 1000
-      }
-    },
-    "persistence": {
-      "passivation": false
-    }
-  }
-}</code></pre>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. JCache operation store behavior</caption>
+<colgroup>
+<col style="width: 27.2727%;">
+<col style="width: 18.1818%;">
+<col style="width: 18.1818%;">
+<col style="width: 36.3637%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Operation</th>
+<th class="tableblock halign-left valign-top">Read-through (CacheLoader)</th>
+<th class="tableblock halign-left valign-top">Write-through (CacheWriter)</th>
+<th class="tableblock halign-left valign-top">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>get(K)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conditional on <code>isReadThrough()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CacheLoader called for missing entries</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>getAll(Set)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conditional on <code>isReadThrough()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Same as <code>get()</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>containsKey(K)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spec: "only the cache is checked"</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>put(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>getAndPut(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>putAll(Map)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conditional on <code>isWriteThrough()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>isWriteThrough()</code> changes load + error handling, not persistence</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>putIfAbsent(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>remove(K)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>remove(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>getAndRemove(K)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>replace(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>replace(K, V, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>getAndReplace(K, V)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No <code>isWriteThrough()</code> check</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>removeAll(Set)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always skip</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>isWriteThrough()</code> only changes error handling strategy</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>removeAll()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Direct cache API; bypasses functional map</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>invoke(K, EntryProcessor)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conditional on <code>isReadThrough()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read-through via <code>getValue()</code>; write-through via <code>setValue()</code>/<code>remove()</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>invokeAll(Set, EntryProcessor)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Conditional on <code>isReadThrough()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Same as <code>invoke()</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clear()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Always enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spec: "without notifying listeners or CacheWriters"; clears both cache and store</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>"Always enabled" in the write-through column means that writes always go to the store regardless of the <code>isWriteThrough()</code> setting.
+This applies both when a JCache <code>CacheWriterFactory</code> is configured and when a persistence store is defined directly in the Infinispan configuration (for example, file-based, JDBC, or RocksDB stores).</p>
 </div>
+<div class="paragraph">
+<p>Conditional operations such as <code>putIfAbsent</code>, <code>replace</code>, and <code>remove(K, V)</code> only trigger write-through when the mutation actually occurs.
+For example, <code>replace(K, V)</code> only writes to the store if the entry already exists in memory.</p>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
-<div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributed-cache:
-  owners: 2
-  mode: SYNC
-  statistics: true
-  encoding:
-    media-type: application/x-protostream
-  locking:
-    isolation: REPEATABLE_READ
-  transaction:
-    mode: FULL_XA
-    locking: OPTIMISTIC
-  expiration:
-    lifespan: 5000
-    max-idle: 1000
-  memory:
-    max-count: 1000000
-    when-full: REMOVE
-  indexing:
-    enabled: true
-    storage: local-heap
-    index-reader:
-      refresh-interval: 1000
-    indexedEntities:
-      - "org.infinispan.Person"
-  persistence:
-    passivation: false</code></pre>
+<div class="paragraph">
+<p>None of these conditional or previous-value-returning operations (<code>getAndPut</code>, <code>getAndRemove</code>, <code>getAndReplace</code>, <code>putIfAbsent</code>, <code>replace</code>, <code>remove(K, V)</code>) trigger read-through.
+Their existence and value checks only see entries currently in memory.
+This is consistent with the JSR-107 specification, which restricts read-through to <code>get()</code>, <code>getAll()</code>, and <code>invoke()</code>.</p>
 </div>
 </div>
 </div>

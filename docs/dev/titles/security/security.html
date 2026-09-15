@@ -456,81 +456,117 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="../../js/js.js"></script>
 <link rel="canonical" href="https://infinispan.org/docs/stable/titles/security/security.html">
 <style>
-.hidden {
-    display: none;
+/*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+.tabs {
+  margin-bottom: 1.25em;
 }
 
-.switch {
-    border-width: 1px 1px 0 1px;
-    border-style: solid;
-    border-color: #7a2518;
-    display: inline-block;
+.tablist > ul {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.switch--item {
-    padding: 10px;
-    background-color: #ffffff;
-    color: #7a2518;
-    display: inline-block;
-    cursor: pointer;
+.tablist > ul li {
+  align-items: center;
+  background-color: #fff;
+  cursor: pointer;
+  display: flex;
+  font-weight: bold;
+  line-height: 1.5;
+  padding: 0.25em 1em;
+  position: relative;
 }
 
-.switch--item.selected {
-    background-color: #7a2519;
-    color: #ffffff;
+.tablist > ul li:focus-visible {
+  outline: none;
 }
 
+.tablist.ulist,
+.tablist.ulist > ul li {
+  margin: 0;
+}
+
+.tablist.ulist > ul li + li {
+  margin-left: 0.25em;
+}
+
+.tabs .tablist li::after {
+  content: "";
+  display: block;
+  height: 1px;
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+}
+
+.tabs.is-loading .tablist li:not(:first-child),
+.tabs:not(.is-loading) .tablist li:not(.is-selected) {
+  background-color: #f5f5f5;
+}
+
+.tabs.is-loading .tablist li:first-child::after,
+.tabs:not(.is-loading) .tablist li.is-selected::after {
+  background-color: #fff;
+}
+
+/*
+.tabs:not(.is-loading) .tablist li,
+.tabs:not(.is-loading) .tablist li::after {
+  transition: background-color 200ms ease-in-out;
+}
+*/
+
+.tablist > ul p {
+  line-height: inherit;
+  margin: 0;
+}
+
+.tabpanel {
+  background-color: #fff;
+  padding: 1.25em;
+}
+
+.tablist > ul li,
+.tabpanel {
+  border: 1px solid #dcdcdc;
+}
+
+.tablist > ul li {
+  border-bottom: 0;
+}
+
+.tabs.is-loading .tabpanel + .tabpanel,
+.tabs:not(.is-loading) .tabpanel.is-hidden {
+  display: none;
+}
+
+.tabpanel > :first-child {
+  margin-top: 0;
+}
+
+/* #content is a signature of the Asciidoctor standalone HTML output */
+#content .tabpanel > :last-child,
+#content .tabpanel > :last-child > :last-child,
+#content .tabpanel > :last-child > :last-child > li:last-child > :last-child {
+  margin-bottom: 0;
+}
+
+.tablecontainer {
+  overflow-x: auto;
+}
+
+#content .tablecontainer {
+  margin-bottom: 1.25em;
+}
+
+#content .tablecontainer > table.tableblock {
+  margin-bottom: 0;
+}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
-<script type="text/javascript">
-function addBlockSwitches() {
-    $('.primary').each(function() {
-        primary = $(this);
-        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
-        primary.children('.title').remove();
-    });
-    $('.secondary').each(function(idx, node) {
-        secondary = $(node);
-        primary = findPrimary(secondary);
-        switchItem = createSwitchItem(secondary, primary.children('.switch'));
-        switchItem.content.addClass('hidden');
-        findPrimary(secondary).append(switchItem.content);
-        secondary.remove();
-    });
-}
-
-function createBlockSwitch(primary) {
-    blockSwitch = $('<div class="switch"></div>');
-    primary.prepend(blockSwitch);
-    return blockSwitch;
-}
-
-function findPrimary(secondary) {
-    candidate = secondary.prev();
-    while (!candidate.is('.primary')) {
-        candidate = candidate.prev();
-    }
-    return candidate;
-}
-
-function createSwitchItem(block, blockSwitch) {
-    blockName = block.children('.title').text();
-    content = block.children('.content').first().append(block.next('.colist'));
-    item = $('<div class="switch--item">' + blockName + '</div>');
-    item.on('click', '', content, function(e) {
-        $(this).addClass('selected');
-        $(this).siblings().removeClass('selected');
-        e.data.siblings('.content').addClass('hidden');
-        e.data.removeClass('hidden');
-    });
-    blockSwitch.append(item);
-    return {'item': item, 'content': content};
-}
-
-$(addBlockSwitches);
-
-</script>
-
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
@@ -604,11 +640,13 @@ $(addBlockSwitches);
 </li>
 </ul>
 </li>
-<li><a href="#caching-security-realms_security-realms">3.9. Security realm caching</a>
+<li><a href="#local-security-realms_security-realms">3.9. Local security realms</a></li>
+<li><a href="#caching-security-realms_security-realms">3.10. Security realm caching</a>
 <ul class="sectlevel3">
-<li><a href="#flushing_realm_caches">3.9.1. Flushing realm caches</a></li>
+<li><a href="#flushing_realm_caches">3.10.1. Flushing realm caches</a></li>
 </ul>
 </li>
+<li><a href="#brute-force-protection-security-realms_security-realms">3.11. Security realm brute-force protection</a></li>
 </ul>
 </li>
 <li><a href="#authentication-mechanisms">4. Endpoint authentication mechanisms</a>
@@ -635,7 +673,7 @@ $(addBlockSwitches);
 <ul class="sectlevel3">
 <li><a href="#ssltls_certificate_rotation">5.1.1. SSL/TLS Certificate rotation</a></li>
 <li><a href="#generating-server-keystores_endpoint-security">5.1.2. Generating Infinispan Server keystores</a></li>
-<li><a href="#configuring-ssl-engine_endpoint-security">5.1.3. Configuring TLS versions and cipher suites</a></li>
+<li><a href="#configuring-ssl-engine_endpoint-security">5.1.3. Configuring TLS versions, cipher suites and named groups</a></li>
 </ul>
 </li>
 <li><a href="#configuring-server-fips_endpoint-security">5.2. Configuring Infinispan Server on a system with FIPS 140-2 compliant cryptography</a>
@@ -1072,8 +1110,23 @@ To use a different implementation for role mapping, you must configure the role 
 <p>With embedded caches you can programmatically configure role and permission mappers with the <code>principalRoleMapper()</code> and <code>rolePermissionMapper()</code> methods.</p>
 </div>
 <h5 id="role_mapper_configuration" class="discrete">Role mapper configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_1" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_1_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_1_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_1_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_1_xml--panel" class="tabpanel" aria-labelledby="tabs_1_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
   &lt;security&gt;
@@ -1084,8 +1137,9 @@ To use a different implementation for role mapping, you must configure the role 
 &lt;/cache-container&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_1_json--panel" class="tabpanel" aria-labelledby="tabs_1_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -1100,14 +1154,18 @@ To use a different implementation for role mapping, you must configure the role 
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_1_yaml--panel" class="tabpanel" aria-labelledby="tabs_1_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
     security:
       authorization:
         commonNameRoleMapper: ~</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -1279,8 +1337,23 @@ It is possible to configure the cluster role mapper to apply transformation to t
 </div>
 <div class="sect5">
 <h6 id="case_principal_transformer"><a class="anchor" href="#case_principal_transformer"></a>Case Principal Transformer</h6>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_2" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_2_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_2_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_2_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_2_xml--panel" class="tabpanel" aria-labelledby="tabs_2_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
    &lt;security&gt;
@@ -1295,8 +1368,9 @@ It is possible to configure the cluster role mapper to apply transformation to t
 &lt;/cache-container&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_2_json--panel" class="tabpanel" aria-labelledby="tabs_2_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "cache-container": {
@@ -1313,8 +1387,9 @@ It is possible to configure the cluster role mapper to apply transformation to t
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_2_yaml--panel" class="tabpanel" aria-labelledby="tabs_2_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">cacheContainer:
   security:
@@ -1326,10 +1401,28 @@ It is possible to configure the cluster role mapper to apply transformation to t
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect5">
 <h6 id="regex_principal_transformer"><a class="anchor" href="#regex_principal_transformer"></a>Regex Principal Transformer</h6>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_3" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_3_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_3_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_3_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_3_xml--panel" class="tabpanel" aria-labelledby="tabs_3_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
    &lt;security&gt;
@@ -1344,8 +1437,9 @@ It is possible to configure the cluster role mapper to apply transformation to t
 &lt;/cache-container&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_3_json--panel" class="tabpanel" aria-labelledby="tabs_3_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "cache-container": {
@@ -1365,8 +1459,9 @@ It is possible to configure the cluster role mapper to apply transformation to t
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_3_yaml--panel" class="tabpanel" aria-labelledby="tabs_3_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">cacheContainer:
   security:
@@ -1376,6 +1471,9 @@ It is possible to configure the cluster role mapper to apply transformation to t
           regexPrincipalTransformer:
             pattern: "cn=([^,]+),.*"
             replacement: "$1"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -1428,8 +1526,23 @@ This requires Infinispan users to have a role with a sufficient level of permiss
 <div class="paragraph">
 <p>The following configuration implicitly adds every role defined in the Cache Manager:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_4" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_4_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_4_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_4_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_4_xml--panel" class="tabpanel" aria-labelledby="tabs_4_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;security&gt;
@@ -1438,8 +1551,9 @@ This requires Infinispan users to have a role with a sufficient level of permiss
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_4_json--panel" class="tabpanel" aria-labelledby="tabs_4_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -1452,8 +1566,9 @@ This requires Infinispan users to have a role with a sufficient level of permiss
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_4_yaml--panel" class="tabpanel" aria-labelledby="tabs_4_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   security:
@@ -1461,13 +1576,31 @@ This requires Infinispan users to have a role with a sufficient level of permiss
       enabled: true</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h4 id="explicit_role_configuration" class="discrete">Explicit role configuration</h4>
 <div class="paragraph">
 <p>The following configuration explicitly adds a subset of roles defined in the Cache Manager.
 In this case Infinispan denies cache operations for any users that do not have one of the configured roles.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_5" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_5_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_5_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_5_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_5_xml--panel" class="tabpanel" aria-labelledby="tabs_5_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;security&gt;
@@ -1476,8 +1609,9 @@ In this case Infinispan denies cache operations for any users that do not have o
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_5_json--panel" class="tabpanel" aria-labelledby="tabs_5_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -1491,14 +1625,18 @@ In this case Infinispan denies cache operations for any users that do not have o
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_5_yaml--panel" class="tabpanel" aria-labelledby="tabs_5_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   security:
     authorization:
       enabled: true
       roles: ["admin","supervisor"]</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1648,8 +1786,23 @@ You must manually synchronize credentials in a properties realm to each node in 
 </ol>
 </div>
 <h4 id="multiple_property_realms" class="discrete">Multiple property realms</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_6" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_6_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_6_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_6_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_6_xml--panel" class="tabpanel" aria-labelledby="tabs_6_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -1671,8 +1824,9 @@ You must manually synchronize credentials in a properties realm to each node in 
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_6_json--panel" class="tabpanel" aria-labelledby="tabs_6_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -1707,8 +1861,9 @@ You must manually synchronize credentials in a properties realm to each node in 
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_6_yaml--panel" class="tabpanel" aria-labelledby="tabs_6_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -1729,6 +1884,9 @@ You must manually synchronize credentials in a properties realm to each node in 
             path: "application-users.properties"
           groupProperties:
             path: "application-groups.properties"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1826,8 +1984,23 @@ ktab -k http.keytab -a HTTP/datagrid@INFINISPAN.ORG</code></pre>
 </ol>
 </div>
 <h4 id="kerberos_identity_configuration" class="discrete">Kerberos identity configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_7" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_7_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_7_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_7_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_7_xml--panel" class="tabpanel" aria-labelledby="tabs_7_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -1865,8 +2038,9 @@ ktab -k http.keytab -a HTTP/datagrid@INFINISPAN.ORG</code></pre>
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_7_json--panel" class="tabpanel" aria-labelledby="tabs_7_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -1911,8 +2085,9 @@ ktab -k http.keytab -a HTTP/datagrid@INFINISPAN.ORG</code></pre>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_7_yaml--panel" class="tabpanel" aria-labelledby="tabs_7_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -1943,6 +2118,9 @@ ktab -k http.keytab -a HTTP/datagrid@INFINISPAN.ORG</code></pre>
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect2">
 <h3 id="property-security-realms_security-realms"><a class="anchor" href="#property-security-realms_security-realms"></a>3.3. Property realms</h3>
 <div class="paragraph">
@@ -1959,6 +2137,34 @@ Passwords can be pre-digested.</p>
 </li>
 </ul>
 </div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Adding credentials to a properties realm with the CLI updates the local property realm files on the server instance where you run the command.
+You must manually synchronize property realm credentials across all nodes in the cluster.</p>
+</div>
+<div class="paragraph">
+<p>The same limitation applies to user groups and role assignments.
+Changes to users, groups, and roles are not automatically distributed across the cluster.</p>
+</div>
+<div class="paragraph">
+<p>Changes to a properties realm do not take effect until the server reloads the updated configuration.
+After reloading the server, flush security realm caches across the cluster:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">server aclcache flush</code></pre>
+</div>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <div class="listingblock">
 <div class="title">users.properties</div>
 <div class="content">
@@ -1974,8 +2180,23 @@ user2=supervisor</code></pre>
 </div>
 </div>
 <h4 id="property_realm_configuration" class="discrete">Property realm configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_8" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_8_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_8_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_8_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_8_xml--panel" class="tabpanel" aria-labelledby="tabs_8_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -1995,8 +2216,9 @@ user2=supervisor</code></pre>
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_8_json--panel" class="tabpanel" aria-labelledby="tabs_8_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -2022,8 +2244,9 @@ user2=supervisor</code></pre>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_8_yaml--panel" class="tabpanel" aria-labelledby="tabs_8_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -2041,6 +2264,9 @@ user2=supervisor</code></pre>
           groupProperties:
             path: "groups.properties"
             relative-to: 'infinispan.server.config.path'</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -2265,8 +2491,23 @@ You can specify a different filter using the <code>filter-name</code> attribute.
 </div>
 <div class="sect3">
 <h4 id="ldap_realm_configuration_reference"><a class="anchor" href="#ldap_realm_configuration_reference"></a>3.4.4. LDAP realm configuration reference</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_9" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_9_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_9_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_9_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_9_xml--panel" class="tabpanel" aria-labelledby="tabs_9_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -2300,8 +2541,9 @@ You can specify a different filter using the <code>filter-name</code> attribute.
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_9_json--panel" class="tabpanel" aria-labelledby="tabs_9_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -2336,8 +2578,9 @@ You can specify a different filter using the <code>filter-name</code> attribute.
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_9_yaml--panel" class="tabpanel" aria-labelledby="tabs_9_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -2362,6 +2605,9 @@ You can specify a different filter using the <code>filter-name</code> attribute.
                 filterDn: 'ou=Roles,dc=infinispan,dc=org'
                 from: cn
                 to: Roles</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect4">
@@ -2406,8 +2652,23 @@ regex-principal-transformer
 <div class="sect4">
 <h5 id="ldap_principal_rewriting_configuration_reference"><a class="anchor" href="#ldap_principal_rewriting_configuration_reference"></a>LDAP principal rewriting configuration reference</h5>
 <h5 id="case_principal_transformer_2" class="discrete">Case principal transformer</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_10" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_10_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_10_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_10_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_10_xml--panel" class="tabpanel" aria-labelledby="tabs_10_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -2428,8 +2689,9 @@ regex-principal-transformer
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_10_json--panel" class="tabpanel" aria-labelledby="tabs_10_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -2452,8 +2714,9 @@ regex-principal-transformer
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_10_yaml--panel" class="tabpanel" aria-labelledby="tabs_10_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -2469,9 +2732,27 @@ regex-principal-transformer
           # further configuration omitted</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h5 id="common_name_principal_transformer" class="discrete">Common name principal transformer</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_11" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_11_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_11_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_11_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_11_xml--panel" class="tabpanel" aria-labelledby="tabs_11_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -2492,8 +2773,9 @@ regex-principal-transformer
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_11_json--panel" class="tabpanel" aria-labelledby="tabs_11_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -2514,8 +2796,9 @@ regex-principal-transformer
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_11_yaml--panel" class="tabpanel" aria-labelledby="tabs_11_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -2530,9 +2813,27 @@ regex-principal-transformer
           # further configuration omitted</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h5 id="regex_principal_transformer_2" class="discrete">Regex principal transformer</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_12" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_12_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_12_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_12_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_12_xml--panel" class="tabpanel" aria-labelledby="tabs_12_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -2554,8 +2855,9 @@ regex-principal-transformer
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_12_json--panel" class="tabpanel" aria-labelledby="tabs_12_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -2579,8 +2881,9 @@ regex-principal-transformer
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_12_yaml--panel" class="tabpanel" aria-labelledby="tabs_12_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -2595,6 +2898,9 @@ regex-principal-transformer
               pattern: (.*)@INFINISPAN\.ORG
               replacement: "$1"
           # further configuration omitted</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -2686,8 +2992,23 @@ that are compatible with RFC-7662 (OAuth2 Token Introspection), such as
 KeyCloak.</p>
 </div>
 <h4 id="token_realm_configuration" class="discrete">Token realm configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_13" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_13_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_13_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_13_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_13_xml--panel" class="tabpanel" aria-labelledby="tabs_13_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -2707,8 +3028,9 @@ KeyCloak.</p>
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_13_json--panel" class="tabpanel" aria-labelledby="tabs_13_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -2729,8 +3051,9 @@ KeyCloak.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_13_yaml--panel" class="tabpanel" aria-labelledby="tabs_13_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -2744,12 +3067,30 @@ KeyCloak.</p>
             introspectionUrl: 'https://oauth-server/auth/realms/infinispan/protocol/openid-connect/token/introspect'</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="paragraph">
 <p>If the <code>introspection-url</code> uses HTTPS, it may be necessary to define a <a href="../server/server.html#configuring-encryption">server identity</a> containing an appropriate truststore and reference it in the <code>oauth2-introspection.client-ssl-context</code> configuration attribute.</p>
 </div>
 <h4 id="token_realm_configuration_with_tls" class="discrete">Token realm configuration with TLS</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_14" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_14_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_14_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_14_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_14_xml--panel" class="tabpanel" aria-labelledby="tabs_14_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
    &lt;security&gt;
@@ -2785,8 +3126,9 @@ KeyCloak.</p>
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_14_json--panel" class="tabpanel" aria-labelledby="tabs_14_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -2836,8 +3178,9 @@ KeyCloak.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_14_yaml--panel" class="tabpanel" aria-labelledby="tabs_14_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   server:
@@ -2871,6 +3214,9 @@ KeyCloak.</p>
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect2">
 <h3 id="trust-store-security-realms_security-realms"><a class="anchor" href="#trust-store-security-realms_security-realms"></a>3.6. Trust store realms</h3>
 <div class="paragraph">
@@ -2893,8 +3239,23 @@ KeyCloak.</p>
 <p>You must add the <code>require-ssl-client-auth="true"</code> attribute to the endpoint configuration if you want Infinispan Server to validate or authenticate client certificates.</p>
 </div>
 <h4 id="trust_store_realm_configuration" class="discrete">Trust store realm configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_15" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_15_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_15_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_15_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_15_xml--panel" class="tabpanel" aria-labelledby="tabs_15_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -2921,8 +3282,9 @@ KeyCloak.</p>
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_15_json--panel" class="tabpanel" aria-labelledby="tabs_15_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -2951,8 +3313,9 @@ KeyCloak.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_15_yaml--panel" class="tabpanel" aria-labelledby="tabs_15_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -2973,6 +3336,9 @@ KeyCloak.</p>
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect2">
 <h3 id="distributed-security-realms_security-realms"><a class="anchor" href="#distributed-security-realms_security-realms"></a>3.7. Distributed security realms</h3>
 <div class="paragraph">
@@ -2980,8 +3346,23 @@ KeyCloak.</p>
 When users attempt to access the Hot Rod or REST endpoints, Infinispan Server uses each security realm in turn until it finds one that can perform the authentication.</p>
 </div>
 <h4 id="distributed_realm_configuration" class="discrete">Distributed realm configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_16" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_16_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_16_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_16_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_16_xml--panel" class="tabpanel" aria-labelledby="tabs_16_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -3013,8 +3394,9 @@ When users attempt to access the Hot Rod or REST endpoints, Infinispan Server us
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_16_json--panel" class="tabpanel" aria-labelledby="tabs_16_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -3056,8 +3438,9 @@ When users attempt to access the Hot Rod or REST endpoints, Infinispan Server us
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_16_yaml--panel" class="tabpanel" aria-labelledby="tabs_16_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -3088,6 +3471,9 @@ When users attempt to access the Hot Rod or REST endpoints, Infinispan Server us
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect2">
 <h3 id="aggregate-security-realms_security-realms"><a class="anchor" href="#aggregate-security-realms_security-realms"></a>3.8. Aggregate security realms</h3>
 <div class="paragraph">
@@ -3095,8 +3481,23 @@ When users attempt to access the Hot Rod or REST endpoints, Infinispan Server us
 For example, this can be used to authenticate users via a client certificate, and retrieve identity from a properties or LDAP realm.</p>
 </div>
 <h4 id="aggregate_realm_configuration" class="discrete">Aggregate realm configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_17" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_17_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_17_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_17_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_17_xml--panel" class="tabpanel" aria-labelledby="tabs_17_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
    &lt;security&gt;
@@ -3124,8 +3525,9 @@ For example, this can be used to authenticate users via a client certificate, an
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_17_json--panel" class="tabpanel" aria-labelledby="tabs_17_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -3177,8 +3579,9 @@ For example, this can be used to authenticate users via a client certificate, an
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_17_yaml--panel" class="tabpanel" aria-labelledby="tabs_17_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -3214,6 +3617,9 @@ For example, this can be used to authenticate users via a client certificate, an
             common-name-principal-transformer: ~</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect3">
 <h4 id="name_rewriters"><a class="anchor" href="#name_rewriters"></a>3.8.1. Name rewriters</h4>
 <div class="paragraph">
@@ -3240,8 +3646,23 @@ For example, this can be used to authenticate users via a client certificate, an
 <div class="paragraph">
 <p>The <code>case-principal-transformer</code> transforms a name to all uppercase or all lowercase letters.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_18" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_18_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_18_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_18_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_18_xml--panel" class="tabpanel" aria-labelledby="tabs_18_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;aggregate-realm authentication-realm="trust" authorization-realms="properties"&gt;
    &lt;name-rewriter&gt;
@@ -3250,8 +3671,9 @@ For example, this can be used to authenticate users via a client certificate, an
 &lt;/aggregate-realm&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_18_json--panel" class="tabpanel" aria-labelledby="tabs_18_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "aggregate-realm": {
@@ -3268,8 +3690,9 @@ For example, this can be used to authenticate users via a client certificate, an
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_18_yaml--panel" class="tabpanel" aria-labelledby="tabs_18_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">aggregateRealm:
   authenticationRealm: "trust"
@@ -3281,6 +3704,9 @@ For example, this can be used to authenticate users via a client certificate, an
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect4">
 <h5 id="common_name_principal_transformer_2"><a class="anchor" href="#common_name_principal_transformer_2"></a>Common Name Principal Transformer</h5>
 <div class="paragraph">
@@ -3288,8 +3714,23 @@ For example, this can be used to authenticate users via a client certificate, an
 For example, given a principal in the form <code>CN=app1,CN=serviceA,OU=applications,DC=infinispan,DC=org</code>, the following
 configuration will extract <code>app1</code> as the principal.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_19" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_19_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_19_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_19_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_19_xml--panel" class="tabpanel" aria-labelledby="tabs_19_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;aggregate-realm authentication-realm="trust" authorization-realms="properties"&gt;
    &lt;name-rewriter&gt;
@@ -3298,8 +3739,9 @@ configuration will extract <code>app1</code> as the principal.</p>
 &lt;/aggregate-realm&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_19_json--panel" class="tabpanel" aria-labelledby="tabs_19_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "aggregate-realm": {
@@ -3314,8 +3756,9 @@ configuration will extract <code>app1</code> as the principal.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_19_yaml--panel" class="tabpanel" aria-labelledby="tabs_19_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">aggregateRealm:
   authenticationRealm: "trust"
@@ -3326,14 +3769,32 @@ configuration will extract <code>app1</code> as the principal.</p>
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect4">
 <h5 id="regex_principal_transformer_3"><a class="anchor" href="#regex_principal_transformer_3"></a>Regex Principal Transformer</h5>
 <div class="paragraph">
 <p>The <code>regex-principal-transformer</code> can perform find and replace using a regular expression.
 The example shows how to extract the local-part from a <code>user@domain.com</code> identifier.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_20" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_20_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_20_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_20_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_20_xml--panel" class="tabpanel" aria-labelledby="tabs_20_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;aggregate-realm authentication-realm="trust" authorization-realms="properties"&gt;
    &lt;name-rewriter&gt;
@@ -3342,8 +3803,9 @@ The example shows how to extract the local-part from a <code>user@domain.com</co
 &lt;/aggregate-realm&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_20_json--panel" class="tabpanel" aria-labelledby="tabs_20_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "aggregate-realm": {
@@ -3362,8 +3824,9 @@ The example shows how to extract the local-part from a <code>user@domain.com</co
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_20_yaml--panel" class="tabpanel" aria-labelledby="tabs_20_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">aggregateRealm:
   authenticationRealm: "trust"
@@ -3379,15 +3842,87 @@ The example shows how to extract the local-part from a <code>user@domain.com</co
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect2">
-<h3 id="caching-security-realms_security-realms"><a class="anchor" href="#caching-security-realms_security-realms"></a>3.9. Security realm caching</h3>
+<h3 id="local-security-realms_security-realms"><a class="anchor" href="#local-security-realms_security-realms"></a>3.9. Local security realms</h3>
+<div class="paragraph">
+<p>A local security realm allows the CLI to authenticate against the local Infinispan instance without prompting the user
+for a username and password. This mechanism only works if the user running the CLI has read access to the server&#8217;s
+temporary directory. This realm should always be used together with another realm, such as a <code>properties</code> realm.
+If the local mechanism fails then the CLI will fall back to prompting for a username and password
+for a user configured as in Default HTTP Interface Security.
+When authenticating with this realm, the user will have all permissions.</p>
+</div>
+<h4 id="local_realm_configuration" class="discrete">Local realm configuration</h4>
+<div class="listingblock primary">
+<div class="title">XML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
+   &lt;security&gt;
+      &lt;security-realms&gt;
+         &lt;security-realm name="default"&gt;
+            &lt;local-realm/&gt;
+            &lt;properties-realm /&gt;
+         &lt;/security-realm&gt;
+      &lt;/security-realms&gt;
+   &lt;/security&gt;
+&lt;/server&gt;</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">JSON</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+  "server": {
+    "security": {
+      "security-realms": [{
+        "name": "default",
+        "local-realm": {},
+        "properties-realm": {}
+      }]
+    }
+  }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock secondary">
+<div class="title">YAML</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
+  security:
+    securityRealms:
+      - name: "default"
+        localRealm: ~
+        propertiesRealm: ~</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="caching-security-realms_security-realms"><a class="anchor" href="#caching-security-realms_security-realms"></a>3.10. Security realm caching</h3>
 <div class="paragraph">
 <p>Security realms implement caching to avoid having to repeatedly retrieve data which usually changes very infrequently.
 By default</p>
 </div>
 <h4 id="realm_caching_realm_configuration" class="discrete">Realm caching realm configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_21" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_21_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_21_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_21_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_21_xml--panel" class="tabpanel" aria-labelledby="tabs_21_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
     &lt;security&gt;
@@ -3399,8 +3934,9 @@ By default</p>
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_21_json--panel" class="tabpanel" aria-labelledby="tabs_21_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -3415,8 +3951,9 @@ By default</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_21_yaml--panel" class="tabpanel" aria-labelledby="tabs_21_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -3426,8 +3963,11 @@ By default</p>
         cache-lifespan: 120000</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect3">
-<h4 id="flushing_realm_caches"><a class="anchor" href="#flushing_realm_caches"></a>3.9.1. Flushing realm caches</h4>
+<h4 id="flushing_realm_caches"><a class="anchor" href="#flushing_realm_caches"></a>3.10.1. Flushing realm caches</h4>
 <div class="paragraph">
 <p>Use the CLI to flush security realm caches across the whole cluster.</p>
 </div>
@@ -3437,6 +3977,65 @@ By default</p>
 </div>
 </div>
 </div>
+</div>
+<div class="sect2">
+<h3 id="brute-force-protection-security-realms_security-realms"><a class="anchor" href="#brute-force-protection-security-realms_security-realms"></a>3.11. Security realm brute-force protection</h3>
+<div class="paragraph">
+<p>Security realms which use username and password credentials (<code>properties</code> and <code>ldap</code>) may be subject to brute-force
+attacks. Infinispan Server automatically enables brute-force protection on these realms which lock out users
+after a number of incorrect authentication attempts. These users are unlocked after a certain interval.</p>
+</div>
+<div class="paragraph">
+<p>It is possible to tune the brute-force protection using the following system properties:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property name</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Default</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>infinispan.server.realm.&lt;name&gt;.brute-force.enabled</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">boolean</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>true</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Column 4, row 1</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>infinispan.server.realm.&lt;name&gt;.brute-force.max-failed-attempts</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">integer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of consecutive failed login attempts for a specific user before the lockout kicks in for the configured interval.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>infinispan.server.realm.&lt;name&gt;.brute-force.lockout-interval</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">integer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>15</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of failed authentication attempts the interval in minutes the account will be locked for. Subsequent failed attempts during the lockout period will renew the lockout indefinitely, even if those attempts use the correct credential.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>infinispan.server.realm.&lt;name&gt;.brute-force.session-timeout</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">integer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>30</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">After a failed authentication attempt how long in minutes to keep the tracking session alive. Subsequent failed attempts will renew the timeout.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>infinispan.server.realm.&lt;name&gt;.brute-force.max-cached-sessions</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">integer</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>25000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of sessions that will be cached before the least recently used session is evicted from the cache.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -3551,8 +4150,23 @@ For example, if you explicitly declare a <code>hotrod-connector</code> you must 
 <div class="paragraph">
 <p>The following configuration specifies SASL mechanisms for the Hot Rod endpoint to use for authentication:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_22" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_22_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_22_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_22_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_22_xml--panel" class="tabpanel" aria-labelledby="tabs_22_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;endpoints&gt;
@@ -3575,8 +4189,9 @@ For example, if you explicitly declare a <code>hotrod-connector</code> you must 
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_22_json--panel" class="tabpanel" aria-labelledby="tabs_22_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -3606,8 +4221,9 @@ For example, if you explicitly declare a <code>hotrod-connector</code> you must 
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_22_yaml--panel" class="tabpanel" aria-labelledby="tabs_22_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">server:
   endpoints:
@@ -3637,6 +4253,9 @@ For example, if you explicitly declare a <code>hotrod-connector</code> you must 
           securityRealm: "default"</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect3">
 <h4 id="disabling-authentication_endpoint-authentication"><a class="anchor" href="#disabling-authentication_endpoint-authentication"></a>4.2.1. Disabling authentication</h4>
 <div class="paragraph">
@@ -3660,16 +4279,32 @@ When you disable user authentication you should also disable authorization in yo
 </li>
 </ol>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_23" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_23_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_23_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_23_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_23_xml--panel" class="tabpanel" aria-labelledby="tabs_23_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;endpoints socket-binding="default"/&gt;
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_23_json--panel" class="tabpanel" aria-labelledby="tabs_23_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -3682,13 +4317,17 @@ When you disable user authentication you should also disable authorization in yo
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_23_yaml--panel" class="tabpanel" aria-labelledby="tabs_23_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">server:
   endpoints:
     endpoint:
       socketBinding: "default"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -4071,8 +4710,23 @@ Configure cache authorization and then set <code>&lt;no-anonymous value=false /&
 <div class="paragraph">
 <p>In the following configuration the Hot Rod endpoint uses the <code>GSSAPI</code> mechanism for authentication because it is the only mechanism that complies with all SASL policies:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_24" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_24_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_24_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_24_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_24_xml--panel" class="tabpanel" aria-labelledby="tabs_24_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;endpoints&gt;
@@ -4092,8 +4746,9 @@ Configure cache authorization and then set <code>&lt;no-anonymous value=false /&
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_24_json--panel" class="tabpanel" aria-labelledby="tabs_24_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -4118,8 +4773,9 @@ Configure cache authorization and then set <code>&lt;no-anonymous value=false /&
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_24_yaml--panel" class="tabpanel" aria-labelledby="tabs_24_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   endpoints:
@@ -4141,6 +4797,9 @@ Configure cache authorization and then set <code>&lt;no-anonymous value=false /&
               - "no-active"
               - "no-plain-text"
       restConnector: ~</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -4506,9 +5165,9 @@ temporary handshake failures until all clients and servers have been updated.
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-ssl-engine_endpoint-security"><a class="anchor" href="#configuring-ssl-engine_endpoint-security"></a>5.1.3. Configuring TLS versions and cipher suites</h4>
+<h4 id="configuring-ssl-engine_endpoint-security"><a class="anchor" href="#configuring-ssl-engine_endpoint-security"></a>5.1.3. Configuring TLS versions, cipher suites and named groups</h4>
 <div class="paragraph">
-<p>When using SSL/TLS encryption to secure your deployment, you can configure Infinispan Server to use specific versions of the TLS protocol as well as specific cipher suites within the protocol.</p>
+<p>When using SSL/TLS encryption to secure your deployment, you can configure Infinispan Server to use specific versions of the TLS protocol as well as specific cipher suites and allowed key exchange schemes via named groups within the protocol.</p>
 </div>
 <div class="olist arabic">
 <div class="title">Procedure</div>
@@ -4555,6 +5214,9 @@ Omitting the <code>enabled-protocols</code> attribute allows any TLS version.</p
 </div>
 </li>
 <li>
+<p>Configure Infinispan to use a specific set of named groups for hybrid key exchange instead of relying on the JDK defaults with the <code>enabled-named-groups</code> attribute.</p>
+</li>
+<li>
 <p>Save the changes to your configuration.</p>
 </li>
 </ol>
@@ -4576,7 +5238,8 @@ Omitting the <code>enabled-protocols</code> attribute allows any TLS version.</p
             &lt;!-- Configures Infinispan Server to use specific TLS versions and cipher suites. --&gt;
             &lt;engine enabled-protocols="TLSv1.3 TLSv1.2"
                     enabled-ciphersuites="TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_128_CBC_SHA256"
-                    enabled-ciphersuites-tls13="TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"/&gt;
+                    enabled-ciphersuites-tls13="TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+                    enabled-named-groups="X25519MLKEM768 x25519"/&gt;
           &lt;/ssl&gt;
         &lt;/server-identities&gt;
       &lt;/security-realm&gt;
@@ -4603,7 +5266,8 @@ Omitting the <code>enabled-protocols</code> attribute allows any TLS version.</p
             "engine": {
               "enabled-protocols": ["TLSv1.3"],
               "enabled-ciphersuites": "TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_128_CBC_SHA256",
-              "enabled-ciphersuites-tls13": "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+              "enabled-ciphersuites-tls13": "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256",
+              "enabled-named-groups": ["X25519MLKEM768", "x25519"]
             }
           }
         }
@@ -4630,7 +5294,10 @@ Omitting the <code>enabled-protocols</code> attribute allows any TLS version.</p
               enabledProtocols:
                 - "TLSv1.3"
               enabledCiphersuites: "TLS_AES_256_GCM_SHA384,TLS_AES_128_GCM_SHA256"
-              enabledCiphersuitesTls13: "TLS_AES_256_GCM_SHA384"</code></pre>
+              enabledCiphersuitesTls13: "TLS_AES_256_GCM_SHA384"
+              enabledNamedGroups":
+                - "X25519MLKEM768"
+                - "x25519"</code></pre>
 </div>
 </div>
 </div>
@@ -4953,8 +5620,23 @@ These trust stores should be configured with an empty password: <code>password="
 </ul>
 </div>
 <h4 id="client_certificate_authentication_configuration" class="discrete">Client certificate authentication configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_25" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_25_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_25_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_25_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_25_xml--panel" class="tabpanel" aria-labelledby="tabs_25_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -4999,8 +5681,9 @@ These trust stores should be configured with an empty password: <code>password="
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_25_json--panel" class="tabpanel" aria-labelledby="tabs_25_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -5054,8 +5737,9 @@ These trust stores should be configured with an empty password: <code>password="
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_25_yaml--panel" class="tabpanel" aria-labelledby="tabs_25_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -5089,6 +5773,9 @@ These trust stores should be configured with an empty password: <code>password="
           restConnector:
             authentication:
               mechanisms: "CLIENT_CERT"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -5151,8 +5838,23 @@ Alternative Names (SANs) which may be present in the certificate are currently i
 </table>
 </div>
 <h4 id="client_certificate_authorization_configuration" class="discrete">Client certificate authorization configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_26" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_26_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_26_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_26_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_26_xml--panel" class="tabpanel" aria-labelledby="tabs_26_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container name="certificate-authentication" statistics="true"&gt;
@@ -5168,8 +5870,9 @@ Alternative Names (SANs) which may be present in the certificate are currently i
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_26_json--panel" class="tabpanel" aria-labelledby="tabs_26_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan": {
@@ -5193,8 +5896,9 @@ Alternative Names (SANs) which may be present in the certificate are currently i
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_26_yaml--panel" class="tabpanel" aria-labelledby="tabs_26_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
@@ -5208,6 +5912,9 @@ Alternative Names (SANs) which may be present in the certificate are currently i
             role:
               permissions:
                 - "ALL"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -5457,8 +6164,23 @@ If the command requires parameters, provide them as a space-separated list of st
 <p>You can add credential keystores to Infinispan Server configuration and use clear-text passwords, masked passwords, or external commands that supply passwords.</p>
 </div>
 <h4 id="credential_keystore_with_a_clear_text_password" class="discrete">Credential keystore with a clear text password</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_27" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_27_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_27_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_27_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_27_xml--panel" class="tabpanel" aria-labelledby="tabs_27_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -5471,8 +6193,9 @@ If the command requires parameters, provide them as a space-separated list of st
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_27_json--panel" class="tabpanel" aria-labelledby="tabs_27_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -5489,8 +6212,9 @@ If the command requires parameters, provide them as a space-separated list of st
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_27_yaml--panel" class="tabpanel" aria-labelledby="tabs_27_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -5501,9 +6225,27 @@ If the command requires parameters, provide them as a space-separated list of st
           clearText: "secret1234!"</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h4 id="credential_keystore_with_a_masked_password" class="discrete">Credential keystore with a masked password</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_28" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_28_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_28_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_28_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_28_xml--panel" class="tabpanel" aria-labelledby="tabs_28_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -5517,8 +6259,9 @@ If the command requires parameters, provide them as a space-separated list of st
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_28_json--panel" class="tabpanel" aria-labelledby="tabs_28_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -5535,8 +6278,9 @@ If the command requires parameters, provide them as a space-separated list of st
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_28_yaml--panel" class="tabpanel" aria-labelledby="tabs_28_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -5547,9 +6291,27 @@ If the command requires parameters, provide them as a space-separated list of st
           masked: "1oTMDZ5JQj6DVepJviXMnX;pepper99;100"</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h4 id="external_command_passwords" class="discrete">External command passwords</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_29" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_29_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_29_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_29_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_29_xml--panel" class="tabpanel" aria-labelledby="tabs_29_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -5563,8 +6325,9 @@ If the command requires parameters, provide them as a space-separated list of st
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_29_json--panel" class="tabpanel" aria-labelledby="tabs_29_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -5581,8 +6344,9 @@ If the command requires parameters, provide them as a space-separated list of st
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_29_yaml--panel" class="tabpanel" aria-labelledby="tabs_29_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -5594,14 +6358,32 @@ If the command requires parameters, provide them as a space-separated list of st
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect2">
 <h3 id="credential-keystore-references_credential-keystores"><a class="anchor" href="#credential-keystore-references_credential-keystores"></a>6.4. Credential keystore references</h3>
 <div class="paragraph">
 <p>After you add credential keystores to Infinispan Server you can reference them in connection configurations.</p>
 </div>
 <h4 id="datasource_connections" class="discrete">Datasource connections</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_30" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_30_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_30_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_30_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_30_xml--panel" class="tabpanel" aria-labelledby="tabs_30_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -5634,8 +6416,9 @@ If the command requires parameters, provide them as a space-separated list of st
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_30_json--panel" class="tabpanel" aria-labelledby="tabs_30_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -5665,8 +6448,9 @@ If the command requires parameters, provide them as a space-separated list of st
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_30_yaml--panel" class="tabpanel" aria-labelledby="tabs_30_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -5687,9 +6471,27 @@ If the command requires parameters, provide them as a space-separated list of st
           alias: dbpassword</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h4 id="ldap_connections" class="discrete">LDAP connections</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_31" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_31_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_31_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_31_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_31_xml--panel" class="tabpanel" aria-labelledby="tabs_31_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;security&gt;
@@ -5715,8 +6517,9 @@ If the command requires parameters, provide them as a space-separated list of st
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_31_json--panel" class="tabpanel" aria-labelledby="tabs_31_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -5745,8 +6548,9 @@ If the command requires parameters, provide them as a space-separated list of st
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_31_yaml--panel" class="tabpanel" aria-labelledby="tabs_31_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   security:
@@ -5764,6 +6568,9 @@ If the command requires parameters, provide them as a space-separated list of st
           credentialReference:
             store: credentials
             alias: ldappassword</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -6285,7 +7092,7 @@ nftables utility.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-07-31 09:00:30 UTC
+Last updated 2026-09-15 18:44:30 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -6319,5 +7126,134 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
 })
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+<script>
+;(function () { /*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+  'use strict'
+
+  var config = (document.currentScript || {}).dataset || {}
+  var forEach = Array.prototype.forEach
+
+  init(document.querySelectorAll('.tabs'))
+
+  function init (tabsBlocks) {
+    if (!tabsBlocks.length) return
+    forEach.call(tabsBlocks, function (tabs) {
+      var syncIds = tabs.classList.contains('is-sync') ? {} : undefined
+      var tablist = tabs.querySelector('.tablist ul')
+      tablist.setAttribute('role', 'tablist')
+      var start
+      forEach.call(tablist.querySelectorAll('li'), function (tab, idx) {
+        tab.tabIndex = -1
+        tab.setAttribute('role', tab.classList.add('tab') || 'tab')
+        var id, anchor, syncId
+        if (!(id = tab.id) && (anchor = tab.querySelector('a[id]'))) {
+          id = tab.id = anchor.parentNode.removeChild(anchor).id
+        }
+        var panel = id && tabs.querySelector('.tabpanel[aria-labelledby~="' + id + '"]')
+        if (!panel) return idx ? undefined : toggleSelected(tab, true) // invalid state
+        syncIds && (((syncId = tab.textContent.trim()) in syncIds) ? (syncId = undefined) : true) &&
+          (syncIds[(tab.dataset.syncId = syncId)] = tab)
+        idx || (syncIds && (start = { tab: tab, panel: panel })) ? toggleHidden(panel, true) : toggleSelected(tab, true)
+        tab.setAttribute('aria-controls', panel.id)
+        panel.setAttribute('role', 'tabpanel')
+        var onClick = syncId === undefined ? activateTab : activateTabSync
+        tab.addEventListener('click', onClick.bind({ tabs: tabs, tab: tab, panel: panel }))
+      })
+      if (!tabs.closest('.tabpanel')) {
+        forEach.call(tabs.querySelectorAll('.tabpanel table.tableblock'), function (table) {
+          var container = Object.assign(document.createElement('div'), { className: 'tablecontainer' })
+          table.parentNode.insertBefore(container, table).appendChild(table)
+        })
+      }
+      if (start) {
+        var syncGroupId
+        for (var i = 0, lst = tabs.classList, len = lst.length, className; i !== len; i++) {
+          if (!(className = lst.item(i)).startsWith('data-sync-group-id=')) continue
+          tabs.dataset.syncGroupId = syncGroupId = lst.remove(className) || className.slice(19).replace(/\u00a0/g, ' ')
+          break
+        }
+        if (syncGroupId === undefined) tabs.dataset.syncGroupId = syncGroupId = Object.keys(syncIds).sort().join('|')
+        var preferredSyncId = 'syncStorageKey' in config &&
+          window[(config.syncStorageScope || 'local') + 'Storage'].getItem(config.syncStorageKey + '-' + syncGroupId)
+        var tab = preferredSyncId && syncIds[preferredSyncId]
+        tab && Object.assign(start, { tab: tab, panel: document.getElementById(tab.getAttribute('aria-controls')) })
+        toggleSelected(start.tab, true) || toggleHidden(start.panel, false)
+      }
+    })
+    onHashChange()
+    toggleClassOnEach(tabsBlocks, 'is-loading', 'remove')
+    window.setTimeout(toggleClassOnEach.bind(null, tabsBlocks, 'is-loaded', 'add'), 0)
+    window.addEventListener('hashchange', onHashChange)
+  }
+
+  function activateTab (e) {
+    var tab = this.tab
+    var tabs = this.tabs || (this.tabs = tab.closest('.tabs'))
+    var panel = this.panel || (this.panel = document.getElementById(tab.getAttribute('aria-controls')))
+    querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (el) {
+      toggleSelected(el, el === tab)
+    })
+    querySelectorWithSiblings(tabs, '.tabpanel', 'tabpanel').forEach(function (el) {
+      toggleHidden(el, el !== panel)
+    })
+    if (!this.isSync && 'syncStorageKey' in config && 'syncGroupId' in tabs.dataset) {
+      var storageKey = config.syncStorageKey + '-' + tabs.dataset.syncGroupId
+      window[(config.syncStorageScope || 'local') + 'Storage'].setItem(storageKey, tab.dataset.syncId)
+    }
+    if (!e) return
+    var loc = window.location
+    var hashIdx = loc.hash ? loc.href.indexOf('#') : -1
+    if (~hashIdx) window.history.replaceState(null, '', loc.href.slice(0, hashIdx))
+    e.preventDefault()
+  }
+
+  function activateTabSync (e) {
+    activateTab.call(this, e)
+    var thisTabs = this.tabs
+    var thisTab = this.tab
+    var initialY = thisTabs.getBoundingClientRect().y
+    forEach.call(document.querySelectorAll('.tabs'), function (tabs) {
+      if (tabs === thisTabs || tabs.dataset.syncGroupId !== thisTabs.dataset.syncGroupId) return
+      querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (tab) {
+        if (tab.dataset.syncId === thisTab.dataset.syncId) activateTab.call({ tabs: tabs, tab: tab, isSync: true })
+      })
+    })
+    var shiftedBy = thisTabs.getBoundingClientRect().y - initialY
+    if (shiftedBy && (shiftedBy = Math.round(shiftedBy))) window.scrollBy({ top: shiftedBy, behavior: 'instant' })
+  }
+
+  function querySelectorWithSiblings (scope, selector, siblingClass) {
+    var el = scope.querySelector(selector)
+    if (!el) return []
+    var result = [el]
+    while ((el = el.nextElementSibling) && el.classList.contains(siblingClass)) result.push(el)
+    return result
+  }
+
+  function toggleClassOnEach (elements, className, method) {
+    forEach.call(elements, function (el) {
+      el.classList[method](className)
+    })
+  }
+
+  function toggleHidden (el, state) {
+    el.classList[(el.hidden = state) ? 'add' : 'remove']('is-hidden')
+  }
+
+  function toggleSelected (el, state) {
+    el.setAttribute('aria-selected', '' + state)
+    el.classList[state ? 'add' : 'remove']('is-selected')
+    el.tabIndex = state ? 0 : -1
+  }
+
+  function onHashChange () {
+    var id = window.location.hash.slice(1)
+    if (!id) return
+    var tab = document.getElementById(~id.indexOf('%') ? decodeURIComponent(id) : id)
+    if (!(tab && tab.classList.contains('tab'))) return
+    'syncId' in tab.dataset ? activateTabSync.call({ tab: tab }) : activateTab.call({ tab: tab })
+  }
+})()
+</script>
 </body>
 </html>

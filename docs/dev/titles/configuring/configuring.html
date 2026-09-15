@@ -456,81 +456,117 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="../../js/js.js"></script>
 <link rel="canonical" href="https://infinispan.org/docs/stable/titles/configuring/configuring.html">
 <style>
-.hidden {
-    display: none;
+/*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+.tabs {
+  margin-bottom: 1.25em;
 }
 
-.switch {
-    border-width: 1px 1px 0 1px;
-    border-style: solid;
-    border-color: #7a2518;
-    display: inline-block;
+.tablist > ul {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.switch--item {
-    padding: 10px;
-    background-color: #ffffff;
-    color: #7a2518;
-    display: inline-block;
-    cursor: pointer;
+.tablist > ul li {
+  align-items: center;
+  background-color: #fff;
+  cursor: pointer;
+  display: flex;
+  font-weight: bold;
+  line-height: 1.5;
+  padding: 0.25em 1em;
+  position: relative;
 }
 
-.switch--item.selected {
-    background-color: #7a2519;
-    color: #ffffff;
+.tablist > ul li:focus-visible {
+  outline: none;
 }
 
+.tablist.ulist,
+.tablist.ulist > ul li {
+  margin: 0;
+}
+
+.tablist.ulist > ul li + li {
+  margin-left: 0.25em;
+}
+
+.tabs .tablist li::after {
+  content: "";
+  display: block;
+  height: 1px;
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+}
+
+.tabs.is-loading .tablist li:not(:first-child),
+.tabs:not(.is-loading) .tablist li:not(.is-selected) {
+  background-color: #f5f5f5;
+}
+
+.tabs.is-loading .tablist li:first-child::after,
+.tabs:not(.is-loading) .tablist li.is-selected::after {
+  background-color: #fff;
+}
+
+/*
+.tabs:not(.is-loading) .tablist li,
+.tabs:not(.is-loading) .tablist li::after {
+  transition: background-color 200ms ease-in-out;
+}
+*/
+
+.tablist > ul p {
+  line-height: inherit;
+  margin: 0;
+}
+
+.tabpanel {
+  background-color: #fff;
+  padding: 1.25em;
+}
+
+.tablist > ul li,
+.tabpanel {
+  border: 1px solid #dcdcdc;
+}
+
+.tablist > ul li {
+  border-bottom: 0;
+}
+
+.tabs.is-loading .tabpanel + .tabpanel,
+.tabs:not(.is-loading) .tabpanel.is-hidden {
+  display: none;
+}
+
+.tabpanel > :first-child {
+  margin-top: 0;
+}
+
+/* #content is a signature of the Asciidoctor standalone HTML output */
+#content .tabpanel > :last-child,
+#content .tabpanel > :last-child > :last-child,
+#content .tabpanel > :last-child > :last-child > li:last-child > :last-child {
+  margin-bottom: 0;
+}
+
+.tablecontainer {
+  overflow-x: auto;
+}
+
+#content .tablecontainer {
+  margin-bottom: 1.25em;
+}
+
+#content .tablecontainer > table.tableblock {
+  margin-bottom: 0;
+}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
-<script type="text/javascript">
-function addBlockSwitches() {
-    $('.primary').each(function() {
-        primary = $(this);
-        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
-        primary.children('.title').remove();
-    });
-    $('.secondary').each(function(idx, node) {
-        secondary = $(node);
-        primary = findPrimary(secondary);
-        switchItem = createSwitchItem(secondary, primary.children('.switch'));
-        switchItem.content.addClass('hidden');
-        findPrimary(secondary).append(switchItem.content);
-        secondary.remove();
-    });
-}
-
-function createBlockSwitch(primary) {
-    blockSwitch = $('<div class="switch"></div>');
-    primary.prepend(blockSwitch);
-    return blockSwitch;
-}
-
-function findPrimary(secondary) {
-    candidate = secondary.prev();
-    while (!candidate.is('.primary')) {
-        candidate = candidate.prev();
-    }
-    return candidate;
-}
-
-function createSwitchItem(block, blockSwitch) {
-    blockName = block.children('.title').text();
-    content = block.children('.content').first().append(block.next('.colist'));
-    item = $('<div class="switch--item">' + blockName + '</div>');
-    item.on('click', '', content, function(e) {
-        $(this).addClass('selected');
-        $(this).siblings().removeClass('selected');
-        e.data.siblings('.content').addClass('hidden');
-        e.data.removeClass('hidden');
-    });
-    blockSwitch.append(item);
-    return {'item': item, 'content': content};
-}
-
-$(addBlockSwitches);
-
-</script>
-
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
@@ -669,8 +705,15 @@ $(addBlockSwitches);
 <li><a href="#how-expiration-works_configuring-memory-usage">5.5.1. How expiration works</a></li>
 <li><a href="#expiration-reaper_configuring-memory-usage">5.5.2. Expiration reaper</a></li>
 <li><a href="#expiration-maxidle_configuring-memory-usage">5.5.3. Maximum idle and clustered caches</a></li>
-<li><a href="#configuring-expiration-for-caches_configuring-memory-usage">5.5.4. Configuring lifespan and maximum idle times for caches</a></li>
-<li><a href="#configuring-expiration-per-entry_configuring-memory-usage">5.5.5. Configuring lifespan and maximum idle times per entry</a></li>
+<li><a href="#peeking-cache-entries_configuring-memory-usage">5.5.4. Peeking at cache entries</a>
+<ul class="sectlevel4">
+<li><a href="#embedded_cache">Embedded cache</a></li>
+<li><a href="#hot_rod_client">Hot Rod client</a></li>
+<li><a href="#rest_api">REST API</a></li>
+</ul>
+</li>
+<li><a href="#configuring-expiration-for-caches_configuring-memory-usage">5.5.5. Configuring lifespan and maximum idle times for caches</a></li>
+<li><a href="#configuring-expiration-per-entry_configuring-memory-usage">5.5.6. Configuring lifespan and maximum idle times per entry</a></li>
 </ul>
 </li>
 <li><a href="#off-heap-memory_configuring-memory-usage">5.6. JVM heap and off-heap memory</a>
@@ -1151,8 +1194,23 @@ write-behind to persistent storage as well as management capabilities such as ev
 <p>The Infinispan <code>Cache</code> API extends the <code>ConcurrentMap</code> API in Java, making it easy to migrate from a map to a Infinispan cache.</p>
 </div>
 <h4 id="local_cache_configuration" class="discrete">Local cache configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_1" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_1_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_1_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_1_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_1_xml--panel" class="tabpanel" aria-labelledby="tabs_1_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;local-cache name="mycache"
              statistics="true"&gt;
@@ -1160,8 +1218,9 @@ write-behind to persistent storage as well as management capabilities such as ev
 &lt;/local-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_1_json--panel" class="tabpanel" aria-labelledby="tabs_1_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "local-cache": {
@@ -1174,14 +1233,18 @@ write-behind to persistent storage as well as management capabilities such as ev
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_1_yaml--panel" class="tabpanel" aria-labelledby="tabs_1_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">localCache:
   name: "mycache"
   statistics: "true"
   encoding:
     mediaType: "application/x-protostream"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -1213,14 +1276,30 @@ write-behind to persistent storage as well as management capabilities such as ev
 If you configure a capability that is not compatible with a simple cache, Infinispan throws an exception.</p>
 </div>
 <h5 id="simple_cache_configuration" class="discrete">Simple cache configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_2" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_2_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_2_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_2_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_2_xml--panel" class="tabpanel" aria-labelledby="tabs_2_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;local-cache simple-cache="true" /&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_2_json--panel" class="tabpanel" aria-labelledby="tabs_2_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "local-cache" : {
@@ -1229,11 +1308,15 @@ If you configure a capability that is not compatible with a simple cache, Infini
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_2_yaml--panel" class="tabpanel" aria-labelledby="tabs_2_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">localCache:
   simpleCache: "true"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1459,8 +1542,20 @@ select this algorithm in a distributed cache.</p></td>
 <div class="paragraph">
 <p>You can configure <code>ConsistentHashFactory</code> implementations, including custom ones, with embedded caches only.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_3" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_3_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_3_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_3_xml--panel" class="tabpanel" aria-labelledby="tabs_3_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="distributedCache"
                    owners="2"
@@ -1468,8 +1563,9 @@ select this algorithm in a distributed cache.</p></td>
                    capacity-factor="2" /&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_3_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_3_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">Configuration c = new ConfigurationBuilder()
    .clustering()
@@ -1479,6 +1575,9 @@ select this algorithm in a distributed cache.</p></td>
          .numSegments(100)
          .capacityFactor(2)
    .build();</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -1516,16 +1615,35 @@ You can also configure a capacity factor of <code>0</code> but is recommended on
 When defining a zero capacity node, the node does not hold any data.</p>
 </div>
 <h6 id="zero_capacity_node_configuration" class="discrete">Zero capacity node configuration</h6>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_4" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_4_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_4_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_4_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_4_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_4_xml--panel" class="tabpanel" aria-labelledby="tabs_4_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container zero-capacity-node="true" /&gt;
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_4_json--panel" class="tabpanel" aria-labelledby="tabs_4_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -1536,18 +1654,23 @@ When defining a zero capacity node, the node does not hold any data.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_4_yaml--panel" class="tabpanel" aria-labelledby="tabs_4_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
     zeroCapacityNode: "true"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_4_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_4_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">new GlobalConfigurationBuilder().zeroCapacityNode(true);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1610,16 +1733,35 @@ However this also decreases performance of write operations and increases memory
 </table>
 </div>
 <h5 id="l1_cache_configuration" class="discrete">L1 cache configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_5" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_5_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_5_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_5_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_5_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_5_xml--panel" class="tabpanel" aria-labelledby="tabs_5_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache l1-lifespan="5s"
                    l1-cleanup-interval="1m"&gt;
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_5_json--panel" class="tabpanel" aria-labelledby="tabs_5_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -1629,22 +1771,27 @@ However this also decreases performance of write operations and increases memory
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_5_yaml--panel" class="tabpanel" aria-labelledby="tabs_5_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   l1Lifespan: "5000"
   l1-cleanup-interval: "60000"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_5_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_5_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.clustering().cacheMode(CacheMode.DIST_SYNC)
          .l1()
          .lifespan(5000, TimeUnit.MILLISECONDS)
          .cleanupTaskFrequency(60000, TimeUnit.MILLISECONDS);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1686,8 +1833,26 @@ An alternative for clusters in multiple data centers is cross-site replication.
 </table>
 </div>
 <h5 id="server_hinting_configuration" class="discrete">Server hinting configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_6" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_6_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_6_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_6_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_6_globalconfigurationbuilder" class="tab">
+<p>GlobalConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_6_xml--panel" class="tabpanel" aria-labelledby="tabs_6_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
   &lt;transport cluster="MyCluster"
@@ -1697,8 +1862,9 @@ An alternative for clusters in multiple data centers is cross-site replication.
 &lt;/cache-container&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_6_json--panel" class="tabpanel" aria-labelledby="tabs_6_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -1714,8 +1880,9 @@ An alternative for clusters in multiple data centers is cross-site replication.
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_6_yaml--panel" class="tabpanel" aria-labelledby="tabs_6_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">cacheContainer:
   transport:
@@ -1725,8 +1892,9 @@ An alternative for clusters in multiple data centers is cross-site replication.
     site: "US-WestCoast"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">GlobalConfigurationBuilder</div>
+</div>
+<div id="tabs_6_globalconfigurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_6_globalconfigurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder global = GlobalConfigurationBuilder.defaultClusteredBuilder()
   .transport()
@@ -1734,6 +1902,9 @@ An alternative for clusters in multiple data centers is cross-site replication.
   .machineId("LinuxServer01")
   .rackId("Rack01")
   .siteId("US-WestCoast");</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -2180,8 +2351,26 @@ This means that nodes do not need to wait for other nodes to join the cluster be
 </ol>
 </div>
 <h4 id="initial_cluster_size_configuration" class="discrete">Initial cluster size configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_7" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_7_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_7_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_7_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_7_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_7_xml--panel" class="tabpanel" aria-labelledby="tabs_7_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container&gt;
@@ -2191,8 +2380,9 @@ This means that nodes do not need to wait for other nodes to join the cluster be
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_7_json--panel" class="tabpanel" aria-labelledby="tabs_7_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -2206,8 +2396,9 @@ This means that nodes do not need to wait for other nodes to join the cluster be
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_7_yaml--panel" class="tabpanel" aria-labelledby="tabs_7_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
@@ -2216,13 +2407,17 @@ This means that nodes do not need to wait for other nodes to join the cluster be
       initialClusterTimeout: "30000"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_7_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_7_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfiguration global = GlobalConfigurationBuilder.defaultClusteredBuilder()
    .transport()
    .initialClusterSize(4)
    .initialClusterTimeout(30000, TimeUnit.MILLISECONDS);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -2361,8 +2556,23 @@ Write succinct file names.</p>
 </table>
 </div>
 <h5 id="distributed_caches" class="discrete">Distributed caches</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_8" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_8_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_8_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_8_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_8_xml--panel" class="tabpanel" aria-labelledby="tabs_8_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache owners="2"
                    segments="256"
@@ -2393,8 +2603,9 @@ Write succinct file names.</p>
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_8_json--panel" class="tabpanel" aria-labelledby="tabs_8_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -2443,8 +2654,9 @@ Write succinct file names.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_8_yaml--panel" class="tabpanel" aria-labelledby="tabs_8_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   mode: "SYNC"
@@ -2481,9 +2693,27 @@ Write succinct file names.</p>
     # Persistent storage configuration.</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h5 id="replicated_caches" class="discrete">Replicated caches</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_9" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_9_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_9_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_9_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_9_xml--panel" class="tabpanel" aria-labelledby="tabs_9_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;replicated-cache segments="256"
                   mode="SYNC"
@@ -2511,8 +2741,9 @@ Write succinct file names.</p>
 &lt;/replicated-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_9_json--panel" class="tabpanel" aria-labelledby="tabs_9_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "replicated-cache": {
@@ -2558,8 +2789,9 @@ Write succinct file names.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_9_yaml--panel" class="tabpanel" aria-labelledby="tabs_9_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">replicatedCache:
   mode: "SYNC"
@@ -2593,9 +2825,27 @@ Write succinct file names.</p>
     # Persistent storage configuration.</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h5 id="multiple_caches" class="discrete">Multiple caches</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_10" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_10_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_10_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_10_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_10_xml--panel" class="tabpanel" aria-labelledby="tabs_10_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -2625,8 +2875,9 @@ Write succinct file names.</p>
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_10_json--panel" class="tabpanel" aria-labelledby="tabs_10_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -2672,8 +2923,9 @@ Write succinct file names.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_10_yaml--panel" class="tabpanel" aria-labelledby="tabs_10_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
@@ -2702,6 +2954,9 @@ Write succinct file names.</p>
           memory:
             maxSize: "400MB"
             whenFull: "REMOVE"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -2738,8 +2993,23 @@ You can then create caches on demand, using the same configuration multiple time
 </ol>
 </div>
 <h4 id="cache_template_example" class="discrete">Cache template example</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_11" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_11_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_11_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_11_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_11_xml--panel" class="tabpanel" aria-labelledby="tabs_11_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
    &lt;cache-container&gt;
@@ -2756,8 +3026,9 @@ You can then create caches on demand, using the same configuration multiple time
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_11_json--panel" class="tabpanel" aria-labelledby="tabs_11_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -2783,8 +3054,9 @@ You can then create caches on demand, using the same configuration multiple time
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_11_yaml--panel" class="tabpanel" aria-labelledby="tabs_11_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
@@ -2800,6 +3072,9 @@ You can then create caches on demand, using the same configuration multiple time
       memory:
         maxCount: "1000000"
         whenFull: "REMOVE"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -2844,14 +3119,30 @@ You can then create caches on demand, using the same configuration multiple time
 </ol>
 </div>
 <h5 id="cache_configuration_inherited_from_a_template" class="discrete">Cache configuration inherited from a template</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_12" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_12_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_12_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_12_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_12_xml--panel" class="tabpanel" aria-labelledby="tabs_12_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache configuration="my-dist-template" /&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_12_json--panel" class="tabpanel" aria-labelledby="tabs_12_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -2860,11 +3151,15 @@ You can then create caches on demand, using the same configuration multiple time
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_12_yaml--panel" class="tabpanel" aria-labelledby="tabs_12_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   configuration: "my-dist-template"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -2882,8 +3177,23 @@ For a child configuration template to inherit from a parent, you must include it
 A cache that inherits from another template merges the values from that template, which can override properties.</p>
 </div>
 <h5 id="template_inheritance_example" class="discrete">Template inheritance example</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_13" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_13_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_13_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_13_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_13_xml--panel" class="tabpanel" aria-labelledby="tabs_13_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container&gt;
@@ -2900,8 +3210,9 @@ A cache that inherits from another template merges the values from that template
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_13_json--panel" class="tabpanel" aria-labelledby="tabs_13_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -2932,8 +3243,9 @@ A cache that inherits from another template merges the values from that template
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_13_yaml--panel" class="tabpanel" aria-labelledby="tabs_13_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
@@ -2950,6 +3262,9 @@ A cache that inherits from another template merges the values from that template
           expiration:
             lifespan: "10000"
             maxIdle: "1000"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -2974,8 +3289,23 @@ If you then create caches where the name matches the wildcard, Infinispan applie
 </table>
 </div>
 <h5 id="template_wildcard_example" class="discrete">Template wildcard example</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_14" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_14_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_14_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_14_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_14_xml--panel" class="tabpanel" aria-labelledby="tabs_14_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
    &lt;cache-container&gt;
@@ -2988,8 +3318,9 @@ If you then create caches where the name matches the wildcard, Infinispan applie
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_14_json--panel" class="tabpanel" aria-labelledby="tabs_14_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -3007,8 +3338,9 @@ If you then create caches where the name matches the wildcard, Infinispan applie
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_14_yaml--panel" class="tabpanel" aria-labelledby="tabs_14_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
@@ -3018,6 +3350,9 @@ If you then create caches where the name matches the wildcard, Infinispan applie
       statistics: "true"
       encoding:
         mediaType: "application/x-protostream"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="paragraph">
@@ -3100,14 +3435,30 @@ This means you cannot use the <code>xpointer</code> attribute, the <code>xi:fall
 </tr>
 </table>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_15" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_15_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_15_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_15_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_15_xml--panel" class="tabpanel" aria-labelledby="tabs_15_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="acache" aliases="0 anothername"/&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_15_json--panel" class="tabpanel" aria-labelledby="tabs_15_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -3116,13 +3467,17 @@ This means you cannot use the <code>xpointer</code> attribute, the <code>xi:fall
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_15_yaml--panel" class="tabpanel" aria-labelledby="tabs_15_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   aliases:
     - "0"
     - "anothername"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -3182,8 +3537,23 @@ Starting Infinispan Server automatically instantiates the Cache Manager so you c
 </dl>
 </div>
 <h5 id="default_cache_manager_configuration" class="discrete">Default Cache Manager configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_16" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_16_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_16_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_16_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_16_xml--panel" class="tabpanel" aria-labelledby="tabs_16_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;!-- Creates a Cache Manager named "default" and enables metrics. --&gt;
@@ -3201,8 +3571,9 @@ Starting Infinispan Server automatically instantiates the Cache Manager so you c
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_16_json--panel" class="tabpanel" aria-labelledby="tabs_16_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -3225,8 +3596,9 @@ Starting Infinispan Server automatically instantiates the Cache Manager so you c
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_16_yaml--panel" class="tabpanel" aria-labelledby="tabs_16_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   jgroups:
@@ -3240,6 +3612,9 @@ Starting Infinispan Server automatically instantiates the Cache Manager so you c
       stack: "tcp"
     security:
       authorization: ~</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -3399,8 +3774,20 @@ You can find code examples for other Hot Rod clients in the <a href="https://inf
 </li>
 </ul>
 </div>
-<div class="listingblock primary">
-<div class="title">ConfigurationBuilder</div>
+<div id="tabs_17" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_17_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+<li id="tabs_17_hotrod_client_properties" class="tab">
+<p>hotrod-client.properties</p>
+</li>
+</ul>
+</div>
+<div id="tabs_17_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_17_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">File file = new File("path/to/infinispan.xml")
 ConfigurationBuilder builder = new ConfigurationBuilder();
@@ -3410,11 +3797,15 @@ builder.remoteCache("my.other.cache")
        .configurationURI(file.toURI());</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">hotrod-client.properties</div>
+</div>
+<div id="tabs_17_hotrod_client_properties--panel" class="tabpanel" aria-labelledby="tabs_17_hotrod_client_properties">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-none hljs">infinispan.client.hotrod.cache.another-cache.configuration=&lt;distributed-cache name=\"another-cache\"/&gt;
 infinispan.client.hotrod.cache.[my.other.cache].configuration_uri=file:///path/to/infinispan.xml</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="admonitionblock important">
@@ -3856,8 +4247,20 @@ These are, in descending order of cost:</p>
 </ol>
 </div>
 <h4 id="embedded_cache_statistics" class="discrete">Embedded cache statistics</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_18" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_18_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_18_globalconfigurationbuilder" class="tab">
+<p>GlobalConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_18_xml--panel" class="tabpanel" aria-labelledby="tabs_18_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container statistics="true"&gt;
@@ -3867,14 +4270,18 @@ These are, in descending order of cost:</p>
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">GlobalConfigurationBuilder</div>
+</div>
+<div id="tabs_18_globalconfigurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_18_globalconfigurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder global = GlobalConfigurationBuilder.defaultClusteredBuilder().cacheContainer().statistics(true);
 DefaultCacheManager cacheManager = new DefaultCacheManager(global.build());
 
 Configuration builder = new ConfigurationBuilder();
 builder.statistics().enable();</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -3899,14 +4306,30 @@ However, you must explicitly enable statistics for your caches.</p>
 </ol>
 </div>
 <h4 id="remote_cache_statistics" class="discrete">Remote cache statistics</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_19" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_19_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_19_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_19_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_19_xml--panel" class="tabpanel" aria-labelledby="tabs_19_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache statistics="true" /&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_19_json--panel" class="tabpanel" aria-labelledby="tabs_19_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -3915,11 +4338,15 @@ However, you must explicitly enable statistics for your caches.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_19_yaml--panel" class="tabpanel" aria-labelledby="tabs_19_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   statistics: true</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -3946,8 +4373,20 @@ However, you must explicitly enable statistics for your caches.</p>
 </ol>
 </div>
 <h4 id="hot_rod_java_client_statistics" class="discrete">Hot Rod Java client statistics</h4>
-<div class="listingblock primary">
-<div class="title">ConfigurationBuilder</div>
+<div id="tabs_20" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_20_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+<li id="tabs_20_hotrod_client_properties" class="tab">
+<p>hotrod-client.properties</p>
+</li>
+</ul>
+</div>
+<div id="tabs_20_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_20_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.statistics().enable()
@@ -3959,12 +4398,16 @@ builder.statistics().enable()
 RemoteCacheManager remoteCacheManager = new RemoteCacheManager(builder.build());</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">hotrod-client.properties</div>
+</div>
+<div id="tabs_20_hotrod_client_properties--panel" class="tabpanel" aria-labelledby="tabs_20_hotrod_client_properties">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">infinispan.client.hotrod.statistics = true
 infinispan.client.hotrod.jmx = true
 infinispan.client.hotrod.jmx_domain = my.domain.org</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -4034,8 +4477,26 @@ Metrics related to the JVM are provided in the <code>base</code> scope.</p>
 </ol>
 </div>
 <h4 id="metrics_configuration" class="discrete">Metrics configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_21" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_21_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_21_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_21_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_21_globalconfigurationbuilder" class="tab">
+<p>GlobalConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_21_xml--panel" class="tabpanel" aria-labelledby="tabs_21_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container statistics="true"&gt;
@@ -4045,8 +4506,9 @@ Metrics related to the JVM are provided in the <code>base</code> scope.</p>
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_21_json--panel" class="tabpanel" aria-labelledby="tabs_21_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -4061,8 +4523,9 @@ Metrics related to the JVM are provided in the <code>base</code> scope.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_21_yaml--panel" class="tabpanel" aria-labelledby="tabs_21_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
@@ -4072,8 +4535,9 @@ Metrics related to the JVM are provided in the <code>base</code> scope.</p>
       histograms: "true"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">GlobalConfigurationBuilder</div>
+</div>
+<div id="tabs_21_globalconfigurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_21_globalconfigurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfiguration globalConfig = new GlobalConfigurationBuilder()
   //Computes and collects statistics for the Cache Manager.
@@ -4083,13 +4547,31 @@ Metrics related to the JVM are provided in the <code>base</code> scope.</p>
   .build();</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h5 id="legacy_format" class="discrete">Legacy format</h5>
 <div class="paragraph">
 <p>For backwards compatibility, metrics are currently exported in a legacy format by default. The setting <code>legacy</code> should be set to
 <code>false</code> to export metrics in the new format.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_22" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_22_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_22_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_22_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_22_xml--panel" class="tabpanel" aria-labelledby="tabs_22_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container statistics="true"&gt;
@@ -4098,8 +4580,9 @@ Metrics related to the JVM are provided in the <code>base</code> scope.</p>
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_22_json--panel" class="tabpanel" aria-labelledby="tabs_22_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -4113,8 +4596,9 @@ Metrics related to the JVM are provided in the <code>base</code> scope.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_22_yaml--panel" class="tabpanel" aria-labelledby="tabs_22_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
@@ -4123,24 +4607,43 @@ Metrics related to the JVM are provided in the <code>base</code> scope.</p>
       legacy: "false"</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="paragraph">
 <div class="title">Verification</div>
 <p>Infinispan Server exposes statistics through the <code>metrics</code> endpoint that you can collect with monitoring tools such as Prometheus.
 To verify that statistics are exported to the <code>metrics</code> endpoint, you can do the following:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">Prometheus format</div>
+<div id="tabs_23" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_23_prometheus_format" class="tab">
+<p>Prometheus format</p>
+</li>
+<li id="tabs_23_openmetrics_format" class="tab">
+<p>OpenMetrics format</p>
+</li>
+</ul>
+</div>
+<div id="tabs_23_prometheus_format--panel" class="tabpanel" aria-labelledby="tabs_23_prometheus_format">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-none hljs">curl -v http://localhost:11222/metrics \
 --digest -u username:password</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">OpenMetrics format</div>
+</div>
+<div id="tabs_23_openmetrics_format--panel" class="tabpanel" aria-labelledby="tabs_23_openmetrics_format">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-none hljs">curl -v http://localhost:11222/metrics \
 --digest -u username:password \
 -H "Accept: application/openmetrics-text"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -4211,8 +4714,26 @@ You must also enable statistics otherwise Infinispan provides <code>0</code> val
 </ol>
 </div>
 <h4 id="jmx_configuration" class="discrete">JMX configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_24" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_24_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_24_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_24_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_24_globalconfigurationbuilder" class="tab">
+<p>GlobalConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_24_xml--panel" class="tabpanel" aria-labelledby="tabs_24_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container statistics="true"&gt;
@@ -4222,8 +4743,9 @@ You must also enable statistics otherwise Infinispan provides <code>0</code> val
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_24_json--panel" class="tabpanel" aria-labelledby="tabs_24_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -4238,8 +4760,9 @@ You must also enable statistics otherwise Infinispan provides <code>0</code> val
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_24_yaml--panel" class="tabpanel" aria-labelledby="tabs_24_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
@@ -4249,12 +4772,16 @@ You must also enable statistics otherwise Infinispan provides <code>0</code> val
       domain: "example.com"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">GlobalConfigurationBuilder</div>
+</div>
+<div id="tabs_24_globalconfigurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_24_globalconfigurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfiguration global = GlobalConfigurationBuilder.defaultClusteredBuilder()
    .jmx().enable()
    .domain("org.mydomain");</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -4428,8 +4955,26 @@ register MBeans in custom MBeanServer instances.</p>
 </ol>
 </div>
 <h5 id="jmx_mbean_server_lookup_configuration" class="discrete">JMX MBean server lookup configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_25" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_25_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_25_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_25_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_25_globalconfigurationbuilder" class="tab">
+<p>GlobalConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_25_xml--panel" class="tabpanel" aria-labelledby="tabs_25_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container statistics="true"&gt;
@@ -4440,8 +4985,9 @@ register MBeans in custom MBeanServer instances.</p>
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_25_json--panel" class="tabpanel" aria-labelledby="tabs_25_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -4457,8 +5003,9 @@ register MBeans in custom MBeanServer instances.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_25_yaml--panel" class="tabpanel" aria-labelledby="tabs_25_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
@@ -4469,13 +5016,17 @@ register MBeans in custom MBeanServer instances.</p>
       mbeanServerLookup: "com.example.MyMBeanServerLookup"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">GlobalConfigurationBuilder</div>
+</div>
+<div id="tabs_25_globalconfigurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_25_globalconfigurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfiguration global = GlobalConfigurationBuilder.defaultClusteredBuilder()
    .jmx().enable()
    .domain("org.mydomain")
    .mBeanServerLookup(new com.acme.MyMBeanServerLookup());</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -4851,16 +5402,32 @@ Monitoring cross-site latency metrics can help you to discover potential issues.
 Over time, as applications add entries, the size of caches can exceed the amount of memory that is available to the JVM.
 Likewise, if Infinispan is not the primary data store, then entries become out of date which means your caches contain stale data.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_26" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_26_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_26_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_26_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_26_xml--panel" class="tabpanel" aria-labelledby="tabs_26_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;memory storage="HEAP"/&gt;
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_26_json--panel" class="tabpanel" aria-labelledby="tabs_26_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -4871,12 +5438,16 @@ Likewise, if Infinispan is not the primary data store, then entries become out o
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_26_yaml--panel" class="tabpanel" aria-labelledby="tabs_26_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   memory:
     storage: "HEAP"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -5063,16 +5634,35 @@ Infinispan performs eviction with either the <code>max-count</code> attribute or
 <div class="paragraph">
 <p>In the following example, Infinispan removes an entry when the cache contains a total of 500 entries and a new entry is created:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_27" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_27_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_27_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_27_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_27_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_27_xml--panel" class="tabpanel" aria-labelledby="tabs_27_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;memory max-count="500" when-full="REMOVE"/&gt;
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_27_json--panel" class="tabpanel" aria-labelledby="tabs_27_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache" : {
@@ -5084,8 +5674,9 @@ Infinispan performs eviction with either the <code>max-count</code> attribute or
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_27_yaml--panel" class="tabpanel" aria-labelledby="tabs_27_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   memory:
@@ -5093,11 +5684,15 @@ Infinispan performs eviction with either the <code>max-count</code> attribute or
     whenFull: "REMOVE"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_27_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_27_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.memory().maxCount(500).whenFull(EvictionStrategy.REMOVE);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -5164,8 +5759,26 @@ Infinispan performs eviction with the <code>max-size</code> attribute or <code>m
 <div class="paragraph">
 <p>In the following example, Infinispan removes an entry when the size of the cache reaches 1.5 GB (gigabytes) and a new entry is created:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_28" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_28_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_28_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_28_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_28_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_28_xml--panel" class="tabpanel" aria-labelledby="tabs_28_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;encoding media-type="application/x-protostream"/&gt;
@@ -5173,8 +5786,9 @@ Infinispan performs eviction with the <code>max-size</code> attribute or <code>m
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_28_json--panel" class="tabpanel" aria-labelledby="tabs_28_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache" : {
@@ -5189,8 +5803,9 @@ Infinispan performs eviction with the <code>max-size</code> attribute or <code>m
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_28_yaml--panel" class="tabpanel" aria-labelledby="tabs_28_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   encoding:
@@ -5200,14 +5815,18 @@ Infinispan performs eviction with the <code>max-size</code> attribute or <code>m
     whenFull: "REMOVE"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_28_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_28_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.encoding().mediaType("application/x-protostream")
        .memory()
          .maxSize("1.5GB")
          .whenFull(EvictionStrategy.REMOVE);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -5252,16 +5871,35 @@ For remote caches, you should always configure Infinispan with the <code>REMOVE<
 </tr>
 </table>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_29" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_29_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_29_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_29_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_29_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_29_xml--panel" class="tabpanel" aria-labelledby="tabs_29_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;memory max-count="500" when-full="MANUAL"/&gt;
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_29_json--panel" class="tabpanel" aria-labelledby="tabs_29_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache" : {
@@ -5273,8 +5911,9 @@ For remote caches, you should always configure Infinispan with the <code>REMOVE<
  }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_29_yaml--panel" class="tabpanel" aria-labelledby="tabs_29_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   memory:
@@ -5282,8 +5921,9 @@ For remote caches, you should always configure Infinispan with the <code>REMOVE<
     whenFull: "MANUAL"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_29_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_29_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.encoding().mediaType("application/x-protostream")
@@ -5293,14 +5933,35 @@ builder.encoding().mediaType("application/x-protostream")
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect3">
 <h4 id="eviction-passivation_configuring-memory-usage"><a class="anchor" href="#eviction-passivation_configuring-memory-usage"></a>5.3.5. Passivation with eviction</h4>
 <div class="paragraph">
 <p>Passivation persists data to cache stores when Infinispan evicts entries.
 You should always enable eviction if you enable passivation, as in the following examples:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_30" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_30_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_30_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_30_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_30_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_30_xml--panel" class="tabpanel" aria-labelledby="tabs_30_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence passivation="true"&gt;
@@ -5310,8 +5971,9 @@ You should always enable eviction if you enable passivation, as in the following
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_30_json--panel" class="tabpanel" aria-labelledby="tabs_30_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -5325,8 +5987,9 @@ You should always enable eviction if you enable passivation, as in the following
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_30_yaml--panel" class="tabpanel" aria-labelledby="tabs_30_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   memory:
@@ -5335,12 +5998,16 @@ You should always enable eviction if you enable passivation, as in the following
     passivation: "true"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_30_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_30_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.memory().maxCount(100);
 builder.persistence().passivation(true); //Persistent storage configuration</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -5856,7 +6523,77 @@ expiration. Lifespan will always remove it at that point invalidating maximum id
 </div>
 </div>
 <div class="sect3">
-<h4 id="configuring-expiration-for-caches_configuring-memory-usage"><a class="anchor" href="#configuring-expiration-for-caches_configuring-memory-usage"></a>5.5.4. Configuring lifespan and maximum idle times for caches</h4>
+<h4 id="peeking-cache-entries_configuring-memory-usage"><a class="anchor" href="#peeking-cache-entries_configuring-memory-usage"></a>5.5.4. Peeking at cache entries</h4>
+<div class="paragraph">
+<p>Reading a cache entry normally updates the access time of the entry, which resets the maximum idle expiration timer and refreshes the eviction access order.
+In some cases you may want to inspect an entry without affecting its expiration or eviction lifecycle.
+Infinispan provides a peek operation that reads entries without updating any access metadata.</p>
+</div>
+<div class="paragraph">
+<p>When you peek at a cache entry:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The maximum idle timer is <strong>not</strong> reset, so the entry continues to expire based on its last real access.</p>
+</li>
+<li>
+<p>The eviction access order is <strong>not</strong> updated, so the entry can still be evicted as if it was never accessed.</p>
+</li>
+<li>
+<p>Entries that have already exceeded their maximum idle time or lifespan may still be returned if the expiration reaper has not yet removed them.</p>
+</li>
+<li>
+<p>Entries that have been evicted are not returned.</p>
+</li>
+</ul>
+</div>
+<div class="sect4">
+<h5 id="embedded_cache"><a class="anchor" href="#embedded_cache"></a>Embedded cache</h5>
+<div class="paragraph">
+<p>Use the <code>peek()</code> method on <code>AdvancedCache</code>, which returns a <code>CacheEntry</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">CacheEntry&lt;String, String&gt; entry = cache.getAdvancedCache().peek("myKey");</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>PEEK</code> flag can also be used directly with other read operations:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">advancedCache.withFlags(Flag.PEEK).get(key);
+advancedCache.withFlags(Flag.PEEK).getCacheEntry(key);</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="hot_rod_client"><a class="anchor" href="#hot_rod_client"></a>Hot Rod client</h5>
+<div class="paragraph">
+<p>Use the <code>peek()</code> method on <code>RemoteCache</code>, which returns a <code>MetadataValue</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">MetadataValue&lt;String&gt; value = remoteCache.peek("myKey");</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="rest_api"><a class="anchor" href="#rest_api"></a>REST API</h5>
+<div class="paragraph">
+<p>Add the <code>flags</code> header with the value <code>PEEK</code> to a <code>GET</code> request:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">GET /rest/v2/caches/{cacheName}/{cacheKey}
+flags: PEEK</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="configuring-expiration-for-caches_configuring-memory-usage"><a class="anchor" href="#configuring-expiration-for-caches_configuring-memory-usage"></a>5.5.5. Configuring lifespan and maximum idle times for caches</h4>
 <div class="paragraph">
 <p>Set lifespan and maximum idle times for all entries in a cache.</p>
 </div>
@@ -5881,16 +6618,35 @@ expiration. Lifespan will always remove it at that point invalidating maximum id
 <div class="paragraph">
 <p>In the following example, Infinispan expires all cache entries after 5 seconds or 1 second after the last access time, whichever happens first:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_31" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_31_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_31_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_31_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_31_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_31_xml--panel" class="tabpanel" aria-labelledby="tabs_31_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;replicated-cache&gt;
   &lt;expiration lifespan="5s" max-idle="1s" /&gt;
 &lt;/replicated-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_31_json--panel" class="tabpanel" aria-labelledby="tabs_31_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "replicated-cache" : {
@@ -5902,8 +6658,9 @@ expiration. Lifespan will always remove it at that point invalidating maximum id
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_31_yaml--panel" class="tabpanel" aria-labelledby="tabs_31_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">replicatedCache:
   expiration:
@@ -5911,8 +6668,9 @@ expiration. Lifespan will always remove it at that point invalidating maximum id
     maxIdle: "1000"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_31_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_31_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.expiration().lifespan(5000, TimeUnit.MILLISECONDS)
@@ -5920,8 +6678,11 @@ builder.expiration().lifespan(5000, TimeUnit.MILLISECONDS)
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect3">
-<h4 id="configuring-expiration-per-entry_configuring-memory-usage"><a class="anchor" href="#configuring-expiration-per-entry_configuring-memory-usage"></a>5.5.5. Configuring lifespan and maximum idle times per entry</h4>
+<h4 id="configuring-expiration-per-entry_configuring-memory-usage"><a class="anchor" href="#configuring-expiration-per-entry_configuring-memory-usage"></a>5.5.6. Configuring lifespan and maximum idle times per entry</h4>
 <div class="paragraph">
 <p>Specify lifespan and maximum idle times for individual entries.
 When you add lifespan and maximum idle times to entries, those values take priority over expiration configuration for caches.</p>
@@ -6104,16 +6865,35 @@ heap space.</p>
 <p>Infinispan stores cache entries as bytes in native memory.
 Eviction happens when there are 100 entries in the data container and Infinispan gets a request to create a new entry:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_32" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_32_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_32_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_32_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_32_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_32_xml--panel" class="tabpanel" aria-labelledby="tabs_32_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;replicated-cache&gt;
   &lt;memory storage="OFF_HEAP" max-count="500"/&gt;
 &lt;/replicated-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_32_json--panel" class="tabpanel" aria-labelledby="tabs_32_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "replicated-cache" : {
@@ -6125,8 +6905,9 @@ Eviction happens when there are 100 entries in the data container and Infinispan
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_32_yaml--panel" class="tabpanel" aria-labelledby="tabs_32_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">replicatedCache:
   memory:
@@ -6134,11 +6915,15 @@ Eviction happens when there are 100 entries in the data container and Infinispan
     maxCount: "500"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_32_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_32_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.memory().storage(StorageType.OFF_HEAP).maxCount(500);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -6244,8 +7029,20 @@ By default, cache stores are local (<code>shared="false"</code>).</p>
 </tr>
 </table>
 </div>
-<div class="listingblock primary">
-<div class="title">Local cache store</div>
+<div id="tabs_33" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_33_local_cache_store" class="tab">
+<p>Local cache store</p>
+</li>
+<li id="tabs_33_shared_cache_store" class="tab">
+<p>Shared cache store</p>
+</li>
+</ul>
+</div>
+<div id="tabs_33_local_cache_store--panel" class="tabpanel" aria-labelledby="tabs_33_local_cache_store">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;persistence&gt;
   &lt;store shared="false"
@@ -6253,13 +7050,17 @@ By default, cache stores are local (<code>shared="false"</code>).</p>
 &lt;/persistence&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Shared cache store</div>
+</div>
+<div id="tabs_33_shared_cache_store--panel" class="tabpanel" aria-labelledby="tabs_33_shared_cache_store">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;persistence&gt;
   &lt;store shared="true"
          purge="false"/&gt;
 &lt;/persistence&gt;</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -6357,8 +7158,26 @@ unshared and local file-based cache stores, where the time between the
 write to the cache and the write to the cache store is as small as possible.</p>
 </div>
 <h4 id="write_behind_configuration" class="discrete">Write-behind configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_34" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_34_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_34_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_34_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_34_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_34_xml--panel" class="tabpanel" aria-labelledby="tabs_34_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
@@ -6377,8 +7196,9 @@ write to the cache and the write to the cache store is as small as possible.</p>
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_34_json--panel" class="tabpanel" aria-labelledby="tabs_34_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -6403,8 +7223,9 @@ write to the cache and the write to the cache store is as small as possible.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_34_yaml--panel" class="tabpanel" aria-labelledby="tabs_34_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   persistence:
@@ -6422,14 +7243,18 @@ write to the cache and the write to the cache store is as small as possible.</p>
         failSilently: "true"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_34_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_34_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.persistence()
        .async()
        .modificationQueueSize(2048)
        .failSilently(true);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <h4 id="failing_silently" class="discrete">Failing silently</h4>
@@ -6799,8 +7624,26 @@ In this case Infinispan uses <code>/opt/data/global/state</code> as the global p
 </ol>
 </div>
 <h5 id="global_persistent_location_configuration" class="discrete">Global persistent location configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_35" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_35_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_35_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_35_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_35_globalconfigurationbuilder" class="tab">
+<p>GlobalConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_35_xml--panel" class="tabpanel" aria-labelledby="tabs_35_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
   &lt;cache-container&gt;
@@ -6811,8 +7654,9 @@ In this case Infinispan uses <code>/opt/data/global/state</code> as the global p
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_35_json--panel" class="tabpanel" aria-labelledby="tabs_35_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -6828,8 +7672,9 @@ In this case Infinispan uses <code>/opt/data/global/state</code> as the global p
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_35_yaml--panel" class="tabpanel" aria-labelledby="tabs_35_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">cacheContainer:
   globalState:
@@ -6838,12 +7683,16 @@ In this case Infinispan uses <code>/opt/data/global/state</code> as the global p
         relativeTo : "my.data"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">GlobalConfigurationBuilder</div>
+</div>
+<div id="tabs_35_globalconfigurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_35_globalconfigurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">new GlobalConfigurationBuilder().globalState()
                                 .enable()
                                 .persistentLocation("global/state", "my.data");</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -6997,8 +7846,26 @@ If you want to use the same persistent across a cluster, configure shared storag
 </ol>
 </div>
 <h5 id="file_based_cache_store_configuration" class="discrete">File-based cache store configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_36" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_36_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_36_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_36_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_36_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_36_xml--panel" class="tabpanel" aria-labelledby="tabs_36_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence passivation="true"&gt;
@@ -7011,8 +7878,9 @@ If you want to use the same persistent across a cluster, configure shared storag
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_36_json--panel" class="tabpanel" aria-labelledby="tabs_36_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -7035,8 +7903,9 @@ If you want to use the same persistent across a cluster, configure shared storag
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_36_yaml--panel" class="tabpanel" aria-labelledby="tabs_36_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   persistence:
@@ -7051,8 +7920,9 @@ If you want to use the same persistent across a cluster, configure shared storag
         modificationQueueSize: "2048"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_36_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_36_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.persistence().passivation(true)
@@ -7061,6 +7931,9 @@ builder.persistence().passivation(true)
           .dataLocation("data")
           .indexLocation("index")
           .modificationQueueSize(2048);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="paragraph">
@@ -7082,8 +7955,26 @@ You use JDBC connections with SQL cache stores and JDBC string-based caches stor
 <div class="paragraph">
 <p>Connection pools are suitable for standalone Infinispan deployments and are based on Agroal.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_37" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_37_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_37_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_37_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_37_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_37_xml--panel" class="tabpanel" aria-labelledby="tabs_37_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
@@ -7095,8 +7986,9 @@ You use JDBC connections with SQL cache stores and JDBC string-based caches stor
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_37_json--panel" class="tabpanel" aria-labelledby="tabs_37_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -7112,8 +8004,9 @@ You use JDBC connections with SQL cache stores and JDBC string-based caches stor
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_37_yaml--panel" class="tabpanel" aria-labelledby="tabs_37_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   persistence:
@@ -7124,8 +8017,9 @@ You use JDBC connections with SQL cache stores and JDBC string-based caches stor
       password: changeme</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_37_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_37_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.persistence()
@@ -7135,12 +8029,33 @@ builder.persistence()
          .driverClass("org.h2.Driver");</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h3 id="managed_datasources" class="discrete">Managed datasources</h3>
 <div class="paragraph">
 <p>Datasource connections are suitable for managed environments such as application servers.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_38" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_38_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_38_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_38_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_38_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_38_xml--panel" class="tabpanel" aria-labelledby="tabs_38_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
@@ -7149,8 +8064,9 @@ builder.persistence()
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_38_json--panel" class="tabpanel" aria-labelledby="tabs_38_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -7163,8 +8079,9 @@ builder.persistence()
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_38_yaml--panel" class="tabpanel" aria-labelledby="tabs_38_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   persistence:
@@ -7172,8 +8089,9 @@ builder.persistence()
       jndiUrl: "java:/StringStoreWithManagedConnectionTest/DS"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_38_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_38_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.persistence()
@@ -7181,12 +8099,33 @@ builder.persistence()
          .jndiUrl("java:/StringStoreWithManagedConnectionTest/DS");</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h3 id="simple_connections" class="discrete">Simple connections</h3>
 <div class="paragraph">
 <p>Simple connection factories create database connections on a per invocation basis and are intended for use with test or development environments only.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_39" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_39_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_39_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_39_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_39_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_39_xml--panel" class="tabpanel" aria-labelledby="tabs_39_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
@@ -7198,8 +8137,9 @@ builder.persistence()
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_39_json--panel" class="tabpanel" aria-labelledby="tabs_39_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -7215,8 +8155,9 @@ builder.persistence()
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_39_yaml--panel" class="tabpanel" aria-labelledby="tabs_39_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   persistence:
@@ -7227,8 +8168,9 @@ builder.persistence()
       password: changeme</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_39_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_39_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.persistence()
@@ -7237,6 +8179,9 @@ builder.persistence()
          .driverClass("org.h2.Driver")
          .username("admin")
          .password("changeme");</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -7379,8 +8324,23 @@ configuration.</p>
 </ol>
 </div>
 <h4 id="managed_datasource_configuration" class="discrete">Managed datasource configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_40" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_40_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_40_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_40_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_40_xml--panel" class="tabpanel" aria-labelledby="tabs_40_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;server xmlns="urn:infinispan:server:16.3"&gt;
   &lt;data-sources&gt;
@@ -7411,8 +8371,9 @@ configuration.</p>
 &lt;/server&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_40_json--panel" class="tabpanel" aria-labelledby="tabs_40_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "server": {
@@ -7443,8 +8404,9 @@ configuration.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_40_yaml--panel" class="tabpanel" aria-labelledby="tabs_40_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">server:
   dataSources:
@@ -7466,6 +8428,9 @@ configuration.</p>
         idleRemoval: 1
         blockingTimeout: 1000
         leakDetection: 10000</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -7502,8 +8467,23 @@ configuration.</p>
 </ol>
 </div>
 <h5 id="jndi_name_in_cache_configuration" class="discrete">JNDI name in cache configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_41" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_41_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_41_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_41_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_41_xml--panel" class="tabpanel" aria-labelledby="tabs_41_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
@@ -7521,8 +8501,9 @@ configuration.</p>
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_41_json--panel" class="tabpanel" aria-labelledby="tabs_41_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -7558,8 +8539,9 @@ configuration.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_41_yaml--panel" class="tabpanel" aria-labelledby="tabs_41_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   persistence:
@@ -7582,6 +8564,9 @@ configuration.</p>
         segmentColumn:
           name: "S"
           type: "INT"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -7674,14 +8659,33 @@ org.infinispan.agroal.credential=sa</code></pre>
 </li>
 <li>
 <p>Configure Infinispan to use your properties file with the <code>properties-file</code> attribute or the <code>PooledConnectionFactoryConfiguration.propertyFile()</code> method.</p>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_42" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_42_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_42_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_42_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_42_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_42_xml--panel" class="tabpanel" aria-labelledby="tabs_42_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;connection-pool properties-file="path/to/agroal.properties"/&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_42_json--panel" class="tabpanel" aria-labelledby="tabs_42_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">"persistence": {
   "connection-pool": {
@@ -7690,18 +8694,23 @@ org.infinispan.agroal.credential=sa</code></pre>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_42_yaml--panel" class="tabpanel" aria-labelledby="tabs_42_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">persistence:
   connectionPool:
     propertiesFile: path/to/agroal.properties</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_42_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_42_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">.connectionPool().propertyFile("path/to/agroal.properties")</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </li>
@@ -8115,16 +9124,32 @@ For remote caches, you can register your schemas by adding them through the Infi
 </li>
 <li>
 <p>Add a SQL table cache store.</p>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
+<div id="tabs_43" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_43_declarative" class="tab">
+<p>Declarative</p>
+</li>
+<li id="tabs_43_programmatic" class="tab">
+<p>Programmatic</p>
+</li>
+</ul>
+</div>
+<div id="tabs_43_declarative--panel" class="tabpanel" aria-labelledby="tabs_43_declarative">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">table-jdbc-store xmlns="urn:infinispan:config:store:sql:16.3"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Programmatic</div>
+</div>
+<div id="tabs_43_programmatic--panel" class="tabpanel" aria-labelledby="tabs_43_programmatic">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">persistence().addStore(TableJdbcStoreConfigurationBuilder.class)</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </li>
@@ -8175,8 +9200,26 @@ For remote caches, you can register your schemas by adding them through the Infi
 <div class="paragraph">
 <p>The following example loads a distributed cache from a database table named "books" using composite values defined in a Protobuf schema:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_44" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_44_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_44_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_44_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_44_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_44_xml--panel" class="tabpanel" aria-labelledby="tabs_44_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
@@ -8191,8 +9234,9 @@ For remote caches, you can register your schemas by adding them through the Infi
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_44_json--panel" class="tabpanel" aria-labelledby="tabs_44_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -8211,8 +9255,9 @@ For remote caches, you can register your schemas by adding them through the Infi
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_44_yaml--panel" class="tabpanel" aria-labelledby="tabs_44_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   persistence:
@@ -8225,8 +9270,9 @@ For remote caches, you can register your schemas by adding them through the Infi
         package: "library"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_44_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_44_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.persistence().addStore(TableJdbcStoreConfigurationBuilder.class)
@@ -8236,6 +9282,9 @@ builder.persistence().addStore(TableJdbcStoreConfigurationBuilder.class)
       .schemaJdbcConfigurationBuilder()
         .messageName("books_value")
         .packageName("library");</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -8340,16 +9389,32 @@ For remote caches, you can register your schemas by adding them through the Infi
 </li>
 <li>
 <p>Add a SQL query cache store.</p>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
+<div id="tabs_45" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_45_declarative" class="tab">
+<p>Declarative</p>
+</li>
+<li id="tabs_45_programmatic" class="tab">
+<p>Programmatic</p>
+</li>
+</ul>
+</div>
+<div id="tabs_45_declarative--panel" class="tabpanel" aria-labelledby="tabs_45_declarative">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">query-jdbc-store xmlns="urn:infinispan:config:store:sql:16.3"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Programmatic</div>
+</div>
+<div id="tabs_45_programmatic--panel" class="tabpanel" aria-labelledby="tabs_45_programmatic">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">persistence().addStore(QueriesJdbcStoreConfigurationBuilder.class)</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </li>
@@ -8493,8 +9558,20 @@ However you can apply the same named variable more than once in a statement.</p>
 <p>The following examples show SQL data definition language (DDL) statements for the "person" and "address" tables.
 The data types described in the example are only valid for PostgreSQL database.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">SQL statement for the "person" table</div>
+<div id="tabs_46" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_46_sql_statement_for_the_person_table" class="tab">
+<p>SQL statement for the "person" table</p>
+</li>
+<li id="tabs_46_sql_statement_for_the_address_table" class="tab">
+<p>SQL statement for the "address" table</p>
+</li>
+</ul>
+</div>
+<div id="tabs_46_sql_statement_for_the_person_table--panel" class="tabpanel" aria-labelledby="tabs_46_sql_statement_for_the_person_table">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-proto hljs" data-lang="proto">CREATE TABLE Person (
   name VARCHAR(255) NOT NULL,
@@ -8507,8 +9584,9 @@ The data types described in the example are only valid for PostgreSQL database.<
 );</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">SQL statement for the "address" table</div>
+</div>
+<div id="tabs_46_sql_statement_for_the_address_table--panel" class="tabpanel" aria-labelledby="tabs_46_sql_statement_for_the_address_table">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-proto hljs" data-lang="proto">CREATE TABLE Address (
   name VARCHAR(255) NOT NULL,
@@ -8519,11 +9597,14 @@ The data types described in the example are only valid for PostgreSQL database.<
 );</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h6 id="protobuf_schemas" class="discrete">Protobuf schemas</h6>
 <div class="paragraph">
 <p>Protobuf schema for the "person" and "address" tables are as follows:</p>
 </div>
-<div class="listingblock secondary">
+<div class="listingblock">
 <div class="title">Protobuf schema for the "address" table</div>
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-proto hljs" data-lang="proto">package com.example;
@@ -8535,8 +9616,17 @@ message Address {
 }</code></pre>
 </div>
 </div>
-<div class="listingblock primary">
-<div class="title">Protobuf schema for the "person" table</div>
+<div id="tabs_47" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_47_protobuf_schema_for_the_person_table" class="tab">
+<p>Protobuf schema for the "person" table</p>
+</li>
+</ul>
+</div>
+<div id="tabs_47_protobuf_schema_for_the_person_table--panel" class="tabpanel" aria-labelledby="tabs_47_protobuf_schema_for_the_person_table">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-proto hljs" data-lang="proto">package com.example;
 
@@ -8557,12 +9647,33 @@ message Person {
 }</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h6 id="cache_configuration" class="discrete">Cache configuration</h6>
 <div class="paragraph">
 <p>The following example loads a distributed cache from the "person" and "address" tables using a SQL query that includes a <code>JOIN</code> clause:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_48" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_48_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_48_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_48_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_48_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_48_xml--panel" class="tabpanel" aria-labelledby="tabs_48_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
@@ -8588,8 +9699,9 @@ message Person {
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_48_json--panel" class="tabpanel" aria-labelledby="tabs_48_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -8623,8 +9735,9 @@ message Person {
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_48_yaml--panel" class="tabpanel" aria-labelledby="tabs_48_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   persistence:
@@ -8650,8 +9763,9 @@ message Person {
         embeddedKey: "true"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_48_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_48_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.persistence().addStore(QueriesJdbcStoreConfigurationBuilder.class)
@@ -8669,6 +9783,9 @@ builder.persistence().addStore(QueriesJdbcStoreConfigurationBuilder.class)
          .messageName("Person")
          .packageName("com.example")
          .embeddedKey(true);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -8845,8 +9962,26 @@ shared.</p>
 </ol>
 </div>
 <h5 id="jdbc_string_based_cache_store_configuration" class="discrete">JDBC string-based cache store configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_49" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_49_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_49_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_49_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_49_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_49_xml--panel" class="tabpanel" aria-labelledby="tabs_49_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
@@ -8872,8 +10007,9 @@ shared.</p>
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_49_json--panel" class="tabpanel" aria-labelledby="tabs_49_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -8912,8 +10048,9 @@ shared.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_49_yaml--panel" class="tabpanel" aria-labelledby="tabs_49_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   persistence:
@@ -8941,8 +10078,9 @@ shared.</p>
         password: "changeme"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_49_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_49_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.persistence().addStore(JdbcStringBasedStoreConfigurationBuilder.class)
@@ -8960,6 +10098,9 @@ builder.persistence().addStore(JdbcStringBasedStoreConfigurationBuilder.class)
          .username("sa")
          .password("changeme")
          .driverClass("org.h2.Driver");</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -8993,7 +10134,7 @@ You must install both the Infinispan RocksDB cache store module and the RocksDB 
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">[disconnected]&gt; install org.infinispan:infinispan-cachestore-rocksdb:16.3.0.Dev01
+<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">[disconnected]&gt; install org.infinispan:infinispan-cachestore-rocksdb:16.2.1
 [disconnected]&gt; install org.rocksdb:rocksdbjni:9.11.2</code></pre>
 </div>
 </div>
@@ -9115,8 +10256,29 @@ significantly increases cache store start time.</p>
 </table>
 </div>
 <h4 id="rocksdb_cache_store_configuration" class="discrete">RocksDB cache store configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_50" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_50_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_50_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_50_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_50_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+<li id="tabs_50_configurationbuilder_with_properties" class="tab">
+<p>ConfigurationBuilder with properties</p>
+</li>
+</ul>
+</div>
+<div id="tabs_50_xml--panel" class="tabpanel" aria-labelledby="tabs_50_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;local-cache&gt;
    &lt;persistence&gt;
@@ -9128,8 +10290,9 @@ significantly increases cache store start time.</p>
 &lt;/local-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_50_json--panel" class="tabpanel" aria-labelledby="tabs_50_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "local-cache": {
@@ -9145,8 +10308,9 @@ significantly increases cache store start time.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_50_yaml--panel" class="tabpanel" aria-labelledby="tabs_50_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">localCache:
   persistence:
@@ -9156,8 +10320,9 @@ significantly increases cache store start time.</p>
         path: "rocksdb/expired"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_50_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_50_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">Configuration cacheConfig = new ConfigurationBuilder().persistence()
 				.addStore(RocksDBStoreConfigurationBuilder.class)
@@ -9168,8 +10333,9 @@ Cache&lt;String, User&gt; usersCache = cacheManager.getCache("usersCache");
 usersCache.put("raytsang", new User(...));</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder with properties</div>
+</div>
+<div id="tabs_50_configurationbuilder_with_properties--panel" class="tabpanel" aria-labelledby="tabs_50_configurationbuilder_with_properties">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">Properties props = new Properties();
 props.put("database.max_background_compactions", "2");
@@ -9181,6 +10347,9 @@ Configuration cacheConfig = new ConfigurationBuilder().persistence()
 				.expiredLocation("rocksdb/expired")
 				.properties(props)
 				.build();</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist">
@@ -9279,8 +10448,26 @@ case, you should disable segmentation for <code>RemoteStore</code>.</p>
 </table>
 </div>
 <h4 id="remote_cache_store_configuration_with_shared_remote_containers" class="discrete">Remote cache store configuration with shared remote containers</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_51" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_51_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_51_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_51_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_51_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_51_xml--panel" class="tabpanel" aria-labelledby="tabs_51_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan&gt;
 
@@ -9300,8 +10487,9 @@ case, you should disable segmentation for <code>RemoteStore</code>.</p>
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_51_json--panel" class="tabpanel" aria-labelledby="tabs_51_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan": {
@@ -9325,8 +10513,9 @@ case, you should disable segmentation for <code>RemoteStore</code>.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_51_yaml--panel" class="tabpanel" aria-labelledby="tabs_51_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   remoteCacheContainers:
@@ -9347,8 +10536,9 @@ case, you should disable segmentation for <code>RemoteStore</code>.</p>
               exhaustedAction: "CREATE_NEW"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_51_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_51_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder b = new ConfigurationBuilder();
 b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
@@ -9366,9 +10556,30 @@ b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
       .async().enable();</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h4 id="remote_cache_store_configuration_with_private_remote_container" class="discrete">Remote cache store configuration with private remote container</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_52" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_52_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_52_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_52_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_52_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_52_xml--panel" class="tabpanel" aria-labelledby="tabs_52_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
@@ -9384,8 +10595,9 @@ b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_52_json--panel" class="tabpanel" aria-labelledby="tabs_52_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -9405,8 +10617,9 @@ b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_52_yaml--panel" class="tabpanel" aria-labelledby="tabs_52_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   remoteStore:
@@ -9421,8 +10634,9 @@ b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
       exhaustedAction: "CREATE_NEW"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_52_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_52_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder b = new ConfigurationBuilder();
 b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
@@ -9438,6 +10652,9 @@ b.persistence().addStore(RemoteStoreConfigurationBuilder.class)
       .maxActive(10)
       .exhaustedAction(ExhaustedAction.CREATE_NEW)
       .async().enable();</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist">
@@ -9496,8 +10713,26 @@ cache content.</p>
 </ul>
 </div>
 <h4 id="cluster_cache_loader_configuration" class="discrete">Cluster cache loader configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_53" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_53_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_53_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_53_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_53_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_53_xml--panel" class="tabpanel" aria-labelledby="tabs_53_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
@@ -9506,8 +10741,9 @@ cache content.</p>
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_53_json--panel" class="tabpanel" aria-labelledby="tabs_53_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -9521,8 +10757,9 @@ cache content.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_53_yaml--panel" class="tabpanel" aria-labelledby="tabs_53_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   persistence:
@@ -9531,13 +10768,17 @@ cache content.</p>
       remoteTimeout: "500"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_53_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_53_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder b = new ConfigurationBuilder();
 b.persistence()
     .addClusterLoader()
     .remoteCallTimeout(500);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -9672,8 +10913,26 @@ initializes the cache.</p>
 <div class="paragraph">
 <p>The following are examples show how to configure Infinispan with custom cache store implementations:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_54" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_54_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_54_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_54_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_54_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_54_xml--panel" class="tabpanel" aria-labelledby="tabs_54_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;persistence&gt;
@@ -9682,8 +10941,9 @@ initializes the cache.</p>
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_54_json--panel" class="tabpanel" aria-labelledby="tabs_54_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -9696,8 +10956,9 @@ initializes the cache.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_54_yaml--panel" class="tabpanel" aria-labelledby="tabs_54_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   persistence:
@@ -9705,13 +10966,17 @@ initializes the cache.</p>
       class: "org.infinispan.persistence.example.MyInMemoryStore"</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_54_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_54_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">Configuration config = new ConfigurationBuilder()
             .persistence()
             .addStore(CustomStoreConfigurationBuilder.class)
             .build();</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -10559,8 +11824,26 @@ If your use case requires data consistency over cache availability, specify the 
 </ol>
 </div>
 <h4 id="partition_handling_configuration" class="discrete">Partition handling configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_55" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_55_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_55_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_55_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_55_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_55_xml--panel" class="tabpanel" aria-labelledby="tabs_55_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
    &lt;partition-handling when-split="DENY_READ_WRITES"
@@ -10568,8 +11851,9 @@ If your use case requires data consistency over cache availability, specify the 
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_55_json--panel" class="tabpanel" aria-labelledby="tabs_55_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -10581,8 +11865,9 @@ If your use case requires data consistency over cache availability, specify the 
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_55_yaml--panel" class="tabpanel" aria-labelledby="tabs_55_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   partitionHandling:
@@ -10590,14 +11875,18 @@ If your use case requires data consistency over cache availability, specify the 
     mergePolicy: PREFERRED_ALWAYS</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_55_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_55_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.clustering().cacheMode(CacheMode.DIST_SYNC)
        .partitionHandling()
        .whenSplit(PartitionHandling.DENY_READ_WRITES)
        .mergePolicy(MergePolicy.PREFERRED_NON_NULL);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -10769,8 +12058,26 @@ org.example.CustomMergePolicy</pre>
 </ol>
 </div>
 <h4 id="custom_merge_policy_configuration" class="discrete">Custom merge policy configuration</h4>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_56" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_56_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_56_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_56_yaml" class="tab">
+<p>YAML</p>
+</li>
+<li id="tabs_56_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_56_xml--panel" class="tabpanel" aria-labelledby="tabs_56_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="mycache"&gt;
    &lt;partition-handling when-split="DENY_READ_WRITES"
@@ -10778,8 +12085,9 @@ org.example.CustomMergePolicy</pre>
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_56_json--panel" class="tabpanel" aria-labelledby="tabs_56_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -10791,8 +12099,9 @@ org.example.CustomMergePolicy</pre>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_56_yaml--panel" class="tabpanel" aria-labelledby="tabs_56_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   partitionHandling:
@@ -10800,14 +12109,18 @@ org.example.CustomMergePolicy</pre>
     mergePolicy: org.example.CustomMergePolicy</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_56_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_56_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
 builder.clustering().cacheMode(CacheMode.DIST_SYNC)
        .partitionHandling()
        .whenSplit(PartitionHandling.DENY_READ_WRITES)
        .mergePolicy(new CustomMergePolicy());</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -11227,8 +12540,23 @@ To use a different implementation for role mapping, you must configure the role 
 <p>With embedded caches you can programmatically configure role and permission mappers with the <code>principalRoleMapper()</code> and <code>rolePermissionMapper()</code> methods.</p>
 </div>
 <h5 id="role_mapper_configuration" class="discrete">Role mapper configuration</h5>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_57" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_57_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_57_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_57_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_57_xml--panel" class="tabpanel" aria-labelledby="tabs_57_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
   &lt;security&gt;
@@ -11239,8 +12567,9 @@ To use a different implementation for role mapping, you must configure the role 
 &lt;/cache-container&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_57_json--panel" class="tabpanel" aria-labelledby="tabs_57_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -11255,14 +12584,18 @@ To use a different implementation for role mapping, you must configure the role 
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_57_yaml--panel" class="tabpanel" aria-labelledby="tabs_57_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
     security:
       authorization:
         commonNameRoleMapper: ~</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -11434,8 +12767,23 @@ It is possible to configure the cluster role mapper to apply transformation to t
 </div>
 <div class="sect5">
 <h6 id="case_principal_transformer"><a class="anchor" href="#case_principal_transformer"></a>Case Principal Transformer</h6>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_58" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_58_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_58_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_58_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_58_xml--panel" class="tabpanel" aria-labelledby="tabs_58_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
    &lt;security&gt;
@@ -11450,8 +12798,9 @@ It is possible to configure the cluster role mapper to apply transformation to t
 &lt;/cache-container&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_58_json--panel" class="tabpanel" aria-labelledby="tabs_58_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "cache-container": {
@@ -11468,8 +12817,9 @@ It is possible to configure the cluster role mapper to apply transformation to t
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_58_yaml--panel" class="tabpanel" aria-labelledby="tabs_58_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">cacheContainer:
   security:
@@ -11481,10 +12831,28 @@ It is possible to configure the cluster role mapper to apply transformation to t
 </div>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="sect5">
 <h6 id="regex_principal_transformer"><a class="anchor" href="#regex_principal_transformer"></a>Regex Principal Transformer</h6>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_59" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_59_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_59_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_59_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_59_xml--panel" class="tabpanel" aria-labelledby="tabs_59_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;cache-container&gt;
    &lt;security&gt;
@@ -11499,8 +12867,9 @@ It is possible to configure the cluster role mapper to apply transformation to t
 &lt;/cache-container&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_59_json--panel" class="tabpanel" aria-labelledby="tabs_59_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "cache-container": {
@@ -11520,8 +12889,9 @@ It is possible to configure the cluster role mapper to apply transformation to t
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_59_yaml--panel" class="tabpanel" aria-labelledby="tabs_59_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">cacheContainer:
   security:
@@ -11531,6 +12901,9 @@ It is possible to configure the cluster role mapper to apply transformation to t
           regexPrincipalTransformer:
             pattern: "cn=([^,]+),.*"
             replacement: "$1"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -11583,8 +12956,23 @@ This requires Infinispan users to have a role with a sufficient level of permiss
 <div class="paragraph">
 <p>The following configuration implicitly adds every role defined in the Cache Manager:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_60" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_60_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_60_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_60_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_60_xml--panel" class="tabpanel" aria-labelledby="tabs_60_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;security&gt;
@@ -11593,8 +12981,9 @@ This requires Infinispan users to have a role with a sufficient level of permiss
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_60_json--panel" class="tabpanel" aria-labelledby="tabs_60_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -11607,8 +12996,9 @@ This requires Infinispan users to have a role with a sufficient level of permiss
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_60_yaml--panel" class="tabpanel" aria-labelledby="tabs_60_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   security:
@@ -11616,13 +13006,31 @@ This requires Infinispan users to have a role with a sufficient level of permiss
       enabled: true</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h4 id="explicit_role_configuration" class="discrete">Explicit role configuration</h4>
 <div class="paragraph">
 <p>The following configuration explicitly adds a subset of roles defined in the Cache Manager.
 In this case Infinispan denies cache operations for any users that do not have one of the configured roles.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_61" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_61_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_61_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_61_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_61_xml--panel" class="tabpanel" aria-labelledby="tabs_61_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;security&gt;
@@ -11631,8 +13039,9 @@ In this case Infinispan denies cache operations for any users that do not have o
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_61_json--panel" class="tabpanel" aria-labelledby="tabs_61_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -11646,14 +13055,18 @@ In this case Infinispan denies cache operations for any users that do not have o
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_61_yaml--panel" class="tabpanel" aria-labelledby="tabs_61_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   security:
     authorization:
       enabled: true
       roles: ["admin","supervisor"]</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -13479,7 +14892,7 @@ public class MyNonBlockingListener {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-07-31 09:00:30 UTC
+Last updated 2026-09-15 18:44:30 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -13513,5 +14926,134 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
 })
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+<script>
+;(function () { /*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+  'use strict'
+
+  var config = (document.currentScript || {}).dataset || {}
+  var forEach = Array.prototype.forEach
+
+  init(document.querySelectorAll('.tabs'))
+
+  function init (tabsBlocks) {
+    if (!tabsBlocks.length) return
+    forEach.call(tabsBlocks, function (tabs) {
+      var syncIds = tabs.classList.contains('is-sync') ? {} : undefined
+      var tablist = tabs.querySelector('.tablist ul')
+      tablist.setAttribute('role', 'tablist')
+      var start
+      forEach.call(tablist.querySelectorAll('li'), function (tab, idx) {
+        tab.tabIndex = -1
+        tab.setAttribute('role', tab.classList.add('tab') || 'tab')
+        var id, anchor, syncId
+        if (!(id = tab.id) && (anchor = tab.querySelector('a[id]'))) {
+          id = tab.id = anchor.parentNode.removeChild(anchor).id
+        }
+        var panel = id && tabs.querySelector('.tabpanel[aria-labelledby~="' + id + '"]')
+        if (!panel) return idx ? undefined : toggleSelected(tab, true) // invalid state
+        syncIds && (((syncId = tab.textContent.trim()) in syncIds) ? (syncId = undefined) : true) &&
+          (syncIds[(tab.dataset.syncId = syncId)] = tab)
+        idx || (syncIds && (start = { tab: tab, panel: panel })) ? toggleHidden(panel, true) : toggleSelected(tab, true)
+        tab.setAttribute('aria-controls', panel.id)
+        panel.setAttribute('role', 'tabpanel')
+        var onClick = syncId === undefined ? activateTab : activateTabSync
+        tab.addEventListener('click', onClick.bind({ tabs: tabs, tab: tab, panel: panel }))
+      })
+      if (!tabs.closest('.tabpanel')) {
+        forEach.call(tabs.querySelectorAll('.tabpanel table.tableblock'), function (table) {
+          var container = Object.assign(document.createElement('div'), { className: 'tablecontainer' })
+          table.parentNode.insertBefore(container, table).appendChild(table)
+        })
+      }
+      if (start) {
+        var syncGroupId
+        for (var i = 0, lst = tabs.classList, len = lst.length, className; i !== len; i++) {
+          if (!(className = lst.item(i)).startsWith('data-sync-group-id=')) continue
+          tabs.dataset.syncGroupId = syncGroupId = lst.remove(className) || className.slice(19).replace(/\u00a0/g, ' ')
+          break
+        }
+        if (syncGroupId === undefined) tabs.dataset.syncGroupId = syncGroupId = Object.keys(syncIds).sort().join('|')
+        var preferredSyncId = 'syncStorageKey' in config &&
+          window[(config.syncStorageScope || 'local') + 'Storage'].getItem(config.syncStorageKey + '-' + syncGroupId)
+        var tab = preferredSyncId && syncIds[preferredSyncId]
+        tab && Object.assign(start, { tab: tab, panel: document.getElementById(tab.getAttribute('aria-controls')) })
+        toggleSelected(start.tab, true) || toggleHidden(start.panel, false)
+      }
+    })
+    onHashChange()
+    toggleClassOnEach(tabsBlocks, 'is-loading', 'remove')
+    window.setTimeout(toggleClassOnEach.bind(null, tabsBlocks, 'is-loaded', 'add'), 0)
+    window.addEventListener('hashchange', onHashChange)
+  }
+
+  function activateTab (e) {
+    var tab = this.tab
+    var tabs = this.tabs || (this.tabs = tab.closest('.tabs'))
+    var panel = this.panel || (this.panel = document.getElementById(tab.getAttribute('aria-controls')))
+    querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (el) {
+      toggleSelected(el, el === tab)
+    })
+    querySelectorWithSiblings(tabs, '.tabpanel', 'tabpanel').forEach(function (el) {
+      toggleHidden(el, el !== panel)
+    })
+    if (!this.isSync && 'syncStorageKey' in config && 'syncGroupId' in tabs.dataset) {
+      var storageKey = config.syncStorageKey + '-' + tabs.dataset.syncGroupId
+      window[(config.syncStorageScope || 'local') + 'Storage'].setItem(storageKey, tab.dataset.syncId)
+    }
+    if (!e) return
+    var loc = window.location
+    var hashIdx = loc.hash ? loc.href.indexOf('#') : -1
+    if (~hashIdx) window.history.replaceState(null, '', loc.href.slice(0, hashIdx))
+    e.preventDefault()
+  }
+
+  function activateTabSync (e) {
+    activateTab.call(this, e)
+    var thisTabs = this.tabs
+    var thisTab = this.tab
+    var initialY = thisTabs.getBoundingClientRect().y
+    forEach.call(document.querySelectorAll('.tabs'), function (tabs) {
+      if (tabs === thisTabs || tabs.dataset.syncGroupId !== thisTabs.dataset.syncGroupId) return
+      querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (tab) {
+        if (tab.dataset.syncId === thisTab.dataset.syncId) activateTab.call({ tabs: tabs, tab: tab, isSync: true })
+      })
+    })
+    var shiftedBy = thisTabs.getBoundingClientRect().y - initialY
+    if (shiftedBy && (shiftedBy = Math.round(shiftedBy))) window.scrollBy({ top: shiftedBy, behavior: 'instant' })
+  }
+
+  function querySelectorWithSiblings (scope, selector, siblingClass) {
+    var el = scope.querySelector(selector)
+    if (!el) return []
+    var result = [el]
+    while ((el = el.nextElementSibling) && el.classList.contains(siblingClass)) result.push(el)
+    return result
+  }
+
+  function toggleClassOnEach (elements, className, method) {
+    forEach.call(elements, function (el) {
+      el.classList[method](className)
+    })
+  }
+
+  function toggleHidden (el, state) {
+    el.classList[(el.hidden = state) ? 'add' : 'remove']('is-hidden')
+  }
+
+  function toggleSelected (el, state) {
+    el.setAttribute('aria-selected', '' + state)
+    el.classList[state ? 'add' : 'remove']('is-selected')
+    el.tabIndex = state ? 0 : -1
+  }
+
+  function onHashChange () {
+    var id = window.location.hash.slice(1)
+    if (!id) return
+    var tab = document.getElementById(~id.indexOf('%') ? decodeURIComponent(id) : id)
+    if (!(tab && tab.classList.contains('tab'))) return
+    'syncId' in tab.dataset ? activateTabSync.call({ tab: tab }) : activateTab.call({ tab: tab })
+  }
+})()
+</script>
 </body>
 </html>

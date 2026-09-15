@@ -1,110 +1,98 @@
 $(document).ready(function() {
-    var prefix = "/docs/";
-    var path = document.location.pathname;
-    var versionMatch = path.match(/^\/docs\/(\d+\.\d+\.x)\//);
-    var version = versionMatch ? versionMatch[1] : null;
+    let prefix = "/docs/"
+    let path = document.location.pathname;
+    let version = path.substring(prefix.length, path.indexOf("/", prefix.length));
 
-    // Inject collapsible sidebar styles
-    $('head').append(
-        '<style>' +
-        '#toc-toggle { cursor: pointer; float: right; font-size: 1.2em; color: #7a2518; padding: 0.2em; }' +
-        '#toc-toggle:hover { color: #ba3925; }' +
-        'body.toc2.toc-collapsed { padding-left: 2.5em; }' +
-        'body.toc2.toc-right.toc-collapsed { padding-left: 0; padding-right: 2.5em; }' +
-        'body.toc-collapsed #toc.toc2 { width: 2.5em; padding: 0.5em 0.25em; }' +
-        'body.toc-collapsed #toc.toc2 #tocheader a,' +
-        'body.toc-collapsed #toc.toc2 #toctitle,' +
-        'body.toc-collapsed #toc.toc2 #dchooser,' +
-        'body.toc-collapsed #toc.toc2 #vchooser,' +
-        'body.toc-collapsed #toc.toc2 #tocsearch,' +
-        'body.toc-collapsed #toc.toc2 #toctreeexpand,' +
-        'body.toc-collapsed #toc.toc2 #toctreecollapse,' +
-        'body.toc-collapsed #toc.toc2 #toctree,' +
-        'body.toc-collapsed #toc.toc2 hr { display: none; }' +
-        'body.toc-collapsed #toc.toc2 #tocheader { text-align: center; margin: 0; padding: 0; }' +
-        'body.toc-collapsed #toc.toc2 #toc-toggle { float: none; display: block; text-align: center; }' +
-        '</style>'
-    );
-
-    // Sidebar toggle
-    var canStore = false;
-    try {
-        var cookiePrefs = CookieConsent.getUserPreferences();
-        canStore = cookiePrefs.acceptedCategories.includes("functionality");
-    } catch(e) {}
-    var collapsed = canStore && localStorage.getItem('toc-collapsed') === 'true';
-    if (collapsed) {
-        $('body').addClass('toc-collapsed');
-    }
-
-    $('#toctitle').before('<div id="tocheader"><span id="toc-toggle" title="Toggle sidebar"><i class="fa fa-chevron-left" aria-hidden="true"></i></span><a href="/documentation/"><img src="/assets/images/infinispan-logo.png" alt="Infinispan"></a></div>');
-
-    $('#toc-toggle').click(function() {
-        $('body').toggleClass('toc-collapsed');
-        var isCollapsed = $('body').hasClass('toc-collapsed');
-        $(this).find('i').toggleClass('fa-chevron-left', !isCollapsed).toggleClass('fa-chevron-right', isCollapsed);
-        if (canStore) {
-            localStorage.setItem('toc-collapsed', isCollapsed);
-        }
-    });
-    if (collapsed) {
-        $('#toc-toggle i').removeClass('fa-chevron-left').addClass('fa-chevron-right');
-    }
-
-    // Documentation chooser - populated from doc-index.json
+    $('#toctitle').before('<div id="tocheader"><a href="https://infinispan.org/documentation/"><img src="https://infinispan.org/assets/images/infinispan-logo.png" alt="Infinispan"></a></div>');
     $('#toctitle').before('<select id="dchooser"></select>');
-    var dchooser = $('#dchooser');
+    let dchooser = $('#dchooser');
     dchooser.append('<option>Documentation index</option>');
-    $.getJSON('/docs/doc-index.json', function(data) {
-        $.each(data.categories, function(_, category) {
-            var optgroup = $('<optgroup>', { label: category.name });
-            $.each(category.titles, function(_, title) {
-                optgroup.append($('<option>', { value: title.path, text: title.label }));
-            });
-            dchooser.append(optgroup);
-        });
-    });
-    dchooser.change(function() {
-        if (this.value !== '') {
-            if (this.value.startsWith('https://')) {
-                window.location.href = this.value;
-            } else if (this.value.startsWith('/titles/') && version) {
-                window.location.href = prefix + version + this.value;
-            } else {
-                window.location.href = this.value;
-            }
-        }
+    dchooser.append('<optgroup label="Get Started">');
+    dchooser.append('<option value="/titles/getting_started/getting_started.html">Getting started</option>');
+    dchooser.append('</optgroup>');
+    dchooser.append('<optgroup label="Developers">');
+    dchooser.append('<option value="/titles/configuring/configuring.html">Configuring caches</option>');
+    dchooser.append('<option value="/titles/encoding/encoding.html">Encoding and marshalling</option>');
+    dchooser.append('<option value="/titles/query/query.html">Querying caches</option>');
+    dchooser.append('<option value="/titles/security/security.html">Security guide</option>');
+    dchooser.append('<option value="/titles/embedding/embedding.html">Embedding Infinispan caches</option>');
+    dchooser.append('<option value="/titles/rest/rest.html">REST API</option>');
+    dchooser.append('<option value="/titles/hotrod_protocol/hotrod_protocol.html">Hot Rod protocol reference</option>');
+    dchooser.append('<option value="/titles/memcached/memcached.html">Memcached protocol endpoint</option>');
+    dchooser.append('<option value="/titles/resp/resp-endpoint.html">RESP protocol endpoint</option>');
+    dchooser.append('<option value="/titles/changes/changes.html">Changes between versions</option>');
+    dchooser.append('<option value="/titles/contributing/contributing.html">Contributor&rsquo;s guide</option>');
+    dchooser.append('</optgroup>');
+    dchooser.append('<optgroup label="Hot Rod Clients">');
+    dchooser.append('<option value="/docs/hotrod-clients/dotnet/latest/dotnet_client.html">C#</option>');
+    dchooser.append('<option value="/docs/hotrod-clients/cpp/latest/cpp_client.html">C++</option>');
+    dchooser.append('<option value="/docs/hotrod-clients/go/latest/go_client.html">Go</option>');
+    dchooser.append('<option value="/titles/hotrod_java/hotrod_java.html">Java</option>');
+    dchooser.append('<option value="/docs/hotrod-clients/js/latest/js_client.html">Javascript</option>');
+    dchooser.append('<option value="https://github.com/infinispan/python-client">Python</option>');
+    dchooser.append('</optgroup>');
+    dchooser.append('<optgroup label="Operations">');
+    dchooser.append('<option value="/titles/server/server.html">Server</option>');
+    dchooser.append('<option value="/titles/container_image/container_image.html">Container image</option>');
+    dchooser.append('<option value="/docs/infinispan-operator/main/operator.html">Operator</option>');
+    dchooser.append('<option value="/docs/helm-chart/main/helm-chart.html">Helm Chart</option>');
+    dchooser.append('<option value="/titles/cli/cli.html">Command Line Interface (CLI)</option>');
+    dchooser.append('<option value="/titles/tuning/tuning.html">Deployment planning and tuning</option>');
+    dchooser.append('<option value="/titles/xsite/xsite.html">Cross-site replication</option>');
+    dchooser.append('<option value="/titles/upgrading/upgrading.html">Upgrading deployments</option>');
+    dchooser.append('</optgroup>');
+    dchooser.append('<optgroup label="Integrations">');
+    dchooser.append('<option value="/titles/hibernate/hibernate.html">Hibernate second-level caching (2LC)</option>');
+    dchooser.append('<option value="/titles/jcache/jcache.html">JCache (JSR-107)</option>');
+    dchooser.append('<option value="/titles/spring_boot/starter.html">Spring Boot Starter</option>');
+    dchooser.append('<option value="/titles/spring/spring.html">Spring Cache and Spring Sessions</option>');
+    dchooser.append('<option value="/titles/mcp_server/mcp_server.html">MCP Server</option>');
+    dchooser.append('</optgroup>');
+    dchooser.append('<optgroup label="Architecture">');
+    dchooser.append('<option value="/titles/architecture/architecture.html">Architecture guide</option>');
+    dchooser.append('</optgroup>');
+    dchooser.append('<optgroup label="Reference">');
+    dchooser.append('<option value="/titles/metrics/metrics.html">Metrics</option>');
+    dchooser.append('<option value="/titles/openapi/openapi.html">OpenAPI</option>');
+    dchooser.append('</optgroup>');
+
+    dchooser.change(function(e) {
+       if (this.value !== '') {
+          if (this.value.startsWith('/titles/')) {
+            window.location.href = path.substring(0, path.indexOf('/titles/')) + this.value;
+          } else {
+            window.location.href = path.substring(0, path.indexOf('/docs/')) + this.value;
+          }
+       }
     });
     dchooser.after('<hr/>');
+    $.ajax({type: 'GET', dataType: 'xml', url: '/docs/versions.xml',
+            success: function(xml) {
+                $('#toctitle').before('<select id="vchooser"></select>');
+                let vchooser = $('#vchooser');
+                vchooser.append('<option>Choose version</option>');
+                $(xml).find('version').each(function() {
+                    let name = $(this).attr("name");
+                    let selected = name.indexOf(version) === 0 ? "selected" : "";
+                    vchooser.append('<option value="' + $(this).attr("path") + '" ' + selected + '>' + name + '</option>');
+                });
+                vchooser.change(function(e) {
+                    if (this.value !== '')
+                        window.location.href = path.replace(version, this.value);
+                });
+                vchooser.after('<hr/>');
+            }
+    });
 
-    // Version chooser - only on versioned core doc pages
-    if (version) {
-        $.ajax({type: 'GET', dataType: 'xml', url: '/docs/versions.xml',
-                success: function(xml) {
-                    $('#toctitle').before('<select id="vchooser"></select>');
-                    var vchooser = $('#vchooser');
-                    vchooser.append('<option>Choose version</option>');
-                    $(xml).find('version').each(function() {
-                        var name = $(this).attr("name");
-                        var selected = name.indexOf(version) === 0 ? "selected" : "";
-                        vchooser.append('<option value="' + $(this).attr("path") + '" ' + selected + '>' + name + '</option>');
-                    });
-                    vchooser.change(function() {
-                        if (this.value !== '')
-                            window.location.href = path.replace(version, this.value);
-                    });
-                    vchooser.after('<hr/>');
-                }
-        });
-    }
-
-    // TOC tree with jstree
     $('ul.sectlevel1').wrap('<div id="toctree"></div>');
-    var plugins = [ "search", "wholerow" ];
-    if (canStore) {
-        plugins.push("state");
+    let plugins = [ "search", "wholerow" ];
+
+    // We only enable the state plugin if the user allows functionality cookies
+    let cookiePrefs = CookieConsent.getUserPreferences();
+    if (cookiePrefs.acceptedCategories.includes("functionality")) {
+        plugins.push("state")
     }
-    var toctree = $('#toctree');
+    let toctree = $('#toctree');
     toctree.jstree({
         "core" : {
         "themes" : {"variant" : "small", "icons" : false}
@@ -112,12 +100,12 @@ $(document).ready(function() {
     "plugins" : plugins })
           .on("activate_node.jstree", function (e, data) { location.href = data.node.a_attr.href; });
     toctree.before('<input placeholder="&#xf002; Search" id="tocsearch" type="text">');
-    var searchTimeout = false;
-    var tocsearch = $('#tocsearch');
+    let searchTimeout = false;
+    let tocsearch = $('#tocsearch')
     tocsearch.keyup(function () {
         if(searchTimeout) { clearTimeout(searchTimeout); }
         searchTimeout = setTimeout(function () {
-            var v = tocsearch.val();
+            let v = tocsearch.val();
             toctree.jstree(true).search(v);
         }, 250);
     });

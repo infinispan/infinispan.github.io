@@ -456,81 +456,117 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="../../js/js.js"></script>
 <link rel="canonical" href="https://infinispan.org/docs/stable/titles/encoding/encoding.html">
 <style>
-.hidden {
-    display: none;
+/*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+.tabs {
+  margin-bottom: 1.25em;
 }
 
-.switch {
-    border-width: 1px 1px 0 1px;
-    border-style: solid;
-    border-color: #7a2518;
-    display: inline-block;
+.tablist > ul {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.switch--item {
-    padding: 10px;
-    background-color: #ffffff;
-    color: #7a2518;
-    display: inline-block;
-    cursor: pointer;
+.tablist > ul li {
+  align-items: center;
+  background-color: #fff;
+  cursor: pointer;
+  display: flex;
+  font-weight: bold;
+  line-height: 1.5;
+  padding: 0.25em 1em;
+  position: relative;
 }
 
-.switch--item.selected {
-    background-color: #7a2519;
-    color: #ffffff;
+.tablist > ul li:focus-visible {
+  outline: none;
 }
 
+.tablist.ulist,
+.tablist.ulist > ul li {
+  margin: 0;
+}
+
+.tablist.ulist > ul li + li {
+  margin-left: 0.25em;
+}
+
+.tabs .tablist li::after {
+  content: "";
+  display: block;
+  height: 1px;
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+}
+
+.tabs.is-loading .tablist li:not(:first-child),
+.tabs:not(.is-loading) .tablist li:not(.is-selected) {
+  background-color: #f5f5f5;
+}
+
+.tabs.is-loading .tablist li:first-child::after,
+.tabs:not(.is-loading) .tablist li.is-selected::after {
+  background-color: #fff;
+}
+
+/*
+.tabs:not(.is-loading) .tablist li,
+.tabs:not(.is-loading) .tablist li::after {
+  transition: background-color 200ms ease-in-out;
+}
+*/
+
+.tablist > ul p {
+  line-height: inherit;
+  margin: 0;
+}
+
+.tabpanel {
+  background-color: #fff;
+  padding: 1.25em;
+}
+
+.tablist > ul li,
+.tabpanel {
+  border: 1px solid #dcdcdc;
+}
+
+.tablist > ul li {
+  border-bottom: 0;
+}
+
+.tabs.is-loading .tabpanel + .tabpanel,
+.tabs:not(.is-loading) .tabpanel.is-hidden {
+  display: none;
+}
+
+.tabpanel > :first-child {
+  margin-top: 0;
+}
+
+/* #content is a signature of the Asciidoctor standalone HTML output */
+#content .tabpanel > :last-child,
+#content .tabpanel > :last-child > :last-child,
+#content .tabpanel > :last-child > :last-child > li:last-child > :last-child {
+  margin-bottom: 0;
+}
+
+.tablecontainer {
+  overflow-x: auto;
+}
+
+#content .tablecontainer {
+  margin-bottom: 1.25em;
+}
+
+#content .tablecontainer > table.tableblock {
+  margin-bottom: 0;
+}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
-<script type="text/javascript">
-function addBlockSwitches() {
-    $('.primary').each(function() {
-        primary = $(this);
-        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
-        primary.children('.title').remove();
-    });
-    $('.secondary').each(function(idx, node) {
-        secondary = $(node);
-        primary = findPrimary(secondary);
-        switchItem = createSwitchItem(secondary, primary.children('.switch'));
-        switchItem.content.addClass('hidden');
-        findPrimary(secondary).append(switchItem.content);
-        secondary.remove();
-    });
-}
-
-function createBlockSwitch(primary) {
-    blockSwitch = $('<div class="switch"></div>');
-    primary.prepend(blockSwitch);
-    return blockSwitch;
-}
-
-function findPrimary(secondary) {
-    candidate = secondary.prev();
-    while (!candidate.is('.primary')) {
-        candidate = candidate.prev();
-    }
-    return candidate;
-}
-
-function createSwitchItem(block, blockSwitch) {
-    blockName = block.children('.title').text();
-    content = block.children('.content').first().append(block.next('.colist'));
-    item = $('<div class="switch--item">' + blockName + '</div>');
-    item.on('click', '', content, function(e) {
-        $(this).addClass('selected');
-        $(this).siblings().removeClass('selected');
-        e.data.siblings('.content').addClass('hidden');
-        e.data.removeClass('hidden');
-    });
-    blockSwitch.append(item);
-    return {'item': item, 'content': content};
-}
-
-$(addBlockSwitches);
-
-</script>
-
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
@@ -599,6 +635,13 @@ $(addBlockSwitches);
 <ul class="sectlevel2">
 <li><a href="#hotrod-data-format_transcoding">4.1. Hot Rod DataFormat API</a></li>
 <li><a href="#converting-data-on-demand_transcoding">4.2. Converting data on demand with embedded caches</a></li>
+<li><a href="#optional-transcoders_transcoding">4.3. Optional transcoders</a>
+<ul class="sectlevel3">
+<li><a href="#json_pojo_transcoder">4.3.1. JSON POJO transcoder</a></li>
+<li><a href="#xml_transcoder">4.3.2. XML transcoder</a></li>
+<li><a href="#jboss_marshalling_transcoder">4.3.3. JBoss Marshalling transcoder</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#protostream-schemas-management">5. Managing schemas in Infinispan</a>
@@ -693,7 +736,7 @@ Additionally, it is possible that a <code>ConcurrentModificationException</code>
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.10">Infinispan ProtoStream API</a></p>
+<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.11">Infinispan ProtoStream API</a></p>
 </li>
 </ul>
 </div>
@@ -777,7 +820,7 @@ If you want to store custom types in your caches, use ProtoStream marshalling to
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.10">Infinispan ProtoStream API</a></p>
+<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.11">Infinispan ProtoStream API</a></p>
 </li>
 <li>
 <p><a href="https://developers.google.com/protocol-buffers/">developers.google.com/protocol-buffers</a></p>
@@ -797,8 +840,20 @@ If you want to store custom types in your caches, use ProtoStream marshalling to
 </li>
 </ul>
 </div>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
+<div id="tabs_1" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_1_declarative" class="tab">
+<p>Declarative</p>
+</li>
+<li id="tabs_1_programmatic" class="tab">
+<p>Programmatic</p>
+</li>
+</ul>
+</div>
+<div id="tabs_1_declarative--panel" class="tabpanel" aria-labelledby="tabs_1_declarative">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
    &lt;encoding&gt;
@@ -808,8 +863,9 @@ If you want to store custom types in your caches, use ProtoStream marshalling to
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Programmatic</div>
+</div>
+<div id="tabs_1_programmatic--panel" class="tabpanel" aria-labelledby="tabs_1_programmatic">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">//Create cache configuration that encodes keys and values as ProtoStream
 ConfigurationBuilder builder = new ConfigurationBuilder();
@@ -818,19 +874,38 @@ builder.clustering().cacheMode(CacheMode.DIST_SYNC)
        .encoding().value().mediaType("application/x-protostream");</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="paragraph">
 <p>Alternatively you can use the same encoding for keys and values:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
+<div id="tabs_2" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_2_declarative" class="tab">
+<p>Declarative</p>
+</li>
+<li id="tabs_2_programmatic" class="tab">
+<p>Programmatic</p>
+</li>
+</ul>
+</div>
+<div id="tabs_2_declarative--panel" class="tabpanel" aria-labelledby="tabs_2_declarative">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;encoding media-type="application/x-protostream"/&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Programmatic</div>
+</div>
+<div id="tabs_2_programmatic--panel" class="tabpanel" aria-labelledby="tabs_2_programmatic">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">.encoding().mediaType("application/x-protostream");</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -1229,10 +1304,10 @@ For custom or user types, you need to provide some information so that Infinispa
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.10/org/infinispan/protostream/SerializationContext.html">org.infinispan.protostream.SerializationContext</a></p>
+<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.11/org/infinispan/protostream/SerializationContext.html">org.infinispan.protostream.SerializationContext</a></p>
 </li>
 <li>
-<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.10/org/infinispan/protostream/SerializationContextInitializer.html">org.infinispan.protostream.SerializationContextInitializer</a></p>
+<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.11/org/infinispan/protostream/SerializationContextInitializer.html">org.infinispan.protostream.SerializationContextInitializer</a></p>
 </li>
 </ul>
 </div>
@@ -1344,7 +1419,7 @@ public interface LibraryInitalizer extends SerializationContextInitializer {
 <p><a href="https://developers.google.com/protocol-buffers">Protocol Buffers</a></p>
 </li>
 <li>
-<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.10">Infinispan ProtoStream API</a></p>
+<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.11">Infinispan ProtoStream API</a></p>
 </li>
 <li>
 <p><a href="https://github.com/infinispan/protostream">Infinispan ProtoStream library</a></p>
@@ -1359,7 +1434,7 @@ public interface LibraryInitalizer extends SerializationContextInitializer {
 </div>
 <div class="paragraph">
 <p>This topic provides additional details about ProtoStream annotations.
-You should refer to the documentation in the <a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.10/org/infinispan/protostream/annotations/package-summary.html">org.infinispan.protostream.annotations</a> package for complete information.</p>
+You should refer to the documentation in the <a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.11/org/infinispan/protostream/annotations/package-summary.html">org.infinispan.protostream.annotations</a> package for complete information.</p>
 </div>
 <h5 id="proto" class="discrete">Proto</h5>
 <div class="paragraph">
@@ -1576,7 +1651,7 @@ This includes indexing annotations such as <code>@Indexed</code> and <code>@Basi
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.10/org/infinispan/protostream/annotations/package-summary.html">org.infinispan.protostream.annotations</a></p>
+<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.11/org/infinispan/protostream/annotations/package-summary.html">org.infinispan.protostream.annotations</a></p>
 </li>
 <li>
 <p><a href="https://developers.google.com/protocol-buffers/docs/proto#reserved">Protocol Buffers Language Guide - Reserved Fields</a></p>
@@ -1695,8 +1770,20 @@ The resulting schema contains only those five fields and only those five fields 
 <div class="paragraph">
 <p>The following <code>Author.java</code> and <code>Book.java</code> examples show Java classes annotated with <code>@ProtoField</code> and <code>@ProtoFactory</code>:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">Author.java</div>
+<div id="tabs_3" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_3_author_java" class="tab">
+<p>Author.java</p>
+</li>
+<li id="tabs_3_book_java" class="tab">
+<p>Book.java</p>
+</li>
+</ul>
+</div>
+<div id="tabs_3_author_java--panel" class="tabpanel" aria-labelledby="tabs_3_author_java">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">import org.infinispan.protostream.annotations.ProtoFactory;
 import org.infinispan.protostream.annotations.ProtoField;
@@ -1717,8 +1804,9 @@ public class Author {
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Book.java</div>
+</div>
+<div id="tabs_3_book_java--panel" class="tabpanel" aria-labelledby="tabs_3_book_java">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">import org.infinispan.protostream.annotations.ProtoFactory;
 import org.infinispan.protostream.annotations.ProtoField;
@@ -1755,11 +1843,26 @@ public class Book {
 }</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="paragraph">
 <p>The following <code>Language.java</code> example shows a Java enum annotated with <code>@ProtoEnumValue</code> along with the corresponding Protobuf schema:</p>
 </div>
-<div class="listingblock primary">
-<div class="title">Language.java</div>
+<div id="tabs_4" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_4_language_java" class="tab">
+<p>Language.java</p>
+</li>
+<li id="tabs_4_language_proto" class="tab">
+<p>Language.proto</p>
+</li>
+</ul>
+</div>
+<div id="tabs_4_language_java--panel" class="tabpanel" aria-labelledby="tabs_4_language_java">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">import org.infinispan.protostream.annotations.ProtoEnumValue;
 
@@ -1778,8 +1881,9 @@ public enum Language {
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Language.proto</div>
+</div>
+<div id="tabs_4_language_proto--panel" class="tabpanel" aria-labelledby="tabs_4_language_proto">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-proto hljs" data-lang="proto">enum Language {
 
@@ -1795,14 +1899,17 @@ public enum Language {
 }</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <div class="ulist _additional-resources">
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.10/org/infinispan/protostream/annotations/ProtoField.html">org.infinispan.protostream.annotations.ProtoField</a></p>
+<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.11/org/infinispan/protostream/annotations/ProtoField.html">org.infinispan.protostream.annotations.ProtoField</a></p>
 </li>
 <li>
-<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.10/org/infinispan/protostream/annotations/ProtoFactory.html">org.infinispan.protostream.annotations.ProtoFactory</a></p>
+<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.11/org/infinispan/protostream/annotations/ProtoFactory.html">org.infinispan.protostream.annotations.ProtoFactory</a></p>
 </li>
 </ul>
 </div>
@@ -1851,7 +1958,7 @@ public class UUIDAdapter {
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.10/org/infinispan/protostream/annotations/ProtoAdapter.html">org.infinispan.protostream.annotations.ProtoAdapter</a></p>
+<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.11/org/infinispan/protostream/annotations/ProtoAdapter.html">org.infinispan.protostream.annotations.ProtoAdapter</a></p>
 </li>
 </ul>
 </div>
@@ -1942,7 +2049,7 @@ interface LibraryInitializer extends GeneratedSchema {
 <div class="title">Additional resources</div>
 <ul>
 <li>
-<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.10/org/infinispan/protostream/annotations/ProtoSchema.html">org.infinispan.protostream.annotations.ProtoSchema</a></p>
+<p><a href="https://www.javadoc.io/doc/org.infinispan.protostream/protostream/6.0.11/org/infinispan/protostream/annotations/ProtoSchema.html">org.infinispan.protostream.annotations.ProtoSchema</a></p>
 </li>
 </ul>
 </div>
@@ -2065,8 +2172,20 @@ You must then manually register all other implementations.</p>
 </li>
 </ol>
 </div>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
+<div id="tabs_5" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_5_declarative" class="tab">
+<p>Declarative</p>
+</li>
+<li id="tabs_5_programmatic" class="tab">
+<p>Programmatic</p>
+</li>
+</ul>
+</div>
+<div id="tabs_5_declarative--panel" class="tabpanel" aria-labelledby="tabs_5_declarative">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;serialization&gt;
     &lt;context-initializer class="org.infinispan.example.LibraryInitializerImpl"/&gt;
@@ -2074,12 +2193,16 @@ You must then manually register all other implementations.</p>
 &lt;/serialization&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Programmatic</div>
+</div>
+<div id="tabs_5_programmatic--panel" class="tabpanel" aria-labelledby="tabs_5_programmatic">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder builder = new GlobalConfigurationBuilder();
 builder.serialization()
        .addContextInitializers(new LibraryInitializerImpl(), new SCIImpl());</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -2266,8 +2389,20 @@ If you use <code>JavaSerializationMarshaller</code> or <code>GenericJBossMarshal
 </li>
 </ul>
 </div>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
+<div id="tabs_6" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_6_declarative" class="tab">
+<p>Declarative</p>
+</li>
+<li id="tabs_6_system_properties" class="tab">
+<p>System properties</p>
+</li>
+</ul>
+</div>
+<div id="tabs_6_declarative--panel" class="tabpanel" aria-labelledby="tabs_6_declarative">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">&lt;infinispan&gt;
   &lt;cache-container&gt;
@@ -2282,14 +2417,18 @@ If you use <code>JavaSerializationMarshaller</code> or <code>GenericJBossMarshal
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">System properties</div>
+</div>
+<div id="tabs_6_system_properties--panel" class="tabpanel" aria-labelledby="tabs_6_system_properties">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-none hljs">// Specify a comma-separated list of fully qualified class names
 -Dinfinispan.deserialization.allowlist.classes=java.time.Instant,com.myclass.Entity
 
 // Specify a regular expression to match classes
 -Dinfinispan.deserialization.allowlist.regexps=.*</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -2312,8 +2451,20 @@ If you use <code>JavaSerializationMarshaller</code> or <code>GenericJBossMarshal
 </li>
 </ol>
 </div>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
+<div id="tabs_7" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_7_declarative" class="tab">
+<p>Declarative</p>
+</li>
+<li id="tabs_7_programmatic" class="tab">
+<p>Programmatic</p>
+</li>
+</ul>
+</div>
+<div id="tabs_7_declarative--panel" class="tabpanel" aria-labelledby="tabs_7_declarative">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;serialization marshaller="org.infinispan.jboss.marshalling.commons.GenericJBossMarshaller"&gt;
   &lt;allow-list&gt;
@@ -2323,14 +2474,18 @@ If you use <code>JavaSerializationMarshaller</code> or <code>GenericJBossMarshal
 &lt;/serialization&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Programmatic</div>
+</div>
+<div id="tabs_7_programmatic--panel" class="tabpanel" aria-labelledby="tabs_7_programmatic">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder builder = new GlobalConfigurationBuilder();
 builder.serialization()
        .marshaller(new GenericJBossMarshaller())
        .allowList()
        .addRegexps("org.infinispan.example.", "org.infinispan.concrete.SomeClass");</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -2365,8 +2520,20 @@ You should use Java serialization only if there is a strict requirement to do so
 </li>
 </ol>
 </div>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
+<div id="tabs_8" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_8_declarative" class="tab">
+<p>Declarative</p>
+</li>
+<li id="tabs_8_programmatic" class="tab">
+<p>Programmatic</p>
+</li>
+</ul>
+</div>
+<div id="tabs_8_declarative--panel" class="tabpanel" aria-labelledby="tabs_8_declarative">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;serialization marshaller="org.infinispan.commons.marshall.JavaSerializationMarshaller"&gt;
   &lt;allow-list&gt;
@@ -2376,14 +2543,18 @@ You should use Java serialization only if there is a strict requirement to do so
 &lt;/serialization&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Programmatic</div>
+</div>
+<div id="tabs_8_programmatic--panel" class="tabpanel" aria-labelledby="tabs_8_programmatic">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder builder = new GlobalConfigurationBuilder();
 builder.serialization()
        .marshaller(new JavaSerializationMarshaller())
        .allowList()
        .addRegexps("org.infinispan.example.", "org.infinispan.concrete.SomeClass");</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -2432,8 +2603,20 @@ builder.serialization()
 </li>
 </ol>
 </div>
-<div class="listingblock primary">
-<div class="title">Declarative</div>
+<div id="tabs_9" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_9_declarative" class="tab">
+<p>Declarative</p>
+</li>
+<li id="tabs_9_programmatic" class="tab">
+<p>Programmatic</p>
+</li>
+</ul>
+</div>
+<div id="tabs_9_declarative--panel" class="tabpanel" aria-labelledby="tabs_9_declarative">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;serialization marshaller="org.infinispan.example.marshall.CustomMarshaller"&gt;
   &lt;allow-list&gt;
@@ -2443,13 +2626,17 @@ builder.serialization()
 &lt;/serialization&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Programmatic</div>
+</div>
+<div id="tabs_9_programmatic--panel" class="tabpanel" aria-labelledby="tabs_9_programmatic">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">GlobalConfigurationBuilder builder = new GlobalConfigurationBuilder();
 builder.serialization()
       .marshaller(new org.infinispan.example.marshall.CustomMarshaller())
       .allowList().addRegexp("org.infinispan.example.*");</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -2629,6 +2816,118 @@ byte[] json = jsonValuesCache.get(1);</code></pre>
 <p><a href="../../apidocs/org/infinispan/AdvancedCache.html">org.infinispan.AdvancedCache</a></p>
 </li>
 </ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="optional-transcoders_transcoding"><a class="anchor" href="#optional-transcoders_transcoding"></a>4.3. Optional transcoders</h3>
+<div class="paragraph">
+<p>Infinispan provides additional transcoders as optional modules that are not included in the server distribution by default.
+You can install these modules to enable additional data conversion capabilities.</p>
+</div>
+<div class="sect3">
+<h4 id="json_pojo_transcoder"><a class="anchor" href="#json_pojo_transcoder"></a>4.3.1. JSON POJO transcoder</h4>
+<div class="paragraph">
+<p>The JSON POJO transcoder converts Java objects (<code>application/x-java-object</code>) to and from JSON using Jackson Databind.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This conversion path is deprecated.
+You should use ProtoStream-based marshalling instead.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<div class="title">Server installation</div>
+<p>Use the Infinispan CLI to install the JSON POJO transcoder:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">[disconnected]&gt; install org.infinispan:infinispan-json-pojo-transcoder:16.2.1</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You must restart the server after installing the artifact.</p>
+</div>
+<div class="paragraph">
+<div class="title">Embedded usage</div>
+<p>Add the following dependency to your project:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+   &lt;artifactId&gt;infinispan-json-pojo-transcoder&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="xml_transcoder"><a class="anchor" href="#xml_transcoder"></a>4.3.2. XML transcoder</h4>
+<div class="paragraph">
+<p>The XML transcoder converts data between XML and other formats, including Java objects, using XStream.</p>
+</div>
+<div class="paragraph">
+<div class="title">Server installation</div>
+<p>Use the Infinispan CLI to install the XML transcoder:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">[disconnected]&gt; install org.infinispan:infinispan-xml-transcoder:16.2.1</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You must restart the server after installing the artifact.</p>
+</div>
+<div class="paragraph">
+<div class="title">Embedded usage</div>
+<p>Add the following dependency to your project:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+   &lt;artifactId&gt;infinispan-xml-transcoder&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="jboss_marshalling_transcoder"><a class="anchor" href="#jboss_marshalling_transcoder"></a>4.3.3. JBoss Marshalling transcoder</h4>
+<div class="paragraph">
+<p>The JBoss Marshalling transcoder converts data between Java objects and JBoss Marshalling format.</p>
+</div>
+<div class="paragraph">
+<div class="title">Server installation</div>
+<p>Use the Infinispan CLI to install the JBoss Marshalling transcoder:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-shell hljs" data-lang="shell">[disconnected]&gt; install org.infinispan:infinispan-jboss-marshalling:16.2.1</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You must restart the server after installing the artifact.</p>
+</div>
+<div class="paragraph">
+<div class="title">Embedded usage</div>
+<p>Add the following dependency to your project:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+   &lt;groupId&gt;org.infinispan&lt;/groupId&gt;
+   &lt;artifactId&gt;infinispan-jboss-marshalling&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -3075,7 +3374,7 @@ Infinispan updates the schema and returns the error in the response body.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-07-31 09:00:30 UTC
+Last updated 2026-09-15 18:44:30 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -3109,5 +3408,134 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
 })
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+<script>
+;(function () { /*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+  'use strict'
+
+  var config = (document.currentScript || {}).dataset || {}
+  var forEach = Array.prototype.forEach
+
+  init(document.querySelectorAll('.tabs'))
+
+  function init (tabsBlocks) {
+    if (!tabsBlocks.length) return
+    forEach.call(tabsBlocks, function (tabs) {
+      var syncIds = tabs.classList.contains('is-sync') ? {} : undefined
+      var tablist = tabs.querySelector('.tablist ul')
+      tablist.setAttribute('role', 'tablist')
+      var start
+      forEach.call(tablist.querySelectorAll('li'), function (tab, idx) {
+        tab.tabIndex = -1
+        tab.setAttribute('role', tab.classList.add('tab') || 'tab')
+        var id, anchor, syncId
+        if (!(id = tab.id) && (anchor = tab.querySelector('a[id]'))) {
+          id = tab.id = anchor.parentNode.removeChild(anchor).id
+        }
+        var panel = id && tabs.querySelector('.tabpanel[aria-labelledby~="' + id + '"]')
+        if (!panel) return idx ? undefined : toggleSelected(tab, true) // invalid state
+        syncIds && (((syncId = tab.textContent.trim()) in syncIds) ? (syncId = undefined) : true) &&
+          (syncIds[(tab.dataset.syncId = syncId)] = tab)
+        idx || (syncIds && (start = { tab: tab, panel: panel })) ? toggleHidden(panel, true) : toggleSelected(tab, true)
+        tab.setAttribute('aria-controls', panel.id)
+        panel.setAttribute('role', 'tabpanel')
+        var onClick = syncId === undefined ? activateTab : activateTabSync
+        tab.addEventListener('click', onClick.bind({ tabs: tabs, tab: tab, panel: panel }))
+      })
+      if (!tabs.closest('.tabpanel')) {
+        forEach.call(tabs.querySelectorAll('.tabpanel table.tableblock'), function (table) {
+          var container = Object.assign(document.createElement('div'), { className: 'tablecontainer' })
+          table.parentNode.insertBefore(container, table).appendChild(table)
+        })
+      }
+      if (start) {
+        var syncGroupId
+        for (var i = 0, lst = tabs.classList, len = lst.length, className; i !== len; i++) {
+          if (!(className = lst.item(i)).startsWith('data-sync-group-id=')) continue
+          tabs.dataset.syncGroupId = syncGroupId = lst.remove(className) || className.slice(19).replace(/\u00a0/g, ' ')
+          break
+        }
+        if (syncGroupId === undefined) tabs.dataset.syncGroupId = syncGroupId = Object.keys(syncIds).sort().join('|')
+        var preferredSyncId = 'syncStorageKey' in config &&
+          window[(config.syncStorageScope || 'local') + 'Storage'].getItem(config.syncStorageKey + '-' + syncGroupId)
+        var tab = preferredSyncId && syncIds[preferredSyncId]
+        tab && Object.assign(start, { tab: tab, panel: document.getElementById(tab.getAttribute('aria-controls')) })
+        toggleSelected(start.tab, true) || toggleHidden(start.panel, false)
+      }
+    })
+    onHashChange()
+    toggleClassOnEach(tabsBlocks, 'is-loading', 'remove')
+    window.setTimeout(toggleClassOnEach.bind(null, tabsBlocks, 'is-loaded', 'add'), 0)
+    window.addEventListener('hashchange', onHashChange)
+  }
+
+  function activateTab (e) {
+    var tab = this.tab
+    var tabs = this.tabs || (this.tabs = tab.closest('.tabs'))
+    var panel = this.panel || (this.panel = document.getElementById(tab.getAttribute('aria-controls')))
+    querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (el) {
+      toggleSelected(el, el === tab)
+    })
+    querySelectorWithSiblings(tabs, '.tabpanel', 'tabpanel').forEach(function (el) {
+      toggleHidden(el, el !== panel)
+    })
+    if (!this.isSync && 'syncStorageKey' in config && 'syncGroupId' in tabs.dataset) {
+      var storageKey = config.syncStorageKey + '-' + tabs.dataset.syncGroupId
+      window[(config.syncStorageScope || 'local') + 'Storage'].setItem(storageKey, tab.dataset.syncId)
+    }
+    if (!e) return
+    var loc = window.location
+    var hashIdx = loc.hash ? loc.href.indexOf('#') : -1
+    if (~hashIdx) window.history.replaceState(null, '', loc.href.slice(0, hashIdx))
+    e.preventDefault()
+  }
+
+  function activateTabSync (e) {
+    activateTab.call(this, e)
+    var thisTabs = this.tabs
+    var thisTab = this.tab
+    var initialY = thisTabs.getBoundingClientRect().y
+    forEach.call(document.querySelectorAll('.tabs'), function (tabs) {
+      if (tabs === thisTabs || tabs.dataset.syncGroupId !== thisTabs.dataset.syncGroupId) return
+      querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (tab) {
+        if (tab.dataset.syncId === thisTab.dataset.syncId) activateTab.call({ tabs: tabs, tab: tab, isSync: true })
+      })
+    })
+    var shiftedBy = thisTabs.getBoundingClientRect().y - initialY
+    if (shiftedBy && (shiftedBy = Math.round(shiftedBy))) window.scrollBy({ top: shiftedBy, behavior: 'instant' })
+  }
+
+  function querySelectorWithSiblings (scope, selector, siblingClass) {
+    var el = scope.querySelector(selector)
+    if (!el) return []
+    var result = [el]
+    while ((el = el.nextElementSibling) && el.classList.contains(siblingClass)) result.push(el)
+    return result
+  }
+
+  function toggleClassOnEach (elements, className, method) {
+    forEach.call(elements, function (el) {
+      el.classList[method](className)
+    })
+  }
+
+  function toggleHidden (el, state) {
+    el.classList[(el.hidden = state) ? 'add' : 'remove']('is-hidden')
+  }
+
+  function toggleSelected (el, state) {
+    el.setAttribute('aria-selected', '' + state)
+    el.classList[state ? 'add' : 'remove']('is-selected')
+    el.tabIndex = state ? 0 : -1
+  }
+
+  function onHashChange () {
+    var id = window.location.hash.slice(1)
+    if (!id) return
+    var tab = document.getElementById(~id.indexOf('%') ? decodeURIComponent(id) : id)
+    if (!(tab && tab.classList.contains('tab'))) return
+    'syncId' in tab.dataset ? activateTabSync.call({ tab: tab }) : activateTab.call({ tab: tab })
+  }
+})()
+</script>
 </body>
 </html>

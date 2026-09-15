@@ -456,81 +456,117 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="../../js/js.js"></script>
 <link rel="canonical" href="https://infinispan.org/docs/stable/titles/query/query.html">
 <style>
-.hidden {
-    display: none;
+/*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+.tabs {
+  margin-bottom: 1.25em;
 }
 
-.switch {
-    border-width: 1px 1px 0 1px;
-    border-style: solid;
-    border-color: #7a2518;
-    display: inline-block;
+.tablist > ul {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.switch--item {
-    padding: 10px;
-    background-color: #ffffff;
-    color: #7a2518;
-    display: inline-block;
-    cursor: pointer;
+.tablist > ul li {
+  align-items: center;
+  background-color: #fff;
+  cursor: pointer;
+  display: flex;
+  font-weight: bold;
+  line-height: 1.5;
+  padding: 0.25em 1em;
+  position: relative;
 }
 
-.switch--item.selected {
-    background-color: #7a2519;
-    color: #ffffff;
+.tablist > ul li:focus-visible {
+  outline: none;
 }
 
+.tablist.ulist,
+.tablist.ulist > ul li {
+  margin: 0;
+}
+
+.tablist.ulist > ul li + li {
+  margin-left: 0.25em;
+}
+
+.tabs .tablist li::after {
+  content: "";
+  display: block;
+  height: 1px;
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+}
+
+.tabs.is-loading .tablist li:not(:first-child),
+.tabs:not(.is-loading) .tablist li:not(.is-selected) {
+  background-color: #f5f5f5;
+}
+
+.tabs.is-loading .tablist li:first-child::after,
+.tabs:not(.is-loading) .tablist li.is-selected::after {
+  background-color: #fff;
+}
+
+/*
+.tabs:not(.is-loading) .tablist li,
+.tabs:not(.is-loading) .tablist li::after {
+  transition: background-color 200ms ease-in-out;
+}
+*/
+
+.tablist > ul p {
+  line-height: inherit;
+  margin: 0;
+}
+
+.tabpanel {
+  background-color: #fff;
+  padding: 1.25em;
+}
+
+.tablist > ul li,
+.tabpanel {
+  border: 1px solid #dcdcdc;
+}
+
+.tablist > ul li {
+  border-bottom: 0;
+}
+
+.tabs.is-loading .tabpanel + .tabpanel,
+.tabs:not(.is-loading) .tabpanel.is-hidden {
+  display: none;
+}
+
+.tabpanel > :first-child {
+  margin-top: 0;
+}
+
+/* #content is a signature of the Asciidoctor standalone HTML output */
+#content .tabpanel > :last-child,
+#content .tabpanel > :last-child > :last-child,
+#content .tabpanel > :last-child > :last-child > li:last-child > :last-child {
+  margin-bottom: 0;
+}
+
+.tablecontainer {
+  overflow-x: auto;
+}
+
+#content .tablecontainer {
+  margin-bottom: 1.25em;
+}
+
+#content .tablecontainer > table.tableblock {
+  margin-bottom: 0;
+}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
-<script type="text/javascript">
-function addBlockSwitches() {
-    $('.primary').each(function() {
-        primary = $(this);
-        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
-        primary.children('.title').remove();
-    });
-    $('.secondary').each(function(idx, node) {
-        secondary = $(node);
-        primary = findPrimary(secondary);
-        switchItem = createSwitchItem(secondary, primary.children('.switch'));
-        switchItem.content.addClass('hidden');
-        findPrimary(secondary).append(switchItem.content);
-        secondary.remove();
-    });
-}
-
-function createBlockSwitch(primary) {
-    blockSwitch = $('<div class="switch"></div>');
-    primary.prepend(blockSwitch);
-    return blockSwitch;
-}
-
-function findPrimary(secondary) {
-    candidate = secondary.prev();
-    while (!candidate.is('.primary')) {
-        candidate = candidate.prev();
-    }
-    return candidate;
-}
-
-function createSwitchItem(block, blockSwitch) {
-    blockName = block.children('.title').text();
-    content = block.children('.content').first().append(block.next('.colist'));
-    item = $('<div class="switch--item">' + blockName + '</div>');
-    item.on('click', '', content, function(e) {
-        $(this).addClass('selected');
-        $(this).siblings().removeClass('selected');
-        e.data.siblings('.content').addClass('hidden');
-        e.data.removeClass('hidden');
-    });
-    blockSwitch.append(item);
-    return {'item': item, 'content': content};
-}
-
-$(addBlockSwitches);
-
-</script>
-
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
@@ -593,6 +629,7 @@ $(addBlockSwitches);
 </li>
 <li><a href="#grouping_and_aggregation">2.2.6. Grouping and aggregation</a></li>
 <li><a href="#delete_statements">2.2.7. DELETE statements</a></li>
+<li><a href="#update_statements">2.2.8. UPDATE statements</a></li>
 </ul>
 </li>
 <li><a href="#full-text-search_ickle-query-language">2.3. Full-text queries</a>
@@ -830,8 +867,20 @@ message Author {
 </li>
 </ul>
 </div>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_1" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_1_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_1_configurationbuilder" class="tab">
+<p>ConfigurationBuilder</p>
+</li>
+</ul>
+</div>
+<div id="tabs_1_xml--panel" class="tabpanel" aria-labelledby="tabs_1_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache&gt;
   &lt;indexing&gt;
@@ -842,13 +891,17 @@ message Author {
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">ConfigurationBuilder</div>
+</div>
+<div id="tabs_1_configurationbuilder--panel" class="tabpanel" aria-labelledby="tabs_1_configurationbuilder">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">import org.infinispan.configuration.cache.*;
 
 ConfigurationBuilder config=new ConfigurationBuilder();
 config.indexing().enable().storage(FILESYSTEM).path("/some/folder").addIndexedEntity(Book.class);</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -1764,7 +1817,7 @@ performance compared to a similar query using constant values instead of query p
 <p><code>Query.execute()</code> runs a SELECT statement and returns a result.</p>
 </li>
 <li>
-<p><code>Query.executeStatement()</code> runs a DELETE statement and modifies data.</p>
+<p><code>Query.executeStatement()</code> runs a DELETE or UPDATE statement and modifies data.</p>
 </li>
 </ul>
 </div>
@@ -2188,6 +2241,7 @@ fields.</p>
 <p>You can delete entities from Infinispan caches with the following syntax:</p>
 </div>
 <div class="listingblock">
+<div class="title">Delete Query in Ickle</div>
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sql hljs" data-lang="sql">DELETE FROM &lt;entityName&gt; [WHERE condition]</code></pre>
 </div>
@@ -2227,6 +2281,83 @@ fields.</p>
 <td class="content">
 <div class="paragraph">
 <p>Invoke the <code>Query.executeStatement()</code> method to execute DELETE statements.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="update_statements"><a class="anchor" href="#update_statements"></a>2.2.8. UPDATE statements</h4>
+<div class="paragraph">
+<p>You can update entities in Infinispan caches with the following syntax:</p>
+</div>
+<div class="listingblock">
+<div class="title">Update Query in Ickle</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sql hljs" data-lang="sql">UPDATE FROM &lt;entityName&gt; SET &lt;field&gt; = &lt;value&gt; [, SET &lt;field&gt; = &lt;value&gt;]* [WHERE condition]</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Reference only single entities with <code>&lt;entityName&gt;</code>. UPDATE queries cannot use joins.</p>
+</li>
+<li>
+<p>WHERE conditions are optional.</p>
+</li>
+<li>
+<p>Use <code>SET</code> to assign a new value to a field.</p>
+</li>
+<li>
+<p>Use <code>ADD</code> to add values to a collection field.</p>
+</li>
+<li>
+<p>Use <code>REMOVE</code> to remove values from a collection field.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Values can be:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A single constant: <code>SET name = 'John'</code></p>
+</li>
+<li>
+<p>A list of constants in parentheses: <code>ADD tags = ('new', 'updated')</code></p>
+</li>
+<li>
+<p>A list of constants in square brackets: <code>ADD tags = ['new', 'updated']</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>UPDATE queries cannot use any of the following:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Projections with SELECT statements</p>
+</li>
+<li>
+<p>Grouping and aggregation</p>
+</li>
+<li>
+<p>ORDER BY clauses</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Invoke the <code>Query.executeStatement()</code> method to execute UPDATE statements.</p>
 </div>
 </td>
 </tr>
@@ -3602,8 +3733,20 @@ You specify analyzer definitions with the <code>@Text</code> annotation in your 
 </li>
 </ol>
 </div>
-<div class="listingblock primary">
-<div class="title">Protobuf schema</div>
+<div id="tabs_2" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_2_protobuf_schema" class="tab">
+<p>Protobuf schema</p>
+</li>
+<li id="tabs_2_java_classes" class="tab">
+<p>Java classes</p>
+</li>
+</ul>
+</div>
+<div id="tabs_2_protobuf_schema--panel" class="tabpanel" aria-labelledby="tabs_2_protobuf_schema">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-protobuf hljs" data-lang="protobuf">/* @Indexed */
 message TestEntity {
@@ -3616,8 +3759,9 @@ message TestEntity {
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Java classes</div>
+</div>
+<div id="tabs_2_java_classes--panel" class="tabpanel" aria-labelledby="tabs_2_java_classes">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">@Text(projectable = true, analyzer = "whitespace")
 @ProtoField(value = 1)
@@ -3626,6 +3770,9 @@ private String id;
 @Text(projectable = true, analyzer = "simple")
 @ProtoField(value = 2)
 private String description;</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -4466,8 +4613,20 @@ and the number of possible failures on indexing operations.</p>
 </li>
 </ul>
 </div>
-<div class="listingblock primary">
-<div class="title">Embedded caches</div>
+<div id="tabs_3" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_3_embedded_caches" class="tab">
+<p>Embedded caches</p>
+</li>
+<li id="tabs_3_remote_caches" class="tab">
+<p>Remote caches</p>
+</li>
+</ul>
+</div>
+<div id="tabs_3_embedded_caches--panel" class="tabpanel" aria-labelledby="tabs_3_embedded_caches">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-java hljs" data-lang="java">// Statistics for the local cluster member
 SearchStatistics statistics = Search.getSearchStatistics(cache);
@@ -4476,10 +4635,14 @@ SearchStatistics statistics = Search.getSearchStatistics(cache);
 CompletionStage&lt;SearchStatisticsSnapshot&gt; statistics = Search.getClusteredSearchStatistics(cache)</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Remote caches</div>
+</div>
+<div id="tabs_3_remote_caches--panel" class="tabpanel" aria-labelledby="tabs_3_remote_caches">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-none hljs">GET /rest/v2/caches/{cacheName}/search/stats</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -4522,7 +4685,7 @@ If you do not need data returned in queries as soon as it is written, you should
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-07-31 09:00:30 UTC
+Last updated 2026-09-15 18:44:30 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -4556,5 +4719,134 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
 })
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+<script>
+;(function () { /*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+  'use strict'
+
+  var config = (document.currentScript || {}).dataset || {}
+  var forEach = Array.prototype.forEach
+
+  init(document.querySelectorAll('.tabs'))
+
+  function init (tabsBlocks) {
+    if (!tabsBlocks.length) return
+    forEach.call(tabsBlocks, function (tabs) {
+      var syncIds = tabs.classList.contains('is-sync') ? {} : undefined
+      var tablist = tabs.querySelector('.tablist ul')
+      tablist.setAttribute('role', 'tablist')
+      var start
+      forEach.call(tablist.querySelectorAll('li'), function (tab, idx) {
+        tab.tabIndex = -1
+        tab.setAttribute('role', tab.classList.add('tab') || 'tab')
+        var id, anchor, syncId
+        if (!(id = tab.id) && (anchor = tab.querySelector('a[id]'))) {
+          id = tab.id = anchor.parentNode.removeChild(anchor).id
+        }
+        var panel = id && tabs.querySelector('.tabpanel[aria-labelledby~="' + id + '"]')
+        if (!panel) return idx ? undefined : toggleSelected(tab, true) // invalid state
+        syncIds && (((syncId = tab.textContent.trim()) in syncIds) ? (syncId = undefined) : true) &&
+          (syncIds[(tab.dataset.syncId = syncId)] = tab)
+        idx || (syncIds && (start = { tab: tab, panel: panel })) ? toggleHidden(panel, true) : toggleSelected(tab, true)
+        tab.setAttribute('aria-controls', panel.id)
+        panel.setAttribute('role', 'tabpanel')
+        var onClick = syncId === undefined ? activateTab : activateTabSync
+        tab.addEventListener('click', onClick.bind({ tabs: tabs, tab: tab, panel: panel }))
+      })
+      if (!tabs.closest('.tabpanel')) {
+        forEach.call(tabs.querySelectorAll('.tabpanel table.tableblock'), function (table) {
+          var container = Object.assign(document.createElement('div'), { className: 'tablecontainer' })
+          table.parentNode.insertBefore(container, table).appendChild(table)
+        })
+      }
+      if (start) {
+        var syncGroupId
+        for (var i = 0, lst = tabs.classList, len = lst.length, className; i !== len; i++) {
+          if (!(className = lst.item(i)).startsWith('data-sync-group-id=')) continue
+          tabs.dataset.syncGroupId = syncGroupId = lst.remove(className) || className.slice(19).replace(/\u00a0/g, ' ')
+          break
+        }
+        if (syncGroupId === undefined) tabs.dataset.syncGroupId = syncGroupId = Object.keys(syncIds).sort().join('|')
+        var preferredSyncId = 'syncStorageKey' in config &&
+          window[(config.syncStorageScope || 'local') + 'Storage'].getItem(config.syncStorageKey + '-' + syncGroupId)
+        var tab = preferredSyncId && syncIds[preferredSyncId]
+        tab && Object.assign(start, { tab: tab, panel: document.getElementById(tab.getAttribute('aria-controls')) })
+        toggleSelected(start.tab, true) || toggleHidden(start.panel, false)
+      }
+    })
+    onHashChange()
+    toggleClassOnEach(tabsBlocks, 'is-loading', 'remove')
+    window.setTimeout(toggleClassOnEach.bind(null, tabsBlocks, 'is-loaded', 'add'), 0)
+    window.addEventListener('hashchange', onHashChange)
+  }
+
+  function activateTab (e) {
+    var tab = this.tab
+    var tabs = this.tabs || (this.tabs = tab.closest('.tabs'))
+    var panel = this.panel || (this.panel = document.getElementById(tab.getAttribute('aria-controls')))
+    querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (el) {
+      toggleSelected(el, el === tab)
+    })
+    querySelectorWithSiblings(tabs, '.tabpanel', 'tabpanel').forEach(function (el) {
+      toggleHidden(el, el !== panel)
+    })
+    if (!this.isSync && 'syncStorageKey' in config && 'syncGroupId' in tabs.dataset) {
+      var storageKey = config.syncStorageKey + '-' + tabs.dataset.syncGroupId
+      window[(config.syncStorageScope || 'local') + 'Storage'].setItem(storageKey, tab.dataset.syncId)
+    }
+    if (!e) return
+    var loc = window.location
+    var hashIdx = loc.hash ? loc.href.indexOf('#') : -1
+    if (~hashIdx) window.history.replaceState(null, '', loc.href.slice(0, hashIdx))
+    e.preventDefault()
+  }
+
+  function activateTabSync (e) {
+    activateTab.call(this, e)
+    var thisTabs = this.tabs
+    var thisTab = this.tab
+    var initialY = thisTabs.getBoundingClientRect().y
+    forEach.call(document.querySelectorAll('.tabs'), function (tabs) {
+      if (tabs === thisTabs || tabs.dataset.syncGroupId !== thisTabs.dataset.syncGroupId) return
+      querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (tab) {
+        if (tab.dataset.syncId === thisTab.dataset.syncId) activateTab.call({ tabs: tabs, tab: tab, isSync: true })
+      })
+    })
+    var shiftedBy = thisTabs.getBoundingClientRect().y - initialY
+    if (shiftedBy && (shiftedBy = Math.round(shiftedBy))) window.scrollBy({ top: shiftedBy, behavior: 'instant' })
+  }
+
+  function querySelectorWithSiblings (scope, selector, siblingClass) {
+    var el = scope.querySelector(selector)
+    if (!el) return []
+    var result = [el]
+    while ((el = el.nextElementSibling) && el.classList.contains(siblingClass)) result.push(el)
+    return result
+  }
+
+  function toggleClassOnEach (elements, className, method) {
+    forEach.call(elements, function (el) {
+      el.classList[method](className)
+    })
+  }
+
+  function toggleHidden (el, state) {
+    el.classList[(el.hidden = state) ? 'add' : 'remove']('is-hidden')
+  }
+
+  function toggleSelected (el, state) {
+    el.setAttribute('aria-selected', '' + state)
+    el.classList[state ? 'add' : 'remove']('is-selected')
+    el.tabIndex = state ? 0 : -1
+  }
+
+  function onHashChange () {
+    var id = window.location.hash.slice(1)
+    if (!id) return
+    var tab = document.getElementById(~id.indexOf('%') ? decodeURIComponent(id) : id)
+    if (!(tab && tab.classList.contains('tab'))) return
+    'syncId' in tab.dataset ? activateTabSync.call({ tab: tab }) : activateTab.call({ tab: tab })
+  }
+})()
+</script>
 </body>
 </html>

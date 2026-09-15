@@ -456,81 +456,117 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="../../js/js.js"></script>
 <link rel="canonical" href="https://infinispan.org/docs/stable/titles/rest/rest.html">
 <style>
-.hidden {
-    display: none;
+/*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+.tabs {
+  margin-bottom: 1.25em;
 }
 
-.switch {
-    border-width: 1px 1px 0 1px;
-    border-style: solid;
-    border-color: #7a2518;
-    display: inline-block;
+.tablist > ul {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.switch--item {
-    padding: 10px;
-    background-color: #ffffff;
-    color: #7a2518;
-    display: inline-block;
-    cursor: pointer;
+.tablist > ul li {
+  align-items: center;
+  background-color: #fff;
+  cursor: pointer;
+  display: flex;
+  font-weight: bold;
+  line-height: 1.5;
+  padding: 0.25em 1em;
+  position: relative;
 }
 
-.switch--item.selected {
-    background-color: #7a2519;
-    color: #ffffff;
+.tablist > ul li:focus-visible {
+  outline: none;
 }
 
+.tablist.ulist,
+.tablist.ulist > ul li {
+  margin: 0;
+}
+
+.tablist.ulist > ul li + li {
+  margin-left: 0.25em;
+}
+
+.tabs .tablist li::after {
+  content: "";
+  display: block;
+  height: 1px;
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+}
+
+.tabs.is-loading .tablist li:not(:first-child),
+.tabs:not(.is-loading) .tablist li:not(.is-selected) {
+  background-color: #f5f5f5;
+}
+
+.tabs.is-loading .tablist li:first-child::after,
+.tabs:not(.is-loading) .tablist li.is-selected::after {
+  background-color: #fff;
+}
+
+/*
+.tabs:not(.is-loading) .tablist li,
+.tabs:not(.is-loading) .tablist li::after {
+  transition: background-color 200ms ease-in-out;
+}
+*/
+
+.tablist > ul p {
+  line-height: inherit;
+  margin: 0;
+}
+
+.tabpanel {
+  background-color: #fff;
+  padding: 1.25em;
+}
+
+.tablist > ul li,
+.tabpanel {
+  border: 1px solid #dcdcdc;
+}
+
+.tablist > ul li {
+  border-bottom: 0;
+}
+
+.tabs.is-loading .tabpanel + .tabpanel,
+.tabs:not(.is-loading) .tabpanel.is-hidden {
+  display: none;
+}
+
+.tabpanel > :first-child {
+  margin-top: 0;
+}
+
+/* #content is a signature of the Asciidoctor standalone HTML output */
+#content .tabpanel > :last-child,
+#content .tabpanel > :last-child > :last-child,
+#content .tabpanel > :last-child > :last-child > li:last-child > :last-child {
+  margin-bottom: 0;
+}
+
+.tablecontainer {
+  overflow-x: auto;
+}
+
+#content .tablecontainer {
+  margin-bottom: 1.25em;
+}
+
+#content .tablecontainer > table.tableblock {
+  margin-bottom: 0;
+}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
-<script type="text/javascript">
-function addBlockSwitches() {
-    $('.primary').each(function() {
-        primary = $(this);
-        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
-        primary.children('.title').remove();
-    });
-    $('.secondary').each(function(idx, node) {
-        secondary = $(node);
-        primary = findPrimary(secondary);
-        switchItem = createSwitchItem(secondary, primary.children('.switch'));
-        switchItem.content.addClass('hidden');
-        findPrimary(secondary).append(switchItem.content);
-        secondary.remove();
-    });
-}
-
-function createBlockSwitch(primary) {
-    blockSwitch = $('<div class="switch"></div>');
-    primary.prepend(blockSwitch);
-    return blockSwitch;
-}
-
-function findPrimary(secondary) {
-    candidate = secondary.prev();
-    while (!candidate.is('.primary')) {
-        candidate = candidate.prev();
-    }
-    return candidate;
-}
-
-function createSwitchItem(block, blockSwitch) {
-    blockName = block.children('.title').text();
-    content = block.children('.content').first().append(block.next('.colist'));
-    item = $('<div class="switch--item">' + blockName + '</div>');
-    item.on('click', '', content, function(e) {
-        $(this).addClass('selected');
-        $(this).siblings().removeClass('selected');
-        e.data.siblings('.content').addClass('hidden');
-        e.data.removeClass('hidden');
-    });
-    blockSwitch.append(item);
-    return {'item': item, 'content': content};
-}
-
-$(addBlockSwitches);
-
-</script>
-
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
@@ -603,6 +639,7 @@ $(addBlockSwitches);
 <li><a href="#rest_v2_query_cache">2.1.35. Indexing and Querying with the REST API</a>
 <ul class="sectlevel4">
 <li><a href="#rest_v2_query_delete">Delete by query</a></li>
+<li><a href="#rest_v2_query_update">Update by query</a></li>
 <li><a href="#rest_v2_query_reindex">Rebuilding indexes</a></li>
 <li><a href="#rest_v2_query_updateIndexSchema">Updating index schema</a></li>
 <li><a href="#rest_v2_query_purge_index">Purging indexes</a></li>
@@ -1077,8 +1114,20 @@ specific header <code>Key-Content-Type</code> for keys in different formats.</p>
 <div class="paragraph">
 <p>When writing JSON documents, a special field <strong><em>_type</em></strong> must be present in the document to identity the Protobuf <em>Message</em>  that corresponds to the document.</p>
 </div>
-<div class="listingblock primary">
-<div class="title">Person.proto</div>
+<div id="tabs_1" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_1_person_proto" class="tab">
+<p>Person.proto</p>
+</li>
+<li id="tabs_1_person_json" class="tab">
+<p>Person.json</p>
+</li>
+</ul>
+</div>
+<div id="tabs_1_person_proto--panel" class="tabpanel" aria-labelledby="tabs_1_person_proto">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-protobuf hljs" data-lang="protobuf">message Person  {
   required string name = 1;
@@ -1086,14 +1135,18 @@ specific header <code>Key-Content-Type</code> for keys in different formats.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">Person.json</div>
+</div>
+<div id="tabs_1_person_json--panel" class="tabpanel" aria-labelledby="tabs_1_person_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
    "_type": "Person",
    "name": "user1",
    "age": 32
 }</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1272,8 +1325,23 @@ Write succinct file names.</p>
 </table>
 </div>
 <h6 id="distributed_caches" class="discrete">Distributed caches</h6>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_2" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_2_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_2_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_2_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_2_xml--panel" class="tabpanel" aria-labelledby="tabs_2_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache owners="2"
                    segments="256"
@@ -1304,8 +1372,9 @@ Write succinct file names.</p>
 &lt;/distributed-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_2_json--panel" class="tabpanel" aria-labelledby="tabs_2_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "distributed-cache": {
@@ -1354,8 +1423,9 @@ Write succinct file names.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_2_yaml--panel" class="tabpanel" aria-labelledby="tabs_2_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">distributedCache:
   mode: "SYNC"
@@ -1392,9 +1462,27 @@ Write succinct file names.</p>
     # Persistent storage configuration.</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h6 id="replicated_caches" class="discrete">Replicated caches</h6>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_3" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_3_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_3_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_3_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_3_xml--panel" class="tabpanel" aria-labelledby="tabs_3_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;replicated-cache segments="256"
                   mode="SYNC"
@@ -1422,8 +1510,9 @@ Write succinct file names.</p>
 &lt;/replicated-cache&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_3_json--panel" class="tabpanel" aria-labelledby="tabs_3_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "replicated-cache": {
@@ -1469,8 +1558,9 @@ Write succinct file names.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_3_yaml--panel" class="tabpanel" aria-labelledby="tabs_3_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">replicatedCache:
   mode: "SYNC"
@@ -1504,9 +1594,27 @@ Write succinct file names.</p>
     # Persistent storage configuration.</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
 <h6 id="multiple_caches" class="discrete">Multiple caches</h6>
-<div class="listingblock primary">
-<div class="title">XML</div>
+<div id="tabs_4" class="openblock tabs is-loading">
+<div class="content">
+<div class="ulist tablist">
+<ul>
+<li id="tabs_4_xml" class="tab">
+<p>XML</p>
+</li>
+<li id="tabs_4_json" class="tab">
+<p>JSON</p>
+</li>
+<li id="tabs_4_yaml" class="tab">
+<p>YAML</p>
+</li>
+</ul>
+</div>
+<div id="tabs_4_xml--panel" class="tabpanel" aria-labelledby="tabs_4_xml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;infinispan
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1536,8 +1644,9 @@ Write succinct file names.</p>
 &lt;/infinispan&gt;</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">JSON</div>
+</div>
+<div id="tabs_4_json--panel" class="tabpanel" aria-labelledby="tabs_4_json">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
   "infinispan" : {
@@ -1583,8 +1692,9 @@ Write succinct file names.</p>
 }</code></pre>
 </div>
 </div>
-<div class="listingblock secondary">
-<div class="title">YAML</div>
+</div>
+<div id="tabs_4_yaml--panel" class="tabpanel" aria-labelledby="tabs_4_yaml">
+<div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight nowrap"><code class="language-yaml hljs" data-lang="yaml">infinispan:
   cacheContainer:
@@ -1613,6 +1723,9 @@ Write succinct file names.</p>
           memory:
             maxSize: "400MB"
             whenFull: "REMOVE"</code></pre>
+</div>
+</div>
+</div>
 </div>
 </div>
 <div class="ulist _additional-resources">
@@ -3221,6 +3334,61 @@ However, you can define the current cluster topology as stable for a specific ca
 </div>
 </div>
 <div class="sect4">
+<h5 id="rest_v2_query_update"><a class="anchor" href="#rest_v2_query_update"></a>Update by query</h5>
+<div class="paragraph">
+<p>Update multiple entries using update by query in remote caches with <code>PUT</code> requests and the <code>?action=updateByQuery&amp;query</code> parameter from any HTTP client.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">PUT /rest/v2/caches/{cacheName}?action=updateByQuery&amp;query={ickle query}</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 17. Request Parameters</caption>
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">Required or Optional</th>
+<th class="tableblock halign-left valign-top">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>query</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">REQUIRED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Specifies the query string.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>local</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OPTIONAL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When <code>true</code>, the query is restricted to the data present in node that process the request. The default is <code>false</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>To use the body of the request instead of specifying query parameters, invoke
+<code>POST</code> requests as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-none hljs">POST /rest/v2/caches/{cacheName}?action=updateByQuery</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Update statement in request body</div>
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-json hljs" data-lang="json">{
+ "query":"UPDATE FROM Entity SET name = 'updated' WHERE value &gt; 10"
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
 <h5 id="rest_v2_query_reindex"><a class="anchor" href="#rest_v2_query_reindex"></a>Rebuilding indexes</h5>
 <div class="paragraph">
 <p>When you delete fields or change index field definitions, you must rebuild the index to ensure the index is consistent with data in the cache.</p>
@@ -3249,7 +3417,7 @@ Remote clients might have different versions of the ProtoStream entity and this 
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 17. Request Parameters</caption>
+<caption class="title">Table 18. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -3465,7 +3633,7 @@ parameter.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 18. Request Parameters</caption>
+<caption class="title">Table 19. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -3765,7 +3933,7 @@ requests.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 19. Returned Status</caption>
+<caption class="title">Table 20. Returned Status</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -3815,7 +3983,7 @@ The response indicates status for each node.</p></td>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 20. Returned Status</caption>
+<caption class="title">Table 21. Returned Status</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -3912,7 +4080,7 @@ parameter.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 21. Returned status</caption>
+<caption class="title">Table 22. Returned status</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -4269,7 +4437,7 @@ It no source was connected, it returns code 304 (Not Modified).</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 22. Headers</caption>
+<caption class="title">Table 23. Headers</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -4994,7 +5162,7 @@ running and serving requests.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 23. Headers</caption>
+<caption class="title">Table 24. Headers</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5016,7 +5184,7 @@ running and serving requests.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 24. Request parameters</caption>
+<caption class="title">Table 25. Request parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5086,7 +5254,7 @@ configuration, as in the following example:</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 25. Request parameters</caption>
+<caption class="title">Table 26. Request parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5133,7 +5301,7 @@ configuration, as in the following example:</p>
 </table>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 26. Request parameters</caption>
+<caption class="title">Table 27. Request parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5351,7 +5519,7 @@ A <code>202</code> response indicates that the backup request is accepted for pr
 for the backup operation, as follows:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 27. JSON Parameters</caption>
+<caption class="title">Table 28. JSON Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5378,7 +5546,7 @@ for the backup operation, as follows:</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 28. Resource Parameters</caption>
+<caption class="title">Table 29. Resource Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5524,7 +5692,7 @@ that the restore request has been accepted for processing.</p>
 an archive that is available on the server.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 29. JSON Parameters</caption>
+<caption class="title">Table 30. JSON Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5551,7 +5719,7 @@ an archive that is available on the server.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 30. Resource Parameters</caption>
+<caption class="title">Table 31. Resource Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5613,7 +5781,7 @@ an archive that is available on the server.</p>
 local backup archive to the server.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 31. Form Data</caption>
+<caption class="title">Table 32. Form Data</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -5834,7 +6002,7 @@ data:     who: ~</pre>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 32. Headers</caption>
+<caption class="title">Table 33. Headers</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5856,7 +6024,7 @@ data:     who: ~</pre>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 33. Request parameters</caption>
+<caption class="title">Table 34. Request parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5895,7 +6063,7 @@ This endpoint returns only the <code>cache</code>, <code>template</code>, <code>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 34. Headers</caption>
+<caption class="title">Table 35. Headers</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5917,7 +6085,7 @@ This endpoint returns only the <code>cache</code>, <code>template</code>, <code>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 35. Request parameters</caption>
+<caption class="title">Table 36. Request parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -5986,7 +6154,7 @@ requests.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 36. Returned Status</caption>
+<caption class="title">Table 37. Returned Status</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -6384,7 +6552,7 @@ routing, threads, in addition to configuration and log files.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 37. Request Parameters</caption>
+<caption class="title">Table 38. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -6472,7 +6640,7 @@ and so on) currently stored in the cache container for the cluster.</p>
 for the backup operation, as follows:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 38. JSON Parameters</caption>
+<caption class="title">Table 39. JSON Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -6595,7 +6763,7 @@ matches the container name for the cluster.</p>
 an archive that is available on the server.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 39. JSON Parameters</caption>
+<caption class="title">Table 40. JSON Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -6622,7 +6790,7 @@ an archive that is available on the server.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 40. Resource Parameters</caption>
+<caption class="title">Table 41. Resource Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -6684,7 +6852,7 @@ an archive that is available on the server.</p>
 local backup archive to the server.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 41. Form Data</caption>
+<caption class="title">Table 42. Form Data</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -7022,7 +7190,7 @@ If no appenders are specified, those specified in the root logger will be used.<
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 42. Request Parameters</caption>
+<caption class="title">Table 43. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7302,7 +7470,7 @@ The principal need not exist in the realm in use.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 43. Request Parameters</caption>
+<caption class="title">Table 44. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7335,7 +7503,7 @@ The principal need not exist in the realm in use.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 44. Request Parameters</caption>
+<caption class="title">Table 45. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7387,7 +7555,7 @@ The principal need not exist in the realm in use.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 45. Request Parameters</caption>
+<caption class="title">Table 46. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7420,7 +7588,7 @@ The principal need not exist in the realm in use.</p>
 </div>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 46. Request Parameters</caption>
+<caption class="title">Table 47. Request Parameters</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -7900,7 +8068,7 @@ public class RestExample {
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-07-31 09:00:30 UTC
+Last updated 2026-09-15 18:44:30 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -7934,5 +8102,134 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
 })
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+<script>
+;(function () { /*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+  'use strict'
+
+  var config = (document.currentScript || {}).dataset || {}
+  var forEach = Array.prototype.forEach
+
+  init(document.querySelectorAll('.tabs'))
+
+  function init (tabsBlocks) {
+    if (!tabsBlocks.length) return
+    forEach.call(tabsBlocks, function (tabs) {
+      var syncIds = tabs.classList.contains('is-sync') ? {} : undefined
+      var tablist = tabs.querySelector('.tablist ul')
+      tablist.setAttribute('role', 'tablist')
+      var start
+      forEach.call(tablist.querySelectorAll('li'), function (tab, idx) {
+        tab.tabIndex = -1
+        tab.setAttribute('role', tab.classList.add('tab') || 'tab')
+        var id, anchor, syncId
+        if (!(id = tab.id) && (anchor = tab.querySelector('a[id]'))) {
+          id = tab.id = anchor.parentNode.removeChild(anchor).id
+        }
+        var panel = id && tabs.querySelector('.tabpanel[aria-labelledby~="' + id + '"]')
+        if (!panel) return idx ? undefined : toggleSelected(tab, true) // invalid state
+        syncIds && (((syncId = tab.textContent.trim()) in syncIds) ? (syncId = undefined) : true) &&
+          (syncIds[(tab.dataset.syncId = syncId)] = tab)
+        idx || (syncIds && (start = { tab: tab, panel: panel })) ? toggleHidden(panel, true) : toggleSelected(tab, true)
+        tab.setAttribute('aria-controls', panel.id)
+        panel.setAttribute('role', 'tabpanel')
+        var onClick = syncId === undefined ? activateTab : activateTabSync
+        tab.addEventListener('click', onClick.bind({ tabs: tabs, tab: tab, panel: panel }))
+      })
+      if (!tabs.closest('.tabpanel')) {
+        forEach.call(tabs.querySelectorAll('.tabpanel table.tableblock'), function (table) {
+          var container = Object.assign(document.createElement('div'), { className: 'tablecontainer' })
+          table.parentNode.insertBefore(container, table).appendChild(table)
+        })
+      }
+      if (start) {
+        var syncGroupId
+        for (var i = 0, lst = tabs.classList, len = lst.length, className; i !== len; i++) {
+          if (!(className = lst.item(i)).startsWith('data-sync-group-id=')) continue
+          tabs.dataset.syncGroupId = syncGroupId = lst.remove(className) || className.slice(19).replace(/\u00a0/g, ' ')
+          break
+        }
+        if (syncGroupId === undefined) tabs.dataset.syncGroupId = syncGroupId = Object.keys(syncIds).sort().join('|')
+        var preferredSyncId = 'syncStorageKey' in config &&
+          window[(config.syncStorageScope || 'local') + 'Storage'].getItem(config.syncStorageKey + '-' + syncGroupId)
+        var tab = preferredSyncId && syncIds[preferredSyncId]
+        tab && Object.assign(start, { tab: tab, panel: document.getElementById(tab.getAttribute('aria-controls')) })
+        toggleSelected(start.tab, true) || toggleHidden(start.panel, false)
+      }
+    })
+    onHashChange()
+    toggleClassOnEach(tabsBlocks, 'is-loading', 'remove')
+    window.setTimeout(toggleClassOnEach.bind(null, tabsBlocks, 'is-loaded', 'add'), 0)
+    window.addEventListener('hashchange', onHashChange)
+  }
+
+  function activateTab (e) {
+    var tab = this.tab
+    var tabs = this.tabs || (this.tabs = tab.closest('.tabs'))
+    var panel = this.panel || (this.panel = document.getElementById(tab.getAttribute('aria-controls')))
+    querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (el) {
+      toggleSelected(el, el === tab)
+    })
+    querySelectorWithSiblings(tabs, '.tabpanel', 'tabpanel').forEach(function (el) {
+      toggleHidden(el, el !== panel)
+    })
+    if (!this.isSync && 'syncStorageKey' in config && 'syncGroupId' in tabs.dataset) {
+      var storageKey = config.syncStorageKey + '-' + tabs.dataset.syncGroupId
+      window[(config.syncStorageScope || 'local') + 'Storage'].setItem(storageKey, tab.dataset.syncId)
+    }
+    if (!e) return
+    var loc = window.location
+    var hashIdx = loc.hash ? loc.href.indexOf('#') : -1
+    if (~hashIdx) window.history.replaceState(null, '', loc.href.slice(0, hashIdx))
+    e.preventDefault()
+  }
+
+  function activateTabSync (e) {
+    activateTab.call(this, e)
+    var thisTabs = this.tabs
+    var thisTab = this.tab
+    var initialY = thisTabs.getBoundingClientRect().y
+    forEach.call(document.querySelectorAll('.tabs'), function (tabs) {
+      if (tabs === thisTabs || tabs.dataset.syncGroupId !== thisTabs.dataset.syncGroupId) return
+      querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (tab) {
+        if (tab.dataset.syncId === thisTab.dataset.syncId) activateTab.call({ tabs: tabs, tab: tab, isSync: true })
+      })
+    })
+    var shiftedBy = thisTabs.getBoundingClientRect().y - initialY
+    if (shiftedBy && (shiftedBy = Math.round(shiftedBy))) window.scrollBy({ top: shiftedBy, behavior: 'instant' })
+  }
+
+  function querySelectorWithSiblings (scope, selector, siblingClass) {
+    var el = scope.querySelector(selector)
+    if (!el) return []
+    var result = [el]
+    while ((el = el.nextElementSibling) && el.classList.contains(siblingClass)) result.push(el)
+    return result
+  }
+
+  function toggleClassOnEach (elements, className, method) {
+    forEach.call(elements, function (el) {
+      el.classList[method](className)
+    })
+  }
+
+  function toggleHidden (el, state) {
+    el.classList[(el.hidden = state) ? 'add' : 'remove']('is-hidden')
+  }
+
+  function toggleSelected (el, state) {
+    el.setAttribute('aria-selected', '' + state)
+    el.classList[state ? 'add' : 'remove']('is-selected')
+    el.tabIndex = state ? 0 : -1
+  }
+
+  function onHashChange () {
+    var id = window.location.hash.slice(1)
+    if (!id) return
+    var tab = document.getElementById(~id.indexOf('%') ? decodeURIComponent(id) : id)
+    if (!(tab && tab.classList.contains('tab'))) return
+    'syncId' in tab.dataset ? activateTabSync.call({ tab: tab }) : activateTab.call({ tab: tab })
+  }
+})()
+</script>
 </body>
 </html>

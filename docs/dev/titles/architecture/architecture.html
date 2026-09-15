@@ -455,81 +455,117 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
 <script src="../../js/js.js"></script>
 <style>
-.hidden {
-    display: none;
+/*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+.tabs {
+  margin-bottom: 1.25em;
 }
 
-.switch {
-    border-width: 1px 1px 0 1px;
-    border-style: solid;
-    border-color: #7a2518;
-    display: inline-block;
+.tablist > ul {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.switch--item {
-    padding: 10px;
-    background-color: #ffffff;
-    color: #7a2518;
-    display: inline-block;
-    cursor: pointer;
+.tablist > ul li {
+  align-items: center;
+  background-color: #fff;
+  cursor: pointer;
+  display: flex;
+  font-weight: bold;
+  line-height: 1.5;
+  padding: 0.25em 1em;
+  position: relative;
 }
 
-.switch--item.selected {
-    background-color: #7a2519;
-    color: #ffffff;
+.tablist > ul li:focus-visible {
+  outline: none;
 }
 
+.tablist.ulist,
+.tablist.ulist > ul li {
+  margin: 0;
+}
+
+.tablist.ulist > ul li + li {
+  margin-left: 0.25em;
+}
+
+.tabs .tablist li::after {
+  content: "";
+  display: block;
+  height: 1px;
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+}
+
+.tabs.is-loading .tablist li:not(:first-child),
+.tabs:not(.is-loading) .tablist li:not(.is-selected) {
+  background-color: #f5f5f5;
+}
+
+.tabs.is-loading .tablist li:first-child::after,
+.tabs:not(.is-loading) .tablist li.is-selected::after {
+  background-color: #fff;
+}
+
+/*
+.tabs:not(.is-loading) .tablist li,
+.tabs:not(.is-loading) .tablist li::after {
+  transition: background-color 200ms ease-in-out;
+}
+*/
+
+.tablist > ul p {
+  line-height: inherit;
+  margin: 0;
+}
+
+.tabpanel {
+  background-color: #fff;
+  padding: 1.25em;
+}
+
+.tablist > ul li,
+.tabpanel {
+  border: 1px solid #dcdcdc;
+}
+
+.tablist > ul li {
+  border-bottom: 0;
+}
+
+.tabs.is-loading .tabpanel + .tabpanel,
+.tabs:not(.is-loading) .tabpanel.is-hidden {
+  display: none;
+}
+
+.tabpanel > :first-child {
+  margin-top: 0;
+}
+
+/* #content is a signature of the Asciidoctor standalone HTML output */
+#content .tabpanel > :last-child,
+#content .tabpanel > :last-child > :last-child,
+#content .tabpanel > :last-child > :last-child > li:last-child > :last-child {
+  margin-bottom: 0;
+}
+
+.tablecontainer {
+  overflow-x: auto;
+}
+
+#content .tablecontainer {
+  margin-bottom: 1.25em;
+}
+
+#content .tablecontainer > table.tableblock {
+  margin-bottom: 0;
+}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
-<script type="text/javascript">
-function addBlockSwitches() {
-    $('.primary').each(function() {
-        primary = $(this);
-        createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
-        primary.children('.title').remove();
-    });
-    $('.secondary').each(function(idx, node) {
-        secondary = $(node);
-        primary = findPrimary(secondary);
-        switchItem = createSwitchItem(secondary, primary.children('.switch'));
-        switchItem.content.addClass('hidden');
-        findPrimary(secondary).append(switchItem.content);
-        secondary.remove();
-    });
-}
-
-function createBlockSwitch(primary) {
-    blockSwitch = $('<div class="switch"></div>');
-    primary.prepend(blockSwitch);
-    return blockSwitch;
-}
-
-function findPrimary(secondary) {
-    candidate = secondary.prev();
-    while (!candidate.is('.primary')) {
-        candidate = candidate.prev();
-    }
-    return candidate;
-}
-
-function createSwitchItem(block, blockSwitch) {
-    blockName = block.children('.title').text();
-    content = block.children('.content').first().append(block.next('.colist'));
-    item = $('<div class="switch--item">' + blockName + '</div>');
-    item.on('click', '', content, function(e) {
-        $(this).addClass('selected');
-        $(this).siblings().removeClass('selected');
-        e.data.siblings('.content').addClass('hidden');
-        e.data.removeClass('hidden');
-    });
-    blockSwitch.append(item);
-    return {'item': item, 'content': content};
-}
-
-$(addBlockSwitches);
-
-</script>
-
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
@@ -643,8 +679,10 @@ $(addBlockSwitches);
 <li><a href="#partition_detection_and_degraded_mode">1.8.3. Partition detection and degraded mode</a></li>
 <li><a href="#operation_interception_in_degraded_mode">1.8.4. Operation interception in degraded mode</a></li>
 <li><a href="#partition_merge_and_conflict_resolution">1.8.5. Partition merge and conflict resolution</a></li>
-<li><a href="#merge_policies">1.8.6. Merge policies</a></li>
-<li><a href="#transactions_during_partitions">1.8.7. Transactions during partitions</a></li>
+<li><a href="#architecture-partition-hash-detection_architecture">1.8.6. Hash-based conflict detection</a></li>
+<li><a href="#maintaining_segment_hashes">1.8.7. Maintaining segment hashes</a></li>
+<li><a href="#merge_policies">1.8.8. Merge policies</a></li>
+<li><a href="#transactions_during_partitions">1.8.9. Transactions during partitions</a></li>
 </ul>
 </li>
 <li><a href="#architecture-persistence_architecture">1.9. Persistence</a>
@@ -1602,7 +1640,7 @@ Most concrete interceptors extend <code>DDAsyncInterceptor</code>, which impleme
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="../../topics/images/architecture-interceptor-hierarchy.svg" alt="architecture interceptor hierarchy" width="1881" height="734">
+<img src="../../topics/images/architecture-interceptor-hierarchy.svg" alt="architecture interceptor hierarchy" width="1624" height="734">
 </div>
 </div>
 </div>
@@ -1628,71 +1666,66 @@ The typical ordering is:</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>InvocationContextInterceptor</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Creates and initializes the invocation context for the operation.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>IsMarshallableInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Verifies that keys and values can be serialized.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>BatchingInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Handles manual batch demarcation.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>TxInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Manages transaction enlistment, prepare, commit, and rollback.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>NotificationInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Fires cache event notifications to registered listeners.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>VersionInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Manages entry versioning for optimistic locking.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>*LockingInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Acquires and releases locks. The specific implementation depends on the transaction mode (pessimistic or optimistic).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>EntryWrappingInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Wraps cache entries for transactional isolation.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>*DistributionInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Routes commands to the correct owners in distributed and replicated modes.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>StateTransferInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Coordinates operations during topology changes and state transfer.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CacheLoaderInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Loads entries from persistent stores on cache miss.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CacheWriterInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Writes entries to persistent stores after mutation.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>*BackupInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Replicates operations to remote sites for cross-site replication.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CallInterceptor</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Executes the actual cache operation on the data container. Always last in the chain.</p></td>
 </tr>
@@ -2290,7 +2323,7 @@ Maximizes uptime but is more likely to produce conflicts.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="../../topics/images/architecture-partition-merge.svg" alt="architecture partition merge" width="1183" height="1349">
+<img src="../../topics/images/architecture-partition-merge.svg" alt="architecture partition merge" width="1208" height="1655">
 </div>
 </div>
 <div class="paragraph">
@@ -2307,8 +2340,10 @@ The partition with the highest topology ID is designated the <em>preferred parti
 This ensures every node can access every segment during conflict detection.</p>
 </li>
 <li>
-<p><strong>Conflict detection</strong> — The <code>ConflictManager</code> iterates through each segment and fetches all replica values from their respective owners using the <code>StateReceiver</code>.
-Entries where replicas disagree are identified as conflicts.</p>
+<p><strong>Conflict detection</strong> — The <code>ConflictManager</code> compares a compact hash summary of each segment across all replicas before transferring any entries.
+Only segments whose hashes disagree are inspected further, and within those segments only the entries from buckets that differ are fetched from their owners using the <code>StateReceiver</code>.
+Entries where replicas disagree are identified as conflicts.
+See <a href="#architecture-partition-hash-detection_architecture">Hash-based conflict detection</a> for details.</p>
 </li>
 <li>
 <p><strong>Merge policy application</strong> — For each conflict, the configured <code>EntryMergePolicy</code> determines the winning value.
@@ -2321,7 +2356,105 @@ The <code>preferredEntry</code> comes from the preferred partition; <code>otherE
 </div>
 </div>
 <div class="sect3">
-<h4 id="merge_policies"><a class="anchor" href="#merge_policies"></a>1.8.6. Merge policies</h4>
+<h4 id="architecture-partition-hash-detection_architecture"><a class="anchor" href="#architecture-partition-hash-detection_architecture"></a>1.8.6. Hash-based conflict detection</h4>
+<div class="paragraph">
+<p>Transferring every entry from every owner during conflict detection is expensive, and in the common case most segments are identical across partitions.
+To avoid unnecessary network traffic, Infinispan compares compact hash summaries first and fetches actual entries only where replicas disagree.</p>
+</div>
+<div class="paragraph">
+<p>Each owner summarizes its data with an order-independent hash.
+Every entry contributes <code>MurmurHash3(keyBytes) XOR MurmurHash3(valueBytes)</code>, computed from the marshalled key and value (metadata is not included).
+Because XOR is commutative and associative, all the entry hashes for a segment can be combined into a single <em>segment hash</em> regardless of iteration order.
+A matching segment hash and entry count on every owner means the segment is identical and can be skipped without transferring a single entry.</p>
+</div>
+<div class="paragraph">
+<p>To narrow detection further, each segment is subdivided into a fixed number of <em>buckets</em>.
+An entry&#8217;s bucket is derived solely from its key (<code>MurmurHash3(keyBytes)</code> masked to the bucket count), so the same key always maps to the same bucket on every owner.
+The segment hash is the XOR of its bucket hashes, so both levels of comparison are available from a single summary.</p>
+</div>
+<div class="paragraph">
+<p>Detection proceeds in three levels, falling back to a full fetch if any step fails:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="../../topics/images/architecture-partition-hash-detection.svg" alt="architecture partition hash detection" width="567" height="509">
+</div>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Segment comparison</strong> — When conflict resolution starts, the <code>ConflictManager</code> prefetches bucket hashes with a single batched <code>GetBucketHashesCommand</code> per remote node covering every segment that node owns, and computes the local hashes in bulk.
+Comparison is then a purely local operation with no further RPCs.
+Segments whose hash and entry count match on every owner are skipped entirely.</p>
+</li>
+<li>
+<p><strong>Bucket comparison</strong> — For a segment that does not match, the owner-by-owner bucket hashes identify exactly which buckets differ.
+Small segments skip this step, because for them the cost of hashing keys to locate buckets outweighs the savings from transferring fewer entries.</p>
+</li>
+<li>
+<p><strong>Selective entry fetch</strong> — A <code>GetBucketEntriesCommand</code> fetches entries only from the mismatched buckets of each owner.
+These entries flow into the same consistency filter and <code>EntryMergePolicy</code> pipeline used by the full-fetch path, so conflict resolution behaves identically from this point on.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>If any step fails, such as an RPC error or an unexpected response, detection falls back to fetching all entries for the segment.
+The optimization is fail-safe: it can reduce traffic but never changes the outcome of conflict resolution.</p>
+</div>
+<div class="paragraph">
+<p>The number of buckets per segment is set through the partition-handling configuration (<code>hashBuckets</code>), which must be a power of two and defaults to 32.
+More buckets narrow the fetch more finely when only a few keys differ, at the cost of a slightly larger hash summary.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="maintaining_segment_hashes"><a class="anchor" href="#maintaining_segment_hashes"></a>1.8.7. Maintaining segment hashes</h4>
+<div class="paragraph">
+<p>Recomputing segment hashes on demand would be costly on large caches, because it requires iterating the data container and any configured non-shared stores to hash every entry.
+Instead, Infinispan maintains the per-bucket hashes and entry counts incrementally as the cache is modified, so the summary is almost free to read when a merge occurs.</p>
+</div>
+<div class="paragraph">
+<p>The <code>SegmentHashInterceptor</code> sits low in the interceptor chain, below the cache store interceptor, and updates the running totals on the return path of each successful write command.
+Because XOR is its own inverse, every mutation is a single atomic XOR against the affected bucket:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 66.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Mutation</th>
+<th class="tableblock halign-left valign-top">Update</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">New entry</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">XOR in the new entry hash and increment the bucket count.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Removed entry</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">XOR out the old entry hash and decrement the bucket count.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Updated entry</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">XOR out the old hash and XOR in the new hash; the count is unchanged.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Transactional writes apply their updates at commit time rather than per command.
+When entries leave the data container without being deleted from the cache, such as eviction to a store, the totals are left untouched because the entry still exists.
+When a cache has no store configured, an eviction callback XORs the evicted entry out, since the entry is truly gone.
+Removing a segment resets its totals to zero, and a <code>ClearCommand</code> resets every owned segment.</p>
+</div>
+<div class="paragraph">
+<p>Hash tracking is active only for clustered caches that resolve conflicts on merge and do not use a shared store.
+When it is disabled, or when a live update races a segment reset, conflict detection falls back to computing hashes on demand or to the full-fetch path, preserving correctness in every case.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="merge_policies"><a class="anchor" href="#merge_policies"></a>1.8.8. Merge policies</h4>
 <div class="paragraph">
 <p>The <code>EntryMergePolicy</code> interface determines how conflicting entries are resolved:</p>
 </div>
@@ -2369,7 +2502,7 @@ The <code>preferredEntry</code> comes from the preferred partition; <code>otherE
 </div>
 </div>
 <div class="sect3">
-<h4 id="transactions_during_partitions"><a class="anchor" href="#transactions_during_partitions"></a>1.8.7. Transactions during partitions</h4>
+<h4 id="transactions_during_partitions"><a class="anchor" href="#transactions_during_partitions"></a>1.8.9. Transactions during partitions</h4>
 <div class="paragraph">
 <p>The <code>PartitionHandlingManager</code> tracks transactions that were in progress when a partition occurred:</p>
 </div>
@@ -3526,7 +3659,7 @@ When a conflict is detected, Infinispan applies a configurable merge policy to r
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-07-31 09:00:30 UTC
+Last updated 2026-09-15 18:44:30 UTC
 </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
@@ -3560,5 +3693,134 @@ MathJax.Hub.Register.StartupHook("AsciiMath Jax Ready", function () {
 })
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+<script>
+;(function () { /*! Asciidoctor Tabs | Copyright (c) 2018-present Dan Allen | MIT License */
+  'use strict'
+
+  var config = (document.currentScript || {}).dataset || {}
+  var forEach = Array.prototype.forEach
+
+  init(document.querySelectorAll('.tabs'))
+
+  function init (tabsBlocks) {
+    if (!tabsBlocks.length) return
+    forEach.call(tabsBlocks, function (tabs) {
+      var syncIds = tabs.classList.contains('is-sync') ? {} : undefined
+      var tablist = tabs.querySelector('.tablist ul')
+      tablist.setAttribute('role', 'tablist')
+      var start
+      forEach.call(tablist.querySelectorAll('li'), function (tab, idx) {
+        tab.tabIndex = -1
+        tab.setAttribute('role', tab.classList.add('tab') || 'tab')
+        var id, anchor, syncId
+        if (!(id = tab.id) && (anchor = tab.querySelector('a[id]'))) {
+          id = tab.id = anchor.parentNode.removeChild(anchor).id
+        }
+        var panel = id && tabs.querySelector('.tabpanel[aria-labelledby~="' + id + '"]')
+        if (!panel) return idx ? undefined : toggleSelected(tab, true) // invalid state
+        syncIds && (((syncId = tab.textContent.trim()) in syncIds) ? (syncId = undefined) : true) &&
+          (syncIds[(tab.dataset.syncId = syncId)] = tab)
+        idx || (syncIds && (start = { tab: tab, panel: panel })) ? toggleHidden(panel, true) : toggleSelected(tab, true)
+        tab.setAttribute('aria-controls', panel.id)
+        panel.setAttribute('role', 'tabpanel')
+        var onClick = syncId === undefined ? activateTab : activateTabSync
+        tab.addEventListener('click', onClick.bind({ tabs: tabs, tab: tab, panel: panel }))
+      })
+      if (!tabs.closest('.tabpanel')) {
+        forEach.call(tabs.querySelectorAll('.tabpanel table.tableblock'), function (table) {
+          var container = Object.assign(document.createElement('div'), { className: 'tablecontainer' })
+          table.parentNode.insertBefore(container, table).appendChild(table)
+        })
+      }
+      if (start) {
+        var syncGroupId
+        for (var i = 0, lst = tabs.classList, len = lst.length, className; i !== len; i++) {
+          if (!(className = lst.item(i)).startsWith('data-sync-group-id=')) continue
+          tabs.dataset.syncGroupId = syncGroupId = lst.remove(className) || className.slice(19).replace(/\u00a0/g, ' ')
+          break
+        }
+        if (syncGroupId === undefined) tabs.dataset.syncGroupId = syncGroupId = Object.keys(syncIds).sort().join('|')
+        var preferredSyncId = 'syncStorageKey' in config &&
+          window[(config.syncStorageScope || 'local') + 'Storage'].getItem(config.syncStorageKey + '-' + syncGroupId)
+        var tab = preferredSyncId && syncIds[preferredSyncId]
+        tab && Object.assign(start, { tab: tab, panel: document.getElementById(tab.getAttribute('aria-controls')) })
+        toggleSelected(start.tab, true) || toggleHidden(start.panel, false)
+      }
+    })
+    onHashChange()
+    toggleClassOnEach(tabsBlocks, 'is-loading', 'remove')
+    window.setTimeout(toggleClassOnEach.bind(null, tabsBlocks, 'is-loaded', 'add'), 0)
+    window.addEventListener('hashchange', onHashChange)
+  }
+
+  function activateTab (e) {
+    var tab = this.tab
+    var tabs = this.tabs || (this.tabs = tab.closest('.tabs'))
+    var panel = this.panel || (this.panel = document.getElementById(tab.getAttribute('aria-controls')))
+    querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (el) {
+      toggleSelected(el, el === tab)
+    })
+    querySelectorWithSiblings(tabs, '.tabpanel', 'tabpanel').forEach(function (el) {
+      toggleHidden(el, el !== panel)
+    })
+    if (!this.isSync && 'syncStorageKey' in config && 'syncGroupId' in tabs.dataset) {
+      var storageKey = config.syncStorageKey + '-' + tabs.dataset.syncGroupId
+      window[(config.syncStorageScope || 'local') + 'Storage'].setItem(storageKey, tab.dataset.syncId)
+    }
+    if (!e) return
+    var loc = window.location
+    var hashIdx = loc.hash ? loc.href.indexOf('#') : -1
+    if (~hashIdx) window.history.replaceState(null, '', loc.href.slice(0, hashIdx))
+    e.preventDefault()
+  }
+
+  function activateTabSync (e) {
+    activateTab.call(this, e)
+    var thisTabs = this.tabs
+    var thisTab = this.tab
+    var initialY = thisTabs.getBoundingClientRect().y
+    forEach.call(document.querySelectorAll('.tabs'), function (tabs) {
+      if (tabs === thisTabs || tabs.dataset.syncGroupId !== thisTabs.dataset.syncGroupId) return
+      querySelectorWithSiblings(tabs, '.tablist .tab', 'tab').forEach(function (tab) {
+        if (tab.dataset.syncId === thisTab.dataset.syncId) activateTab.call({ tabs: tabs, tab: tab, isSync: true })
+      })
+    })
+    var shiftedBy = thisTabs.getBoundingClientRect().y - initialY
+    if (shiftedBy && (shiftedBy = Math.round(shiftedBy))) window.scrollBy({ top: shiftedBy, behavior: 'instant' })
+  }
+
+  function querySelectorWithSiblings (scope, selector, siblingClass) {
+    var el = scope.querySelector(selector)
+    if (!el) return []
+    var result = [el]
+    while ((el = el.nextElementSibling) && el.classList.contains(siblingClass)) result.push(el)
+    return result
+  }
+
+  function toggleClassOnEach (elements, className, method) {
+    forEach.call(elements, function (el) {
+      el.classList[method](className)
+    })
+  }
+
+  function toggleHidden (el, state) {
+    el.classList[(el.hidden = state) ? 'add' : 'remove']('is-hidden')
+  }
+
+  function toggleSelected (el, state) {
+    el.setAttribute('aria-selected', '' + state)
+    el.classList[state ? 'add' : 'remove']('is-selected')
+    el.tabIndex = state ? 0 : -1
+  }
+
+  function onHashChange () {
+    var id = window.location.hash.slice(1)
+    if (!id) return
+    var tab = document.getElementById(~id.indexOf('%') ? decodeURIComponent(id) : id)
+    if (!(tab && tab.classList.contains('tab'))) return
+    'syncId' in tab.dataset ? activateTabSync.call({ tab: tab }) : activateTab.call({ tab: tab })
+  }
+})()
+</script>
 </body>
 </html>
