@@ -26,12 +26,14 @@
 * **`_data/`** — YAML data files
   - `projects.yml` — release versions, download assets, Docker images for all Infinispan components
   - `authors.yml` — blog author profiles (name, bio, social links, avatar)
-  - `cachestores.yml`, `hotrod.yml`, `integrations.yml` — feature data
+   - `cachestores.yml`, `hotrod.yml`, `integrations.yml` — feature data
+   - `epics.yml` — open epics for the roadmap page, auto-updated by `_bin/update_epics.rb`
 * **`_plugins/`** — Custom Ruby plugins (`fetch_docs.rb` for documentation syncing)
 * **`_bin/`** — Build and deployment scripts
   - `local.sh` — local development server
   - `publish.sh` — production build and deploy to `master` branch
-  - `update_releases.rb` — GitHub API release data updater
+   - `update_releases.rb` — GitHub API release data updater
+   - `update_epics.rb` — GitHub API epic list updater (roadmap page)
 * **`assets/`** — Static assets (CSS entry points, JavaScript, images)
 * **Root `.md` files** — Content pages (blog, download, documentation, features, community, etc.)
 
