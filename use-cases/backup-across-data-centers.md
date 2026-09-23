@@ -13,40 +13,56 @@ Infinispan clusters running in different geographical locations can form global 
 
 Both sites accept reads and writes. Infinispan replicates changes bidirectionally. Best for global applications where users connect to the nearest data center.
 
-{% mermaid %}
-flowchart LR
-    subgraph Site_A["Site A (US East)"]
-        A1[Node 1] --- A2[Node 2]
-        A2 --- A3[Node 3]
-    end
-    subgraph Site_B["Site B (EU West)"]
-        B1[Node 1] --- B2[Node 2]
-        B2 --- B3[Node 3]
-    end
-    Site_A -- "replicate ⇄" --> Site_B
-    Site_B -- "replicate ⇄" --> Site_A
-    U1[Users US] --> Site_A
-    U2[Users EU] --> Site_B
-{% endmermaid %}
+{% plantuml %}
+left to right direction
+rectangle "Users US" as U1
+rectangle "Site A (US East)" as SiteA {
+    rectangle "Node 1" as A1
+    rectangle "Node 2" as A2
+    rectangle "Node 3" as A3
+    A1 -- A2
+    A2 -- A3
+}
+rectangle "Site B (EU West)" as SiteB {
+    rectangle "Node 1" as B1
+    rectangle "Node 2" as B2
+    rectangle "Node 3" as B3
+    B1 -- B2
+    B2 -- B3
+}
+rectangle "Users EU" as U2
+
+U1 --> SiteA
+U2 --> SiteB
+SiteA <--> SiteB : replicate ⇄
+{% endplantuml %}
 
 #### Active-passive
 
 One site handles all traffic, the other maintains a hot standby. On failure, clients failover to the backup site. Simpler to reason about, lower replication overhead.
 
-{% mermaid %}
-flowchart LR
-    subgraph Primary["Primary Site (Active)"]
-        P1[Node 1] --- P2[Node 2]
-        P2 --- P3[Node 3]
-    end
-    subgraph Backup["Backup Site (Standby)"]
-        S1[Node 1] --- S2[Node 2]
-        S2 --- S3[Node 3]
-    end
-    Primary -- "replicate →" --> Backup
-    Users[All Users] --> Primary
-    Users -. "failover" .-> Backup
-{% endmermaid %}
+{% plantuml %}
+left to right direction
+rectangle "All Users" as Users
+rectangle "Primary Site (Active)" as Primary {
+    rectangle "Node 1" as P1
+    rectangle "Node 2" as P2
+    rectangle "Node 3" as P3
+    P1 -- P2
+    P2 -- P3
+}
+rectangle "Backup Site (Standby)" as Backup {
+    rectangle "Node 1" as S1
+    rectangle "Node 2" as S2
+    rectangle "Node 3" as S3
+    S1 -- S2
+    S2 -- S3
+}
+
+Users --> Primary
+Primary --> Backup : replicate
+Users ..> Backup : failover
+{% endplantuml %}
 
 ### Conflict resolution
 

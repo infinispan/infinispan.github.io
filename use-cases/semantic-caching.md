@@ -21,25 +21,24 @@ Infinispan's distributed vector indexes and kNN search make it an ideal semantic
 * **Distributed and replicated** — the cache scales horizontally across your cluster.
 * **Sub-millisecond lookups** — in-memory vector search is orders of magnitude faster than calling an LLM.
 
-{% mermaid %}
-sequenceDiagram
-    participant App as Application
-    participant Embed as Embedding Model
-    participant ISPN as Infinispan
-    participant LLM as LLM API
+{% plantuml %}
+participant App as "Application"
+participant Embed as "Embedding Model"
+participant ISPN as "Infinispan"
+participant LLM as "LLM API"
 
-    App->>Embed: Embed user prompt
-    Embed-->>App: Prompt embedding
-    App->>ISPN: kNN search (find similar cached prompts)
-    alt cache hit (similarity > threshold)
-        ISPN-->>App: Return cached response
-    else cache miss
-        ISPN-->>App: No match found
-        App->>LLM: Send prompt to LLM
-        LLM-->>App: LLM response
-        App->>ISPN: Store embedding + response
-    end
-{% endmermaid %}
+App -> Embed: Embed user prompt
+Embed --> App: Prompt embedding
+App -> ISPN: kNN search (find similar cached prompts)
+alt cache hit (similarity > threshold)
+    ISPN --> App: Return cached response
+else cache miss
+    ISPN --> App: No match found
+    App -> LLM: Send prompt to LLM
+    LLM --> App: LLM response
+    App -> ISPN: Store embedding + response
+end
+{% endplantuml %}
 
 ### How much can you save?
 

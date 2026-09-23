@@ -33,8 +33,9 @@ fi
 #
 bundle install
 # Build the site
+# --future so posts with a future date are visible while developing locally
 if [ "$skip_docs" = true ]; then
-    SKIP_FETCH_DOCS=true bundle exec jekyll serve --incremental
+    SKIP_FETCH_DOCS=true bundle exec jekyll serve --incremental --future
 else
-    bundle exec jekyll serve --incremental
+    bundle exec jekyll serve --incremental --future
 fi

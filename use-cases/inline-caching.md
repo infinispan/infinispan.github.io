@@ -14,17 +14,23 @@ delegates that responsibility to Infinispan through cache stores.
 In a side-cache, the application decides when to read from and write to both the cache and the backend. 
 In-line caching reverses that: the application talks only to Infinispan, and Infinispan manages the backend.
 
-{% mermaid %}
-flowchart LR
-    subgraph Side-Caching
-        A1[Application] --> C1[Cache]
-        A1 --> DB1[Database]
-    end
-    subgraph In-Line Caching
-        A2[Application] --> C2[Cache]
-        C2 --> DB2[Database]
-    end
-{% endmermaid %}
+{% plantuml %}
+left to right direction
+rectangle "Side-Caching" as Side {
+    rectangle "Application" as A1
+    rectangle "Cache" as C1
+    rectangle "Database" as DB1
+    A1 --> C1
+    A1 --> DB1
+}
+rectangle "In-Line Caching" as Inline {
+    rectangle "Application" as A2
+    rectangle "Cache" as C2
+    rectangle "Database" as DB2
+    A2 --> C2
+    C2 --> DB2
+}
+{% endplantuml %}
 
 This simplifies application code. Your service reads and writes to Infinispan. Infinispan handles persistence 
 behind the scenes.

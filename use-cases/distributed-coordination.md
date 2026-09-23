@@ -52,23 +52,23 @@ Databases can provide locks and atomic operations, but at a cost:
 
 ### Architecture pattern
 
-{% mermaid %}
-flowchart TB
-    subgraph Microservices
-        S1[Service A]
-        S2[Service B]
-        S3[Service C]
-    end
-    subgraph Infinispan Cluster
-        L[Clustered Locks]
-        C[Clustered Counters]
-        M[Multimap Caches]
-    end
-    S1 --> L
-    S2 --> C
-    S3 --> M
-    S1 --> C
-{% endmermaid %}
+{% plantuml %}
+rectangle "Microservices" as MS {
+    rectangle "Service A" as S1
+    rectangle "Service B" as S2
+    rectangle "Service C" as S3
+}
+rectangle "Infinispan Cluster" as ISPN {
+    rectangle "Clustered Locks" as L
+    rectangle "Clustered Counters" as C
+    rectangle "Multimap Caches" as M
+}
+
+S1 --> L
+S1 --> C
+S2 --> C
+S3 --> M
+{% endplantuml %}
 
 Services connect to the Infinispan cluster via HotRod and use the coordination APIs alongside regular 
 caching operations. A single Infinispan deployment serves both roles, no need for a separate coordination service.

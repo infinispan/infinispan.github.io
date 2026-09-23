@@ -23,32 +23,36 @@ RAG with Infinispan works in two phases:
 
 **Phase 1: Ingestion** — split your documents into chunks, compute embeddings, and store them in Infinispan.
 
-{% mermaid %}
-flowchart LR
-    A[Documents] --> B[Chunk / Split]
-    B --> C[Embedding Model]
-    C --> D[Infinispan Vector Store]
-{% endmermaid %}
+{% plantuml %}
+left to right direction
+rectangle "Documents" as A
+rectangle "Chunk / Split" as B
+rectangle "Embedding Model" as C
+rectangle "Infinispan Vector Store" as D
+
+A --> B
+B --> C
+C --> D
+{% endplantuml %}
 
 **Phase 2: Retrieval & Generation** — embed the user's question, search Infinispan for similar chunks, and pass them to the LLM.
 
-{% mermaid %}
-sequenceDiagram
-    participant User
-    participant App as Application
-    participant Embed as Embedding Model
-    participant ISPN as Infinispan
-    participant LLM as LLM
+{% plantuml %}
+participant User
+participant App as "Application"
+participant Embed as "Embedding Model"
+participant ISPN as "Infinispan"
+participant LLM
 
-    User->>App: Ask a question
-    App->>Embed: Embed the question
-    Embed-->>App: Question embedding
-    App->>ISPN: kNN search (top-k similar chunks)
-    ISPN-->>App: Relevant document chunks
-    App->>LLM: Question + retrieved context
-    LLM-->>App: Grounded answer
-    App-->>User: Response
-{% endmermaid %}
+User -> App: Ask a question
+App -> Embed: Embed the question
+Embed --> App: Question embedding
+App -> ISPN: kNN search (top-k similar chunks)
+ISPN --> App: Relevant document chunks
+App -> LLM: Question + retrieved context
+LLM --> App: Grounded answer
+App --> User: Response
+{% endplantuml %}
 
 ### Quarkus + LangChain4j
 

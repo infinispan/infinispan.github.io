@@ -19,21 +19,20 @@ Storing conversation memory in Infinispan provides:
 * **Sub-millisecond access** — in-memory storage means loading conversation history adds negligible latency.
 * **Flexible storage** — store conversations as JSON, Protobuf, or plain text with Infinispan's encoding support.
 
-{% mermaid %}
-sequenceDiagram
-    participant User
-    participant App as Application
-    participant ISPN as Infinispan
-    participant LLM as LLM
+{% plantuml %}
+participant User
+participant App as "Application"
+participant ISPN as "Infinispan"
+participant LLM
 
-    User->>App: Send message
-    App->>ISPN: Load conversation history (session ID)
-    ISPN-->>App: Previous messages
-    App->>LLM: System prompt + history + new message
-    LLM-->>App: Response
-    App->>ISPN: Store updated conversation
-    App-->>User: Response
-{% endmermaid %}
+User -> App: Send message
+App -> ISPN: Load conversation history (session ID)
+ISPN --> App: Previous messages
+App -> LLM: System prompt + history + new message
+LLM --> App: Response
+App -> ISPN: Store updated conversation
+App --> User: Response
+{% endplantuml %}
 
 ### Quarkus + LangChain4j
 

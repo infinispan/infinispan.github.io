@@ -18,15 +18,19 @@ Each event carries the key and metadata so your application can react immediatel
 **Continuous queries**: define a query and Infinispan pushes matching results to your application as data changes. 
 When a cache entry starts matching the query, you get a `Joining` event. When it stops matching, a `Leaving` event. When a matching entry changes, an `Updated` event.
 
-{% mermaid %}
-flowchart LR
-    subgraph Infinispan Cluster
-        C[Cache]
-    end
-    C -- "entry created" --> S1[Order Service]
-    C -- "entry modified" --> S2[Notification Service]
-    C -- "query match" --> S3[Analytics Service]
-{% endmermaid %}
+{% plantuml %}
+left to right direction
+rectangle "Infinispan Cluster" as ISPN {
+    rectangle "Cache" as C
+}
+rectangle "Order Service" as S1
+rectangle "Notification Service" as S2
+rectangle "Analytics Service" as S3
+
+C --> S1 : entry created
+C --> S2 : entry modified
+C --> S3 : query match
+{% endplantuml %}
 
 ### Use cases
 

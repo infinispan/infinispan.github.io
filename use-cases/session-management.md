@@ -24,15 +24,21 @@ This creates tight coupling between users and servers:
 Infinispan stores session data in a distributed cache that all application instances share. Sessions are 
 replicated across cluster nodes, surviving instance failures without user disruption.
 
-{% mermaid %}
-flowchart LR
-    LB[Load Balancer] --> App1[App Instance 1]
-    LB --> App2[App Instance 2]
-    LB --> App3[App Instance 3]
-    App1 --> ISP[Infinispan Cluster]
-    App2 --> ISP
-    App3 --> ISP
-{% endmermaid %}
+{% plantuml %}
+left to right direction
+rectangle "Load Balancer" as LB
+rectangle "App Instance 1" as App1
+rectangle "App Instance 2" as App2
+rectangle "App Instance 3" as App3
+rectangle "Infinispan Cluster" as ISP
+
+LB --> App1
+LB --> App2
+LB --> App3
+App1 --> ISP
+App2 --> ISP
+App3 --> ISP
+{% endplantuml %}
 
 Any instance can serve any user. No sticky sessions. No session loss. Scale application instances 
 up and down freely. **Infinispan handles the state**.

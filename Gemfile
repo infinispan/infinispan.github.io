@@ -22,7 +22,6 @@ group :jekyll_plugins do
   gem "jekyll-feed", "~> 0.6"
   gem "jekyll-paginate-v2"
   gem "jekyll-archives"
-  gem "jekyll-mermaid"
   gem "optimist"
   gem "nokogiri"
   gem "rouge"
@@ -39,3 +38,5 @@ gem "wdm", "~> 0.1.0" if Gem.win_platform?
 
 gem "webrick", "~> 1.8"
 gem "asciidoctor-tabs", "1.0.0.beta.6"
+gem "asciidoctor-diagram"
+gem "asciidoctor-diagram-plantuml"

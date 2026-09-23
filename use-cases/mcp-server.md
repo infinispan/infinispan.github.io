@@ -21,27 +21,28 @@ like Claude, GitHub Copilot, or custom LLM-powered applications can directly:
 
 ### How it works
 
-{% mermaid %}
-sequenceDiagram
-    participant User as User / IDE
-    participant LLM as LLM (Claude, GPT, ...)
-    participant MCP as Infinispan MCP Server
-    participant ISPN as Infinispan Cluster
+{% plantuml %}
+participant User as "User / IDE"
+participant LLM as "LLM (Claude, GPT, ...)"
+participant MCP as "Infinispan MCP Server"
+participant ISPN as "Infinispan Cluster"
 
-    User->>LLM: "What's in the sessions cache?"
-    LLM->>MCP: call tool: cache_entries("sessions")
-    MCP->>ISPN: GET /rest/v2/caches/sessions?action=entries
-    ISPN-->>MCP: entries JSON
-    MCP-->>LLM: formatted entries
-    LLM-->>User: "The sessions cache has 42 entries..."
+User -> LLM: "What's in the sessions cache?"
+LLM -> MCP: call tool: cache_entries("sessions")
+MCP -> ISPN: GET /rest/v2/caches/sessions?action=entries
+ISPN --> MCP: entries JSON
+MCP --> LLM: formatted entries
+LLM --> User: "The sessions cache has 42 entries..."
 
-    User->>LLM: "Store user preference"
-    LLM->>MCP: call tool: cache_put("prefs", "user-1", {...})
-    MCP->>ISPN: PUT /rest/v2/caches/prefs/user-1
-    ISPN-->>MCP: 200 OK
-    MCP-->>LLM: success
-    LLM-->>User: "Done, stored the preference."
-{% endmermaid %}
+== Store a preference ==
+
+User -> LLM: "Store user preference"
+LLM -> MCP: call tool: cache_put("prefs", "user-1", {...})
+MCP -> ISPN: PUT /rest/v2/caches/prefs/user-1
+ISPN --> MCP: 200 OK
+MCP --> LLM: success
+LLM --> User: "Done, stored the preference."
+{% endplantuml %}
 
 ### Use cases
 

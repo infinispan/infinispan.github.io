@@ -16,18 +16,21 @@ Caching is a technique that can significantly improve the performance, efficienc
 
 Side-caching uses the Typical Cache Update Pattern (or TCUP). Given an architecture with three components, an application, a backend service and a cache, the following sequence diagram explains the interactions between them:
 
-{% mermaid %}
-sequenceDiagram
-    Application->>Cache: Get data
-    alt cache miss
-        Cache-->>Application: Cache miss
-        Application->>Backend: Get data
-        Backend-->>Application: Return data
-        Application->>Cache: Store data in cache
-    else cache hit
-        Cache-->>Application: Return cached data
-    end
-{% endmermaid %}
+{% plantuml %}
+participant Application
+participant Cache
+participant Backend
+
+Application -> Cache: Get data
+alt cache miss
+    Cache --> Application: Cache miss
+    Application -> Backend: Get data
+    Backend --> Application: Return data
+    Application -> Cache: Store data in cache
+else cache hit
+    Cache --> Application: Return cached data
+end
+{% endplantuml %}
 
 Assuming `U` is the average latency between components in the above system, the overal latency of side-caching is:
 * `2U` for a cache hit

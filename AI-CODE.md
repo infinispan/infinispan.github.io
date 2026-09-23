@@ -12,7 +12,7 @@
   - `jekyll-paginate-v2` — blog pagination (8 posts per page)
   - `jekyll-archives` — tag-based blog archives
   - `jekyll-feed` — RSS feed generation
-  - `jekyll-mermaid` — diagram support
+  - `asciidoctor-diagram-plantuml` — build-time PlantUML diagrams (blog `[plantuml]` blocks and the `{% plantuml %}` Liquid tag for Markdown pages; single shared JVM)
 
 ## Project Architecture
 

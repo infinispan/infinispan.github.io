@@ -25,22 +25,21 @@ Infinispan provides a distributed caching layer that eliminates this waste:
 * **Distributed and shared** — multiple agents share the same cache, so one agent's lookup benefits all others.
 * **Resilient** — cached data survives individual agent crashes and is replicated across the cluster.
 
-{% mermaid %}
-sequenceDiagram
-    participant Agent as AI Agent
-    participant ISPN as Infinispan Cache
-    participant Tool as External Tool / API
+{% plantuml %}
+participant Agent as "AI Agent"
+participant ISPN as "Infinispan Cache"
+participant Tool as "External Tool / API"
 
-    Agent->>ISPN: Check cache for tool result
-    alt cache hit
-        ISPN-->>Agent: Return cached result
-    else cache miss
-        ISPN-->>Agent: Not found
-        Agent->>Tool: Execute tool call
-        Tool-->>Agent: Tool result
-        Agent->>ISPN: Store result with TTL
-    end
-{% endmermaid %}
+Agent -> ISPN: Check cache for tool result
+alt cache hit
+    ISPN --> Agent: Return cached result
+else cache miss
+    ISPN --> Agent: Not found
+    Agent -> Tool: Execute tool call
+    Tool --> Agent: Tool result
+    Agent -> ISPN: Store result with TTL
+end
+{% endplantuml %}
 
 ### Quarkus + LangChain4j
 
@@ -215,15 +214,23 @@ This works with Infinispan's RESP endpoint — start the server with `infinispan
 
 When multiple agents share an Infinispan cluster, one agent's cached tool result benefits all others:
 
-{% mermaid %}
-flowchart LR
-    A1[Agent 1] --> ISPN[Infinispan Cluster]
-    A2[Agent 2] --> ISPN
-    A3[Agent 3] --> ISPN
-    ISPN --> T1[Weather API]
-    ISPN --> T2[Search API]
-    ISPN --> T3[Database]
-{% endmermaid %}
+{% plantuml %}
+left to right direction
+rectangle "Agent 1" as A1
+rectangle "Agent 2" as A2
+rectangle "Agent 3" as A3
+rectangle "Infinispan Cluster" as ISPN
+rectangle "Weather API" as T1
+rectangle "Search API" as T2
+rectangle "Database" as T3
+
+A1 --> ISPN
+A2 --> ISPN
+A3 --> ISPN
+ISPN --> T1
+ISPN --> T2
+ISPN --> T3
+{% endplantuml %}
 
 Agent 1 calls the weather API for "Paris" and caches the result. When Agent 2 needs the same data, it gets a cache hit — no redundant API call.
 
