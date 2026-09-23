@@ -102,7 +102,12 @@ This is the central release tracking file for all Infinispan components (server,
 **Important:** This file is partially auto-managed by `_bin/update_releases.rb` and the GitHub Actions workflow. Asset URLs, release dates, and download links for existing versions are overwritten on each release event. When adding a *new* version entry manually (e.g., for an upcoming release), add just the `version`, `alias`, `codename`, and `docs` fields — the automation will fill in the rest.
 
 ## Documentation
-Documentation is not authored in this repository. It is fetched from Maven Central and GitHub during the build process by `_plugins/fetch_docs.rb` and placed in the `docs/` directory (which is gitignored). To skip the download during local development:
+Documentation is not authored in this repository. It is fetched from Maven Central and GitHub during the build process by `_plugins/fetch_docs.rb` and placed in the `docs/` directory (which is gitignored).
+
+`fetch_docs.rb` lives in `_plugins/`, so Jekyll runs its top-level code on **every** build and re-downloads all tracked versions' docs. For quick local builds, skip it entirely:
+
 ```bash
-export FORCE_DOCUMENTATION_DOWNLOAD=false
+SKIP_FETCH_DOCS=true bundle exec jekyll serve
 ```
+
+This bypasses the download regardless of whether `docs/` is already populated (doc pages build against whatever is present). Omit the flag to re-fetch. An older, conditional skip remains: `FORCE_DOCUMENTATION_DOWNLOAD=false`, which only skips when `docs/versions.xml` already exists.

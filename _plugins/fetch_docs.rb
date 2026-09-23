@@ -152,8 +152,11 @@ def fetch_github_docs(github_url, branch, target_dir, verbose)
   %x( rm -rf _#{tmp_prefix}tmp* )
 end
 
+skipFetchDocs = ENV.fetch("SKIP_FETCH_DOCS", "false").upcase == "TRUE"
 forceDocumentationDownload = (ENV.fetch("FORCE_DOCUMENTATION_DOWNLOAD") { "true" }).upcase
-if forceDocumentationDownload == "FALSE" and File.file?("docs/versions.xml")
+if skipFetchDocs
+  puts "SKIP_FETCH_DOCS=true: skipping documentation download."
+elsif forceDocumentationDownload == "FALSE" and File.file?("docs/versions.xml")
   puts "Documentation exists. Skip the forced download..."
 else
   FileUtils.rm_rf(Dir.glob("docs/*"))
