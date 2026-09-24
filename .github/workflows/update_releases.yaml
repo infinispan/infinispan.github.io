@@ -22,22 +22,24 @@ jobs:
         with:
           ruby-version: '3.3'
 
-      - name: Update release data
+      - name: Update site data
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ruby _bin/update_releases.rb
+        run: |
+          ruby _bin/update_releases.rb
+          ruby _bin/update_roadmap.rb
 
       - name: Check for changes
         id: changes
         run: |
-          git diff --quiet _data/projects.yml && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+          git diff --quiet _data/projects.yml _data/roadmap.yml && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
 
       - name: Commit release data
         if: steps.changes.outputs.changed == 'true'
         run: |
           git config user.name "Infinispan"
           git config user.email "infinispan@infinispan.org"
-          git add _data/projects.yml
+          git add _data/projects.yml _data/roadmap.yml
           git commit -m "Update release data from ${{ github.event.client_payload.project || 'manual trigger' }}"
           git push origin develop
 
