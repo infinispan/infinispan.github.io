@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPD7V946LB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-GPD7V946LB');
+  </script>
+  <title>Distributed Coordination for Microservices</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is a distributed in-memory key/value data store with optional schema, available under the Apache License 2.0.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <script src="/assets/javascript/colormode.js" type="text/javascript"></script>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v7.3.1/css/all.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github.css" id="hljs-theme">
+  <link rel="stylesheet" href="/assets/css/cookieconsent.css">
+  <link rel="alternate" type="application/rss+xml"
+        title="Infinispan's RSS Feed"
+        href="/feed.xml" />
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body class="use-case-single">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <ul id="menu" class="menu">
+      <li>
+        <a href="/ai/" class=""><i class="fas fa-wand-magic-sparkles" style="margin-right: 4px;"></i>Infinispan for AI</a>
+      </li>
+      <li>
+        <a href="/documentation/" class="">Learn</a>
+      </li>
+      <li>
+        <a href="/use-cases/" class="active">Use Cases</a>
+      </li>
+      <li class="dropdown">
+        <span href="/community/">Community <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/community/" class="">Community</a></li>
+          <li><a href="/blog/" class="">Blog</a></li>
+          <li><a href="/references" class="">References</a></li>
+          <li><a href="/roadmap" class="">Roadmap</a></li>
+          <li><a href="/contribute/" class="">Contribute</a></li>
+        </ul>
+      </li>
+      <li class="dropdown">
+        <span href="/download/">Download <i class="fas fa-chevron-down"></i></span>
+        <ul class="submenu">
+          <li><a href="/downloads/releases" class="">Releases</a></li>
+          <li><a href="/hotrod-clients/" class="">Clients</a></li>
+          <li><a href="/downloads/cache-stores/" class="">Cache Stores</a></li>
+        </ul>
+      </li>
+      <li class="theme-toggle-item">
+        <span class="modeswitcher" id="theme-toggle">
+          <i class="fas fa-sun"></i>
+          <i class="fas fa-moon"></i>
+          <i class="fas fa-cog"></i>
+        </span>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="content">
+    <div class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/use-cases">Use Cases</a>  <i class="fas fa-chevron-right"></i> Distributed Coordination for Microservices
+    </div>
+  </div>
+</div>
+
+<div class="component-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m">
+    <h2 id="distributed-coordination-for-microservices">Distributed Coordination for Microservices</h2>
+
+<p>Microservices that share state across instances need coordination primitives, locks to prevent concurrent modifications, 
+counters for sequencing and rate limiting, and shared data structures for cross-service communication. Infinispan provides these as clustered, fault-tolerant building blocks that survive node failures.</p>
+
+<h3 id="clustered-locks">Clustered locks</h3>
+
+<p>Infinispan’s clustered locks provide mutual exclusion across all nodes in the cluster. 
+Only one instance holds the lock at a time, regardless of how many nodes compete for it.</p>
+
+<ul>
+  <li><strong>Distributed ownership</strong>: the lock state is replicated across the cluster. If the node holding the lock fails, another node takes over and the lock is released.</li>
+  <li><strong>Reentrancy</strong>: a thread that already holds the lock can acquire it again without deadlocking.</li>
+  <li><strong>Non-blocking API</strong>: <code class="language-plaintext highlighter-rouge">tryLock</code> with timeout support, built on <code class="language-plaintext highlighter-rouge">CompletionStage</code> for async workflows.</li>
+</ul>
+
+<p>Typical uses: leader election, preventing duplicate job execution, serializing access to external resources 
+that don’t support concurrent writes.</p>
+
+<h3 id="clustered-counters">Clustered counters</h3>
+
+<p>Atomic counters that maintain a consistent value across the cluster. Two modes cover different consistency and 
+performance needs:</p>
+
+<p><strong>Strong counters</strong>: linearizable, ACID-compliant. Every read returns the latest value. Supports compare-and-set for conditional updates. 
+Use for sequence generation, distributed rate limiting, or any scenario requiring exact counts.
+<strong>Weak counters</strong>: eventually consistent, higher throughput. Updates are applied locally and 
+merged across the cluster asynchronously. Use for approximate metrics, hit counters, and monitoring 
+where speed matters more than precision.</p>
+
+<p>Both counter types survive node failures. Strong counters recover their exact value; weak counters converge to the correct total after rebalancing.</p>
+
+<h3 id="multimap-caches">Multimap caches</h3>
+
+<p>A single key maps to multiple values. Infinispan manages the collection server-side, so clients add or remove individual 
+values without retrieving and re-storing the entire collection.</p>
+
+<p>Typical uses: tracking active sessions per user, maintaining subscriber lists, grouping related events 
+by correlation ID.</p>
+
+<h3 id="why-not-use-a-database-for-coordination">Why not use a database for coordination?</h3>
+
+<p>Databases can provide locks and atomic operations, but at a cost:</p>
+
+<ul>
+  <li><strong>Latency</strong>: disk-backed storage adds milliseconds to every lock acquisition. Infinispan operates in memory with sub-millisecond response.</li>
+  <li><strong>Scalability</strong>: database connections are a limited resource. Infinispan scales horizontally with your microservice instances.</li>
+  <li><strong>Coupling</strong>: tying coordination to your persistence layer means downtime in one affects both. Infinispan keeps coordination independent.</li>
+</ul>
+
+<h3 id="architecture-pattern">Architecture pattern</h3>
+
+<div class="plantuml-diagram"><?plantuml 1.2026.2?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" contentStyleType="text/css" data-diagram-type="DESCRIPTION" height="172px" preserveAspectRatio="none" version="1.1" viewBox="0 0 476 172" width="476px" zoomAndPan="magnify"><defs /><g><!--cluster MS--><g class="cluster" data-qualified-name="MS" data-source-line="1" id="ent0002"><rect fill="none" height="77" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:1;" width="290" x="71" y="4" /><text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacing" textLength="95.9417" x="168.0292" y="20.9659">Microservices</text></g><!--cluster ISPN--><g class="cluster" data-qualified-name="ISPN" data-source-line="6" id="ent0006"><rect fill="none" height="77" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:1;" width="456" x="14" y="89" /><text fill="#000000" font-family="sans-serif" font-size="14" font-weight="bold" lengthAdjust="spacing" textLength="124.9636" x="179.5182" y="105.9659">Infinispan Cluster</text></g><!--entity S1--><g class="entity" data-qualified-name="MS.S1" data-source-line="2" id="ent0003"><rect fill="#F1F1F1" height="39.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="79.2898" x="273.5" y="34" /><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="59.2898" x="283.5" y="58.9659">Service A</text></g><!--entity S2--><g class="entity" data-qualified-name="MS.S2" data-source-line="3" id="ent0004"><rect fill="#F1F1F1" height="39.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="79.4438" x="176.5" y="34" /><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="59.4438" x="186.5" y="58.9659">Service B</text></g><!--entity S3--><g class="entity" data-qualified-name="MS.S3" data-source-line="4" id="ent0005"><rect fill="#F1F1F1" height="39.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="79.1918" x="79.5" y="34" /><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="59.1918" x="89.5" y="58.9659">Service C</text></g><!--entity L--><g class="entity" data-qualified-name="ISPN.L" data-source-line="7" id="ent0007"><rect fill="#F1F1F1" height="39.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="123.4036" x="338.5" y="119" /><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="103.4036" x="348.5" y="143.9659">Clustered Locks</text></g><!--entity C--><g class="entity" data-qualified-name="ISPN.C" data-source-line="8" id="ent0008"><rect fill="#F1F1F1" height="39.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="146.7555" x="173.5" y="119" /><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="126.7555" x="183.5" y="143.9659">Clustered Counters</text></g><!--entity M--><g class="entity" data-qualified-name="ISPN.M" data-source-line="9" id="ent0009"><rect fill="#F1F1F1" height="39.0679" rx="2.5" ry="2.5" style="stroke:#181818;stroke-width:0.5;" width="133.4976" x="22.5" y="119" /><text fill="#000000" font-family="sans-serif" font-size="14" lengthAdjust="spacing" textLength="113.4976" x="32.5" y="143.9659">Multimap Caches</text></g><g class="link" data-entity-1="ent0003" data-entity-2="ent0007" data-link-type="dependency" id="lnk10"><polygon fill="#181818" points="380.3365,118.7405,376.5857,109.6339,376.7188,115.2892,371.0635,115.4222,380.3365,118.7405" style="stroke:#181818;stroke-width:1;" /><path d="M332.7416,73.334 C346.9797,86.9174 361.7751,101.0326 375.9952,114.5989" fill="none" style="stroke:#181818;stroke-width:1;" /></g><g class="link" data-entity-1="ent0003" data-entity-2="ent0008" data-link-type="dependency" id="lnk11"><polygon fill="#181818" points="261.9172,118.7405,270.6495,114.1858,265.0291,114.827,264.3879,109.2066,261.9172,118.7405" style="stroke:#181818;stroke-width:1;" /><path d="M298.0236,73.334 C287.2223,86.9174 276.4392,100.478 265.6515,114.0443" fill="none" style="stroke:#181818;stroke-width:1;" /></g><g class="link" data-entity-1="ent0004" data-entity-2="ent0008" data-link-type="dependency" id="lnk12"><polygon fill="#181818" points="239.9935,118.7405,240.5917,108.9099,238.244,114.0566,233.0973,111.709,239.9935,118.7405" style="stroke:#181818;stroke-width:1;" /><path d="M223.0344,73.334 C228.1077,86.9174 232.8272,99.5535 237.8941,113.1198" fill="none" style="stroke:#181818;stroke-width:1;" /></g><g class="link" data-entity-1="ent0005" data-entity-2="ent0009" data-link-type="dependency" id="lnk13"><polygon fill="#181818" points="95.7805,118.7405,102.6016,111.6362,97.4801,114.0383,95.078,108.9168,95.7805,118.7405" style="stroke:#181818;stroke-width:1;" /><path d="M112.1925,73.334 C107.2829,86.9174 102.7235,99.5315 97.8201,113.0978" fill="none" style="stroke:#181818;stroke-width:1;" /></g><?plantuml-src TO-z2i8m54RtFCMbUuUskw1tAZHIo1E463KOav8V5_7T3KcBeYJJWNEuV75I16ukMa93bN3MI_TGGle6k0VAu4aWFVUfM0bWdmlMrVoX-BxciVY1lCYN7SrP6UKNRW1rz46wd8riFlvFMGjvWicAMvayrIEqqIGg7VvsDEgWxdm1vEAw_J-D8wo3jjsbmoiWOVq6GmRw1W00?></g></svg></div>
+
+<p>Services connect to the Infinispan cluster via HotRod and use the coordination APIs alongside regular 
+caching operations. A single Infinispan deployment serves both roles, no need for a separate coordination service.</p>
+
+<h3 id="learn-more">Learn more</h3>
+
+<ul>
+  <li><a href="https://infinispan.org/docs/stable/titles/developing/developing.html#clustered_lock">Clustered locks documentation</a></li>
+  <li><a href="https://infinispan.org/docs/stable/titles/developing/developing.html#clustered_counters">Clustered counters documentation</a></li>
+  <li><a href="/use-cases/high-availability-and-elasticity.html">High availability and elasticity</a></li>
+</ul>
+
+  </div>
+</div>
+
+  </div>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo" alt="Infinispan"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <div class="grid__item width-4-12 width-12-12-m footer-about">
+      <p>Infinispan is released under the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache 2.0</a> open source license. The source code is available on <a href='https://github.com/infinispan' target='_blank'>GitHub</a>.</p>
+      <div class="footer-thanks">
+        <b>Thanks to</b>
+        <div class="thanks-logos">
+          <a href="https://zulip.com" target="_blank"><img src="/assets/images/footer/zulip.png" title="Zulip" alt="Zulip"></a>
+          <a href="https://weblate.org" target="_blank"><img src="/assets/images/footer/weblate.png" title="Weblate" alt="Weblate"></a>
+        </div>
+      </div>
+    </div>
+
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Navigation</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/" >Home</a></li>
+          
+            
+            <li><a href="/get-started" >Get Started</a></li>
+          
+            
+            <li><a href="/features" >Features</a></li>
+          
+            
+            <li><a href="/ai" >AI</a></li>
+          
+            
+            <li><a href="/documentation" >Docs</a></li>
+          
+            
+            <li><a href="/tutorials" >Tutorials</a></li>
+          
+            
+            <li><a href="/use-cases" >Use Cases</a></li>
+          
+            
+            <li><a href="/downloads/releases" >Releases</a></li>
+          
+            
+            <li><a href="/downloads/clients" >Clients</a></li>
+          
+            
+            <li><a href="/downloads/cache-stores" >Cache Stores</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Get Help</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/documentation" >Documentation</a></li>
+          
+            
+            <li><a href="/tutorials" >Guides</a></li>
+          
+            
+            <li><a href="https://stackoverflow.com/questions/tagged/infinispan" target="_blank">Stack Overflow</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan/discussions" target="_blank">GitHub Discussions</a></li>
+          
+            
+            <li><a href="https://infinispan.zulipchat.com" target="_blank">Zulip Chat</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Contribute</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan" target="_blank">Source Code</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan/issues" target="_blank">Submit a Bug</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan.github.io" target="_blank">Website Source</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/blog" >Blog</a></li>
+          
+            
+            <li><a href="https://twitter.com/infinispan" target="_blank">X / Twitter</a></li>
+          
+            
+            <li><a href="https://www.facebook.com/infinispan/" target="_blank">Facebook</a></li>
+          
+            
+            <li><a href="https://www.youtube.com/@InfinispanProject" target="_blank">YouTube</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan" target="_blank">GitHub</a></li>
+          
+        </ul>
+      </div>
+    
+  </div>
+</div>
+
+  <div class="content-slim cf-footer">
+  <div class="cf-flexcontainer">
+    <div class="cf-logo-footer">
+      <a href="https://www.commonhaus.org/" target="_blank"><img src="https://raw.githubusercontent.com/commonhaus/artwork/main/foundation/brand/svg/CF_logo_horizontal_single_reverse.svg" alt="Commonhaus Foundation"></a>
+    </div>
+    <div class="cf-license">
+      Copyright &copy; Infinispan. All rights reserved. For details on trademarks, please visit the <a href="https://www.commonhaus.org/policies/trademark-policy/">Trademark Policy</a> and <a href="https://www.commonhaus.org/trademarks/">Trademark List</a>. Trademarks of third parties are owned by their respective holders and their mention here does not suggest any endorsement or association.
+    </div>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+  <script src="/assets/javascript/clipboard.min.js" type="text/javascript"></script>
+  <script src="/assets/javascript/copy.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>
