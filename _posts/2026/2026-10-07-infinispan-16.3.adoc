@@ -1,0 +1,185 @@
+---
+layout: blog
+title: "Infinispan 16.3: FIXME"
+permalink: /blog/:year/:month/:day/infinispan-16-3
+date: '2026-10-07T00:00:00.000-00:00'
+author: ttarrant
+tags: [ "release", "final" ]
+---
+
+= Infinispan 16.3
+
+*_"CODENAME"_*
+
+Our link:/roadmap/[4-month brewing process] has, yet again, come to completion.
+We are proud to present Infinispan 16.3 "CODENAME", brewed by experts (us !) using the finest ingredients, for all you fine palates out there.
+
+[caption="CODENAME"]
+image::/assets/images/blog/16.3.png[Codename,406,696,align="center"]
+
+The main theme for this release is "robustness": we've been investigating several areas, especially in "fragile" conditions, such as scaling up/down, startup, shutdown, split-brains, huge caches and clusters with large number of caches, etc, with the following goals:
+
+* improve reliability, addressing more failure conditions encountered by our users
+* optimize resource usage by optimizing algorithms and increasing concurrency in certain operations
+* better recovery in situations where data was inevitably lost or corrupted
+
+This task is obviously open-ended, so look for more improvements in future releases.
+
+== Conflict detection and resolution
+
+When partitions merge, resolving conflicts traditionally requires transferring entries from every owner to compare replicas.
+In 16.3 this has been made dramatically more efficient with hash-based conflict detection: each segment is summarized by a compact, order-independent XOR hash that is maintained incrementally as the cache is modified, so it costs almost nothing to read at merge time.
+
+On merge, these summaries are compared first (prefetched in one batched RPC per node).
+Segments whose hashes match on all owners are skipped entirely — zero entries transferred.
+Only for mismatching segments does the comparison drill down into fixed-size buckets derived from entry keys, and only the entries in differing buckets are fetched to find the actual conflicts.
+The optimization is fail-safe: any failure falls back to a full fetch without changing the resolution outcome. link:https://github.com/infinispan/infinispan/issues/16887[[#16887\]] link:https://github.com/infinispan/infinispan/issues/17620[[#17620\]]
+
+For a detailed walkthrough of partition handling, detection and conflict resolution see the link:https://infinispan.org/docs/dev/titles/architecture/architecture.html#partition_merge_and_conflict_resolution[architecture documentation].
+
+== Concurrent cache start
+
+User caches are now started concurrently without blocking the cache manager start.
+As soon as a cache is started it is ready to serve requests, without having to wait for other caches. link:https://github.com/infinispan/infinispan/issues/16900[[#16900\]]
+
+== Get optimizations
+
+Introduce an optimized interceptor chain for get and getCacheEntry operations that skips interceptors not participating in read commands.
+
+Benchmarks show 23-36% improvement on pure get operations across `LOCAL`
+and `DIST_SYNC` cache modes, with no regressions on put paths. link:https://github.com/infinispan/infinispan/issues/17698[[#17698\]]
+
+== Configuration enhancements
+
+Per-node mutable configuration attributes are now persisted in the persistent state, making them survive restarts. link:https://github.com/infinispan/infinispan/issues/17889[[#17889\]]
+
+Additionally, configuration attributes are now version-aware so that, during rolling upgrades, newer configurations are not sent to older nodes, which would not know how to parse them. link:https://github.com/infinispan/infinispan/issues/18038[[#18038\]]
+
+== Transaction table management
+
+Avoid creating objects for already completed TXs.
+Create a shared instance to avoid unnecessary allocation per request. link:https://github.com/infinispan/infinispan/issues/17801[[#17801\]] link:https://github.com/infinispan/infinispan/issues/17687[[#17687\]]
+
+== Logging
+
+Logging excessive failures under load has an amplification effect which can deteriorate performance even more.
+Also, log flooding makes it hard to identify the root cause of the failures.
+For this reason, several improvements have been made to reduce the amount of logging:
+
+* FREQUENT category and burst filter link:https://github.com/infinispan/infinispan/issues/17801[[#17801\]]
+* Reduce RemoteException noise in logs link:https://github.com/infinispan/infinispan/issues/17669[[#17669\]]
+* Reduce excessive logging for lock timeout link:https://github.com/infinispan/infinispan/issues/17662[[#17662\]]
+
+== Update by query
+
+Ikcle has gained the ability to update entities with the following syntax:
+
+
+[source,sql,title="Update Query in Ickle"]
+----
+UPDATE FROM <entityName> {SET | ADD | REMOVE} <field> = <value> [, ...]* [WHERE condition]
+----
+* Use `SET` to assign a new value to a field. When the target is a collection, the list replaces the entire existing collection.
+* Use `ADD` to add values to a collection field without replacing its contents.
+* Use `REMOVE` to remove values from a collection field without affecting other members.
+
+The following example sets a new title, adds two tags, and removes one tag from all books whose price is greater than 100:
+
+[source,sql]
+----
+UPDATE FROM org.infinispan.sample.Book SET title = 'Updated Title', ADD tags = ('sale', 'featured'), REMOVE tags = ['discount'] WHERE price > 100
+----
+
+Values can currently only be constants, but Infinispan 16.4 will allow the use of expressions and functions.
+
+link:https://github.com/infinispan/infinispan/issues/14542[[#14542\]]
+
+== Peek
+
+A `CacheEntry<K, V> cache.peek(K key)` method was added that retrieves a cache entry without updating its last access timestamp, preventing the max-idle expiration from being reset.
+
+This behavior can also be used via a flag:
+
+[source,java]
+----
+cache.withFlags(Flag.PEEK).get(key);
+----
+
+link:https://github.com/infinispan/infinispan/issues/17532[[#17532\]]
+
+== Security enhancements
+
+=== Brute-force authentication protection
+
+Security realms which handle username/password credentials (properties, ldap) are now automatically wrapped by a brute-force authentication protection mechanism: repeated failed attempts to authenticate a user will result in temporary lockdowns. link:https://github.com/infinispan/infinispan/issues/18001[[#18001\]]
+
+=== Post-Quantum Cryptography configuration
+
+TLS named groups, used by Post-Quantum Cryptography (PQC) algorithms, can be fine-tuned to cater for specific restrictions.
+This feature requires JDK 27 or JDK 25.0.4. link:https://github.com/infinispan/infinispan/issues/17842[[#17842\]]
+
+== Console enhancements
+
+=== Update by query
+
+The new update-by-query capability (see above) is also available from the console: an "Update entries" action in the cache Query tab executes an Ickle `UPDATE` statement against all matching entries, with a confirmation modal and result reporting, alongside the existing delete-by-query. link:https://github.com/infinispan/infinispan-console/issues/868[[#868\]]
+
+=== Editor and i18n improvements
+
+The code editor used to create and download cache configurations has been improved, and translation loading was fixed so that localized bundles resolve correctly when the console is served from a custom base path. link:https://github.com/infinispan/infinispan-console/issues/707[[#707\]]
+
+== CLI enhancements
+
+=== Zero local authentication
+
+A new `local` security realm allows the CLI to authenticate against a local Infinispan instance without prompting for a username and password, provided it is running local to the server with the same system account. Authentication grants all permissions, so this realm should always be combined with another one (e.g., `properties`) as a fallback: if the local mechanism fails, the CLI falls back to prompting for credentials of a configured user.
+
+=== Optional transcoders
+
+The JSON POJO (Jackson) and XML (XStream) transcoders have been moved out of the server core into dedicated modules, joining JBoss Marshalling as an optional module. These are no longer included in the default server distribution: install them with the CLI `install` command if you need their data conversion capabilities on a running server, or add the corresponding artifact to your dependencies for embedded usage.
+
+link:https://github.com/infinispan/infinispan/issues/17774[[#17774\]]
+
+=== Install with dependencies
+
+The `install` command now supports installing an artifact together with its declared external dependencies via the `-d|--with-dependencies` option. Artifacts can list their required dependencies in a `META-INF/infinispan-dependencies.txt` file, and those are downloaded and installed automatically (dependencies already present in `server/lib` are skipped). For example, this makes it easy to install modules with native or third-party requirements such as the RocksDB cachestore or the optional transcoder modules.
+
+link:https://github.com/infinispan/infinispan/issues/17775[[#17775\]]
+
+== Operator enhancements
+
+=== Schema CRD
+
+A new `Schema` custom resource allows registering, updating and deleting Protobuf schemas on Infinispan clusters via the REST API (`/rest/v2/schemas`). It follows the same patterns as the existing Cache CRD, including bidirectional synchronization . This was highly requested, and we're glad we could finally deliver it! link:https://github.com/infinispan/infinispan-operator/issues/2379[[#2379\]]
+
+=== Custom ServiceAccount
+
+The Infinispan CR now accepts a custom `serviceAccountName` for the server (and GossipRouter, Batch, Backup and Restore) pods. The ConfigListener can also be given its own service account; when one is specified, the operator does not create RBAC resources for it, leaving that entirely in user hands. link:https://github.com/infinispan/infinispan-operator/issues/2404[[#2404\]]
+
+=== Pausing reconciliation
+
+Reconciliation of any managed resource (Infinispan, Cache, Schema, Batch, Backup or Restore) can be paused by annotating it with `infinispan.org/paused: true`. While paused, spec changes are not applied to the underlying resources - useful for debugging or maintenance windows. Remove the annotation to resume normal operation. https://github.com/infinispan/infinispan-operator/pull/2585[[PR #2585\]]
+
+Other notable improvements:
+
+* the `storageClassName` is now immutable after creation link:https://github.com/infinispan/infinispan-operator/issues/2368[[#2368\]]
+* The operator itself runs as a non-root user with a restricted security context (seccomp profile, no privilege escalation, all capabilities dropped), making it compatible with restrictive Pod Security Standards. link:https://github.com/infinispan/infinispan-operator/issues/2573[[#2573\]]
+* The operator now talks to Infinispan 16 servers without using deprecated REST endpoints, eliminating the associated deprecation warnings. link:https://github.com/infinispan/infinispan-operator/issues/2474[[#2474\]]
+
+== Architecture documentation
+
+The Infinispan documentation now includes a link:https://infinispan.org/docs/dev/titles/architecture/architecture.html[detailed architecture] document that describes in detail the various components and algorithms doing the dirty work behind the scenes.
+
+== Backwards compatibility
+
+Infinispan 16.3 is fully backwards compatible with 16.x deployments and can be upgraded in-place.
+
+== The next release
+
+According to our link:/roadmap/[roadmap], our next release will be 16.4, and it will happen on 2026-06-03.
+
+== Release notes
+
+You can look at the https://github.com/infinispan/infinispan/releases/tag/16.3.0[release notes] to see what was changed since our previous release.
+
+Get them from our https://infinispan.org/download/[download page].
