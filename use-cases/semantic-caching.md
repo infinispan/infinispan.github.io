@@ -258,5 +258,6 @@ def semantic_cache_query(prompt, llm):
 * [LangChain4j Infinispan Embedding Store](https://docs.langchain4j.dev/integrations/embedding-stores/infinispan)
 * [Quarkus LangChain4j Infinispan Extension](https://docs.quarkiverse.io/quarkus-langchain4j/dev/rag-infinispan-store.html)
 * [LangChain Python InfinispanVS](https://python.langchain.com/docs/integrations/vectorstores/infinispanvs)
-* [Spring AI Infinispan Vector Store](https://docs.spring.io/spring-ai/reference/api/vectordbs/infinispan.html)
+* [Spring AI Infinispan Vector Store](https://infinispan.org/docs/spring-ai/1.0.0/spring-ai.html)
+* [Spring AI Infinispan Source Code](https://github.com/infinispan/spring-ai-infinispan)
 * [Infinispan Vector Search Documentation](https://infinispan.org/docs/stable/titles/query/query.html)
