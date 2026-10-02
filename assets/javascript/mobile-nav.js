@@ -5,6 +5,7 @@ $(document).ready(function() {
       this.cacheDOM();
       this.browserWidth();
       this.bindEvents();
+      this.bindDropdowns();
     },
     cacheDOM: function() {
       this.navToggle = $(".nav-toggle");
@@ -24,6 +25,43 @@ $(document).ready(function() {
       } else {
         this.resetNav();
       }
+    },
+    bindDropdowns: function() {
+      $(".dropdown-toggle").on("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $parent = $(this).closest(".dropdown");
+        var isOpen = $parent.hasClass("open");
+
+        $(".dropdown").removeClass("open");
+        $(".dropdown-toggle").attr("aria-expanded", "false");
+
+        if (!isOpen) {
+          $parent.addClass("open");
+          $(this).attr("aria-expanded", "true");
+        }
+      });
+
+      $(".dropdown-toggle").on("keydown", function(e) {
+        if (e.key === "Escape") {
+          $(this).closest(".dropdown").removeClass("open");
+          $(this).attr("aria-expanded", "false");
+          $(this).focus();
+        }
+      });
+
+      $(".submenu a").on("keydown", function(e) {
+        if (e.key === "Escape") {
+          var $dropdown = $(this).closest(".dropdown");
+          $dropdown.removeClass("open");
+          $dropdown.find(".dropdown-toggle").attr("aria-expanded", "false").focus();
+        }
+      });
+
+      $(document).on("click", function() {
+        $(".dropdown").removeClass("open");
+        $(".dropdown-toggle").attr("aria-expanded", "false");
+      });
     },
     animate: function(e) {
       var checkbox = this.chkBox[0];
