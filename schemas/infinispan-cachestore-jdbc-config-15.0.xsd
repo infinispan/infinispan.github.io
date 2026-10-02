@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xs:schema elementFormDefault="qualified" version="1.0"
+           targetNamespace="urn:infinispan:config:store:jdbc:15.0"
+           xmlns:tns="urn:infinispan:config:store:jdbc:15.0"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:jdbc-common="urn:infinispan:config:store:jdbc-common:15.0">
+  <xs:import namespace="urn:infinispan:config:store:jdbc-common:15.0"
+             schemaLocation="https://infinispan.org/schemas/infinispan-cachestore-jdbc-common-config-15.0.xsd" />
+
+  <xs:element name="string-keyed-jdbc-store" type="tns:string-keyed-jdbc-store"/>
+
+  <xs:complexType name="string-keyed-jdbc-store">
+    <xs:complexContent>
+      <xs:extension base="jdbc-common:abstract-jdbc-store">
+        <xs:sequence>
+          <xs:element name="string-keyed-table" type="tns:string-keyed-table" minOccurs="0">
+            <xs:annotation>
+              <xs:documentation>
+                Defines the table used to store cache entries.
+              </xs:documentation>
+            </xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+    <xs:attribute name="key-to-string-mapper" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>
+          The class name of a org.infinispan.persistence.keymappers.Key2StringMapper to use for mapping keys to strings suitable for storage in a database table.
+          Defaults to org.infinispan.persistence.keymappers.DefaultTwoWayKey2StringMapper
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="string-keyed-table">
+    <xs:complexContent>
+      <xs:extension base="tns:table">
+        <xs:attribute name="prefix" type="xs:string" default="ispn_entry">
+          <xs:annotation>
+            <xs:documentation>Defines the prefix prepended to the cache name used when composing the name of the cache entry table.
+            </xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="table">
+    <xs:sequence>
+      <xs:element name="id-column" type="tns:id-column" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Defines the column in which to store the cache key or bucket id.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="data-column" type="tns:data-column" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Defines the column in which to store the cache entry or bucket.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="timestamp-column" type="tns:timestamp-column" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Defines the column in which to store the timestamp of the cache entry or bucket.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="segment-column" type="tns:segment-column" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Defines the column in which to store the segment number.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="fetch-size" type="xs:int" default="${TableManipulation.fetchSize}">
+      <xs:annotation>
+        <xs:documentation>The fetch size used when querying from this table.  Used to avoid heap memory exhaustion when query is large.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="batch-size" type="xs:int" default="${TableManipulation.batchSize}">
+      <xs:annotation>
+        <xs:documentation>Deprecated, use the max-batch-size store property instead. The statement batch size used when modifying this table.
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="create-on-start" type="xs:boolean" default="${TableManipulation.createOnStart}">
+        <xs:annotation>
+           <xs:documentation>Determines whether database tables should be created by the store on startup.</xs:documentation>
+        </xs:annotation>
+     </xs:attribute>
+     <xs:attribute name="drop-on-exit" type="xs:boolean" default="${TableManipulation.dropOnExit}">
+        <xs:annotation>
+           <xs:documentation>Determines whether database tables should be dropped by the store on shutdown.</xs:documentation>
+        </xs:annotation>
+     </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="id-column">
+    <xs:attribute name="name" type="xs:string" default="id">
+      <xs:annotation>
+        <xs:documentation>The name of the column used to store the cache key or bucket id.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="type" type="xs:string" default="VARCHAR">
+      <xs:annotation>
+        <xs:documentation>The type of the column used to store the cache key or bucket id.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="data-column">
+    <xs:attribute name="name" type="xs:string" default="datum">
+      <xs:annotation>
+        <xs:documentation>The name of the column used to store the cache entry or bucket.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="type" type="xs:string" default="BINARY">
+      <xs:annotation>
+        <xs:documentation>The type of the column used to store the cache entry or bucket.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="timestamp-column">
+    <xs:attribute name="name" type="xs:string" default="version">
+      <xs:annotation>
+        <xs:documentation>The name of the column used to store the cache entry or bucket timestamp.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="type" type="xs:string" default="BIGINT">
+      <xs:annotation>
+        <xs:documentation>The type of the column used to store the cache entry or bucket timestamp.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="segment-column">
+    <xs:attribute name="name" type="xs:string" default="version">
+      <xs:annotation>
+        <xs:documentation>The name of the column used to store the segment number.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="type" type="xs:string" default="BIGINT">
+      <xs:annotation>
+        <xs:documentation>The type of the column used to store the segment number.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+</xs:schema>
