@@ -1,0 +1,319 @@
+---
+layout: blog
+title: "Stop Storing Everything Twice: Tuning Infinispan for Pure Caching Workloads"
+permalink: /blog/:year/:month/:day/caching-workloads
+date: '2026-09-24T00:00:00.000-00:00'
+author: ttarrant
+tags: [ "caching", "performance", "clustering", "configuration" ]
+---
+
+= Stop Storing Everything Twice: Tuning Infinispan for Pure Caching Workloads
+
+Infinispan does two very different jobs, and they want opposite things.
+
+In the first, your cache holds data you could always get back from somewhere else — a database, an app server, a service. An entry falling out of the cache isn't a disaster; it's just a miss, and a miss means "go ask the real thing again."
+
+In the second, the cache *is* the thing. There's no database behind it. Lose an entry and you've lost data, full stop.
+
+Out of the box, Infinispan's clustered cache is built for the second job: a **distributed cache with two owners**, where every entry is kept on two different nodes so that if one of them dies, the other still has a copy. It's a great default for a database. It's a *wasteful* default for a cache.
+
+If your data is re-derivable — you're doing the first job, pure caching — then paying for a second copy of everything buys you nothing. And it costs you in three concrete ways:
+
+* **Memory.** Two owners means two copies of every entry. Your working set fits in half the heap, but you're spending all of it.
+* **Rebalancing.** When the cluster grows, Infinispan moves entries around to keep things balanced — and moving two copies means moving twice as much data. That's a throughput dip you can feel.
+* **Hot keys.** A read for a key always goes to the node that owns it. So the node holding your hottest key gets hammered while everyone else sips.
+
+This post walks through fixing all three, one step at a time. For each step we'll talk about what you gain, what it costs, and — where it matters — what you *can't* do with configuration alone. And we'll back it with numbers from a little harness that stands up a cluster, applies one change per step, hammers it with a realistic read/write mix, and records throughput, latency, and memory.
+
+== How we measured this
+
+We built a small harness around the stock `quay.io/infinispan/server` image. It does deliberately little: it starts an N-node cluster on the server's **default** configuration, and then it creates a differently-shaped cache **at runtime** through the Hot Rod admin API. There's no bespoke server config per step; each "step" is just a handful of client flags describing the shape of the cache to build.
+
+|===
+| Step | Cache shape | What we're looking at
+
+| 0 | two owners (the default) | the baseline
+| 1 | one owner | memory, write cost, rebalance size
+| 2 | one owner + client near cache | read latency / throughput, offloading the owner
+| 3 | ... + a bloom filter | how much invalidation noise the clients get
+| 4 | one owner + a cache store | what happens to data when a node disappears
+|===
+
+The workload is a fixed working set of keys with a tunable read/write mix, spread either uniformly or by a Zipf curve (so a few keys get read far more than the rest — the realistic hot-key case). A handful of client threads pound the cache for a warmup window that we throw away, then a measured window that we keep. For each run we record throughput (ops/s), a latency histogram (p50/p90/p99/p999), the read hit rate, and per-node memory.
+
+The environment: a single host — a 12-core AMD Ryzen 9 9900X (24 logical CPUs) with 60 GB of RAM — running the cluster and the workload clients side by side in Docker with host networking, so there's no virtualised network tax on the numbers. Every node runs the stock `quay.io/infinispan/server:16.2` image (server 16.2.3) on a fixed **1 GB heap** (`-Xms1g -Xmx1g`). The cluster is **three nodes**.
+
+The working set is **200,000 keys of 1 KB each** (about 200 MB of data — comfortably inside a single node's heap, so memory pressure isn't a thing). The steady-state runs use a **90/10 read/write mix** on a **Zipf** curve, 8 client threads, a 10-second warmup we throw away, and a 30-second measured window. We ran each step three times and report the median.
+
+== Step 0 — the default, for reference
+
+First, the thing we're trying to beat: the out-of-the-box two-owner distributed cache. Every entry lives on two nodes. It's durable, it's balanced, and — for a caching workload — it's about twice as expensive in memory as it needs to be.
+
+We ran it as the baseline so every number after this is relative to something real.
+
+|===
+| Metric | Value
+
+| Throughput | 301,000 ops/s
+| p50 / p99 latency | 18 µs / 110 µs
+| Per-node memory | 1,348 MB
+| Read hit rate | 100%
+|===
+
+That 110 µs p99 is the price of the default: a read that isn't on the node you happened to talk to hops to the owner and back, and with two owners the write path pays for a second copy every time.
+
+== Step 1 — one owner is enough
+
+The single biggest, cheapest win: tell the cache that each entry only needs **one** owner instead of two.
+
+[source,bash]
+----
+--owners 1
+----
+
+On a two-node cluster with six keys (A–F) the difference is stark:
+
+.Segment ownership on a two-node, six-key cluster: the two-owner default keeps twelve copies, one owner keeps six
+[plantuml, target=caching-step1-owners, format=svg, align="center"]
+----
+left to right direction
+skinparam rectangle {
+  RoundCorner 12
+}
+rectangle "1 owner (owners = 1) - 6 copies" as one {
+  rectangle "Node 1: A C E" as n1b #EAFAF0
+  rectangle "Node 2: B D F" as n2b #EAFAF0
+}
+rectangle "2 owners (the default) - 12 copies" as two {
+  rectangle "Node 1: A B C D E F" as n1a #FDECEC
+  rectangle "Node 2: A B C D E F" as n2a #FDECEC
+}
+two -[hidden]right-> one
+----
+
+With two owners and only two nodes, *every* key lands on *both* nodes — six keys, twelve copies. Set `owners = 1` and the keys split, so each key has exactly one home. Same data, half the copies.
+
+**What changes.** No more second copy. Every write is one write, not a write plus a replication to a backup. And when the cluster rebalances, there's half as much data to move.
+
+**What you get.**
+
+* Throughput climbs from 301,000 to **408,000 ops/s** (1.35×), and the p99 falls from 110 µs to **51 µs** — less than half.
+* Per-node memory drops from 1,348 MB to **1,144 MB** for the same working set. (The drop is smaller than "half" because the 200 MB working set is a minority of a 1 GB heap; on a heap sized to the data it would be closer to 2×.)
+* Rebalances move less, so the dip on a scale event is smaller — we come back to that in the scaling section, where it shows up as roughly a **62% dip for one owner versus 76% for two**.
+
+**What it costs.** Redundancy. That second copy was your safety net, and now it's gone. If the node that owns a segment dies, those entries don't ride along to another node — they simply aren't anywhere. A read for them is now a miss.
+
+For a database that would be unacceptable. For a cache it's *fine* — as long as a miss has a sensible answer, which is exactly what Step 4 provides. (Until then, the practical rule is: don't run single-owner on data you can't re-fetch.)
+
+One config footnote: a one-owner cache has to opt into `ALLOW_READ_WRITES` split handling. With two owners, a partition can keep serving from its backup while it's isolated; with one, each side of the split just has to keep serving what it already has. It's enforced at build time, so you can't get it wrong silently.
+
+== Step 2 — keep the hot stuff on the client
+
+Now the read-side win. By default, a read for a key that isn't on the node the client is talking to has to travel over the wire to the owning node and back. Add a **near cache** to the client and the recent keys live right there in the client's process, so those reads never leave the machine at all.
+
+[source,bash]
+----
+--owners 1 --near-cache invalidated --near-cache-size 100000
+----
+
+The read path splits into two very different costs:
+
+.The near-cache read path: a hit is served locally, a miss is a network round trip to the owner node
+[plantuml, target=caching-step2-read-path, format=svg, align="center"]
+----
+start
+:read(key);
+if (key in near cache?) then (hit)
+  :served locally; <<#EAFAF0>>
+else (miss)
+  :network round trip; <<#FDECEC>>
+  :owner node; <<#FDECEC>>
+endif
+stop
+----
+
+A hit is a local map lookup; a miss is a wire trip to the owner. Push the hot keys onto hits and the latency story flips.
+
+**What you get.** This is where the latency story changes the most. A near-cache hit is a local map lookup; a miss is a network round trip. Push enough of the traffic onto hits and the p50 collapses and throughput climbs. In our runs the p50 drops from **18 µs to under 1 µs** — the hot reads now never leave the client — and throughput jumps from 408,000 to **625,000 ops/s**, a 2× improvement over the one-owner step and more than 2× the two-owner default. The near cache also visibly offloads the owning nodes: the owner stops being the single point that every read funnels through.
+
+**What it costs.**
+
+* It's **bounded**. You set a max number of entries; once you're past it, older keys are evicted and start missing again. Size it to your hot working set, not your total key space.
+* It's memory **on the client**, not the server — usually cheap, but it's real, and it's per client.
+* And here's the thing that sets up the next step: it's an *invalidated* near cache. When some key is written *anywhere* in the cluster, every client holding that key has to be told to throw it away. At a high write rate, that invalidation traffic adds up fast — it's proportional to the cluster's total write rate, regardless of whether a given client even cares about those keys.
+
+== Step 3 — only nudge the clients that care
+
+Step 2's invalidation is blunt: every write pings every client. The fix is to make invalidation **selective** — a client should only hear about the keys *it* actually cached.
+
+That's what the near-cache **bloom filter** does, and it's already in the box:
+
+[source,bash]
+----
+--bloom
+----
+
+* The client keeps a bloom filter of the keys in its near cache and syncs it to the server.
+* When a key is updated or removed, the server checks the filter for each client and only sends the invalidation to the clients that (probably) have that key.
+
+So invalidation traffic now scales with what *each client* caches, not with the cluster-wide write rate.
+
+For a write to a key held by two of four clients, the difference is the fan-out:
+
+.Invalidation fan-out for a write to K: without the bloom filter all four clients are pinged, with it only the two that cache K
+[plantuml, target=caching-step3-bloom-fanout, format=svg, align="center"]
+----
+left to right direction
+skinparam rectangle {
+  RoundCorner 12
+}
+rectangle "bloom: notifies holders only" as yes {
+  rectangle "server: write(K)" as S2
+  rectangle "C1" as B1 #EAFAF0
+  rectangle "C2" as B2 #F2F2F2
+  rectangle "C3" as B3 #EAFAF0
+  rectangle "C4" as B4 #F2F2F2
+}
+rectangle "no bloom: notifies all 4" as no {
+  rectangle "server: write(K)" as S1
+  rectangle "C1" as A1 #EAFAF0
+  rectangle "C2" as A2 #EAFAF0
+  rectangle "C3" as A3 #EAFAF0
+  rectangle "C4" as A4 #EAFAF0
+}
+S1 --> A1
+S1 --> A2
+S1 --> A3
+S1 --> A4
+S2 --> B1
+S2 ..> B2 : absent
+S2 --> B3
+S2 ..> B4 : absent
+----
+
+Above, the server blasts the invalidation to all four clients. Below, it checks each client's filter and only pings the two that cache K (C1, C3) — the other two (dashed) are skipped. Two invalidations instead of four, and the saved ones grow with the client count.
+
+Here's where we had to check the assumption, because in the single-client steady-state run it *didn't* pay. That one client caches the whole working set, so there's no fan-out to save — the server would have sent it every invalidation anyway — yet the client still pays to rebuild and sync the filter over all 100,000 cached entries on every churn. Throughput fell from **625,000 ops/s (Step 2) to 304,000 ops/s** with `--bloom` on: a net *loss*, landing right back at the two-owner baseline. The filter was doing all the work of a multi-client optimisation with none of the multi-client payoff.
+
+So we re-ran Step 3 the way it's actually meant to be used: **many clients**, each a separate process holding only its own slice of the keyspace, all writing, so the cluster's total write rate is high. That's the shape where the filter should earn its keep — the server can now skip pushing an invalidation to the other N−1 clients that never cached the written key. The table below is aggregate throughput (summed across all clients) with the bloom filter off and on, on the same three-node cluster, 50/50 read/write:
+
+|===
+| Clients | No bloom (ops/s) | With bloom (ops/s) | Bloom
+
+| 8  | 237,000 | 217,000 | −8%
+| 16 | 182,000 | 188,000 | +3%
+| 32 | 125,000 | 147,000 | +17%
+|===
+
+There's a clear crossover. With a handful of clients the filter still loses — its per-client maintenance (rebuilding and syncing the bitset as the near cache churns) outweighs the fan-out it avoids. But each additional client adds fan-out to save while the filter's cost stays per-client, so past about a dozen clients the balance tips and the win widens with head count: **at 32 clients the bloom filter buys back 17% of aggregate throughput.** The takeaway is that this is a knob you turn on as a function of your *client count*, not your write rate — and that "on by default" is the wrong call for a one-client deployment.
+
+Two honest caveats:
+
+* It's **probabilistic**. A bloom filter can have false positives, which means the occasional invalidation for a key the client doesn't actually hold. That's harmless — the client just finds nothing to remove — but it's not zero.
+* It needs a **bounded** near cache to size the filter from, so it pairs with the `--near-cache-size` you already set in Step 2.
+
+== Step 4 — give the misses a home
+
+Single owner (Step 1) said "we're not keeping a second copy," and the honest consequence is that a node loss turns some reads into misses. Step 4 is what makes that a non-event: add a **cache store** — a cache that knows how to re-fetch a missing entry from your system of record.
+
+[source,bash]
+----
+--owners 1 --persistence
+----
+
+In steady state the cost is small and honest: writes go write-through to the store, so throughput settles at **340,000 ops/s** (a touch under the store-less one-owner step) with the p99 at **73 µs** and memory at 1,225 MB/node. Reads that are already in memory never touch the store, so the hot path is unchanged.
+
+The failure test is where the *boundary* of the store shows up, and it's the sort of thing that bites people. We ran it single-owner with no near cache and killed a node mid-run. The dead node's share of the keyspace is lost — and the store does **not** bring it back, because a file store lives on the node: when the node dies, the in-memory entry and the file behind it die together. Both runs (store and no store) end with the same ~2% read-miss rate — the dead node's segments as seen through the read pattern — and the same steady throughput, because the surviving nodes keep serving the hot keys. The store's presence changes neither the loss nor the recovery.
+
+So the caching contract is only as strong as the system of record behind the store. Make that system outlive the cache node — the real database you were caching in front of all along — and a node death becomes exactly the blip the pattern promises: the survivors re-fetch the lost segments from it and keep serving, slower but correct. A node-local file is a weak stand-in, because it shares the node's fate. It's perfect for the everyday case — an entry evicted by a bounded cache — and the wrong tool for "the node itself is gone."
+
+**What it costs.** A miss now pays for a round trip to your system of record instead of just returning "not found" — we can simulate that with a `--db-latency-ms` knob so the penalty is visible and controllable. And every write pays for write-through. That's the deal: you trade a little steady-state speed for the property that "an entry's gone" is a re-fetch, not a failure — *as long as the thing it re-fetches from is still alive.*
+
+== The part that hurts: scaling and failures
+
+Steady-state numbers only tell half the story. The other half is what happens when the cluster changes shape under you — because that's when caching workloads really feel the pain.
+
+**Adding a node (the rebalance dip).** We inject a scale-up mid-run — the cluster goes from three to four nodes at a fixed second — and plot the per-second throughput. The dip is deep either way (segments are physically moving), but single owner is shallower: it has half the copies to move. Both recover to the same steady level within a few seconds, and a scale-up loses nothing — the hit rate stays 100%.
+
+.Throughput during a scale-up, normalised to each run's pre-event baseline. The one-owner dip (green) is shallower than the two-owner dip (red).
+image::caching-scale-dip.svg[align="center"]
+
+Here's what "physically moving" means. When Node D joins, a few segments are reassigned to it and their entries stream across the cluster:
+
+.Rebalance as node D joins: segments S3, S4 and S8 are reassigned to the new node
+[plantuml, target=caching-rebalance, format=svg, align="center"]
+----
+skinparam rectangle {
+  RoundCorner 12
+}
+rectangle "before: 3 nodes" as before {
+  rectangle "A: S1 S2 S3" as BA
+  rectangle "B: S4 S5 S6" as BB
+  rectangle "C: S7 S8" as BC
+}
+rectangle "after: Node D joins" as after {
+  rectangle "A: S1 S2" as AA
+  rectangle "B: S5 S6" as AB
+  rectangle "C: S7" as AC
+  rectangle "D (new): S3 S4 S8" as AD #FDECEC
+}
+BA -[hidden]right-> BB
+BB -[hidden]right-> BC
+AA -[hidden]right-> AB
+AB -[hidden]right-> AC
+AC -[hidden]right-> AD
+----
+
+Each reassigned segment (S3, S4, S8) has to transfer its entries from its old owner to D. With one owner that's a single copy per segment; with two, it's two — which is exactly why the one-owner dip is shallower.
+
+|===
+| Shape | Throughput at the bottom of the dip | Dip depth | Recovered to
+
+| two owners | 71,000 ops/s | −76% | 269,000 ops/s
+| one owner  | 104,000 ops/s | −62% | 271,000 ops/s
+|===
+
+**Killing a node (the loss).** The other event: drop a node and watch the survivors. The surprising part is that throughput barely blinks. On a single-owner cache with a Zipf read pattern, the hot keys are spread across the surviving nodes, so they keep serving and aggregate throughput holds steady. The real cost is not a dip — it's a *hole*: the dead node's segments have no backup, so reads for them become permanent misses. That shows up as a residual miss rate of about 2% (the dead node's share of the keyspace, as seen through the read pattern) that never comes back.
+
+|===
+| Shape | Residual miss rate | Throughput impact
+
+| one owner, no store     | ~2% of reads (never recovers) | none — survivors keep serving the hot keys
+| one owner + local store | ~2% of reads (never recovers) | none — the local file dies with the node
+|===
+
+And as Step 4 established, the node-local store doesn't close that hole — the file dies with the node, so the miss rate is identical either way. Closing it requires the system of record to outlive the cache node.
+
+It's exactly these two events that configuration knobs can only *mitigate*, not fix. Which leads to the last section.
+
+== Potential future improvements
+
+There are two areas which are worthy of investigation in order to further improve performance:
+
+**1. A calmer rebalance (less churn, stable primaries).** The consistent-hash factory that decides which node owns which segment today recomputes the *entire* ring on a join, which can reshuffle a lot more segments than necessary and — worse — can even swap a segment's primary for a backup for no good reason (an "AB → BA" reorder), triggering a pointless state transfer. The leave path is already minimal; the join path isn't. A smarter, incremental, primary-stable factory would move only what has to move and never change a primary unless it has to. That's a shallower, shorter dip on every scale event.
+
+**2. Read replicas / a server-side near cache (de-hot the hot keys).** Today a non-local read always lands on the primary owner, so a hot key pins all its load onto one node. Infinispan already keeps a separate *read* owner set from the *write* set; widening the read set (a read-replica factor), or adding a small bounded near cache on the server that's lazily populated on read and invalidated on write, would let several nodes share the load of a hot key. The cost is a brief eventual-consistency window on reads — which is fine for re-derivable cache data and wrong for a database.
+
+== The punchline
+
+If you're running Infinispan as a cache — data you could always get back — you don't have to wait for new features to start fixing the default. With configuration alone, today, you can:
+
+* Drop to **one owner** and cut your memory and your rebalance churn.
+* Put a **near cache** on the client and collapse read latency for the hot set.
+* Turn on the **bloom filter** — *if you have many clients* — so invalidation stops scaling with the whole cluster's writes.
+* Back it with a **cache store** whose system of record outlives the node, so "the entry's gone" is a re-fetch, not a failure.
+
+The honest shape of the trade-offs:
+
+|===
+| Step | Change | Steady-state win | What it costs you
+
+| 1 | one owner | 301k → 408k ops/s, p99 110 → 51 µs | the second copy — a node death is now a data loss
+| 2 | + client near cache | 408k → 625k ops/s, p50 18 µs → < 1 µs | bounded, client-side memory, invalidation churn
+| 3 | + bloom filter | +17% aggregate at 32 clients (−8% at 8) | per-client filter maintenance; probabilistic
+| 4 | + cache store | steady-state p99 holds at 73 µs | write-through; a *local* store only rescues evictions
+|===
+
+What's left on the table — calmer rebalances and de-hotting hot keys — is real, it's tracked, and it's the next chunk of work.
+
+If you want to poke at the numbers yourself, the harness lives in the https://github.com/tristantarrant/infinispan-caching-benchmark[infinispan-caching-benchmark] repo: `run.sh` drives a single client against a Docker cluster (the `--step` flag selects the cache shape, `--scale-at` / `--kill-at` inject events), and `run-multi.sh` fans out N client processes across disjoint key slices for the bloom-filter runs.
