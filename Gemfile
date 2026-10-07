@@ -19,7 +19,7 @@ gem "jekyll-theme-minimal"
 # If you have any plugins, put them here!
 group :jekyll_plugins do
   gem "jekyll-asciidoc"
-  gem "jekyll-feed", "~> 0.6"
+  gem "jekyll-feed", "~> 0.18"
   gem "jekyll-paginate-v2"
   gem "jekyll-archives"
   gem "optimist"
