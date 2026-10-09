@@ -265,23 +265,23 @@ else
 
   # Fetch Spring AI docs
   spring_ai = projects["projects"]["spring-ai"]
-  if spring_ai && spring_ai["doc_branches"]
-    spring_ai["doc_branches"].each do |branch|
-      puts "📄 Spring AI #{branch}"
-      zip_url = "#{spring_ai["github"]}/archive/#{branch}.zip"
-      %x( wget -q #{zip_url} -O _springaitmp.zip)
-      %x( unzip -o _springaitmp.zip "*documentation/*" -d _springaitmp)
-      src_dir = Dir.glob("_springaitmp/*/documentation/asciidoc").first
-      if src_dir
-        %x( asciidoctor --doctype book --backend html5 -a brandname=Infinispan -a community -a topics=../topics -a stories=../stories -a spring_ai_ispn="Spring AI Infinispan" -o #{src_dir}/spring-ai.html #{src_dir}/titles/stories.adoc )
-        target_dir = "docs/spring-ai/#{branch}"
-        FileUtils.mkdir_p target_dir
-        FileUtils.cp("#{src_dir}/spring-ai.html", target_dir)
-        FileUtils.cp_r("#{src_dir}/css", target_dir) if File.directory?("#{src_dir}/css")
-        FileUtils.cp_r("#{src_dir}/js", target_dir) if File.directory?("#{src_dir}/js")
-      end
-      %x( rm -rf _springaitmp* )
+  if spring_ai && spring_ai["doc_branch"]
+    branch = spring_ai["doc_branch"]
+    version = spring_ai["doc_version"]
+    puts "📄 Spring AI #{version} (from #{branch})"
+    zip_url = "#{spring_ai["github"]}/archive/#{branch}.zip"
+    %x( wget -q #{zip_url} -O _springaitmp.zip)
+    %x( unzip -o _springaitmp.zip "*documentation/*" -d _springaitmp)
+    src_dir = Dir.glob("_springaitmp/*/documentation/asciidoc").first
+    if src_dir
+      %x( asciidoctor --doctype book --backend html5 -a brandname=Infinispan -a community -a topics=../topics -a stories=../stories -a spring_ai_ispn="Spring AI Infinispan" -o #{src_dir}/spring-ai.html #{src_dir}/titles/stories.adoc )
+      target_dir = "docs/spring-ai/#{version}"
+      FileUtils.mkdir_p target_dir
+      FileUtils.cp("#{src_dir}/spring-ai.html", target_dir)
+      FileUtils.cp_r("#{src_dir}/css", target_dir) if File.directory?("#{src_dir}/css")
+      FileUtils.cp_r("#{src_dir}/js", target_dir) if File.directory?("#{src_dir}/js")
     end
+    %x( rm -rf _springaitmp* )
   end
 
   gen_versions_xml_file("docs/infinispan-operator/versions.xml", operatorDocIndex)
