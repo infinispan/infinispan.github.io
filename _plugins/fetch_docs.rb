@@ -274,10 +274,10 @@ else
     %x( unzip -o _springaitmp.zip "*documentation/*" -d _springaitmp)
     src_dir = Dir.glob("_springaitmp/*/documentation/asciidoc").first
     if src_dir
-      %x( asciidoctor --doctype book --backend html5 -a brandname=Infinispan -a community -a topics=../topics -a stories=../stories -a spring_ai_ispn="Spring AI Infinispan" -o #{src_dir}/spring-ai.html #{src_dir}/titles/stories.adoc )
+      %x( asciidoctor --doctype book --backend html5 -a toc2 -a toclevels=4 -a sectanchors -a sectnums -a icons=font -a docinfo=private-head,private-footer -a brandname=Infinispan -a community -a topics=../topics -a stories=../stories -a spring_ai_ispn="Spring AI Infinispan" -o #{src_dir}/titles/spring-ai.html #{src_dir}/titles/stories.adoc )
       target_dir = "docs/spring-ai/#{version}"
       FileUtils.mkdir_p target_dir
-      FileUtils.cp("#{src_dir}/spring-ai.html", target_dir)
+      FileUtils.cp("#{src_dir}/titles/spring-ai.html", target_dir)
       FileUtils.cp_r("#{src_dir}/css", target_dir) if File.directory?("#{src_dir}/css")
       FileUtils.cp_r("#{src_dir}/js", target_dir) if File.directory?("#{src_dir}/js")
     end
