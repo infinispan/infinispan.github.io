@@ -263,46 +263,42 @@ else
     end
   end
 
-  # Fetch Spring AI docs
-  spring_ai = projects["projects"]["spring-ai"]
-  if spring_ai && spring_ai["doc_branch"]
-    branch = spring_ai["doc_branch"]
-    version = spring_ai["doc_version"]
-    puts "📄 Spring AI #{version} (from #{branch})"
-    zip_url = "#{spring_ai["github"]}/archive/#{branch}.zip"
-    %x( wget -q #{zip_url} -O _springaitmp.zip)
-    %x( unzip -o _springaitmp.zip "*documentation/*" -d _springaitmp)
-    src_dir = Dir.glob("_springaitmp/*/documentation/asciidoc").first
-    if src_dir
-      %x( asciidoctor --doctype book --backend html5 -a toc2 -a toclevels=4 -a sectanchors -a sectnums -a icons=font -a docinfo=private-head,private-footer -a brandname=Infinispan -a community -a topics=../topics -a stories=../stories -a spring_ai_ispn="Spring AI Infinispan" -o #{src_dir}/titles/spring-ai.html #{src_dir}/titles/stories.adoc )
-      target_dir = "docs/spring-ai/#{version}"
-      FileUtils.mkdir_p target_dir
-      FileUtils.cp("#{src_dir}/titles/spring-ai.html", target_dir)
-      FileUtils.cp_r("#{src_dir}/css", target_dir) if File.directory?("#{src_dir}/css")
-      FileUtils.cp_r("#{src_dir}/js", target_dir) if File.directory?("#{src_dir}/js")
+  # Fetch community project docs (Spring AI, LangChain)
+  community_docs = {
+    "spring-ai" => { "output" => "spring-ai", "attr" => 'spring_ai_ispn="Spring AI Infinispan"' },
+    "langchain" => { "output" => "langchain", "attr" => 'langchain_ispn="LangChain Infinispan"' }
+  }
+  community_docs.each do |name, cfg|
+    project = projects["projects"][name]
+    next unless project && project["doc_branches"]
+    output_name = cfg["output"]
+    extra_attr = cfg["attr"]
+    doc_index = Array.new
+    project["doc_branches"].each do |branch, valias|
+      puts "📄 #{name} #{branch}"
+      tmp_prefix = name.gsub("-", "")
+      zip_url = "#{project["github"]}/archive/#{branch}.zip"
+      %x( wget -q #{zip_url} -O _#{tmp_prefix}tmp.zip)
+      %x( unzip -o _#{tmp_prefix}tmp.zip "*documentation/*" -d _#{tmp_prefix}tmp)
+      src_dir = Dir.glob("_#{tmp_prefix}tmp/*/documentation/asciidoc").first
+      if src_dir
+        %x( asciidoctor --doctype book --backend html5 -a toc2 -a toclevels=4 -a sectanchors -a sectnums -a icons=font -a docinfo=private-head,private-footer -a brandname=Infinispan -a community -a topics=../topics -a stories=../stories -a #{extra_attr} -o #{src_dir}/titles/#{output_name}.html #{src_dir}/titles/stories.adoc )
+        target_dir = "docs/#{output_name}/#{branch}"
+        FileUtils.mkdir_p target_dir
+        FileUtils.cp("#{src_dir}/titles/#{output_name}.html", target_dir)
+        FileUtils.cp_r("#{src_dir}/css", target_dir) if File.directory?("#{src_dir}/css")
+        FileUtils.cp_r("#{src_dir}/js", target_dir) if File.directory?("#{src_dir}/js")
+        if valias
+          alias_dir = "docs/#{output_name}/#{valias}"
+          FileUtils.rm_rf alias_dir
+          FileUtils.cp_r(target_dir, alias_dir)
+        end
+      end
+      %x( rm -rf _#{tmp_prefix}tmp* )
+      vname = valias ? "#{branch} (#{valias})" : branch
+      doc_index.push "#{vname}!#{branch}"
     end
-    %x( rm -rf _springaitmp* )
-  end
-
-  # Fetch LangChain docs
-  langchain = projects["projects"]["langchain"]
-  if langchain && langchain["doc_branch"]
-    branch = langchain["doc_branch"]
-    version = langchain["doc_version"]
-    puts "📄 LangChain #{version} (from #{branch})"
-    zip_url = "#{langchain["github"]}/archive/#{branch}.zip"
-    %x( wget -q #{zip_url} -O _langchaintmp.zip)
-    %x( unzip -o _langchaintmp.zip "*documentation/*" -d _langchaintmp)
-    src_dir = Dir.glob("_langchaintmp/*/documentation/asciidoc").first
-    if src_dir
-      %x( asciidoctor --doctype book --backend html5 -a toc2 -a toclevels=4 -a sectanchors -a sectnums -a icons=font -a docinfo=private-head,private-footer -a brandname=Infinispan -a community -a topics=../topics -a stories=../stories -a langchain_ispn="LangChain Infinispan" -o #{src_dir}/titles/langchain.html #{src_dir}/titles/stories.adoc )
-      target_dir = "docs/langchain/#{version}"
-      FileUtils.mkdir_p target_dir
-      FileUtils.cp("#{src_dir}/titles/langchain.html", target_dir)
-      FileUtils.cp_r("#{src_dir}/css", target_dir) if File.directory?("#{src_dir}/css")
-      FileUtils.cp_r("#{src_dir}/js", target_dir) if File.directory?("#{src_dir}/js")
-    end
-    %x( rm -rf _langchaintmp* )
+    gen_versions_xml_file("docs/#{output_name}/versions.xml", doc_index)
   end
 
   gen_versions_xml_file("docs/infinispan-operator/versions.xml", operatorDocIndex)
