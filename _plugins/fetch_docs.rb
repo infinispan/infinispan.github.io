@@ -284,6 +284,27 @@ else
     %x( rm -rf _springaitmp* )
   end
 
+  # Fetch LangChain docs
+  langchain = projects["projects"]["langchain"]
+  if langchain && langchain["doc_branch"]
+    branch = langchain["doc_branch"]
+    version = langchain["doc_version"]
+    puts "📄 LangChain #{version} (from #{branch})"
+    zip_url = "#{langchain["github"]}/archive/#{branch}.zip"
+    %x( wget -q #{zip_url} -O _langchaintmp.zip)
+    %x( unzip -o _langchaintmp.zip "*documentation/*" -d _langchaintmp)
+    src_dir = Dir.glob("_langchaintmp/*/documentation/asciidoc").first
+    if src_dir
+      %x( asciidoctor --doctype book --backend html5 -a toc2 -a toclevels=4 -a sectanchors -a sectnums -a icons=font -a docinfo=private-head,private-footer -a brandname=Infinispan -a community -a topics=../topics -a stories=../stories -a langchain_ispn="LangChain Infinispan" -o #{src_dir}/titles/langchain.html #{src_dir}/titles/stories.adoc )
+      target_dir = "docs/langchain/#{version}"
+      FileUtils.mkdir_p target_dir
+      FileUtils.cp("#{src_dir}/titles/langchain.html", target_dir)
+      FileUtils.cp_r("#{src_dir}/css", target_dir) if File.directory?("#{src_dir}/css")
+      FileUtils.cp_r("#{src_dir}/js", target_dir) if File.directory?("#{src_dir}/js")
+    end
+    %x( rm -rf _langchaintmp* )
+  end
+
   gen_versions_xml_file("docs/infinispan-operator/versions.xml", operatorDocIndex)
   gen_versions_xml_file("docs/helm-chart/versions.xml", helmChartDocIndex)
   gen_versions_xml_file("docs/versions.xml", coreDocIndex)
