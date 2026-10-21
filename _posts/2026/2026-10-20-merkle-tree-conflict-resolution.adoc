@@ -8,19 +8,20 @@ tags: [ "infinispan", "partition-handling", "performance", "merkle-tree", "non-b
 ---
 
 = Fast, Non-Blocking Conflict Resolution with Merkle Trees
+:stem: latexmath
 
-When running a distributed data grid, network partitions are an unfortunate reality of distributed systems.
-When a network split occurs, different partitions may continue servicing writes or diverge.
-Once the network heals and partitions merge, Infinispan's partition handling and conflict resolution mechanisms kick in to reconcile divergent states and restore consistency.
+Network partitions are an unfortunate reality when operating a distributed data grid—right up there with TCP retransmits and the discovery that your "five nines" availability calculation didn't account for leap seconds.
+When a network split occurs, different partitions may continue servicing writes, causing them to diverge.
+Once the network heals and the partitions merge, Infinispan's partition handling and conflict resolution mechanisms reconcile divergent states to restore consistency.
 
 Historically, determining which entries conflicted between replicas during a partition merge could be an expensive operation.
 Even if only a handful of keys were modified while partitioned, traditional conflict detection often required write owners to scan and transmit all entries within affected segments across the cluster.
 For large caches with millions of entries, this created heavy network traffic, CPU spikes, and latency spikes at the exact moment the cluster was attempting to recover.
 
-With Infinispan 16.3 we have introduced a new hierarchical **Merkle tree-inspired hash comparison** mechanism to dramatically reduce network traffic during conflict resolution.
-On top of the hierarchical tree structure, we have an **in-flight running XOR hash** computed at entry update time and re-architected the conflict resolution process to be completely **non-blocking**.
+Infinispan 16.3 introduces a new hierarchical **Merkle tree-inspired hash comparison** mechanism that dramatically reduces network traffic during conflict resolution.
+The implementation combines this hierarchical tree structure with an **in-flight running XOR hash** computed at entry update time, and re-architects the conflict resolution process to be completely **non-blocking**.
 
-In this post, I will break down how the hierarchical Merkle tree conflict resolution works, why computing hashes incrementally at write time is essential for scalability, analyze the Big-O time and network complexities, and share a JMH benchmark demonstrating the performance benefits.
+This post explores how the hierarchical Merkle tree conflict resolution works, why computing hashes incrementally at write time is essential for scalability, analyzes the Big-O time and network complexities, and presents JMH benchmark results demonstrating the performance benefits.
 
 == The Problem: Partition Recovery and The Cost of Full Segment Comparison
 
@@ -36,39 +37,50 @@ Previously, discovering whether replicas diverged required pulling all entries f
 2. Node A receives every key, value, and metadata record for segment $S$.
 3. Node A compares each entry version to detect conflicts.
 
-Imagine a segment containing 50,000 entries where each entry average payload is 1 KB.
+Imagine a segment containing 50,000 entries where each entry's average payload is 1 KB.
 Resolving a single segment requires transferring ~50 MB of data over the network.
 Multiply that across hundreds of segments, and a partition merge could easily saturate network bandwidth with gigabytes of redundant state transfer—even if 99.9% of the entries were completely identical!
+It's like photocopying an entire phonebook to verify that only one person changed their number.
 
 == Hierarchical Merkle Tree Hash Comparison
 
 To avoid sending unchanged data across the wire, PR #16890 implements a three-level hierarchical hash comparison inspired by Merkle trees:
 
-[source]
+[plantuml,merkle-tree-levels,svg]
 ----
-+---------------------------------------------------------------+
-|                    Level 1: Segment Hash                      |
-|           Single 64-bit aggregate hash for the segment        |
-+-------------------------------+-------------------------------+
-                                |
-               Match? --------> YES: Segment identical -> SKIP!
-                                |
-                                NO
-                                v
-+---------------------------------------------------------------+
-|                    Level 2: Bucket Hashes                     |
-|           Segment split into 32 deterministic buckets         |
-|             Exchange array of 32 64-bit bucket hashes         |
-+-------------------------------+-------------------------------+
-                                |
-               Match? --------> YES: Bucket identical -> SKIP!
-                                |
-                                NO
-                                v
-+---------------------------------------------------------------+
-|               Level 3: Selective Entry Fetch                  |
-|    Fetch entries ONLY for buckets whose hashes mismatched     |
-+---------------------------------------------------------------+
+@startuml
+skinparam defaultTextAlignment center
+skinparam BoxPadding 10
+skinparam activity {
+  BackgroundColor LightBlue
+  BorderColor Navy
+  FontStyle bold
+}
+
+start
+:Level 1: Segment Hash
+Single 64-bit aggregate hash for the segment;
+
+if (Hashes Match?) then (yes)
+  :Segment identical;
+  stop
+else (no)
+  :Level 2: Bucket Hashes
+  Segment split into 32 deterministic buckets
+  Exchange array of 32 64-bit bucket hashes;
+
+  if (Bucket Hashes Match?) then (yes)
+    :Bucket identical;
+    stop
+  else (no)
+    :Level 3: Selective Entry Fetch
+    Fetch entries ONLY for buckets
+    whose hashes mismatched;
+    stop
+  endif
+endif
+
+@enduml
 ----
 
 === Level 1: Segment Level Check
@@ -107,17 +119,18 @@ Replicas then compare only those entries and resolve the conflicts.
 
 == In-Flight Hash Computation: Running XOR Hashes
 
-A hierarchical Merkle tree sounds great in theory, but where do the segment and bucket hashes come from?
+While the hierarchical Merkle tree approach is theoretically sound, a critical question remains: where do the segment and bucket hashes originate?
 
-The naive approach is to iterate the cache data container on-demand when a conflict occurs, hashing every entry in the segment and bucket.
+A naive approach would iterate the cache data container on-demand when a conflict occurs, hashing every entry in the segment and bucket.
 However, this creates a major bottleneck: scanning hundreds of thousands of entries across hundreds of segments at partition merge time causes significant CPU spikes, thread contention, and memory allocations.
 Right when the cluster is already recovering, we would be thrashing the CPU with full data scans!
 
-To eliminate this cost, we added **in-flight running XOR hash tracking** mechanism that is only enabled when a conflict resolution is enabled.
+To eliminate this cost, we added an **in-flight running XOR hash tracking** mechanism that is only enabled when conflict resolution is configured.
 
 === The Power of XOR Associativity
 
-XOR ($\oplus$) has three fundamental mathematical properties that make it ideal for running distributed set hashes:
+XOR ($\oplus$) has three fundamental mathematical properties that make it ideal for running distributed set hashes.
+If you've ever wondered what XOR is good for besides confusing CS101 students, here's your answer:
 
 1. **Commutativity:** $A \oplus B = B \oplus A$ (order of entry insertion does not matter).
 2. **Associativity:** $(A \oplus B) \oplus C = A \oplus (B \oplus C)$.
@@ -241,7 +254,7 @@ When only a few keys differ ($C \ll N$), instead of streaming the entire segment
 
 == JMH Benchmark Reproducer: Testing Actual Conflict Resolution in a 6-Node Cluster
 
-To benchmark **actual conflict resolution performance** in a realistic distributed environment rather than just raw hashing primitives, we can write a JMH benchmark that boots a real **6-node Infinispan cluster** (`DIST_SYNC`, `numOwners = 2`), populates 100,000 cache entries across 256 segments, induces real version conflicts across the cluster nodes, and measures `ConflictManager.resolveConflicts()`.
+To benchmark **actual conflict resolution performance** in a realistic distributed environment rather than just raw hashing primitives, this JMH benchmark boots a real **6-node Infinispan cluster** (`DIST_SYNC`, `numOwners = 2`), populates 100,000 cache entries across 256 segments, induces real version conflicts across the cluster nodes, and measures `ConflictManager.resolveConflicts()`.
 
 === Inducing Real Conflicts in a 6-Node Topology
 
@@ -433,11 +446,81 @@ The dataset contains **100,000 entries** with 1 KB payloads (totaling 100 MB of 
 | **~200.0 MB** (bounded +65 KB hash RPCs)
 |===
 
+++++
+<svg width="800" height="500" xmlns="http://www.w3.org/2000/svg">
+  <!-- Title -->
+  <text x="400" y="25" font-size="16" font-weight="bold" text-anchor="middle">Conflict Resolution Performance Comparison (100,000 Entries, 6-Node Cluster)</text>
+
+  <!-- Grid and axes -->
+  <line x1="80" y1="50" x2="80" y2="430" stroke="#333" stroke-width="2"/>
+  <line x1="80" y1="430" x2="750" y2="430" stroke="#333" stroke-width="2"/>
+
+  <!-- Y-axis labels -->
+  <text x="70" y="430" text-anchor="end" font-size="12">0</text>
+  <text x="70" y="334" text-anchor="end" font-size="12">300</text>
+  <text x="70" y="238" text-anchor="end" font-size="12">600</text>
+  <text x="70" y="142" text-anchor="end" font-size="12">900</text>
+  <text x="70" y="54" text-anchor="end" font-size="12">1200</text>
+  <text x="20" y="240" font-size="14" transform="rotate(-90 20 240)">Latency (ms)</text>
+
+  <!-- X-axis labels -->
+  <text x="110" y="450" text-anchor="middle" font-size="11">0<tspan x="110" dy="14">(0%)</tspan></text>
+  <text x="200" y="450" text-anchor="middle" font-size="11">10<tspan x="200" dy="14">(0.01%)</tspan></text>
+  <text x="290" y="450" text-anchor="middle" font-size="11">100<tspan x="290" dy="14">(0.1%)</tspan></text>
+  <text x="380" y="450" text-anchor="middle" font-size="11">1K<tspan x="380" dy="14">(1%)</tspan></text>
+  <text x="470" y="450" text-anchor="middle" font-size="11">5K<tspan x="470" dy="14">(5%)</tspan></text>
+  <text x="560" y="450" text-anchor="middle" font-size="11">25K<tspan x="560" dy="14">(25%)</tspan></text>
+  <text x="650" y="450" text-anchor="middle" font-size="11">50K<tspan x="650" dy="14">(50%)</tspan></text>
+  <text x="740" y="450" text-anchor="middle" font-size="11">100K<tspan x="740" dy="14">(100%)</tspan></text>
+  <text x="415" y="485" font-size="14" text-anchor="middle">Number of Divergent Keys</text>
+
+  <!-- Grid lines -->
+  <line x1="80" y1="334" x2="750" y2="334" stroke="#e0e0e0" stroke-width="1"/>
+  <line x1="80" y1="238" x2="750" y2="238" stroke="#e0e0e0" stroke-width="1"/>
+  <line x1="80" y1="142" x2="750" y2="142" stroke="#e0e0e0" stroke-width="1"/>
+
+  <!-- Legacy Full Fetch line (red) -->
+  <polyline points="110,169 200,166 290,163 380,153 470,146 560,133 650,118 740,70"
+            fill="none" stroke="#CC0000" stroke-width="3"/>
+  <!-- Legacy markers -->
+  <circle cx="110" cy="169" r="5" fill="#CC0000"/>
+  <circle cx="200" cy="166" r="5" fill="#CC0000"/>
+  <circle cx="290" cy="163" r="5" fill="#CC0000"/>
+  <circle cx="380" cy="153" r="5" fill="#CC0000"/>
+  <circle cx="470" cy="146" r="5" fill="#CC0000"/>
+  <circle cx="560" cy="133" r="5" fill="#CC0000"/>
+  <circle cx="650" cy="118" r="5" fill="#CC0000"/>
+  <circle cx="740" cy="70" r="5" fill="#CC0000"/>
+
+  <!-- Merkle Tree line (blue) -->
+  <polyline points="110,427 200,420 290,405 380,364 470,276 560,158 650,98 740,52"
+            fill="none" stroke="#0066CC" stroke-width="3"/>
+  <!-- Merkle markers -->
+  <circle cx="110" cy="427" r="5" fill="#0066CC"/>
+  <circle cx="200" cy="420" r="5" fill="#0066CC"/>
+  <circle cx="290" cy="405" r="5" fill="#0066CC"/>
+  <circle cx="380" cy="364" r="5" fill="#0066CC"/>
+  <circle cx="470" cy="276" r="5" fill="#0066CC"/>
+  <circle cx="560" cy="158" r="5" fill="#0066CC"/>
+  <circle cx="650" cy="98" r="5" fill="#0066CC"/>
+  <circle cx="740" cy="52" r="5" fill="#0066CC"/>
+
+  <!-- Legend -->
+  <rect x="600" y="70" width="140" height="60" fill="white" stroke="#333" stroke-width="1"/>
+  <line x1="610" y1="85" x2="640" y2="85" stroke="#CC0000" stroke-width="3"/>
+  <circle cx="625" cy="85" r="4" fill="#CC0000"/>
+  <text x="650" y="90" font-size="12">Legacy Full Fetch</text>
+  <line x1="610" y1="110" x2="640" y2="110" stroke="#0066CC" stroke-width="3"/>
+  <circle cx="625" cy="110" r="4" fill="#0066CC"/>
+  <text x="650" y="115" font-size="12">Merkle Tree</text>
+</svg>
+++++
+
 === Real-World Conflict Dynamics: Why Single-Digit Percentages Dominate
 
-While our benchmark tests divergence all the way from 0% up to 100%, it is worth emphasizing what actual partition conflicts look like in production environments.
+While the benchmark tests divergence from 0% to 100%, production deployments tell a different story.
 
-In real-world deployments, when conflicts do happen, they almost always land in the **single-digit percentages** of total entries changed (often well under 1% to 5%).
+In real-world environments, conflicts typically affect only a **single-digit percentage** of total entries (often well under 1% to 5%).
 There are several key reasons for this:
 
 * **Transient Partitions:** Modern cloud and datacenter network splits are typically brief, transient events—lasting from a few seconds to a few minutes before routing converges or automated recovery kicks in.
@@ -450,17 +533,20 @@ However, in typical operational recovery scenarios, partitions heal quickly, lea
 
 This is precisely why the Merkle tree architecture is so effective: it is optimized directly for the reality of distributed systems.
 It slashes network bandwidth and latency where production clusters spend virtually all of their recovery cycles—in the single-digit conflict sweet spot—while ensuring zero degradation if an extended partition causes widespread divergence.
+In other words, it's fast when you need it to be fast, and merely "not slower" when the world is already on fire.
 
 === Breaking Down the Results in a 6-Node Grid
 
 1. **Zero Conflicts Across 6 Nodes:**
-   In distributed caches, partitions frequently heal where vast stretches of segments experienced zero write divergence during the split.
+   Partitions frequently heal with vast stretches of segments that experienced zero write divergence during the split.
    With legacy resolution, every node has to serialize, transmit, and deserialize its owned segments across the JGroups cluster transport, taking **821 ms** and transferring **200 MB** of data.
    With Merkle trees and in-flight XOR hashing:
    * The coordinator broadcasts `GetSegmentHash` requests to segment owners.
    * All 256 segment hashes match immediately across replicas.
    * The total network traffic across the entire 6-node cluster is just **~4 KB** (256 segments $\times$ 2 owners $\times$ 8 bytes).
    * Resolution completes in **8.42 ms**—a **~98x speedup**!
+   +
+   That's right: we went from transferring 200 MB to transferring less data than a low-resolution meme.
 
 2. **Sparse to Moderate Conflicts (0.01% to 5.0%):**
    When between 10 and 5,000 keys diverge across the 6 nodes, only the segments containing those keys report mismatched segment hashes.
@@ -507,8 +593,8 @@ builder.clustering().cacheMode(CacheMode.DIST_SYNC)
 
 == Summary
 
-Partition handling is critical for ensuring data integrity when distributed systems experience network splits.
-With Issue #16887:
+Effective partition handling is essential for maintaining data integrity during network splits.
+Issue #16887 delivers:
 
 1. **Hierarchical Merkle tree comparisons** (Segment $\to$ 32 Buckets $\to$ Selective Fetch) cut network traffic by up to 99% during partition reconciliation.
 2. **In-flight running XOR hashing** shifts hash computation from an expensive $O(N)$ recovery-time scan to an unnoticeable $O(1)$ write-time bitwise operation.
