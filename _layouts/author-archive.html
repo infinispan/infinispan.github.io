@@ -1,0 +1,106 @@
+---
+layout: base
+---
+{% assign author_key = page.author_key %}
+{% assign author = site.data.authors[author_key] %}
+
+{% include breadcrumbs-band.html page_type="Blog" page_type_slug="blog" %}
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <div class="grid-wrapper author-header margin-tb-sm">
+      <div class="width-2-12 width-3-12-m justify-self-center align-self-center">
+        {% if author.image %}<img src="{{ author.image }}" class="author-img">{% endif %}
+      </div>
+      <div class="width-10-12 width-9-12-m align-self-center">
+        <h1>{{ author.name }}</h1>
+        {% if author.bio %}<p>{{ author.bio }}</p>{% endif %}
+        <div class="author-links">
+          {% if author.github %}<a href="{{ author.github }}"><i class="fab fa-github"></i></a>{% endif %}
+          {% if author.twitter %}<a href="{{ author.twitter }}"><i class="fab fa-x-twitter"></i></a>{% endif %}
+          {% if author.linkedin %}<a href="{{ author.linkedin }}"><i class="fab fa-linkedin"></i></a>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% assign author_posts = site.posts | where: "author", author_key %}
+    <h4>{{ author_posts.size }} post{% if author_posts.size != 1 %}s{% endif %}</h4>
+
+    <div id="author-posts-list">
+    {% for post in author_posts %}
+      <div class="blog-list-item grid-wrapper" data-post-index="{{ forloop.index }}">
+        <div class="post-title grid__item width-12-12">
+          <h6><a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }}</a></h6>
+        </div>
+        <div class="grid__item width-12-12">
+          <p class="blog-meta margin-tb-0">
+            <span class="blog-date">{{ post.date | date: '%B %d, %Y' }}</span>
+          </p>
+        </div>
+        <div class="grid__item width-12-12">
+          <p class="margin-tb-0">{{ post.content | strip_html | truncate: 280 }}</p>
+        </div>
+        <div class="grid__item width-12-12 blog-list-footer">
+          <div class="blog-tags">
+            {% for tag in post.tags %}<a class="tag-pill" href="{{ site.baseurl }}/blog/tag/{{ tag | slugify }}">{{ tag }}</a>{% endfor %}
+          </div>
+          <div class="blog-list-actions">
+            <a href="{{ site.baseurl }}{{ post.url }}">Read More ></a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+    </div>
+
+    {% if author_posts.size > 8 %}
+    <div class="paginator-btns" id="author-paginator"></div>
+    {% endif %}
+  </div>
+</div>
+
+{% if author_posts.size > 8 %}
+<script>
+(function() {
+  var perPage = 8;
+  var list = document.getElementById('author-posts-list');
+  var items = list.querySelectorAll('.blog-list-item');
+  var total = items.length;
+  var totalPages = Math.ceil(total / perPage);
+  var current = 1;
+
+  function showPage(page) {
+    current = page;
+    var start = (page - 1) * perPage;
+    var end = start + perPage;
+    for (var i = 0; i < total; i++) {
+      items[i].style.display = (i >= start && i < end) ? '' : 'none';
+    }
+    renderButtons();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function renderButtons() {
+    var container = document.getElementById('author-paginator');
+    container.innerHTML = '';
+    if (current < totalPages) {
+      var older = document.createElement('a');
+      older.className = 'button-cta';
+      older.textContent = 'Older Posts';
+      older.href = '#';
+      older.onclick = function(e) { e.preventDefault(); showPage(current + 1); };
+      container.appendChild(older);
+    }
+    if (current > 1) {
+      var newer = document.createElement('a');
+      newer.className = 'button-cta';
+      newer.textContent = 'Newer Posts';
+      newer.href = '#';
+      newer.onclick = function(e) { e.preventDefault(); showPage(current - 1); };
+      container.appendChild(newer);
+    }
+  }
+
+  showPage(1);
+})();
+</script>
+{% endif %}
