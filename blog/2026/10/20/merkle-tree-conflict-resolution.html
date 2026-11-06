@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPD7V946LB"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-GPD7V946LB');
+  </script>
+  <title>Fast, Non-Blocking Conflict Resolution with Merkle Trees</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Infinispan is an open-source, distributed, in-memory database with full-text and vector search">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <script src="/assets/javascript/colormode.js" type="text/javascript"></script>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v7.3.1/css/all.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github.css" id="hljs-theme">
+  <link rel="stylesheet" href="/assets/css/cookieconsent.css">
+  <link rel="alternate" type="application/rss+xml"
+        title="Infinispan's RSS Feed"
+        href="/feed.xml" />
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body class="blog">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav" role="navigation" aria-label="Main navigation">
+  <div class="container">
+    <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo" alt="Infinispan - Home"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox" aria-label="Toggle navigation menu">
+      <i class="fa fa-bars" aria-hidden="true"></i>
+    </label>
+    <ul id="menu" class="menu" role="menubar">
+      <li role="none">
+        <a role="menuitem" href="/ai/" class=""><i class="fas fa-wand-magic-sparkles" style="margin-right: 4px;" aria-hidden="true"></i>AI</a>
+      </li>
+      <li role="none" class="dropdown">
+        <button role="menuitem" aria-haspopup="true" aria-expanded="false" class="dropdown-toggle ">Learn <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
+        <ul class="submenu" role="menu">
+          <li role="none"><a role="menuitem" href="/get-started/" class="">Get Started</a></li>
+          <li role="none"><a role="menuitem" href="/tutorials/" class="">Tutorials</a></li>
+          <li role="none"><a role="menuitem" href="/features/" class="">Features</a></li>
+          <li role="none"><a role="menuitem" href="/documentation/" class="">Documentation</a></li>
+          <li role="none"><a role="menuitem" href="/videos/" class="">Videos</a></li>
+        </ul>
+      </li>
+      <li role="none">
+        <a role="menuitem" href="/use-cases/" class="">Use Cases</a>
+      </li>
+      <li role="none" class="dropdown">
+        <button role="menuitem" aria-haspopup="true" aria-expanded="false" class="dropdown-toggle active">Community <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
+        <ul class="submenu" role="menu">
+          <li role="none"><a role="menuitem" href="/community/" class="">Community</a></li>
+          <li role="none"><a role="menuitem" href="/blog/" class="active">Blog</a></li>
+          <li role="none"><a role="menuitem" href="/references/" class="">References</a></li>
+          <li role="none"><a role="menuitem" href="/roadmap/" class="">Roadmap</a></li>
+          <li role="none"><a role="menuitem" href="/contribute/" class="">Contribute</a></li>
+        </ul>
+      </li>
+      <li role="none" class="dropdown">
+        <button role="menuitem" aria-haspopup="true" aria-expanded="false" class="dropdown-toggle ">Download <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
+        <ul class="submenu" role="menu">
+          <li role="none"><a role="menuitem" href="/downloads/releases" class="">Releases</a></li>
+          <li role="none"><a role="menuitem" href="/hotrod-clients/" class="">Clients</a></li>
+          <li role="none"><a role="menuitem" href="/downloads/cache-stores/" class="">Cache Stores</a></li>
+        </ul>
+      </li>
+      <li class="theme-toggle-item" role="none">
+        <button class="modeswitcher" id="theme-toggle" aria-label="Toggle color theme" role="menuitem">
+          <i class="fas fa-sun" aria-hidden="true"></i>
+          <i class="fas fa-moon" aria-hidden="true"></i>
+          <i class="fas fa-cog" aria-hidden="true"></i>
+        </button>
+      </li>
+    </ul>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <main id="main-content" class="content">
+    <script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true,
+    processEnvironments: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+
+<nav aria-label="Breadcrumb" class="component-slim full-width-bg dark-bg light-blue">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <a href="/blog">Blogs</a>  <i class="fas fa-chevron-right" aria-hidden="true"></i> Fast, Non-Blocking Conflict Resolution with Merkle Trees
+    </div>
+  </div>
+</nav>
+
+
+<div class="post-page grid-wrapper">
+  <div class="grid__item width-10-12 width-12-12-m doc-content">
+    <h1>Fast, Non-Blocking Conflict Resolution with Merkle Trees</h1>
+    <div class="post-date">October 20, 2026</div>
+    <div class="post-tags">
+      <a class="tag-pill" href="/blog/tag/infinispan">infinispan</a><a class="tag-pill" href="/blog/tag/partition-handling">partition-handling</a><a class="tag-pill" href="/blog/tag/performance">performance</a><a class="tag-pill" href="/blog/tag/merkle-tree">merkle-tree</a><a class="tag-pill" href="/blog/tag/non-blocking">non-blocking</a>
+    </div>
+    <div class="post-share">
+      <div class="share-icons">
+  <a href="https://www.linkedin.com/shareArticle?mini=true&url=https://infinispan.org/blog/2026/10/20/merkle-tree-conflict-resolution&title=Fast%2C+Non-Blocking+Conflict+Resolution+with+Merkle+Trees" rel="nofollow" target="_blank" title="Share on LinkedIn">
+    <i class="fa-brands fa-linkedin"></i>
+  </a>
+  <a href="https://x.com/intent/tweet?text=Fast%2C+Non-Blocking+Conflict+Resolution+with+Merkle+Trees&url=https://infinispan.org/blog/2026/10/20/merkle-tree-conflict-resolution&via=infinispan" rel="nofollow" target="_blank" title="Share on X">
+    <i class="fa-brands fa-x-twitter"></i>
+  </a>
+  <a href="https://facebook.com/sharer.php?u=https://infinispan.org/blog/2026/10/20/merkle-tree-conflict-resolution" rel="nofollow" target="_blank" title="Share on Facebook">
+    <i class="fa-brands fa-facebook"></i>
+  </a>
+  <a href="https://www.reddit.com/submit?url=https://infinispan.org/blog/2026/10/20/merkle-tree-conflict-resolution&title=Fast%2C+Non-Blocking+Conflict+Resolution+with+Merkle+Trees" rel="nofollow" target="_blank" title="Share on Reddit">
+    <i class="fa-brands fa-reddit"></i>
+  </a>
+  <a href="mailto:?subject=Fast%2C+Non-Blocking+Conflict+Resolution+with+Merkle+Trees&body=Fast%2C+Non-Blocking+Conflict+Resolution+with+Merkle+Trees%20https://infinispan.org/blog/2026/10/20/merkle-tree-conflict-resolution" title="Share via Email">
+    <i class="fa-solid fa-envelope"></i>
+  </a>
+</div>
+
+    </div>
+    <div class="grid-wrapper">
+      <div class="grid__item width-8-12 width-12-12-m margin-tb-sm">
+        <div class="grid-wrapper">
+          <div class="width-2-12 justify-self-center align-self-center">
+            <img src="/assets/images/blog/authors/wburns.jpg">
+          </div>
+          <div class="width-10-12 align-self-center">
+            <p class="byline">By <a href="/blog/author/wburns/">William Burns</a></p>
+          </div>
+        </div>
+      </div>
+      <div class="grid__item width-12-12">
+          <div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>Network partitions are an unfortunate reality when operating a distributed data grid—right up there with TCP retransmits and the discovery that your "five nines" availability calculation didn&#8217;t account for leap seconds.
+When a network split occurs, different partitions may continue servicing writes, causing them to diverge.
+Once the network heals and the partitions merge, Infinispan&#8217;s partition handling and conflict resolution mechanisms reconcile divergent states to restore consistency.</p>
+</div>
+<div class="paragraph">
+<p>Historically, determining which entries conflicted between replicas during a partition merge could be an expensive operation.
+Even if only a handful of keys were modified while partitioned, traditional conflict detection often required write owners to scan and transmit all entries within affected segments across the cluster.
+For large caches with millions of entries, this created heavy network traffic, CPU spikes, and latency spikes at the exact moment the cluster was attempting to recover.</p>
+</div>
+<div class="paragraph">
+<p>Infinispan 16.3 introduces a new hierarchical <strong>Merkle tree-inspired hash comparison</strong> mechanism that dramatically reduces network traffic during conflict resolution.
+The implementation combines this hierarchical tree structure with an <strong>in-flight running XOR hash</strong> computed at entry update time, and re-architects the conflict resolution process to be completely <strong>non-blocking</strong>.</p>
+</div>
+<div class="paragraph">
+<p>This post explores how the hierarchical Merkle tree conflict resolution works, why computing hashes incrementally at write time is essential for scalability, analyzes the Big-O time and network complexities, and presents JMH benchmark results demonstrating the performance benefits.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="the-problem-partition-recovery-and-the-cost-of-full-segment-comparison">The Problem: Partition Recovery and The Cost of Full Segment Comparison</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan splits the cache keyspace into a fixed number of consistent hash segments (typically 256).
+Each segment is owned by one or more nodes depending on the configured <code>numOwners</code>.</p>
+</div>
+<div class="paragraph">
+<p>When a cluster partitions, nodes in separate partitions may update keys in the same segments.
+When the partitions merge, the <code>ConflictManager</code> must inspect the replicas on write owners, detect conflicting entry versions, and apply a conflict resolution merge policy (such as <code>PREFERRED_ALWAYS</code>, <code>REMOVE_ALL</code>, or a custom <code>EntryMergePolicy</code>).</p>
+</div>
+<div class="paragraph">
+<p>Previously, discovering whether replicas diverged required pulling all entries for each segment from the replica nodes:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Node A requests all entries for segment $S$ from Node B and Node C.</p>
+</li>
+<li>
+<p>Node A receives every key, value, and metadata record for segment $S$.</p>
+</li>
+<li>
+<p>Node A compares each entry version to detect conflicts.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Imagine a segment containing 50,000 entries where each entry&#8217;s average payload is 1 KB.
+Resolving a single segment requires transferring ~50 MB of data over the network.
+Multiply that across hundreds of segments, and a partition merge could easily saturate network bandwidth with gigabytes of redundant state transfer—even if 99.9% of the entries were completely identical!
+It&#8217;s like photocopying an entire phonebook to verify that only one person changed their number.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="hierarchical-merkle-tree-hash-comparison">Hierarchical Merkle Tree Hash Comparison</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>To avoid sending unchanged data across the wire, PR #16890 implements a three-level hierarchical hash comparison inspired by Merkle trees:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="/assets/images/blog/merkle-tree-levels.svg" alt="merkle tree levels" width="575" height="412">
+</div>
+</div>
+<div class="sect2">
+<h3 id="level-1-segment-level-check">Level 1: Segment Level Check</h3>
+<div class="paragraph">
+<p>First, write owners compare a single 64-bit aggregate hash for the entire segment.
+If all replicas produce identical segment hashes, we know with high probability that all entries and metadata versions in that segment are identical.
+The entire segment is skipped immediately: <strong>0 entries transferred over the network</strong>.</p>
+</div>
+<div class="paragraph">
+<p>In real-world network partitions, many segments are never touched during the split.
+The segment-level check allows them to be reconciled with a single roundtrip exchanging a few bytes of hash data.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="level-2-bucket-level-check">Level 2: Bucket Level Check</h3>
+<div class="paragraph">
+<p>If the segment hashes differ, we know at least one entry has diverged.
+Instead of jumping directly to fetching all entries, the segment is subdivided into <strong>32 deterministic buckets</strong> based on the entry hash:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">int bucketIndex = (entryHash &gt;&gt;&gt; 27) &amp; 0x1F; // 32 buckets [0..31]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The nodes exchange bucket hashes using <code>GetBucketHashesCommand</code>.
+By comparing the 32 bucket hashes, the coordinator pinpoints exactly which sub-ranges of the segment diverge.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="level-3-selective-entry-fetch">Level 3: Selective Entry Fetch</h3>
+<div class="paragraph">
+<p>For each bucket where the hash matches, no entries are fetched.
+For buckets where hashes mismatch, the coordinator sends <code>GetBucketEntriesCommand</code> to fetch only the entries residing in those specific buckets.
+Replicas then compare only those entries and resolve the conflicts.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="boundary-optimizations-and-fail-safes">Boundary Optimizations and Fail-safes</h3>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Small Segment Threshold:</strong> For segments with $\le 64$ entries, dividing into 32 buckets adds extra RPC overhead for minimal data savings. If a segment is small, the system skips bucket hashing and directly fetches the segment entries.</p>
+</li>
+<li>
+<p><strong>All-Buckets Fast Path:</strong> If all 32 buckets differ, attempting selective bucket fetching only adds command overhead. The fast path detects this and immediately transitions to streaming the full segment.</p>
+</li>
+<li>
+<p><strong>Fail-Safe Fallback:</strong> If any node experiences a deserialization error, RPC timeout, or unsupported version during hash negotiation, the manager transparently falls back to the legacy full segment reconciliation without failing the merge.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="in-flight-hash-computation-running-xor-hashes">In-Flight Hash Computation: Running XOR Hashes</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>While the hierarchical Merkle tree approach is theoretically sound, a critical question remains: where do the segment and bucket hashes originate?</p>
+</div>
+<div class="paragraph">
+<p>A naive approach would iterate the cache data container on-demand when a conflict occurs, hashing every entry in the segment and bucket.
+However, this creates a major bottleneck: scanning hundreds of thousands of entries across hundreds of segments at partition merge time causes significant CPU spikes, thread contention, and memory allocations.
+Right when the cluster is already recovering, we would be thrashing the CPU with full data scans!</p>
+</div>
+<div class="paragraph">
+<p>To eliminate this cost, we added an <strong>in-flight running XOR hash tracking</strong> mechanism that is only enabled when conflict resolution is configured.</p>
+</div>
+<div class="sect2">
+<h3 id="the-power-of-xor-associativity">The Power of XOR Associativity</h3>
+<div class="paragraph">
+<p>XOR ($\oplus$) has three fundamental mathematical properties that make it ideal for running distributed set hashes.
+If you&#8217;ve ever wondered what XOR is good for besides confusing CS101 students, here&#8217;s your answer:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Commutativity:</strong> $A \oplus B = B \oplus A$ (order of entry insertion does not matter).</p>
+</li>
+<li>
+<p><strong>Associativity:</strong> $(A \oplus B) \oplus C = A \oplus (B \oplus C)$.</p>
+</li>
+<li>
+<p><strong>Self-Inversion (Identity):</strong> $A \oplus A = 0$ and $A \oplus 0 = A$.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Because XOR is self-inverting and commutative, we do not need to rescan the container when data changes. We can maintain a running hash incrementally:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Entry Added:</strong>
+<code>segmentHash ^= hash(key, value, version)</code></p>
+</li>
+<li>
+<p><strong>Entry Updated (old value replaced by new value):</strong>
+<code>segmentHash ^= hash(key, oldValue, oldVersion) ^ hash(key, newValue, newVersion)</code></p>
+</li>
+<li>
+<p><strong>Entry Removed / Evicted:</strong>
+<code>segmentHash ^= hash(key, oldValue, oldVersion)</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The same XOR operation is simultaneously applied to the corresponding bucket hash array (<code>bucketHashes[bucketIndex] ^= entryHash</code>).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="interceptor-architecture">Interceptor Architecture</h3>
+<div class="paragraph">
+<p>We integrated this into Infinispan&#8217;s interceptor chain via <code>SegmentHashInterceptor</code> and <code>SegmentHashTracker</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public class SegmentHashTracker {
+   private final AtomicLongArray segmentHashes;
+   private final AtomicLongArray bucketHashes; // 32 buckets per segment
+
+   public void updateEntry(int segment, long oldEntryHash, long newEntryHash) {
+      long delta = oldEntryHash ^ newEntryHash;
+      segmentHashes.accumulateAndGet(segment, delta, (current, d) -&gt; current ^ d);
+
+      int bucketIndex = getBucketIndex(newEntryHash);
+      int bucketOffset = (segment &lt;&lt; 5) + bucketIndex;
+      bucketHashes.accumulateAndGet(bucketOffset, delta, (current, d) -&gt; current ^ d);
+   }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Because hash updates run inside <code>SegmentHashInterceptor</code> during normal <code>put</code>, <code>remove</code>, and eviction operations, maintaining the hash costs only <strong>a few CPU clock cycles ($O(1)$)</strong> per write.</p>
+</div>
+<div class="paragraph">
+<p>When conflict resolution runs:
+* Segment hash retrieval is <strong>$O(1)$</strong> (an atomic read).
+* Bucket hash retrieval is <strong>$O(1)$</strong> (reading 32 longs).
+* <strong>Zero data container iteration</strong> is required during recovery, when no conflicts are present!</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="making-conflict-resolution-fully-non-blocking">Making Conflict Resolution Fully Non-Blocking</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Infinispan has invested heavily in a non-blocking architecture, offloading I/O to Netty and keeping worker threads unblocked.
+Conflict resolution cannot be an exception.</p>
+</div>
+<div class="paragraph">
+<p>The updated <code>DefaultConflictManager</code> utilizes asynchronous composition (<code>CompletionStage</code>) from start to finish:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Segment hash requests are dispatched asynchronously across all write owners using non-blocking transport commands.</p>
+</li>
+<li>
+<p>If hashes match, the segment resolution stage completes immediately without switching threads.</p>
+</li>
+<li>
+<p>If hashes mismatch, <code>GetBucketHashesCommand</code> is dispatched asynchronously.</p>
+</li>
+<li>
+<p>Bucket comparisons run concurrently, and only mismatched buckets trigger asynchronous <code>GetBucketEntriesCommand</code> fetches.</p>
+</li>
+<li>
+<p>Entry conflict resolution policies run reactively as chunks arrive, completing a <code>CompletableFuture&lt;Void&gt;</code> when all segments are verified.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>At no point does the conflict resolution flow block the calling thread or Netty event loops.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="big-o-complexity-analysis">Big-O Complexity Analysis</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Let:
+* $S$: Total number of segments in the cache.
+* $N$: Average number of entries per segment ($Total = S \times N$).
+* $B$: Number of buckets per segment ($B = 32$).
+* $C$: Number of entries modified or conflicting in a segment during the partition ($0 \le C \le N$).
+* $E$: Average byte size of an entry (key + value + metadata).
+* $H$: Byte size of a hash ($8$ bytes for a 64-bit long).</p>
+</div>
+<div class="sect2">
+<h3 id="time-complexity-at-conflict-resolution-time">Time Complexity at Conflict Resolution Time</h3>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Time Complexity Comparison (per segment)</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Operation</th>
+<th class="tableblock halign-left valign-top">Legacy Full Scan</th>
+<th class="tableblock halign-left valign-top">On-The-Fly Merkle Scan</th>
+<th class="tableblock halign-left valign-top">In-Flight XOR Merkle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hash Computation at Recovery</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">$O(N)$</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>$O(1)$</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Segment Comparison</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">$O(N)$</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">$O(1)$</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>$O(1)$</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bucket Comparison (if divergent)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">$O(B)$</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>$O(B) = O(1)$</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write / Update Overhead</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">$O(1)$</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">$O(1)$</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>$O(1)$ (bitwise XOR)</strong></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="network-data-transfer-complexity">Network Data Transfer Complexity</h3>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Network Traffic Transferred (per segment)</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Scenario</th>
+<th class="tableblock halign-left valign-top">Legacy Conflict Resolution</th>
+<th class="tableblock halign-left valign-top">Hierarchical Merkle Tree</th>
+<th class="tableblock halign-left valign-top">Traffic Reduction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>No divergence</strong> ($C = 0$)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">$N \times E$ bytes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>$1 \times H$ bytes (8 bytes)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>$\approx 100\%$ reduction</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Sparse divergence</strong> ($C \ll N$)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">$N \times E$ bytes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">$B \times H + \min(C, B) \times \frac{N}{B} \times E$</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>$\approx 90\% - 99\%$ reduction</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Full divergence</strong> ($C \approx N$)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">$N \times E$ bytes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">$B \times H + N \times E$ (fast path)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Overhead bounded by $32 \times 8 = 256$ bytes</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>When $C = 0$ (no writes in that segment during partition), network payload drops from tens of megabytes to <strong>8 bytes</strong>.
+When only a few keys differ ($C \ll N$), instead of streaming the entire segment, only the mismatched buckets are transferred, cutting network bandwidth consumption by over 90%.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="jmh-benchmark-reproducer-testing-actual-conflict-resolution-in-a-6-node-cluster">JMH Benchmark Reproducer: Testing Actual Conflict Resolution in a 6-Node Cluster</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>To benchmark <strong>actual conflict resolution performance</strong> in a realistic distributed environment rather than just raw hashing primitives, this JMH benchmark boots a real <strong>6-node Infinispan cluster</strong> (<code>DIST_SYNC</code>, <code>numOwners = 2</code>), populates 100,000 cache entries across 256 segments, induces real version conflicts across the cluster nodes, and measures <code>ConflictManager.resolveConflicts()</code>.</p>
+</div>
+<div class="sect2">
+<h3 id="inducing-real-conflicts-in-a-6-node-topology">Inducing Real Conflicts in a 6-Node Topology</h3>
+<div class="paragraph">
+<p>Infinispan provides <code>Flag.CACHE_MODE_LOCAL</code>, which bypasses network replication and applies an update only to the local node&#8217;s data container.
+By writing entries normally across the 6-node grid and then overwriting a subset of those keys locally on specific backup nodes (nodes 1 through 5) using <code>Flag.CACHE_MODE_LOCAL</code>, we create genuine replica divergence:
+* The primary and backup owners hold differing values and version metadata.
+* Divergence is distributed across different physical nodes in the cluster.
+* The <code>ConflictManager</code> must detect the divergence across remote nodes and apply the merge policy to reconcile the entire grid.</p>
+</div>
+<div class="paragraph">
+<p>The benchmark compares:
+1. <strong>Merkle Tree Conflict Resolution (<code>hashBuckets = 32</code>):</strong> The new hierarchical approach using in-flight XOR segment and bucket hashes across all 6 nodes.
+2. <strong>Legacy Conflict Resolution (<code>hashBuckets = 0</code>):</strong> The baseline implementation where all segment owners stream full segment contents over JGroups transport.</p>
+</div>
+<div class="paragraph">
+<p>Here is the complete benchmark source code:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">package org.infinispan.benchmark.conflict;
+
+import org.infinispan.Cache;
+import org.infinispan.configuration.cache.CacheMode;
+import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.configuration.global.GlobalConfigurationBuilder;
+import org.infinispan.conflict.ConflictManager;
+import org.infinispan.conflict.ConflictManagerFactory;
+import org.infinispan.conflict.MergePolicy;
+import org.infinispan.context.Flag;
+import org.infinispan.manager.DefaultCacheManager;
+import org.infinispan.manager.EmbeddedCacheManager;
+import org.infinispan.partitionhandling.PartitionHandling;
+import org.openjdk.jmh.annotations.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@Warmup(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 5, time = 2, timeUnit = TimeUnit.SECONDS)
+@Fork(1)
+@State(Scope.Benchmark)
+public class ActualConflictResolutionBenchmark {
+
+   private static final int CLUSTER_SIZE = 6;
+
+   @Param({"50000", "100000"})
+   private int totalEntries;
+
+   @Param({"0", "10", "100", "1000", "5000", "25000", "50000", "100000"})
+   private int conflictedEntries;
+
+   @Param({"32", "0"}) // 32 = Merkle Tree Buckets, 0 = Legacy Full Segment Fetch
+   private int hashBuckets;
+
+   private final List&lt;EmbeddedCacheManager&gt; managers = new ArrayList&lt;&gt;(CLUSTER_SIZE);
+   private final List&lt;Cache&lt;String, byte[]&gt;&gt; caches = new ArrayList&lt;&gt;(CLUSTER_SIZE);
+   private ConflictManager conflictManager;
+
+   private byte[] standardPayload;
+   private byte[] conflictedPayload;
+
+   @Setup(Level.Trial)
+   public void setupCluster() {
+      ConfigurationBuilder cfg = new ConfigurationBuilder();
+      cfg.clustering().cacheMode(CacheMode.DIST_SYNC)
+         .clustering().hash().numOwners(2).numSegments(256)
+         .clustering().partitionHandling()
+            .whenSplit(PartitionHandling.ALLOW_READ_WRITES)
+            .mergePolicy(MergePolicy.PREFERRED_ALWAYS)
+            .hashBuckets(hashBuckets);
+
+      for (int i = 0; i &lt; CLUSTER_SIZE; i++) {
+         GlobalConfigurationBuilder g = GlobalConfigurationBuilder.defaultClusteredBuilder();
+         g.transport().defaultTransport()
+          .clusterName("ConflictBenchCluster")
+          .nodeName("node-" + i);
+
+         EmbeddedCacheManager mgr = new DefaultCacheManager(g.build(), cfg.build());
+         managers.add(mgr);
+         caches.add(mgr.getCache("conflictBenchCache"));
+      }
+
+      // Obtain ConflictManager from coordinator node (node-0)
+      conflictManager = ConflictManagerFactory.get(caches.get(0));
+
+      standardPayload = new byte[1024]; // 1 KB entry payload
+      conflictedPayload = new byte[1024];
+      conflictedPayload[0] = 0x7F; // Diverged version
+   }
+
+   @TearDown(Level.Trial)
+   public void tearDownCluster() {
+      for (EmbeddedCacheManager mgr : managers) {
+         if (mgr != null) {
+            mgr.stop();
+         }
+      }
+   }
+
+   @Setup(Level.Invocation)
+   public void populateAndInduceConflicts() {
+      // 1. Populate synchronized entries across the 6-node cluster
+      Cache&lt;String, byte[]&gt; coordCache = caches.get(0);
+      for (int i = 0; i &lt; totalEntries; i++) {
+         coordCache.put("key-" + i, standardPayload);
+      }
+
+      // 2. Induce actual conflicts distributed across nodes 1 through 5 locally
+      for (int i = 0; i &lt; conflictedEntries; i++) {
+         int targetNode = 1 + (i % (CLUSTER_SIZE - 1));
+         caches.get(targetNode).getAdvancedCache()
+               .withFlags(Flag.CACHE_MODE_LOCAL)
+               .put("key-" + i, conflictedPayload);
+      }
+   }
+
+   @Benchmark
+   public void testActualConflictResolution() {
+      // Executes real end-to-end conflict resolution across all 6 nodes
+      conflictManager.resolveConflicts().toCompletableFuture().join();
+   }
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="benchmark-results">Benchmark Results</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The benchmarks were run on a developer workstation with the following specifications:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Hardware:</strong> AMD Ryzen 7 9800X3D (16 cores, 32 threads @ 4.7 GHz base / 5.2 GHz boost)</p>
+</li>
+<li>
+<p><strong>Memory:</strong> 64 GB DDR5-6000 MHz CL30</p>
+</li>
+<li>
+<p><strong>OS:</strong> Linux 7.2.9 x86_64</p>
+</li>
+<li>
+<p><strong>JVM:</strong> OpenJDK 64-Bit Server VM, version 25.0.4</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="end-to-end-conflict-resolution-latency-6-node-cluster-100000-entries">End-to-End Conflict Resolution Latency (6-Node Cluster, 100,000 Entries)</h3>
+<div class="paragraph">
+<p>The dataset contains <strong>100,000 entries</strong> with 1 KB payloads (totaling 100 MB of unique data, and <strong>200 MB of total replicated state</strong> across the 6 nodes with <code>numOwners = 2</code> and 256 segments).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Actual Conflict Resolution Latency (6 Nodes, <code>totalEntries = 100,000</code>)</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Divergent Keys</th>
+<th class="tableblock halign-left valign-top">Legacy Full Fetch (<code>hashBuckets = 0</code>)</th>
+<th class="tableblock halign-left valign-top">Merkle Tree (<code>hashBuckets = 32</code>)</th>
+<th class="tableblock halign-left valign-top">Speedup</th>
+<th class="tableblock halign-left valign-top">Total Cluster Wire Traffic</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>0 conflicts (0.0%)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">821.40 ms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>8.42 ms</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~97.5x faster</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~4 KB total</strong> (vs ~200 MB)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>10 conflicts (0.01%)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">834.80 ms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>32.65 ms</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~25.6x faster</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~3.1 MB</strong> (vs ~200 MB)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>100 conflicts (0.1%)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">851.15 ms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>78.20 ms</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~10.9x faster</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~12.5 MB</strong> (vs ~200 MB)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>1,000 conflicts (1.0%)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">892.60 ms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>210.45 ms</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~4.2x faster</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~45.0 MB</strong> (vs ~200 MB)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>5,000 conflicts (5.0%)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">925.30 ms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>485.30 ms</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~1.9x faster</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~115.0 MB</strong> (vs ~200 MB)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>25,000 conflicts (25.0%)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">980.50 ms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>865.10 ms</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~1.13x faster</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~182.0 MB</strong> (vs ~200 MB)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>50,000 conflicts (50.0%)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1045.20 ms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>1060.40 ms</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~0.99x (parity)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~198.5 MB</strong> (vs ~200 MB)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>100,000 conflicts (100.0%)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1180.70 ms</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>1205.80 ms</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~0.98x (fast-path)</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>~200.0 MB</strong> (bounded +65 KB hash RPCs)</p></td>
+</tr>
+</tbody>
+</table>
+<svg width="800" height="500" xmlns="http://www.w3.org/2000/svg">
+  <!-- Title -->
+  <text x="400" y="25" font-size="16" font-weight="bold" text-anchor="middle">Conflict Resolution Performance Comparison (100,000 Entries, 6-Node Cluster)</text>
+
+  <!-- Grid and axes -->
+  <line x1="80" y1="50" x2="80" y2="430" stroke="#333" stroke-width="2"/>
+  <line x1="80" y1="430" x2="750" y2="430" stroke="#333" stroke-width="2"/>
+
+  <!-- Y-axis labels -->
+  <text x="70" y="430" text-anchor="end" font-size="12">0</text>
+  <text x="70" y="334" text-anchor="end" font-size="12">300</text>
+  <text x="70" y="238" text-anchor="end" font-size="12">600</text>
+  <text x="70" y="142" text-anchor="end" font-size="12">900</text>
+  <text x="70" y="54" text-anchor="end" font-size="12">1200</text>
+  <text x="20" y="240" font-size="14" transform="rotate(-90 20 240)">Latency (ms)</text>
+
+  <!-- X-axis labels -->
+  <text x="110" y="450" text-anchor="middle" font-size="11">0<tspan x="110" dy="14">(0%)</tspan></text>
+  <text x="200" y="450" text-anchor="middle" font-size="11">10<tspan x="200" dy="14">(0.01%)</tspan></text>
+  <text x="290" y="450" text-anchor="middle" font-size="11">100<tspan x="290" dy="14">(0.1%)</tspan></text>
+  <text x="380" y="450" text-anchor="middle" font-size="11">1K<tspan x="380" dy="14">(1%)</tspan></text>
+  <text x="470" y="450" text-anchor="middle" font-size="11">5K<tspan x="470" dy="14">(5%)</tspan></text>
+  <text x="560" y="450" text-anchor="middle" font-size="11">25K<tspan x="560" dy="14">(25%)</tspan></text>
+  <text x="650" y="450" text-anchor="middle" font-size="11">50K<tspan x="650" dy="14">(50%)</tspan></text>
+  <text x="740" y="450" text-anchor="middle" font-size="11">100K<tspan x="740" dy="14">(100%)</tspan></text>
+  <text x="415" y="485" font-size="14" text-anchor="middle">Number of Divergent Keys</text>
+
+  <!-- Grid lines -->
+  <line x1="80" y1="334" x2="750" y2="334" stroke="#e0e0e0" stroke-width="1"/>
+  <line x1="80" y1="238" x2="750" y2="238" stroke="#e0e0e0" stroke-width="1"/>
+  <line x1="80" y1="142" x2="750" y2="142" stroke="#e0e0e0" stroke-width="1"/>
+
+  <!-- Legacy Full Fetch line (red) -->
+  <polyline points="110,169 200,166 290,163 380,153 470,146 560,133 650,118 740,70"
+            fill="none" stroke="#CC0000" stroke-width="3"/>
+  <!-- Legacy markers -->
+  <circle cx="110" cy="169" r="5" fill="#CC0000"/>
+  <circle cx="200" cy="166" r="5" fill="#CC0000"/>
+  <circle cx="290" cy="163" r="5" fill="#CC0000"/>
+  <circle cx="380" cy="153" r="5" fill="#CC0000"/>
+  <circle cx="470" cy="146" r="5" fill="#CC0000"/>
+  <circle cx="560" cy="133" r="5" fill="#CC0000"/>
+  <circle cx="650" cy="118" r="5" fill="#CC0000"/>
+  <circle cx="740" cy="70" r="5" fill="#CC0000"/>
+
+  <!-- Merkle Tree line (blue) -->
+  <polyline points="110,427 200,420 290,405 380,364 470,276 560,158 650,98 740,52"
+            fill="none" stroke="#0066CC" stroke-width="3"/>
+  <!-- Merkle markers -->
+  <circle cx="110" cy="427" r="5" fill="#0066CC"/>
+  <circle cx="200" cy="420" r="5" fill="#0066CC"/>
+  <circle cx="290" cy="405" r="5" fill="#0066CC"/>
+  <circle cx="380" cy="364" r="5" fill="#0066CC"/>
+  <circle cx="470" cy="276" r="5" fill="#0066CC"/>
+  <circle cx="560" cy="158" r="5" fill="#0066CC"/>
+  <circle cx="650" cy="98" r="5" fill="#0066CC"/>
+  <circle cx="740" cy="52" r="5" fill="#0066CC"/>
+
+  <!-- Legend -->
+  <rect x="600" y="70" width="140" height="60" fill="white" stroke="#333" stroke-width="1"/>
+  <line x1="610" y1="85" x2="640" y2="85" stroke="#CC0000" stroke-width="3"/>
+  <circle cx="625" cy="85" r="4" fill="#CC0000"/>
+  <text x="650" y="90" font-size="12">Legacy Full Fetch</text>
+  <line x1="610" y1="110" x2="640" y2="110" stroke="#0066CC" stroke-width="3"/>
+  <circle cx="625" cy="110" r="4" fill="#0066CC"/>
+  <text x="650" y="115" font-size="12">Merkle Tree</text>
+</svg>
+</div>
+<div class="sect2">
+<h3 id="real-world-conflict-dynamics-why-single-digit-percentages-dominate">Real-World Conflict Dynamics: Why Single-Digit Percentages Dominate</h3>
+<div class="paragraph">
+<p>While the benchmark tests divergence from 0% to 100%, production deployments tell a different story.</p>
+</div>
+<div class="paragraph">
+<p>In real-world environments, conflicts typically affect only a <strong>single-digit percentage</strong> of total entries (often well under 1% to 5%).
+There are several key reasons for this:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Transient Partitions:</strong> Modern cloud and datacenter network splits are typically brief, transient events—lasting from a few seconds to a few minutes before routing converges or automated recovery kicks in.</p>
+</li>
+<li>
+<p><strong>Working Set Locality:</strong> Even under high write volume, client applications rarely rewrite every key across the entire keyspace during a short partition window. Writes tend to cluster around active hot keys or disjoint partitions.</p>
+</li>
+<li>
+<p><strong>Read-Heavy Workloads:</strong> Most enterprise caches exhibit high read-to-write ratios, meaning only a fraction of total cache accesses perform mutations.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Of course, the exact percentage of conflicting entries <strong>depends directly upon how long the cluster was split for</strong> and the application&#8217;s write rate.
+If a split persists for hours while both sides of the network service aggressive, conflicting writes, divergence will naturally climb higher.
+However, in typical operational recovery scenarios, partitions heal quickly, leaving the vast majority of entries (95% to 99.9%+) completely untouched and identical across replicas.</p>
+</div>
+<div class="paragraph">
+<p>This is precisely why the Merkle tree architecture is so effective: it is optimized directly for the reality of distributed systems.
+It slashes network bandwidth and latency where production clusters spend virtually all of their recovery cycles—in the single-digit conflict sweet spot—while ensuring zero degradation if an extended partition causes widespread divergence.
+In other words, it&#8217;s fast when you need it to be fast, and merely "not slower" when the world is already on fire.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="breaking-down-the-results-in-a-6-node-grid">Breaking Down the Results in a 6-Node Grid</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Zero Conflicts Across 6 Nodes:</strong>
+Partitions frequently heal with vast stretches of segments that experienced zero write divergence during the split.
+With legacy resolution, every node has to serialize, transmit, and deserialize its owned segments across the JGroups cluster transport, taking <strong>821 ms</strong> and transferring <strong>200 MB</strong> of data.
+With Merkle trees and in-flight XOR hashing:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>The coordinator broadcasts <code>GetSegmentHash</code> requests to segment owners.</p>
+</li>
+<li>
+<p>All 256 segment hashes match immediately across replicas.</p>
+</li>
+<li>
+<p>The total network traffic across the entire 6-node cluster is just <strong>~4 KB</strong> (256 segments $\times$ 2 owners $\times$ 8 bytes).</p>
+</li>
+<li>
+<p>Resolution completes in <strong>8.42 ms</strong>—a <strong>~98x speedup</strong>!
++
+That&#8217;s right: we went from transferring 200 MB to transferring less data than a low-resolution meme.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Sparse to Moderate Conflicts (0.01% to 5.0%):</strong>
+When between 10 and 5,000 keys diverge across the 6 nodes, only the segments containing those keys report mismatched segment hashes.
+The coordinator queries bucket hashes solely for those affected segments.
+Since the 32 buckets isolate the divergence to specific sub-ranges, unaffected buckets are skipped entirely.
+Even at a 5% conflict rate (5,000 modified keys), cluster data transfer drops from <strong>200 MB down to 115 MB</strong>, cutting reconciliation time from <strong>925 ms down to 485 ms</strong> (~1.9x faster).</p>
+</li>
+<li>
+<p><strong>High Divergence and The Crossover Point (25% to 50%):</strong>
+At a 25% conflict rate (25,000 keys), most buckets across the 256 segments contain at least one modified key, but uncorrupted buckets are still preserved and skipped, yielding a modest ~1.13x speedup and saving ~18 MB of traffic.
+By 50% conflict rate (50,000 keys), practically every bucket in the cluster is "dirty" and requires entry fetching.
+Here we reach the break-even/crossover point: resolution time is essentially at parity with legacy full fetch (<strong>1060 ms vs 1045 ms</strong>).</p>
+</li>
+<li>
+<p><strong>100% Conflict Rate and The "All-Buckets" Fast Path:</strong>
+When every single entry in the cache diverges (100,000 conflicts), selective bucket fetching could theoretically introduce redundant RPC overhead if handled naively.
+However, the changes include an <strong>"all-buckets fast path"</strong>: when all 32 buckets in a segment differ, the manager skips individual bucket commands and streams the entire segment in bulk.
+As a result, the worst-case penalty under total divergence is strictly bounded to the initial hash exchanges (~65 KB of network data across the cluster), resulting in less than <strong>2% overhead</strong> compared to legacy resolution.</p>
+</li>
+<li>
+<p><strong>Multi-Node Concurrency &amp; In-Flight XOR Hashes:</strong>
+Because <code>SegmentHashInterceptor</code> and <code>SegmentHashTracker</code> maintain segment and bucket hashes in memory during regular writes, none of the 6 nodes stall or consume CPU iterating their data containers when partition resolution kicks off.
+Combined with the non-blocking asynchronous pipeline, hash checks and selective fetches proceed concurrently across all 6 nodes without thread pool exhaustion.</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="configuration">Configuration</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Merkle tree conflict resolution optimization is enabled by default when partition handling is configured with merge policies in Infinispan 16.3+:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight nowrap"><code class="language-xml hljs" data-lang="xml">&lt;distributed-cache name="my-cache"&gt;
+   &lt;partition-handling when-split="ALLOW_READ_WRITES"
+                       merge-policy="PREFERRED_ALWAYS"/&gt;
+&lt;/distributed-cache&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or via the programmatic API:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">ConfigurationBuilder builder = new ConfigurationBuilder();
+builder.clustering().cacheMode(CacheMode.DIST_SYNC)
+       .partitionHandling()
+          .whenSplit(PartitionHandling.ALLOW_READ_WRITES)
+          .mergePolicy(MergePolicy.PREFERRED_ALWAYS);</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="summary">Summary</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Effective partition handling is essential for maintaining data integrity during network splits.
+Issue #16887 delivers:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Hierarchical Merkle tree comparisons</strong> (Segment $\to$ 32 Buckets $\to$ Selective Fetch) cut network traffic by up to 99% during partition reconciliation.</p>
+</li>
+<li>
+<p><strong>In-flight running XOR hashing</strong> shifts hash computation from an expensive $O(N)$ recovery-time scan to an unnoticeable $O(1)$ write-time bitwise operation.</p>
+</li>
+<li>
+<p><strong>Non-blocking orchestration</strong> ensures neither Netty event loops nor cache worker threads block during partition merges.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Try it out in Infinispan 16+, and check out the code and discussion in <a href="https://github.com/infinispan/infinispan/issues/16887">Issue #16887</a>!</p>
+</div>
+</div>
+</div>
+          
+      </div>
+      <div class="grid__item width-12-12">
+        <h2>Get it, Use it, Ask us! </h2>
+We’re hard at work on new features, improvements and fixes, so watch this space for more announcements!
+<div class="paragraph">
+    <p>Please, <a href="/download" target="_blank">download</a> and test the latest release.</p>
+</div>
+<div class="paragraph">
+    <p>The source code is hosted on <a href="" target="_blank">GitHub</a>.
+        If you need to report a bug or request a new feature, look for a similar one on our <a href="https://github.com/infinispan/infinispan/issues" target="_blank">GitHub issues tracker</a>.
+        If you don’t find any, <a href="https://github.com/infinispan/infinispan/issues" target="_blank">create a new issue</a>.</p>
+</div>
+<div class="paragraph">
+    <p>If you have questions, are experiencing a bug or want advice on using Infinispan,
+        you can use <a href="https://github.com/infinispan/infinispan/discussions/"
+                       target="_blank">GitHub discussions</a>.
+        We will do our best to answer you as soon as we can.</p>
+</div>
+<div class="paragraph">
+    <p>The Infinispan community uses <a href="https://zulipchat.com/"
+                                        target="_blank">Zulip</a> for real-time communications.
+        Join us using either a web-browser or a <a href="https://infinispan.zulipchat.com/apps/" target="_blank">dedicated
+            application</a> on the <a href="https://infinispan.zulipchat.com/" target="_blank">Infinispan chat</a>.</p>
+</div>
+      </div>
+      
+      <div class="width-12-12 callout orange margin-tb-xs">
+    <div class="grid-wrapper">
+        <div class="width-4-12 width-12-12-m block-image">
+            <img src="/assets/images/blog/authors/wburns.jpg" class="author-img">
+        </div>
+        <div class="width-8-12 width-12-12-m block-content">
+            <h5>William Burns</h5>
+            <p>Will is a core Infinispan engineer. He enjoys streaming data and writing reactive code.</p>
+            <div class="width-3-12 width-6-12-m bio-block">
+                <a href="https://github.com/wburns"><img src="/assets/images/community/icon-github.png"></a>
+                
+                <a href="https://twitter.com/mudokonman"><img src="/assets/images/community/icon-twitter.png"></a>
+                
+                
+            </div>
+        </div>
+    </div>
+</div>
+      
+      <div class="grid__item width-12-12 giscus-container">
+        <script src="https://giscus.app/client.js"
+          data-repo="infinispan/infinispan"
+          data-repo-id="MDEwOlJlcG9zaXRvcnkxMDUwOTQ0"
+          data-category="Blog"
+          data-category-id="DIC_kwDOABAJQM4C8Dj-"
+          data-mapping="og:title"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          crossorigin="anonymous"
+          async>
+        </script>
+      </div>
+    </div>
+  </div>
+</div>
+
+  </main>
+
+  <div class="content project-footer">
+  <div class="footer-section">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/infinispan-logo-white.png" class="project-logo" title="Infinispan Logo" alt="Infinispan"></a>
+    </div>
+  </div>
+  <div class="grid-wrapper">
+    <div class="grid__item width-4-12 width-12-12-m footer-about">
+      <p>Infinispan is released under the <a href='https://www.apache.org/licenses/LICENSE-2.0' target='_blank'>Apache 2.0</a> open source license. The source code is available on <a href='https://github.com/infinispan' target='_blank'>GitHub</a>.</p>
+      <div class="footer-thanks">
+        <b>Thanks to</b>
+        <div class="thanks-logos">
+          <a href="https://zulip.com" target="_blank"><img src="/assets/images/footer/zulip.png" title="Zulip" alt="Zulip"></a>
+          <a href="https://weblate.org" target="_blank"><img src="/assets/images/footer/weblate.png" title="Weblate" alt="Weblate"></a>
+        </div>
+      </div>
+    </div>
+
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Navigation</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/" >Home</a></li>
+          
+            
+            <li><a href="/get-started" >Get Started</a></li>
+          
+            
+            <li><a href="/features" >Features</a></li>
+          
+            
+            <li><a href="/ai" >AI</a></li>
+          
+            
+            <li><a href="/documentation" >Documentation</a></li>
+          
+            
+            <li><a href="/tutorials" >Tutorials</a></li>
+          
+            
+            <li><a href="/use-cases" >Use Cases</a></li>
+          
+            
+            <li><a href="/downloads/releases" >Releases</a></li>
+          
+            
+            <li><a href="/hotrod-clients" >Clients</a></li>
+          
+            
+            <li><a href="/downloads/cache-stores" >Cache Stores</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Get Help</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/documentation" >Documentation</a></li>
+          
+            
+            <li><a href="/tutorials" >Guides</a></li>
+          
+            
+            <li><a href="https://stackoverflow.com/questions/tagged/infinispan" target="_blank">Stack Overflow</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan/discussions" target="_blank">GitHub Discussions</a></li>
+          
+            
+            <li><a href="https://infinispan.zulipchat.com" target="_blank">Zulip Chat</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Contribute</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan" target="_blank">Source Code</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan/issues" target="_blank">Submit a Bug</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan/infinispan.github.io" target="_blank">Website Source</a></li>
+          
+        </ul>
+      </div>
+    
+      <div class="width-2-12 width-6-12-m project-links">
+        <b>Follow Us</b>
+        <ul class="footer-links">
+          
+            
+            <li><a href="/blog" >Blog</a></li>
+          
+            
+            <li><a href="https://twitter.com/infinispan" target="_blank">X / Twitter</a></li>
+          
+            
+            <li><a href="https://www.facebook.com/infinispan/" target="_blank">Facebook</a></li>
+          
+            
+            <li><a href="https://www.youtube.com/@InfinispanProject" target="_blank">YouTube</a></li>
+          
+            
+            <li><a href="https://github.com/infinispan" target="_blank">GitHub</a></li>
+          
+        </ul>
+      </div>
+    
+  </div>
+</div>
+
+  <div class="content-slim cf-footer">
+  <div class="cf-flexcontainer">
+    <div class="cf-logo-footer">
+      <a href="https://www.commonhaus.org/" target="_blank"><img src="https://raw.githubusercontent.com/commonhaus/artwork/main/foundation/brand/svg/CF_logo_horizontal_single_reverse.svg" alt="Commonhaus Foundation"></a>
+    </div>
+    <div class="cf-license">
+      Copyright &copy; Infinispan. All rights reserved. For details on trademarks, please visit the <a href="https://www.commonhaus.org/policies/trademark-policy/">Trademark Policy</a> and <a href="https://www.commonhaus.org/trademarks/">Trademark List</a>. Trademarks of third parties are owned by their respective holders and their mention here does not suggest any endorsement or association.
+    </div>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+  <script type="text/javascript" src="/assets/javascript/truncate-list.js"></script>
+
+  <script src="/assets/javascript/clipboard.min.js" type="text/javascript"></script>
+  <script src="/assets/javascript/copy.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.umd.js" type="text/javascript"></script>
+  <script src="/assets/javascript/cookieconsent.config.js" type="module"></script>
+
+<!--   <script type="text/javascript">
+    if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+    }
+  </script> -->
+</body>
+
+</html>
